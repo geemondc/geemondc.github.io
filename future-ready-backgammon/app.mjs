@@ -107,11 +107,11 @@ function geom(){
  const box=$('.board-wrap').getBoundingClientRect(),rot=forced&&portraitPhone();
  const w=rot?box.height:box.width,h=rot?box.width:box.height;
  const frame=Math.max(13,Math.min(w*.022,h*.045)),tray=Math.max(lang==='es'?43:35,w*.054),bar=Math.max(lang==='es'?42:28,w*.048),left=frame,right=w-frame-tray,usable=right-left-bar,col=usable/12,bx=left+6*col;
- const r=Math.min(col*.423,(h-frame*2)*.071),top=frame+16,bottom=h-frame-16,band=(h*.38-frame-16),step=Math.min(r*1.82,(band-r*2)/4);
+ const band=(h*.38-frame-16),r=Math.min(col*.423,(h-frame*2)*.071,band/12),top=frame+16,bottom=h-frame-16,step=r*2;
  return {w,h,frame,tray,bar,left,right,col,bx,r,top,bottom,band,step};
 }
 function pointX(i,g){const k=i>=13?i-13:12-i;return g.left+(k+.5)*g.col+(k>=6?g.bar:0);}
-function stackY(i,n,k,g){const step=n>5?Math.min(g.step,(g.band-2*g.r)/(n-1)):g.step;return i>=13?g.top+g.r+k*step:g.bottom-g.r-k*step;}
+function stackY(i,n,k,g){const j=Math.min(k,5);return i>=13?g.top+g.r+j*g.step:g.bottom-g.r-j*g.step;}
 function coord(point,p,g=boardGeom){
  if(point===0)return {x:g.bx+g.bar/2,y:p===0?g.h*.27:g.h*.73};
  if(point===25)return {x:g.w-g.frame-g.tray*.4,y:p===0?g.h*.73:g.h*.27};
@@ -158,7 +158,7 @@ function drawBoard(){
    if(isTop&&human()&&legalFrom.has(i))html+=`<circle cx="${x}" cy="${y}" r="${r+2}" fill="none" stroke="${selected===i?'#d9fc86':'#fbe49e'}" stroke-width="${selected===i?3:2}" opacity=".9" pointer-events="none"/>`;
    if(isTop&&hint?.from===i)html+=`<circle cx="${x}" cy="${y}" r="${r+3}" class="hint-ring"/>`;
   }
-  if(n>5){const y=stackY(i,n,n-1,g);html+=`<text x="${x}" y="${y+4}" fill="${p?'#fff9e8':'#3d3327'}" text-anchor="middle" class="badge-number">${n}</text>`;}
+  if(n>6){const y=stackY(i,n,n-1,g);html+=`<text x="${x}" y="${y+4}" fill="${p?'#fff9e8':'#3d3327'}" text-anchor="middle" class="badge-number">${n}</text>`;}
   html+='</g>';
  }
  for(let p=0;p<2;p++){
