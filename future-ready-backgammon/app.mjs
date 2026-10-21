@@ -89,7 +89,8 @@ function renderGame(){
  <header class="game-header">${pcard(0)}<div class="scorebox"><div class="match-label">${t('match')}: ${t('first')} ${cfg.target} ${t(cfg.cube?'points':'games')}</div><div class="score-line">${names(0)} ${match.score[0]} <span> · </span> ${names(1)} ${match.score[1]}</div></div>${pcard(1)}
  <div class="game-actions"><button data-action="menu">${t('menu')}</button><button data-action="sound" aria-pressed="${sound}">${t('sound')} ${t(sound?'on':'off')}</button><button data-action="qr">QR</button><button data-action="language">${lang==='en'?'ES':'EN'}</button></div></header>
  <div class="board-wrap"><svg class="board-svg" id="board" role="group" aria-label="${lang==='en'?'Backgammon board':'Tablero de backgammon'}"></svg>
- <div class="center-controls"><div class="dice-zone ${rolling?'rolling':''}" id="dice-zone">${renderDice()}</div><div class="action-zone"><button class="undo-btn" data-action="undo" ${history.length&&human()&&phase==='moving'&&!busy?'':'disabled'}>${t('undo')}</button><button class="primary-action" id="primary-action" data-action="primary" ${primaryDisabled?'disabled':''}>${!human()&&phase!=='opening'?t('thinking'):t(primary)}</button></div></div>
+ <div class="dice-layer side${player} ${rolling?'rolling':''}"><div class="dice-zone ${rolling?'rolling':''}" id="dice-zone">${renderDice()}</div></div>
+ <div class="center-controls"><div class="action-zone"><button class="undo-btn" data-action="undo" ${history.length&&human()&&phase==='moving'&&!busy?'':'disabled'}>${t('undo')}</button><button class="primary-action" id="primary-action" data-action="primary" ${primaryDisabled?'disabled':''}>${!human()&&phase!=='opening'?t('thinking'):t(primary)}</button></div></div>
  ${cfg.cube?`<div class="cube-ui"><button data-action="double" title="${t('double')}" aria-label="${t('double')} · ${cube.value}" ${E.canDouble(cube,player,phase)&&human()&&!busy?'':'disabled'}>${cube.value}</button><span>${E.canDouble(cube,player,phase)&&human()?t('double'):cube.owner===null?t('center'):names(cube.owner)}</span></div>`:''}
  ${hint?`<div class="guide-pill">${t('try')}</div>`:''}${!seen&&human()&&phase==='moving'&&!legal.length?`<div class="guide-pill confirm-guide">${t('confirmHelp')}</div>`:''}
  </div>
@@ -124,7 +125,7 @@ function drawBoard(){
  const svg=$('#board');if(!svg)return;const g=geom();boardGeom=g;const {w,h,frame,bar,bx,left,right,col,r,top,bottom}=g;
  const cubeElement=$('.cube-ui');if(cubeElement)cubeElement.style.left=(bx+bar/2)+'px';
  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
- const legalFrom=new Set(legal.map(m=>m.from));const destinations=selected===null?[]:legal.filter(m=>m.from===selected).map(m=>m.to);
+ const legalFrom=new Set(legal.map(m=>m.from));const destDie={};if(selected!==null)for(const m of legal)if(m.from===selected)destDie[m.to]=Math.max(destDie[m.to]??0,m.die);const destinations=Object.keys(destDie).map(Number);
  let html=`<defs>
  <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#8d542e"/><stop offset=".26" stop-color="#653d25"/><stop offset=".5" stop-color="#9b6237"/><stop offset=".7" stop-color="#724022"/><stop offset="1" stop-color="#4d2e20"/></linearGradient>
  <linearGradient id="felt" x2=".8" y2="1"><stop stop-color="#d7b87b"/><stop offset=".5" stop-color="#c4a16c"/><stop offset="1" stop-color="#e0c18b"/></linearGradient>
@@ -150,7 +151,7 @@ function drawBoard(){
   <path d="M${x-col*.46} ${y}L${x+col*.46} ${y}L${x} ${tip}Z" fill="url(#${i%2?'pointTan':'pointBrown'})" stroke="${i%2?'#b59158':'#59351e'}" stroke-width=".6"/>
   <path d="M${x-col*.46+3} ${y}L${x} ${tip- (up?6:-6)}" stroke="#fff5cb" stroke-opacity=".13" fill="none"/>
   <text x="${x}" y="${up?frame+12:h-frame-3}" text-anchor="middle" fill="#513821" font-size="12" font-weight="800">${rel}</text>`;
-  if(destinations.includes(i))html+=`<circle class="destination" cx="${x}" cy="${up?h*.35:h*.65}" r="${Math.max(r*.75,10)}"/>`;
+  if(destinations.includes(i)){const dy=up?h*.35:h*.65;html+=`<circle class="destination" cx="${x}" cy="${dy}" r="${Math.max(r*.75,10)}"/><text class="dest-die" x="${x}" y="${dy+4}" text-anchor="middle">${destDie[i]}</text>`;}
   const n=Math.abs(s.points[i]),p=s.points[i]>0?0:1;
   for(let k=0;k<n;k++){
    const y=stackY(i,n,k,g),isTop=k===n-1;
@@ -165,7 +166,7 @@ function drawBoard(){
   const b=coord(0,p,g),o=coord(25,p,g),n=s.bar[p],ty=p===0?h*.59:frame+4,th=h*.41-frame-4;
   html+=`<g ${p===player?'data-point="25"':''} class="point" role="button" tabindex="0" aria-label="${t('tray')} ${names(p)}"><rect x="${right+7}" y="${ty}" width="${w-right-frame-8}" height="${th}" rx="5" fill="#37251b" stroke="#b18b55"/><text x="${o.x}" y="${p===0?h-frame-7:frame+17}" fill="#edce93" font-size="12" font-weight="900" text-anchor="middle">${s.off[p]}</text><text x="${o.x}" y="${p===0?h-frame-21:frame+31}" fill="#edce93" font-size="12" font-weight="900" text-anchor="middle">${t('tray')}</text>`;
   for(let k=0;k<s.off[p];k++)html+=`<rect x="${right+11}" y="${p===0?h-frame-36-k*Math.min(7,(th-48)/15):frame+39+k*Math.min(7,(th-48)/15)}" width="${w-right-frame-16}" height="5" rx="2" fill="${p?'#252923':'#eadfc6'}" stroke="${p?'#6d6b58':'#fff5de'}" stroke-width=".6"/>`;
-  if(destinations.includes(25)&&player===p)html+=`<rect class="destination" x="${right+8}" y="${ty+3}" width="${w-right-frame-10}" height="${th-6}" rx="5"/>`;
+  if(destinations.includes(25)&&player===p)html+=`<rect class="destination" x="${right+8}" y="${ty+3}" width="${w-right-frame-10}" height="${th-6}" rx="5"/><text class="dest-die" x="${right+8+(w-right-frame-10)/2}" y="${ty+3+(th-6)/2+4}" text-anchor="middle">${destDie[25]}</text>`;
   html+='</g>';
   html+=`<g ${p===player?'data-from="0" data-point="0"':''} role="button" tabindex="0" aria-label="${t('bar')} ${names(p)} ${n}"><rect x="${bx+1}" y="${p===0?frame:h*.59}" width="${bar-2}" height="${h*.4-frame}" fill="transparent"/>`;
   if(n){const rr=Math.min(r,bar*.4);for(let k=0;k<Math.min(n,3);k++)html+=checkerSvg(b.x,b.y+(k-1)*rr*.6,rr,p,`class="checker ${player===p&&human()?'selectable':''}" ${p===player?'data-from="0"':''}`);html+=`<text x="${b.x}" y="${b.y+4}" fill="${p?'#fff':'#392e21'}" font-size="12" font-weight="900" text-anchor="middle">${n}</text>`;if(hint?.from===0&&p===player)html+=`<circle cx="${b.x}" cy="${b.y}" r="${rr+3}" class="hint-ring"/>`;}
@@ -180,7 +181,7 @@ async function roll(){
  const opening=phase==='opening',tk=token;busy=true;phase='rolling';rolling=true;openingPair=opening;soundPlay('roll');render();
  const a=randomDie(),b=randomDie();
  const timer=setInterval(()=>{pair=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];const dz=$('#dice-zone');if(dz)dz.innerHTML=renderDice();},Math.max(20,85*fast));
- await sleep(950);clearInterval(timer);if(tk!==token)return;
+ await sleep(850);clearInterval(timer);if(tk!==token)return;
  pair=[a,b];rolling=false;busy=false;
  if(opening){const res=E.opening(a,b);if(!res){phase='opening';notice='tie';render();return;}player=res.player;dice=res.dice;}
  else dice=E.rollDice(a,b);
@@ -200,7 +201,7 @@ async function doMove(m,ai=false){
  history.push({s:E.clone(s),dice:[...dice]});busy=true;phase='animating';selected=null;
  const fly=document.createElement('div');fly.className='flying-checker '+(p?'black':'white');const rr=boardGeom.r;fly.style.cssText=`left:${from.x-rr}px;top:${from.y-rr}px;width:${rr*2}px;height:${rr*2}px`;document.body.append(fly);
  soundPlay('click');render();
- const anim=fly.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${(to.x-from.x)*.55}px,${(to.y-from.y)*.55-12}px) scale(1.08)`,offset:.55},{transform:`translate(${to.x-from.x}px,${to.y-from.y}px) scale(1)`}],{duration:Math.max(1,260*fast),easing:'ease-in-out',fill:'forwards'});
+ const anim=fly.animate([{transform:'translate(0,0) scale(1,1)'},{transform:`translate(${(to.x-from.x)*.55}px,${(to.y-from.y)*.55-12}px) scale(1.08)`,offset:.55},{transform:`translate(${to.x-from.x}px,${(to.y-from.y)}px) scale(1.14,.86)`,offset:.84},{transform:`translate(${to.x-from.x}px,${(to.y-from.y)}px) scale(1,1)`}],{duration:Math.max(1,280*fast),easing:'ease-in-out',fill:'forwards'});
  await anim.finished.catch(()=>{});fly.remove();if(tk!==token)return false;
  s=E.apply(s,p,m);dice=E.removeDie(dice,m.die);phase='moving';busy=false;E.invariant(s);updateLegal();render();
  if(hit){soundPlay('hit');burstAt(to.x,to.y,'hit');}else if(m.to===25){soundPlay('off');burstAt(to.x,to.y,'off');}else soundPlay('click');
@@ -217,15 +218,15 @@ function confirm(){
  if(!human())aiTurn(token);
 }
 async function aiTurn(tk){
- await sleep(1000);if(tk!==token||phase!=='preroll'||human())return;
+ await sleep(600);if(tk!==token||phase!=='preroll'||human())return;
  if(E.canDouble(cube,player,phase)&&E.cubeEquity(s,player)>.23&&match.score[player]+cube.value<cfg.target){offerDouble();return;}
  await roll();
 }
 async function aiMoves(tk){
- await sleep(1000);if(tk!==token||human()||phase!=='moving')return;
+ await sleep(550);if(tk!==token||human()||phase!=='moving')return;
  const moves=E.bestTurn(s,player,dice);
- for(const m of moves){if(tk!==token||phase!=='moving')return;await doMove(m,true);await sleep(330);}
- if(tk!==token)return;await sleep(400);confirm();
+ for(const m of moves){if(tk!==token||phase!=='moving')return;await doMove(m,true);await sleep(210);}
+ if(tk!==token)return;await sleep(260);confirm();
 }
 function offerDouble(){
  if(!E.canDouble(cube,player,phase)||busy)return;
@@ -307,7 +308,12 @@ document.addEventListener('pointerdown',e=>{
  const board=e.target.closest('#board');if(!board||modal||phase!=='moving'||busy||!human())return;
  const pt=e.target.closest('[data-point]'),checker=e.target.closest('[data-from]'),to=pt?+pt.dataset.point:null;
  if(selected!==null&&to!==null&&legal.some(m=>m.from===selected&&m.to===to)){destMove(to);e.preventDefault();return;}
- if(checker){const from=+checker.dataset.from;if(!legal.some(m=>m.from===from))return;pointer={id:e.pointerId,from,x:e.clientX,y:e.clientY,drag:false};choose(from);e.preventDefault();}
+ if(checker){const from=+checker.dataset.from;const fromMoves=legal.filter(m=>m.from===from);if(!fromMoves.length)return;const dests=[...new Set(fromMoves.map(m=>m.to))];if(dests.length===1){choose(from);destMove(dests[0]);e.preventDefault();return;}pointer={id:e.pointerId,from,x:e.clientX,y:e.clientY,drag:false};choose(from);e.preventDefault();}
+});
+document.addEventListener('pointerdown',e=>{
+ if(modal||busy||!human()||rolling)return;
+ if(!e.target.closest('#board'))return;
+ if(phase==='opening'||phase==='preroll'){e.preventDefault();roll();}
 });
 document.addEventListener('pointermove',e=>{
  if(!pointer||pointer.id!==e.pointerId)return;
