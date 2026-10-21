@@ -110,6 +110,30 @@
         display:none; pointer-events:none;
       }
 
+      /* ---------- golden splash countdown (in HUD) ---------- */
+      #goldStat{ display:none; }
+      #goldStat.on{ display:flex; }
+      .goldbar{ width:76px; height:7px; border-radius:99px; background:rgba(255,255,255,.16); overflow:hidden; margin-top:4px; }
+      .goldbar i{ display:block; height:100%; width:100%; background:linear-gradient(90deg,#ffe66d,#f4a259); }
+
+      /* ---------- beach news ticker ---------- */
+      #ticker{
+        position:absolute; left:64px; right:120px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:4;
+        display:flex; align-items:stretch; height:26px; border-radius:8px; overflow:hidden;
+        background:rgba(8,12,34,.85); border:1px solid rgba(255,209,102,.32);
+        font-size:12.5px; user-select:none; pointer-events:none;
+      }
+      #ticker .tchip{
+        flex:0 0 auto; display:flex; align-items:center; padding:0 8px;
+        background:var(--danger); color:#fff; font-weight:900; letter-spacing:.12em; font-size:10.5px;
+      }
+      #ticker .tview{ position:relative; flex:1; overflow:hidden; }
+      #tickerTxt{
+        position:absolute; left:0; top:50%; white-space:nowrap;
+        font-weight:700; letter-spacing:.05em; color:var(--ink); will-change:transform;
+      }
+      @media (max-width:480px){ #ticker{ font-size:11.5px; } #ticker .tchip{ padding:0 6px; } }
+
       /* ---------- QR share button ---------- */
       #qrBtn{
         position:absolute; left:10px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); z-index:7;
@@ -147,6 +171,7 @@
         <div class="stat"><span class="lab">Wave</span><span class="val" id="uiWave">1</span></div>
         <div class="stat"><span class="lab">Bonus ×</span><span class="val" id="uiMult">1</span></div>
         <div class="spacer"></div>
+        <div class="stat" id="goldStat"><span class="lab" style="color:var(--accent)">Gold splash</span><div class="goldbar"><i id="goldFill"></i></div></div>
         <div class="stat" style="text-align:right"><span class="lab">Best</span><span class="val" id="uiBest">0</span></div>
         <button class="hbtn" id="btnSound" aria-label="Toggle sound">
           <svg viewBox="0 0 24 24" id="icoSndOn"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
@@ -162,6 +187,7 @@
         <canvas id="game"></canvas>
         <div id="pausedTag">PAUSED</div>
         <a id="footlink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">Future Ready</a>
+        <div id="ticker" aria-hidden="true"><div class="tchip">NEWS</div><div class="tview" id="tview"><span id="tickerTxt"></span></div></div>
         <button id="qrBtn" aria-label="Show QR code for this game"><img src="data:image/png;base64,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" alt="QR code linking to Boardwalk Defense" /></button>
         <div id="qrPop" role="dialog" aria-label="QR code for Boardwalk Defense">
           <div class="qrbox"><img src="data:image/png;base64,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" alt="QR code linking to Boardwalk Defense" /></div>
@@ -211,6 +237,41 @@
       var ovIntro = document.getElementById('ovIntro');
       var ovOver  = document.getElementById('ovOver');
       var pausedTag = document.getElementById('pausedTag');
+      var goldStat = document.getElementById('goldStat');
+      var goldFill = document.getElementById('goldFill');
+      var tickerTxt = document.getElementById('tickerTxt');
+      var tickerView = document.getElementById('tview');
+
+      /* ---------------- Beach news ticker ---------------- */
+      var TICKER_BASE = [
+        'LOCAL GULL GANG STRIKES AGAIN…',
+        'FRY SHORTAGE AT PIZZA STAND — GULLS SUSPECTED',
+        "LIFEGUARD: 'NOT ON MY WATCH'",
+        'TOURISTS ADVISED TO GUARD THEIR ICE CREAM',
+        'PELICAN STILL AT LARGE',
+        'BANDSHELL CONCERT SERIES OPENS — GULLS REQUEST AN ENCORE',
+        'AREA MAN LOSES SANDWICH, BLAMES "THE BIG ONE"',
+        'BROADWALK FRIES RANKED #1 BY LOCAL GULLS, AGAIN'
+      ];
+      var ticker = { queue:[], baseIdx:0, x:0, cur:'', age:0 };
+      function tickerSay(msg){ ticker.queue.push(msg); }
+      function tickerNext(){
+        var msg = ticker.queue.length ? ticker.queue.shift()
+                                      : TICKER_BASE[ticker.baseIdx++ % TICKER_BASE.length];
+        ticker.cur = msg;
+        ticker.age = 0;
+        tickerTxt.textContent = msg;
+        ticker.x = tickerView.clientWidth + 8;
+      }
+      function tickerUpdate(dt){
+        if(!ticker.cur) tickerNext();
+        ticker.age += dt;
+        /* a queued contextual line preempts the rotation once the current line is underway */
+        if(ticker.queue.length && ticker.age > 2.2 && ticker.x < tickerView.clientWidth - 30){ tickerNext(); return; }
+        ticker.x -= 80*dt;
+        if(ticker.x < -tickerTxt.offsetWidth - 12) tickerNext();
+        tickerTxt.style.transform = 'translate(' + ticker.x.toFixed(1) + 'px, -50%)';
+      }
 
       var W=0, H=0, DPR=1, U=1;           // U = size unit
       var groundY=0, horizonY=0;
@@ -260,7 +321,14 @@
         chirp:function(){ tone(1900,0.06,'square',0.038,2450); setTimeout(function(){ tone(2150,0.06,'square',0.038,2650); },65); },
         pelican:function(){ tone(420,0.16,'sawtooth',0.055,180); setTimeout(function(){ tone(350,0.14,'sawtooth',0.05,150); },110); },
         alarm:function(){ tone(520,0.16,'square',0.07); setTimeout(function(){tone(392,0.2,'square',0.07);},170); },
-        bonus:function(){ tone(660,0.1,'square',0.08); setTimeout(function(){tone(990,0.16,'square',0.08);},100); }
+        bonus:function(){ tone(660,0.1,'square',0.08); setTimeout(function(){tone(990,0.16,'square',0.08);},100); },
+        trombone:function(){
+          [233.1,220,207.7].forEach(function(f,i){ setTimeout(function(){ tone(f,0.22,'sawtooth',0.085,f*0.94); }, i*185); });
+          setTimeout(function(){ tone(196,0.62,'sawtooth',0.095,147); }, 555);
+        },
+        whistle:function(){ tone(2350,0.13,'sine',0.07,2520); setTimeout(function(){ tone(2350,0.22,'sine',0.07,2180); },150); },
+        fizzle:function(){ noiseBurst(0.28,0.09,2600); tone(880,0.26,'sawtooth',0.04,110); },
+        sparkle:function(){ tone(1318,0.09,'square',0.055); setTimeout(function(){tone(1760,0.11,'square',0.055);},80); setTimeout(function(){tone(2637,0.15,'square',0.045);},160); }
       };
 
       /* ---------------- Game state ---------------- */
@@ -273,6 +341,7 @@
           score:0, wave:0, mult:1, nextCityAt:10000,
           towers:[], landmarks:[],
           shots:[], booms:[], bombs:[], drones:[], blimps:[], pops:[], parts:[], soaked:[],
+          gags:[], golden:null, goldenTimer:0, goldenDone:true, goldT:0, missStreak:0,
           spawnLeft:0, spawnTimer:0, spawnGap:1, bombSpeed:60, mirv:0,
           dronesLeft:0, droneTimer:4, blimpTimer:14,
           shake:0, clearTimer:0, overTimer:0, time:0, flash:0
@@ -296,8 +365,12 @@
         G.dronesLeft = G.wave>=2 ? Math.min(1 + Math.floor(G.wave/2), 4) : 0;
         G.droneTimer = 5 + Math.random()*4;
         G.blimpTimer = 9 + Math.random()*8;
+        G.golden = null;
+        if(G.wave>=2){ G.goldenDone=false; G.goldenTimer = 3.5 + Math.random()*5; }
+        else { G.goldenDone=true; G.goldenTimer=0; }
         G.state='playing';
         sfx.alarm();
+        tickerSay('WAVE '+G.wave+' — THE GULLS ARE BACK');
         syncHud();
       }
 
@@ -311,10 +384,7 @@
         uiBest.textContent  = best;
       }
 
-      function addScore(base, x, y){
-        var pts = base * G.mult;
-        G.score += pts;
-        if(x!==undefined) G.pops.push({x:x,y:y,txt:'+'+pts,age:0});
+      function checkRebuild(){
         if(G.score >= G.nextCityAt){
           G.nextCityAt += 10000;
           var dead = G.landmarks.filter(function(l){return !l.alive;});
@@ -324,6 +394,12 @@
             sfx.bonus();
           }
         }
+      }
+      function addScore(base, x, y){
+        var pts = base * G.mult;
+        G.score += pts;
+        if(x!==undefined) G.pops.push({x:x,y:y,txt:'+'+pts,age:0});
+        checkRebuild();
         syncHud();
       }
 
@@ -346,8 +422,9 @@
         sfx.launch();
       }
 
-      function makeBoom(x, y, r, chain){
-        G.booms.push({ x:x, y:y, r:0, maxR:r, age:0, grow:0.28, hold:0.34, shrink:0.5, chain:!!chain });
+      function makeBoom(x, y, r, chain, fromShot){
+        var gold = !!(G && G.goldT>0);
+        G.booms.push({ x:x, y:y, r:0, maxR: gold ? r*2 : r, age:0, grow:0.28, hold:0.34, shrink:0.5, chain:!!chain, gold:gold, kills:0, shot:!!fromShot });
       }
 
       /* ---------------- Spawning ---------------- */
@@ -407,6 +484,19 @@
             G.blimpTimer = 22+Math.random()*14;
           }
 
+          /* golden gull: roughly once per wave from wave 2 on */
+          if(!G.goldenDone && !G.golden){
+            G.goldenTimer-=dt;
+            if(G.goldenTimer<=0){
+              G.goldenDone=true;
+              var gd = Math.random()<0.5 ? 1 : -1;
+              G.golden = { x: gd>0 ? -34*U : W+34*U, y: H*(0.27+Math.random()*0.15),
+                           vx: gd*(155+Math.random()*45)*U, dir: gd, age:0, sparkT:0 };
+              tickerSay('GOLDEN GULL SPOTTED OVER THE BROADWALK');
+              sfx.sparkle();
+            }
+          }
+
           /* wave clear? */
           if(G.spawnLeft<=0 && G.dronesLeft<=0 && G.bombs.length===0 && G.drones.length===0 && G.shots.length===0){
             var bonusPts = aliveLandmarks().length*100 + aliveTowers().reduce(function(s,t){return s+t.ammo;},0)*5;
@@ -426,6 +516,25 @@
           if(G.overTimer<=0 && ovOver.classList.contains('hidden')) showGameOver();
         }
 
+        /* golden gull flight + sparkle trail */
+        if(G.golden){
+          var gg=G.golden; gg.age+=dt; gg.x+=gg.vx*dt; gg.sparkT-=dt;
+          if(gg.sparkT<=0){
+            gg.sparkT=0.05;
+            G.parts.push({ x:gg.x+(Math.random()-0.5)*10*U, y:gg.y+(Math.random()-0.5)*8*U,
+                           vx:-gg.vx*0.12, vy:(Math.random()*14+4)*U, age:0, life:0.45,
+                           color: Math.random()<0.5 ? '#ffe66d' : '#fff3b0', r:(1.2+Math.random()*1.4)*U });
+          }
+          if(gg.x<-52*U || gg.x>W+52*U){ G.golden=null; tickerSay('THE GOLDEN GULL GOT AWAY…'); }
+        }
+        /* golden splash window countdown */
+        if(G.goldT>0){
+          G.goldT-=dt;
+          if(G.goldT<=0){ G.goldT=0; sfx.fizzle(); }
+        }
+        /* landmark gag timers */
+        for(i=G.gags.length-1;i>=0;i--){ G.gags[i].age+=dt; if(G.gags[i].age>G.gags[i].life) G.gags.splice(i,1); }
+
         /* drones move + drop */
         for(i=G.drones.length-1;i>=0;i--){
           var dr=G.drones[i]; dr.age+=dt; dr.x+=dr.vx*dt; dr.dropT-=dt;
@@ -440,7 +549,7 @@
         /* shots */
         for(i=G.shots.length-1;i>=0;i--){
           var s=G.shots[i]; s.t+=dt/s.dur;
-          if(s.t>=1){ makeBoom(s.tx, s.ty, 36*U, false); sfx.boom(false); G.shots.splice(i,1); }
+          if(s.t>=1){ makeBoom(s.tx, s.ty, 36*U, false, true); sfx.boom(false); G.shots.splice(i,1); }
           else { s.x = s.sx+(s.tx-s.sx)*s.t; s.y = s.sy+(s.ty-s.sy)*s.t; }
         }
         /* explosions */
@@ -450,12 +559,22 @@
           if(b.age< b.grow) b.r = b.maxR*(b.age/b.grow);
           else if(b.age< b.grow+b.hold) b.r = b.maxR;
           else if(b.age< total) b.r = b.maxR*(1-(b.age-b.grow-b.hold)/b.shrink);
-          else { G.booms.splice(i,1); continue; }
+          else {
+            if(b.shot){
+              if(b.kills>0){ G.missStreak=0; }
+              else {
+                G.missStreak++;
+                if(G.missStreak>=3){ G.missStreak=0; tickerSay('THE GULLS ARE MOCKING YOU'); }
+              }
+            }
+            G.booms.splice(i,1); continue;
+          }
           /* kill bombs */
           for(j=G.bombs.length-1;j>=0;j--){
             var bm=G.bombs[j], dx=bm.x-b.x, dy=bm.y-b.y;
             if(dx*dx+dy*dy < b.r*b.r){
               G.bombs.splice(j,1);
+              b.kills++; G.missStreak=0;
               addScore(25, bm.x, bm.y);
               makeBoom(bm.x, bm.y, 30*U, true);
               if(bm.kind==='chick'){ sfx.chirp(); }
@@ -469,13 +588,28 @@
           for(j=G.drones.length-1;j>=0;j--){
             var d2=G.drones[j], ddx=d2.x-b.x, ddy=d2.y-b.y;
             if(ddx*ddx+ddy*ddy < (b.r+10*U)*(b.r+10*U)){
-              G.drones.splice(j,1); addScore(100, d2.x, d2.y); makeBoom(d2.x,d2.y,30*U,true); burst(d2.x,d2.y,'#ffd166',9); sfx.boom(false); sfx.pelican();
+              G.drones.splice(j,1); b.kills++; G.missStreak=0; addScore(100, d2.x, d2.y); makeBoom(d2.x,d2.y,30*U,true); burst(d2.x,d2.y,'#ffd166',9); sfx.boom(false); sfx.pelican();
             }
           }
           for(j=G.blimps.length-1;j>=0;j--){
             var b2=G.blimps[j], bdx=b2.x-b.x, bdy=b2.y-b.y;
             if(bdx*bdx+bdy*bdy < (b.r+16*U)*(b.r+16*U)){
-              G.blimps.splice(j,1); addScore(100, b2.x, b2.y); burst(b2.x,b2.y,'#ff8fab',12); sfx.boom(false);
+              G.blimps.splice(j,1); b.kills++; G.missStreak=0; addScore(100, b2.x, b2.y); burst(b2.x,b2.y,'#ff8fab',12); sfx.boom(false);
+            }
+          }
+          /* golden gull soaked? */
+          if(G.golden){
+            var gdx=G.golden.x-b.x, gdy=G.golden.y-b.y;
+            if(gdx*gdx+gdy*gdy < (b.r+13*U)*(b.r+13*U)){
+              var gp=G.golden; G.golden=null;
+              b.kills++; G.missStreak=0;
+              G.score += 500;
+              G.pops.push({x:gp.x, y:gp.y, txt:'+500 GOLDEN!', age:0, big:true});
+              burst(gp.x, gp.y, '#ffd94d', 16);
+              G.goldT = 10;
+              sfx.sparkle(); sfx.bonus();
+              checkRebuild();
+              syncHud();
             }
           }
         }
@@ -544,6 +678,11 @@
           if(l.alive && Math.abs(m.x - l.fr*W) < 30*U){
             l.alive=false; burst(m.x, groundY-16*U, l.def.color, 16);
             G.pops.push({x:l.fr*W, y:groundY-64*U, txt:l.def.name+' DOWN!', age:0});
+            G.gags.push({ kind:l.def.name, x:l.fr*W, age:0, life:0.95 });
+            sfx.trombone();
+            if(l.def.name==='LIFEGUARD') sfx.whistle();
+            tickerSay(l.def.name==='THE PIER' ? 'CONDOLENCES TO THE PIER'
+                                              : 'CONDOLENCES TO THE '+l.def.name+' STAND');
           }
         }
         for(var j=0;j<3;j++){
@@ -654,6 +793,7 @@
         if(G){
           G.landmarks.forEach(drawLandmark);
           G.towers.forEach(drawTower);
+          drawGags();
           drawEntities();
         }
         ctx.restore();
@@ -755,12 +895,56 @@
         }
       }
 
+      /* One-second deflation gags when a landmark goes down. */
+      function drawGags(){
+        G.gags.forEach(function(g){
+          var t=g.age/g.life, base=groundY-30*U, x=g.x;
+          if(g.kind==='ICE CREAM'){
+            /* the cone tips over and splats */
+            var rot=Math.min(1, g.age/0.45)*1.9;
+            ctx.save(); ctx.translate(x, base-4*U); ctx.rotate(rot);
+            ctx.fillStyle='#d99058';
+            ctx.beginPath(); ctx.moveTo(-5*U,0); ctx.lineTo(5*U,0); ctx.lineTo(0,14*U); ctx.closePath(); ctx.fill();
+            ctx.fillStyle='#ff8fab';
+            ctx.beginPath(); ctx.arc(0,-3.5*U,6.5*U,0,7); ctx.fill();
+            ctx.restore();
+            ctx.fillStyle='rgba(255,143,171,.85)';
+            var sw=(6+Math.min(1,g.age/0.4)*12)*U;
+            ctx.beginPath(); ctx.ellipse(x+15*U, base+2*U, sw, sw*0.32, 0, 0, 7); ctx.fill();
+          } else if(g.kind==='LIFEGUARD'){
+            /* whistle blast: expanding sound arcs over a shaking stand */
+            var sh=Math.sin(g.age*60)*(1-t)*2.2*U;
+            ctx.strokeStyle='rgba(255,255,255,'+(0.85*(1-t)).toFixed(3)+')'; ctx.lineWidth=1.6*U; ctx.lineCap='round';
+            for(var a=0;a<3;a++){
+              ctx.beginPath(); ctx.arc(x+sh, base-32*U, (5+a*6)*U*(0.5+t), -0.7, 0.7); ctx.stroke();
+            }
+            ctx.strokeStyle='rgba(255,209,102,'+(0.7*(1-t)).toFixed(3)+')';
+            ctx.beginPath();
+            ctx.moveTo(x-16*U+sh, base-6*U); ctx.lineTo(x-11*U+sh, base-10*U);
+            ctx.moveTo(x+16*U+sh, base-6*U); ctx.lineTo(x+11*U+sh, base-10*U);
+            ctx.stroke();
+          } else {
+            /* slump + egg-yolk splat */
+            var yw=(5+Math.min(1,g.age/0.35)*11)*U;
+            ctx.fillStyle='rgba(255,251,235,.9)';
+            ctx.beginPath(); ctx.ellipse(x, base+2*U, yw*1.5, yw*0.48, 0, 0, 7); ctx.fill();
+            ctx.fillStyle='#ffb703';
+            ctx.beginPath(); ctx.ellipse(x, base+2*U, yw, yw*0.34, 0, 0, 7); ctx.fill();
+            ctx.fillStyle='#ff8500';
+            ctx.beginPath(); ctx.arc(x, base+1*U, yw*0.4, 0, 7); ctx.fill();
+            ctx.fillStyle='rgba(120,80,40,.55)';
+            ctx.font='900 '+(13*U)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText('*splat*', x, base-16*U - t*4*U);
+          }
+        });
+      }
+
       /* A seagull in flight, nose pointing along +x. flap: -1..1 wing sweep. */
-      function drawBird(x, y, ang, sc, flap, chick, wet){
+      function drawBird(x, y, ang, sc, flap, chick, wet, gold){
         ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.scale(sc,sc);
-        var body = wet? '#cfe8f5' : (chick? '#fdf6d8' : '#ffffff');
-        var wing = wet? '#a8cfe4' : (chick? '#f6e7ac' : '#e8eef4');
-        var back = wet? '#9fc6dd' : (chick? '#eee09c' : '#d3dce6');
+        var body = wet? '#cfe8f5' : (gold? '#ffd94d' : (chick? '#fdf6d8' : '#ffffff'));
+        var wing = wet? '#a8cfe4' : (gold? '#f6c445' : (chick? '#f6e7ac' : '#e8eef4'));
+        var back = wet? '#9fc6dd' : (gold? '#e8a93d' : (chick? '#eee09c' : '#d3dce6'));
         /* far wing */
         ctx.fillStyle=back;
         ctx.save(); ctx.translate(-1*U,-2.5*U); ctx.rotate(0.3 + flap*0.5);
@@ -877,6 +1061,15 @@
           drawBird(sk.x, sk.y, sk.vx>=0 ? -0.5 : Math.PI+0.5, 0.9, Math.sin(G.time*30 + sk.wob), false, true);
           ctx.globalAlpha = 1;
         });
+        /* golden gull crossing with a glow */
+        if(G.golden){
+          var ggl=ctx.createRadialGradient(G.golden.x,G.golden.y,2,G.golden.x,G.golden.y,30*U);
+          ggl.addColorStop(0,'rgba(255,217,77,.5)'); ggl.addColorStop(1,'rgba(255,217,77,0)');
+          ctx.fillStyle=ggl;
+          ctx.beginPath(); ctx.arc(G.golden.x,G.golden.y,30*U,0,7); ctx.fill();
+          drawBird(G.golden.x, G.golden.y + Math.sin(G.golden.age*5)*1.6*U,
+                   G.golden.dir>0 ? 0 : Math.PI, 1.15, Math.sin(G.time*18), false, false, true);
+        }
         /* pelican crossing the sky, dropping eggs */
         G.drones.forEach(function(d){
           drawPelican(d.x, d.y + Math.sin(d.age*6)*1.8*U, d.vx>=0?1:-1, Math.sin(d.age*7));
@@ -914,14 +1107,21 @@
         /* splash explosions */
         G.booms.forEach(function(b){
           var gr=ctx.createRadialGradient(b.x,b.y,1,b.x,b.y,Math.max(1,b.r));
-          gr.addColorStop(0,'rgba(230,250,255,.95)');
-          gr.addColorStop(0.45,'rgba(120,210,255,.75)');
-          gr.addColorStop(0.8,'rgba(60,150,240,.35)');
-          gr.addColorStop(1,'rgba(60,150,240,0)');
+          if(b.gold){
+            gr.addColorStop(0,'rgba(255,248,205,.97)');
+            gr.addColorStop(0.45,'rgba(255,205,60,.8)');
+            gr.addColorStop(0.8,'rgba(240,150,40,.38)');
+            gr.addColorStop(1,'rgba(240,150,40,0)');
+          } else {
+            gr.addColorStop(0,'rgba(230,250,255,.95)');
+            gr.addColorStop(0.45,'rgba(120,210,255,.75)');
+            gr.addColorStop(0.8,'rgba(60,150,240,.35)');
+            gr.addColorStop(1,'rgba(60,150,240,0)');
+          }
           ctx.fillStyle=gr;
           ctx.beginPath(); ctx.arc(b.x,b.y,Math.max(0.1,b.r),0,7); ctx.fill();
           /* droplets */
-          ctx.fillStyle='rgba(220,245,255,.85)';
+          ctx.fillStyle= b.gold ? 'rgba(255,230,130,.9)' : 'rgba(220,245,255,.85)';
           for(var k=0;k<6;k++){
             var a=k*1.047 + b.age*2, rr=b.r*0.82;
             ctx.beginPath(); ctx.arc(b.x+Math.cos(a)*rr, b.y+Math.sin(a)*rr, 1.8*U, 0, 7); ctx.fill();
@@ -939,7 +1139,7 @@
         G.pops.forEach(function(p){
           ctx.globalAlpha=Math.max(0,1-p.age/1.1);
           ctx.font='800 '+((p.big?17:12.5)*U)+'px "Avenir Next","Segoe UI",sans-serif';
-          ctx.fillStyle= p.txt.indexOf('DOWN')>=0 ? '#ff8fa3' : (p.txt.indexOf('BONUS')>=0||p.txt.indexOf('REBUILT')>=0 ? '#ffd166' : '#dff6ff');
+          ctx.fillStyle= p.txt.indexOf('DOWN')>=0 ? '#ff8fa3' : (p.txt.indexOf('BONUS')>=0||p.txt.indexOf('REBUILT')>=0||p.txt.indexOf('GOLDEN')>=0 ? '#ffd166' : '#dff6ff');
           ctx.fillText(p.txt, p.x, p.y);
         });
         ctx.globalAlpha=1;
@@ -968,7 +1168,12 @@
           if(waveBannerT>0) waveBannerT-=dt;
           update(dt);
         }
+        tickerUpdate(dt);
         draw();
+        /* golden splash countdown bar in the HUD */
+        var goldOn = !!(G && G.goldT>0);
+        goldStat.classList.toggle('on', goldOn);
+        if(goldOn) goldFill.style.width = (G.goldT/10*100).toFixed(1)+'%';
       }
 
       /* ---------------- Resize ---------------- */
@@ -1025,6 +1230,9 @@
       var qrPop=document.getElementById('qrPop');
       document.getElementById('qrBtn').addEventListener('click', function(){ ac(); qrPop.classList.add('show'); });
       qrPop.addEventListener('click', function(){ qrPop.classList.remove('show'); });
+
+      /* QA hook: lets the audit probe drive/inspect the live game state */
+      window.__bd = { game:function(){ return G; }, fire:fire, say:tickerSay };
 
       syncHud();
       requestAnimationFrame(loop);
