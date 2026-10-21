@@ -580,7 +580,7 @@ function planeY(){ return 64; }
 
 var plane = { x: -140, speed: 215, dir: 1 };
 var diver = { x: 0, y: 0, vx: 0, vy: 0, chute: false, openFrac: 0, sway: 0, landed: false };
-var pad = { w: 118, x: 480, dir: 1, speed: 130 };
+var pad = { w: 78, x: 480, dir: 1, speed: 130 };
 var particles = [];   /* rain / snow */
 var delights = [];    /* sky-tap sparkles, birds */
 var clouds = [];
@@ -652,7 +652,7 @@ function nextTurn(){
   plane.x = plane.dir === 1 ? -150 : W + 150;
   plane.speed = rand(195, 245) * (state.planeSpeed[state.current] === "fast" ? 1.45 : 1);
   /* pad */
-  pad.w = 118;
+  pad.w = 78;
   pad.x = state.mode === "moving" ? rand(W * 0.3, W * 0.7) : clamp(rand(W * 0.18, W * 0.82), pad.w / 2 + 6, W - pad.w / 2 - 6);
   pad.dir = Math.random() < 0.5 ? 1 : -1;
   diver.chute = false; diver.landed = false;
@@ -1013,7 +1013,7 @@ function draw(now){
   }
   if (dark){
     ctx.fillStyle = "rgba(0,0,5,.28)"; ctx.fillRect(0, 0, W, H);
-    drawPadGlow(now);
+    drawPad(now, dark);   /* redrawn over the darkness so the small pad glows */
   }
 }
 function sun(x, y, r, core, halo){
@@ -1046,63 +1046,95 @@ function drawGround(now, dark){
 function drawPad(now, dark){
   var gy = groundY(), x = pad.x - pad.w / 2;
   if (dark){
-    ctx.save(); ctx.shadowColor = "#37e0ff"; ctx.shadowBlur = 26;
-    ctx.fillStyle = "#0e5f73"; rr(x, gy - 10, pad.w, 13, 6); ctx.fill(); ctx.restore();
-    ctx.fillStyle = "#aef4ff"; rr(x + 6, gy - 8, pad.w - 12, 4, 2); ctx.fill();
+    /* Lights Out: same small pad, just glowing — soft cyan halo, no giant ellipse */
+    ctx.save(); ctx.shadowColor = "#37e0ff"; ctx.shadowBlur = 16;
+    ctx.fillStyle = "#0e5f73"; rr(x, gy - 12, pad.w, 12, 3); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#aef4ff"; rr(pad.x - 5, gy - 12, 10, 12, 2); ctx.fill();
     return;
   }
-  ctx.fillStyle = "#d64541"; rr(x, gy - 10, pad.w, 13, 6); ctx.fill();
-  ctx.fillStyle = "#ffffff"; rr(x + 8, gy - 8, pad.w - 16, 4, 2); ctx.fill();
-  ctx.fillStyle = "#d64541";
-  ctx.font = "900 11px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("▼ PAD ▼", pad.x, gy + 20);
-}
-function drawPadGlow(now){
-  var gy = groundY();
-  ctx.save();
-  ctx.globalAlpha = 0.25 + 0.1 * Math.sin(now / 300);
-  ctx.fillStyle = "#37e0ff";
-  ctx.beginPath(); ctx.ellipse(pad.x, gy - 4, pad.w * 0.85, 20, 0, 0, 6.29); ctx.fill();
-  ctx.restore();
+  ctx.fillStyle = "#d63a30"; rr(x, gy - 12, pad.w, 12, 3); ctx.fill();
+  ctx.fillStyle = "#ffffff"; rr(pad.x - 5, gy - 12, 10, 12, 2); ctx.fill();
 }
 function drawWindsock(now, dark){
-  var gy = groundY(), px = 54, top = gy - 118;
-  ctx.strokeStyle = dark ? "#5a6a72" : "#5b4632"; ctx.lineWidth = 5;
+  var gy = groundY(), px = W * 0.5, top = gy - 150;
+  /* tall thin dark pole, planted at the ground */
+  ctx.strokeStyle = dark ? "#546e7a" : "#2f3b46"; ctx.lineWidth = 4; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(px, gy); ctx.lineTo(px, top); ctx.stroke();
+  ctx.fillStyle = dark ? "#546e7a" : "#2f3b46";
+  ctx.beginPath(); ctx.arc(px, top, 4.5, 0, 6.29); ctx.fill();
   var hasWind = state.mode === "standard";
   var mag = hasWind ? Math.abs(state.wind) / 14 : 0;
-  ctx.save(); ctx.translate(px, top + 4);
-  if (!hasWind || state.wind === 0){
-    /* limp: hangs straight down */
-    ctx.fillStyle = "#9aa3ab";
-    ctx.beginPath();
-    ctx.moveTo(0, 0); ctx.lineTo(13, 3); ctx.lineTo(9, 34); ctx.lineTo(3, 38); ctx.closePath(); ctx.fill();
-  } else {
-    var dirS = Math.sign(state.wind);
-    var droop = (1 - mag) * 0.85 + Math.sin(now / 160) * 0.05 * mag;
-    var len = 26 + mag * 30;
-    ctx.rotate(dirS > 0 ? droop * 0.5 : Math.PI - droop * 0.5);
-    ctx.fillStyle = "#ff7f2a";
-    ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(len, -3.5); ctx.lineTo(len, 3.5); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(len * 0.38, -5.4, len * 0.22, 10.8);
-    ctx.fillStyle = "#ffe9d6"; ctx.fillRect(len * 0.72, -4.2, len * 0.14, 8.4);
+  var segCols = ["#e23b30", "#f4f6f8", "#e23b30", "#f4f6f8"];
+  /* one red-and-white segmented cone, 4 stripes, tapering along angle ang */
+  function segCone(ang, len, w0, w1){
+    var dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
+    for (var i = 0; i < 4; i++){
+      var t0 = i / 4, t1 = (i + 1) / 4;
+      var wa = (w0 + (w1 - w0) * t0) / 2, wb = (w0 + (w1 - w0) * t1) / 2;
+      var ax = px + dx * len * t0, ay = top + dy * len * t0;
+      var bx = px + dx * len * t1, by = top + dy * len * t1;
+      ctx.fillStyle = segCols[i];
+      ctx.beginPath();
+      ctx.moveTo(ax + nx * wa, ay + ny * wa);
+      ctx.lineTo(bx + nx * wb, by + ny * wb);
+      ctx.lineTo(bx - nx * wb, by - ny * wb);
+      ctx.lineTo(ax - nx * wa, ay - ny * wa);
+      ctx.closePath(); ctx.fill();
+    }
   }
-  ctx.restore();
+  if (!hasWind || state.wind === 0){
+    /* limp: the same segmented cone hangs downward, swaying a touch */
+    segCone(Math.PI / 2 + Math.sin(now / 700) * 0.06, 84, 20, 6);
+  } else {
+    /* flying: horizontal cone pointing downwind, drooping as wind weakens */
+    var dirS = Math.sign(state.wind);
+    var droop = (1 - mag) * 0.95 + Math.sin(now / 170) * 0.05;
+    segCone(dirS > 0 ? droop : Math.PI - droop, 74 + mag * 30, 22, 7);
+  }
 }
 function drawPlane(){
   ctx.save(); ctx.translate(plane.x, planeY()); ctx.scale(plane.dir, 1);
-  ctx.fillStyle = "#e8ecf2";
-  rr(-58, -13, 108, 24, 12); ctx.fill();
-  ctx.fillStyle = "#c22f2f"; rr(30, -13, 24, 24, 10); ctx.fill();
-  ctx.fillStyle = "#2b6cb0";
-  ctx.beginPath(); ctx.moveTo(-52, -10); ctx.lineTo(-76, -30); ctx.lineTo(-62, -32); ctx.lineTo(-36, -12); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-8, 10); ctx.lineTo(14, 30); ctx.lineTo(28, 30); ctx.lineTo(16, 10); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#bde3ff";
-  for (var i = 0; i < 4; i++){ ctx.beginPath(); ctx.arc(-30 + i * 18, -2, 5, 0, 6.29); ctx.fill(); }
-  ctx.strokeStyle = "#8a93a3"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(64, 0, 4, 0, 6.29); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(58, -11); ctx.lineTo(70, 0); ctx.lineTo(58, 11); ctx.stroke();
+  var outline = "rgba(23,32,48,.85)";
+  /* orange tail fin, sweeping up at the rear */
+  ctx.beginPath();
+  ctx.moveTo(-38, -9);
+  ctx.lineTo(-57, -31); ctx.quadraticCurveTo(-59, -35, -54, -34);
+  ctx.lineTo(-33, -32); ctx.quadraticCurveTo(-29, -31, -30, -25);
+  ctx.lineTo(-27, -9); ctx.closePath();
+  ctx.fillStyle = "#ff7a29"; ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 2; ctx.stroke();
+  /* plump white fuselage */
+  ctx.beginPath(); ctx.ellipse(0, 0, 58, 19, 0, 0, 6.29);
+  ctx.fillStyle = "#ffffff"; ctx.fill();
+  /* orange belly, clipped to the fuselage curve */
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = "#ff7a29"; ctx.fillRect(-58, 5, 116, 16);
   ctx.restore();
+  ctx.beginPath(); ctx.ellipse(0, 0, 58, 19, 0, 0, 6.29);
+  ctx.strokeStyle = outline; ctx.lineWidth = 2.2; ctx.stroke();
+  /* small orange side wing */
+  ctx.beginPath(); ctx.ellipse(-4, 7, 24, 6.5, -0.06, 0, 6.29);
+  ctx.fillStyle = "#ff8f3d"; ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 1.8; ctx.stroke();
+  /* light-blue canopy dome near the nose */
+  ctx.beginPath(); ctx.ellipse(27, -14, 12, 8, 0, Math.PI, 0); ctx.closePath();
+  ctx.fillStyle = "#bde3ff"; ctx.fill();
+  ctx.strokeStyle = outline; ctx.lineWidth = 2; ctx.stroke();
+  /* dark propeller disc at the nose */
+  ctx.beginPath(); ctx.ellipse(59, 0, 4.5, 21, 0, 0, 6.29);
+  ctx.fillStyle = "#232c38"; ctx.fill();
+  ctx.beginPath(); ctx.arc(56, 0, 5, 0, 6.29);
+  ctx.fillStyle = "#3c4656"; ctx.fill();
+  ctx.restore();
+  /* orange JUMP! prompt beneath the plane while it crosses */
+  if (state.phase === "plane"){
+    ctx.save(); ctx.translate(plane.x, planeY() + 46);
+    ctx.font = "900 21px 'Trebuchet MS', sans-serif"; ctx.textAlign = "center";
+    ctx.lineWidth = 5; ctx.strokeStyle = "#ffffff"; ctx.lineJoin = "round";
+    ctx.strokeText("JUMP!", 0, 0);
+    ctx.fillStyle = "#ff5a1f"; ctx.fillText("JUMP!", 0, 0);
+    ctx.restore();
+  }
 }
 function drawDiver(now, dark){
   if (ART.freefall && ART.canopy){ drawDiverArt(now, dark); return; }
