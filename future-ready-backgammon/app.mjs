@@ -1,4 +1,5 @@
 import * as E from './engine.mjs';
+import {encodeLink,stateFromHash} from './link.mjs';
 import {HERO} from './hero-data.mjs';
 const $=s=>document.querySelector(s);
 const previewMemory=new Map();
@@ -9,11 +10,11 @@ const storage={
 const storedSetup=storage.get('setup',{});
 const pref=storedSetup&&typeof storedSetup==='object'?storedSetup:{};
 let lang=storage.get('language','en')==='es'?'es':'en',sound=storage.get('sound',true)!==false;
-let cfg={players:pref.players===2?2:1,cube:pref.cube===true,target:[1,3,5,7].includes(pref.target)?pref.target:3,coach:pref.coach!==false};
+let cfg={players:[2,3].includes(pref.players)?pref.players:1,cube:pref.cube===true,target:[1,3,5,7].includes(pref.target)?pref.target:3,coach:pref.coach!==false};
 if(cfg.cube&&cfg.target===1)cfg.target=3;
 const dictionary={
- en:{brand:'FUTURE READY',club:'A LITTLE STRATEGY. A LOT OF FUN.',title:'BACKGAMMON',lead:"The world's oldest race-and-hit board game. Roll, race, hit, and bear off first.",sound:'Sound',on:'On',off:'Off',qr:'QR',setup:'Make it your game',tag:'ALL AGES',players:'WHO’S PLAYING?',one:'1 PLAYER',two:'2 PLAYERS',computerSub:'You against a clever computer opponent.',friendSub:'Pass the device. Challenge a friend.',matchSetup:'MATCH SETUP',without:'WITHOUT CUBE',with:'WITH CUBE',simple:'Every game = 1 win. A friendly race to the finish.',classic:'The cube raises the stakes. Gammons ×2, backgammons ×3.',targetGames:'FIRST TO HOW MANY GAME WINS?',targetPoints:'FIRST TO HOW MANY POINTS?',coach:'Coach hints',coachSub:'A little nudge when you need one.',start:'LET’S PLAY',noLogin:'No ads. No login. Just one more game.',how:'HOW TO PLAY',free:'Always free to play',friends:'Better together',ages:'Easy to learn. Fun to master.',footer:'A timeless game. A fresh way to play.',scores:'Lifetime scores',menu:'Menu',close:'Close',resume:'RESUME',intro:'BACK TO SETUP',reset:'RESET SCORES',resetQuestion:'Reset lifetime scores?',resetBody:'This clears saved lifetime tallies on this device. Your current match stays as it is.',cancel:'CANCEL',resetYes:'YES, RESET',you:'You',computer:'Computer',white:'White',black:'Black',pips:'Pips',match:'MATCH',first:'First to',games:'games',points:'points',wins:'Game wins',matches:'Matches won',gammons:'Gammons',backgammons:'Backgammons',totalPoints:'Total points',opening:'One die each. Higher roll starts!',tie:'A tie! Roll again.',rollStart:'ROLL TO START',roll:'ROLL DICE',confirm:'CONFIRM MOVE',pass:'CONFIRM PASS',undo:'UNDO',thinking:'Computer is thinking…',turn:'to play',move:'Tap a glowing checker, then its destination.',try:'Try this one!',confirmHelp:'Happy with your moves? Tap CONFIRM MOVE.',blocked:'No legal moves. Confirm to pass.',barHelp:'Enter every checker from the bar first.',offHelp:'All home! Move to the tray to bear off.',rollHelp:'Your turn. Roll the dice!',double:'DOUBLE',center:'Center',cube:'Cube',cubeOwner:'Owner',doubleTitle:'Raise the stakes?',doubleBody:'offers to double the cube to',accept:'ACCEPT',decline:'DECLINE',declineNote:'Accept and own the cube, or decline and lose this game at its current value.',accepted:'Double accepted.',declined:'Double declined',win:'wins!',gameWinner:'GAME WINNER',matchWinner:'MATCH WINNER',single:'A beautiful finish!',gammon:'GAMMON!',backgammon:'BACKGAMMON!',next:'NEXT GAME',again:'PLAY AGAIN',change:'CHANGE SETUP',earned:'earned',final:'Final tally',scan:'Scan to play on another phone',qrTitle:'Good games travel.',rotate:'A little room to roll.',rotateBody:'Turn your phone sideways for the full board.',rotateBtn:'PLAY SIDEWAYS',bar:'BAR',tray:'OFF',moveNo:'moves left',turnWhite:'White moves 24 → 1',turnBlack:'Black moves 1 → 24',confirming:'Placing checker…',matchEnded:'Match complete',newMatch:'A new match starts with your current setup.',rule1:'Start with 15 checkers each: 2 on your 24-point, 5 on 13, 3 on 8, and 5 on 6. Each player rolls one die; the higher roll starts using both numbers. Ties roll again.',rule2:'Move toward your home (points 1–6), one move per die, in either order. Doubles give four moves. Use both dice if possible; if only one can be used and either would work, use the higher.',rule3:'Two or more opposing checkers block a point. Land on a single opposing checker to send it to the bar. Re-enter every checker from the bar before moving anything else, into the opponent’s home on 25 minus the die.',rule4:'When every remaining checker is home, bear off with an exact die. A higher die can remove your highest checker only if none are farther from home. First to bear off all 15 wins.',rule5:'A gammon means the loser bore off none. It is a backgammon if they also have a checker on the bar or in the winner’s home. With the cube, these score ×2 or ×3; without it, every game is just 1 win.',rule6:'With the cube: before rolling, offer a double if the cube is centered or yours. Accepting gives the other player cube ownership; declining loses the current cube value. First to reach or pass the points target wins. Without the cube, first to the chosen number of game wins wins.',rule7:'Tap or drag a checker to a glowing destination. Undo as often as you like before confirming. Each player’s point numbers run in opposite directions; White moves counterclockwise around the board.'},
- es:{brand:'FUTURE READY',club:'UN POCO DE ESTRATEGIA. MUCHA DIVERSIÓN.',title:'BACKGAMMON',lead:'El clásico juego de carreras y capturas. Tira los dados, avanza, captura y saca tus fichas primero.',sound:'Sonido',on:'Sí',off:'No',qr:'QR',setup:'Juega a tu manera',tag:'PARA TODOS',players:'¿QUIÉN JUEGA?',one:'1 JUGADOR',two:'2 JUGADORES',computerSub:'Tú contra un rival inteligente.',friendSub:'Pasen el dispositivo y jueguen entre amigos.',matchSetup:'TIPO DE ENCUENTRO',without:'SIN CUBO',with:'CON CUBO',simple:'Cada partida = 1 victoria. ¡Así de sencillo!',classic:'El cubo multiplica los puntos. Gammon ×2, backgammon ×3.',targetGames:'¿CUÁNTAS VICTORIAS PARA GANAR?',targetPoints:'¿CUÁNTOS PUNTOS PARA GANAR?',coach:'Pistas del entrenador',coachSub:'Una ayudita cuando la necesites.',start:'¡A JUGAR!',noLogin:'Sin anuncios. Sin registro. Solo diversión.',how:'CÓMO JUGAR',free:'Siempre gratis',friends:'Mejor en compañía',ages:'Fácil de aprender. Un reto dominarlo.',footer:'Un juego de siempre. Una forma nueva de jugar.',scores:'Resultados acumulados',menu:'Menú',close:'Cerrar',resume:'CONTINUAR',intro:'VOLVER AL INICIO',reset:'BORRAR RESULTADOS',resetQuestion:'¿Borrar los resultados?',resetBody:'Se borrarán los resultados acumulados en este dispositivo. El encuentro actual no cambiará.',cancel:'CANCELAR',resetYes:'SÍ, BORRAR',you:'Tú',computer:'Computadora',white:'Blancas',black:'Negras',pips:'Avance',match:'ENCUENTRO',first:'Primero en llegar a',games:'victorias',points:'puntos',wins:'Victorias',matches:'Encuentros ganados',gammons:'Gammons',backgammons:'Backgammons',totalPoints:'Puntos totales',opening:'Un dado cada uno. ¡Empieza el mayor!',tie:'¡Empate! Vuelvan a tirar.',rollStart:'TIRAR PARA EMPEZAR',roll:'TIRAR DADOS',confirm:'CONFIRMAR JUGADA',pass:'CONFIRMAR PASE',undo:'DESHACER',thinking:'La computadora está pensando…',turn:'juega',move:'Toca una ficha iluminada y después su destino.',try:'¡Prueba esta!',confirmHelp:'¿Te gusta tu jugada? Toca CONFIRMAR JUGADA.',blocked:'No hay jugadas posibles. Confirma para pasar.',barHelp:'Primero debes sacar todas tus fichas de la barra.',offHelp:'¡Todas en casa! Llévalas a la bandeja para sacarlas.',rollHelp:'¡Tu turno! Tira los dados.',double:'DOBLAR',center:'Centro',cube:'Cubo',cubeOwner:'Dueño',doubleTitle:'¿Subimos la apuesta?',doubleBody:'ofrece doblar el cubo a',accept:'ACEPTAR',decline:'RECHAZAR',declineNote:'Acepta y recibe el cubo, o rechaza y pierde la partida por el valor actual.',accepted:'Doble aceptado.',declined:'Doble rechazado',win:'gana!',gameWinner:'GANADOR DE LA PARTIDA',matchWinner:'GANADOR DEL ENCUENTRO',single:'¡Una gran victoria!',gammon:'¡GAMMON!',backgammon:'¡BACKGAMMON!',next:'SIGUIENTE PARTIDA',again:'VOLVER A JUGAR',change:'CAMBIAR OPCIONES',earned:'sumados',final:'Resultado final',scan:'Escanea para jugar en otro teléfono',qrTitle:'Comparte la diversión.',rotate:'Un poco de espacio para jugar.',rotateBody:'Gira el teléfono para ver el tablero completo.',rotateBtn:'JUGAR EN HORIZONTAL',bar:'BARRA',tray:'FUERA',moveNo:'jugadas restantes',turnWhite:'Blancas: 24 → 1',turnBlack:'Negras: 1 → 24',confirming:'Moviendo ficha…',matchEnded:'Encuentro terminado',newMatch:'Empieza otro encuentro con las mismas opciones.',rule1:'Cada jugador empieza con 15 fichas: 2 en su punto 24, 5 en el 13, 3 en el 8 y 5 en el 6. Cada uno tira un dado; empieza quien saque el mayor y usa ambos números. Si empatan, repiten.',rule2:'Avanza hacia tu casa (puntos 1–6), una jugada por dado, en el orden que quieras. Los dobles permiten cuatro jugadas. Usa ambos dados si es posible; si solo puedes usar uno y cualquiera serviría, debes usar el mayor.',rule3:'Dos o más fichas rivales bloquean un punto. Al caer sobre una sola, la mandas a la barra. Antes de mover otras fichas, debes reintroducir todas las de la barra en la casa rival, en el punto 25 menos el dado.',rule4:'Cuando todas tus fichas restantes estén en casa, puedes sacarlas con el número exacto. Un dado mayor permite sacar la ficha más alejada, siempre que no quede ninguna detrás. Gana quien saque primero las 15.',rule5:'Es gammon si el rival no ha sacado ninguna ficha. Es backgammon si, además, tiene una en la barra o en tu casa. Con cubo, valen ×2 y ×3; sin cubo, cada partida cuenta como 1 victoria.',rule6:'Con cubo: antes de tirar, puedes doblar si el cubo está en el centro o es tuyo. Si el rival acepta, recibe el cubo; si rechaza, pierde por el valor actual. Gana quien alcance o supere la meta de puntos. Sin cubo, gana quien llegue a las victorias elegidas.',rule7:'Toca o arrastra una ficha hasta un destino iluminado. Puedes deshacer todo antes de confirmar. Los puntos se numeran en sentidos opuestos para cada jugador; las blancas avanzan en sentido antihorario.'}
+ en:{brand:'FUTURE READY',club:'A LITTLE STRATEGY. A LOT OF FUN.',title:'BACKGAMMON',lead:"The world's oldest race-and-hit board game. Roll, race, hit, and bear off first.",sound:'Sound',on:'On',off:'Off',qr:'QR',setup:'Make it your game',tag:'ALL AGES',players:'WHO’S PLAYING?',one:'1 PLAYER',two:'2 PLAYERS',computerSub:'You against a clever computer opponent.',friendSub:'Pass the device. Challenge a friend.',bylink:'2 PLAYERS · BY LINK',linkSub:'Text the position to a friend. They open it, move, and text you back.',linkHead:'PLAY BY LINK',yourName:'Your name',yourPhone:'Your phone',oppName:'Opponent’s name',oppPhone:'Opponent’s phone',namePh:'Optional',phonePh:'e.g. 5551234567',phoneNote:'Numbers are saved only on this device. Your number also travels inside the game link so your opponent can text you back in one tap.',sendTitle:'Send your move',sendBody:'Your turn is done. Send this position to your opponent — they open the link and it’s their move.',textMove:'📱 TEXT YOUR MOVE',copyLink:'COPY LINK',shareLink:'SHARE',copied:'Link copied!',shareText:'Your turn in our backgammon game!',waiting:'Move sent — waiting for your opponent’s reply link.',sendBtn:'SEND MOVE',badLink:'That game link looks broken or incomplete. No harm done — here’s a fresh start.',linkTurn:'This position arrived by link. It’s your move!',matchSetup:'MATCH SETUP',without:'WITHOUT CUBE',with:'WITH CUBE',simple:'Every game = 1 win. A friendly race to the finish.',classic:'The cube raises the stakes. Gammons ×2, backgammons ×3.',targetGames:'FIRST TO HOW MANY GAME WINS?',targetPoints:'FIRST TO HOW MANY POINTS?',coach:'Coach hints',coachSub:'A little nudge when you need one.',start:'LET’S PLAY',noLogin:'No ads. No login. Just one more game.',how:'HOW TO PLAY',free:'Always free to play',friends:'Better together',ages:'Easy to learn. Fun to master.',footer:'A timeless game. A fresh way to play.',scores:'Lifetime scores',menu:'Menu',close:'Close',resume:'RESUME',intro:'BACK TO SETUP',reset:'RESET SCORES',resetQuestion:'Reset lifetime scores?',resetBody:'This clears saved lifetime tallies on this device. Your current match stays as it is.',cancel:'CANCEL',resetYes:'YES, RESET',you:'You',computer:'Computer',white:'White',black:'Black',pips:'Pips',match:'MATCH',first:'First to',games:'games',points:'points',wins:'Game wins',matches:'Matches won',gammons:'Gammons',backgammons:'Backgammons',totalPoints:'Total points',opening:'One die each. Higher roll starts!',tie:'A tie! Roll again.',rollStart:'ROLL TO START',roll:'ROLL DICE',confirm:'CONFIRM MOVE',pass:'CONFIRM PASS',undo:'UNDO',thinking:'Computer is thinking…',turn:'to play',move:'Tap a glowing checker, then its destination.',try:'Try this one!',confirmHelp:'Happy with your moves? Tap CONFIRM MOVE.',blocked:'No legal moves. Confirm to pass.',barHelp:'Enter every checker from the bar first.',offHelp:'All home! Move to the tray to bear off.',rollHelp:'Your turn. Roll the dice!',double:'DOUBLE',center:'Center',cube:'Cube',cubeOwner:'Owner',doubleTitle:'Raise the stakes?',doubleBody:'offers to double the cube to',accept:'ACCEPT',decline:'DECLINE',declineNote:'Accept and own the cube, or decline and lose this game at its current value.',accepted:'Double accepted.',declined:'Double declined',win:'wins!',gameWinner:'GAME WINNER',matchWinner:'MATCH WINNER',single:'A beautiful finish!',gammon:'GAMMON!',backgammon:'BACKGAMMON!',next:'NEXT GAME',again:'PLAY AGAIN',change:'CHANGE SETUP',earned:'earned',final:'Final tally',scan:'Scan to play on another phone',qrTitle:'Good games travel.',rotate:'A little room to roll.',rotateBody:'Turn your phone sideways for the full board.',rotateBtn:'PLAY SIDEWAYS',bar:'BAR',tray:'OFF',moveNo:'moves left',turnWhite:'White moves 24 → 1',turnBlack:'Black moves 1 → 24',confirming:'Placing checker…',matchEnded:'Match complete',newMatch:'A new match starts with your current setup.',rule1:'Start with 15 checkers each: 2 on your 24-point, 5 on 13, 3 on 8, and 5 on 6. Each player rolls one die; the higher roll starts using both numbers. Ties roll again.',rule2:'Move toward your home (points 1–6), one move per die, in either order. Doubles give four moves. Use both dice if possible; if only one can be used and either would work, use the higher.',rule3:'Two or more opposing checkers block a point. Land on a single opposing checker to send it to the bar. Re-enter every checker from the bar before moving anything else, into the opponent’s home on 25 minus the die.',rule4:'When every remaining checker is home, bear off with an exact die. A higher die can remove your highest checker only if none are farther from home. First to bear off all 15 wins.',rule5:'A gammon means the loser bore off none. It is a backgammon if they also have a checker on the bar or in the winner’s home. With the cube, these score ×2 or ×3; without it, every game is just 1 win.',rule6:'With the cube: before rolling, offer a double if the cube is centered or yours. Accepting gives the other player cube ownership; declining loses the current cube value. First to reach or pass the points target wins. Without the cube, first to the chosen number of game wins wins.',rule7:'Tap or drag a checker to a glowing destination. Undo as often as you like before confirming. Each player’s point numbers run in opposite directions; White moves counterclockwise around the board.'},
+ es:{brand:'FUTURE READY',club:'UN POCO DE ESTRATEGIA. MUCHA DIVERSIÓN.',title:'BACKGAMMON',lead:'El clásico juego de carreras y capturas. Tira los dados, avanza, captura y saca tus fichas primero.',sound:'Sonido',on:'Sí',off:'No',qr:'QR',setup:'Juega a tu manera',tag:'PARA TODOS',players:'¿QUIÉN JUEGA?',one:'1 JUGADOR',two:'2 JUGADORES',computerSub:'Tú contra un rival inteligente.',friendSub:'Pasen el dispositivo y jueguen entre amigos.',bylink:'2 JUGADORES · POR ENLACE',linkSub:'Envía la posición por mensaje. Tu amigo la abre, juega y te responde.',linkHead:'JUGAR POR ENLACE',yourName:'Tu nombre',yourPhone:'Tu teléfono',oppName:'Nombre del rival',oppPhone:'Teléfono del rival',namePh:'Opcional',phonePh:'ej. 5551234567',phoneNote:'Los números se guardan solo en este dispositivo. El tuyo también viaja dentro del enlace para que tu rival pueda responderte con un toque.',sendTitle:'Envía tu jugada',sendBody:'Tu turno terminó. Envía esta posición a tu rival: abre el enlace y le toca jugar.',textMove:'📱 ENVIAR POR MENSAJE',copyLink:'COPIAR ENLACE',shareLink:'COMPARTIR',copied:'¡Enlace copiado!',shareText:'¡Tu turno en nuestro backgammon!',waiting:'Jugada enviada: esperando el enlace de respuesta de tu rival.',sendBtn:'ENVIAR JUGADA',badLink:'Ese enlace parece roto o incompleto. No pasa nada: aquí tienes un inicio nuevo.',linkTurn:'Esta posición llegó por enlace. ¡Te toca jugar!',matchSetup:'TIPO DE ENCUENTRO',without:'SIN CUBO',with:'CON CUBO',simple:'Cada partida = 1 victoria. ¡Así de sencillo!',classic:'El cubo multiplica los puntos. Gammon ×2, backgammon ×3.',targetGames:'¿CUÁNTAS VICTORIAS PARA GANAR?',targetPoints:'¿CUÁNTOS PUNTOS PARA GANAR?',coach:'Pistas del entrenador',coachSub:'Una ayudita cuando la necesites.',start:'¡A JUGAR!',noLogin:'Sin anuncios. Sin registro. Solo diversión.',how:'CÓMO JUGAR',free:'Siempre gratis',friends:'Mejor en compañía',ages:'Fácil de aprender. Un reto dominarlo.',footer:'Un juego de siempre. Una forma nueva de jugar.',scores:'Resultados acumulados',menu:'Menú',close:'Cerrar',resume:'CONTINUAR',intro:'VOLVER AL INICIO',reset:'BORRAR RESULTADOS',resetQuestion:'¿Borrar los resultados?',resetBody:'Se borrarán los resultados acumulados en este dispositivo. El encuentro actual no cambiará.',cancel:'CANCELAR',resetYes:'SÍ, BORRAR',you:'Tú',computer:'Computadora',white:'Blancas',black:'Negras',pips:'Avance',match:'ENCUENTRO',first:'Primero en llegar a',games:'victorias',points:'puntos',wins:'Victorias',matches:'Encuentros ganados',gammons:'Gammons',backgammons:'Backgammons',totalPoints:'Puntos totales',opening:'Un dado cada uno. ¡Empieza el mayor!',tie:'¡Empate! Vuelvan a tirar.',rollStart:'TIRAR PARA EMPEZAR',roll:'TIRAR DADOS',confirm:'CONFIRMAR JUGADA',pass:'CONFIRMAR PASE',undo:'DESHACER',thinking:'La computadora está pensando…',turn:'juega',move:'Toca una ficha iluminada y después su destino.',try:'¡Prueba esta!',confirmHelp:'¿Te gusta tu jugada? Toca CONFIRMAR JUGADA.',blocked:'No hay jugadas posibles. Confirma para pasar.',barHelp:'Primero debes sacar todas tus fichas de la barra.',offHelp:'¡Todas en casa! Llévalas a la bandeja para sacarlas.',rollHelp:'¡Tu turno! Tira los dados.',double:'DOBLAR',center:'Centro',cube:'Cubo',cubeOwner:'Dueño',doubleTitle:'¿Subimos la apuesta?',doubleBody:'ofrece doblar el cubo a',accept:'ACEPTAR',decline:'RECHAZAR',declineNote:'Acepta y recibe el cubo, o rechaza y pierde la partida por el valor actual.',accepted:'Doble aceptado.',declined:'Doble rechazado',win:'gana!',gameWinner:'GANADOR DE LA PARTIDA',matchWinner:'GANADOR DEL ENCUENTRO',single:'¡Una gran victoria!',gammon:'¡GAMMON!',backgammon:'¡BACKGAMMON!',next:'SIGUIENTE PARTIDA',again:'VOLVER A JUGAR',change:'CAMBIAR OPCIONES',earned:'sumados',final:'Resultado final',scan:'Escanea para jugar en otro teléfono',qrTitle:'Comparte la diversión.',rotate:'Un poco de espacio para jugar.',rotateBody:'Gira el teléfono para ver el tablero completo.',rotateBtn:'JUGAR EN HORIZONTAL',bar:'BARRA',tray:'FUERA',moveNo:'jugadas restantes',turnWhite:'Blancas: 24 → 1',turnBlack:'Negras: 1 → 24',confirming:'Moviendo ficha…',matchEnded:'Encuentro terminado',newMatch:'Empieza otro encuentro con las mismas opciones.',rule1:'Cada jugador empieza con 15 fichas: 2 en su punto 24, 5 en el 13, 3 en el 8 y 5 en el 6. Cada uno tira un dado; empieza quien saque el mayor y usa ambos números. Si empatan, repiten.',rule2:'Avanza hacia tu casa (puntos 1–6), una jugada por dado, en el orden que quieras. Los dobles permiten cuatro jugadas. Usa ambos dados si es posible; si solo puedes usar uno y cualquiera serviría, debes usar el mayor.',rule3:'Dos o más fichas rivales bloquean un punto. Al caer sobre una sola, la mandas a la barra. Antes de mover otras fichas, debes reintroducir todas las de la barra en la casa rival, en el punto 25 menos el dado.',rule4:'Cuando todas tus fichas restantes estén en casa, puedes sacarlas con el número exacto. Un dado mayor permite sacar la ficha más alejada, siempre que no quede ninguna detrás. Gana quien saque primero las 15.',rule5:'Es gammon si el rival no ha sacado ninguna ficha. Es backgammon si, además, tiene una en la barra o en tu casa. Con cubo, valen ×2 y ×3; sin cubo, cada partida cuenta como 1 victoria.',rule6:'Con cubo: antes de tirar, puedes doblar si el cubo está en el centro o es tuyo. Si el rival acepta, recibe el cubo; si rechaza, pierde por el valor actual. Gana quien alcance o supere la meta de puntos. Sin cubo, gana quien llegue a las victorias elegidas.',rule7:'Toca o arrastra una ficha hasta un destino iluminado. Puedes deshacer todo antes de confirmar. Los puntos se numeran en sentidos opuestos para cada jugador; las blancas avanzan en sentido antihorario.'}
 };
 const t=k=>dictionary[lang][k]??k;
 const statsEmpty=()=>({games:0,gammons:0,backgammons:0,matches:0,points:0});
@@ -21,8 +22,18 @@ const savedStats=storage.get('scores',[]);
 let lifetime=[0,1].map(i=>Object.fromEntries(Object.keys(statsEmpty()).map(k=>[k,Number.isSafeInteger(savedStats?.[i]?.[k])&&savedStats[i][k]>=0?Math.min(savedStats[i][k],1000000000):0])));
 let s=null,match=null,phase='intro',player=0,dice=[],pair=[1,1],openingPair=true,selected=null,history=[],cube=null,modal=null,notice='',result=null,token=0,forced=false,rolling=false,busy=false,fast=1,hint=null,legal=[],boardGeom=null,seen=storage.get('guided',false),audioCtx=null;
 let queuedRolls=[];
-const names=p=>cfg.players===1?(p===0?t('you'):t('computer')):t(p===0?'white':'black');
-const human=()=>cfg.players===2||player===0;
+// --- By Link mode state ---
+let linkNames=storage.get('linknames',['','']);
+if(!Array.isArray(linkNames)||linkNames.length!==2)linkNames=['',''];
+linkNames=[String(linkNames[0]||'').slice(0,24),String(linkNames[1]||'').slice(0,24)];
+let linkContact=storage.get('linkcontact',{self:'',phone:'',name:''});
+if(!linkContact||typeof linkContact!=='object')linkContact={self:'',phone:'',name:''};
+linkContact={self:String(linkContact.self||''),phone:String(linkContact.phone||''),name:String(linkContact.name||'')};
+let mySeat=0,linkLock=false,linkDbl=null,linkError=false,lastLink='',sendNote='';
+const linkMode=()=>cfg.players===3;
+const cleanPhone=v=>String(v||'').replace(/[^\d+]/g,'').slice(0,20);
+const names=p=>{if(cfg.players===3&&linkNames[p])return linkNames[p];return cfg.players===1?(p===0?t('you'):t('computer')):t(p===0?'white':'black');};
+const human=()=>cfg.players>=2||player===0;
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,Math.max(0,ms*fast)));
 function randomDie(){if(queuedRolls.length)return queuedRolls.shift();const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%6+1;}
@@ -40,29 +51,31 @@ const languageButton=()=>`<button data-action="language" class="quiet-btn" aria-
 const rules=()=>`<div class="rules">${[1,2,3,4,5,6,7].map(i=>`<p>${t('rule'+i)}</p>`).join('')}</div>`;
 function renderIntro(){
  document.body.style.overflow='auto';document.documentElement.lang=lang;
- $('#app').innerHTML=`<div class="intro">
+ $('#app').innerHTML=`<div class="intro">${linkError?`<div class="link-error" role="alert">${t('badLink')}</div>`:''}
  <nav class="intro-nav"><div class="wordmark"><span class="brand-dot"></span>FUTURE READY</div><div class="nav-actions">${soundButton()}<button class="quiet-btn" data-action="qr">QR</button>${languageButton()}</div></nav>
  <div class="intro-layout"><section class="intro-story"><div class="eyebrow">${t('club')}</div><h1>BACKGAMMON</h1><p class="lead">${t('lead')}</p>
  <div class="hero-frame"><img src="${HERO}" alt="${lang==='en'?'Eight colorful friends gathered around a wooden backgammon board':'Ocho amigos de colores reunidos alrededor de un tablero de backgammon'}"><div class="hero-badge"><span></span>${t('friends')}</div></div>
  <div class="under-art"><b>${t('free')}</b><span>${t('ages')}</span></div>
  <details class="how"><summary>${t('how')}</summary>${rules()}</details></section>
  <section class="setup"><div class="setup-heading"><h2>${t('setup')}</h2><span class="tag">${t('tag')}</span></div>
- <div class="field"><div class="field-title">${t('players')}</div><div class="choice-group">${[1,2].map(p=>`<button data-action="players" data-value="${p}" class="${cfg.players===p?'active':''}" aria-pressed="${cfg.players===p}">${t(p===1?'one':'two')}</button>`).join('')}</div><p class="field-explain">${t(cfg.players===1?'computerSub':'friendSub')}</p></div>
+ <div class="field"><div class="field-title">${t('players')}</div><div class="choice-group players-choice">${[1,2,3].map(p=>`<button data-action="players" data-value="${p}" class="${cfg.players===p?'active':''}" aria-pressed="${cfg.players===p}">${t(p===1?'one':p===2?'two':'bylink')}</button>`).join('')}</div><p class="field-explain">${t(cfg.players===1?'computerSub':cfg.players===3?'linkSub':'friendSub')}</p></div>
+ ${cfg.players===3?`<div class="field"><div class="field-title">${t('linkHead')}</div><label class="link-label">${t('yourName')}<input data-link-input="selfname" value="${esc(linkNames[0])}" placeholder="${t('namePh')}" autocomplete="name"></label><label class="link-label">${t('yourPhone')}<input data-link-input="selfphone" value="${esc(linkContact.self)}" placeholder="${t('phonePh')}" inputmode="tel" autocomplete="tel"></label><label class="link-label">${t('oppName')}<input data-link-input="oppname" value="${esc(linkContact.name||linkNames[1])}" placeholder="${t('namePh')}"></label><label class="link-label">${t('oppPhone')}<input data-link-input="phone" value="${esc(linkContact.phone)}" placeholder="${t('phonePh')}" inputmode="tel"></label><p class="field-explain">${t('phoneNote')}</p></div>`:''}
  <div class="field"><div class="field-title">${t('matchSetup')}</div><div class="choice-group">${[false,true].map(v=>`<button data-action="cube-mode" data-value="${v}" class="${cfg.cube===v?'active':''}" aria-pressed="${cfg.cube===v}">${t(v?'with':'without')}</button>`).join('')}</div><p class="field-explain">${t(cfg.cube?'classic':'simple')}</p></div>
  <div class="field"><div class="field-title">${t(cfg.cube?'targetPoints':'targetGames')}</div><div class="targets">${(cfg.cube?[3,5,7]:[1,3,5,7]).map(n=>`<button data-action="target" data-value="${n}" class="${cfg.target===n?'active':''}" aria-pressed="${cfg.target===n}">${n}</button>`).join('')}</div></div>
  <div class="toggle-row"><div class="toggle-label"><strong>${t('coach')}</strong><small>${t('coachSub')}</small></div><button class="switch ${cfg.coach?'on':''}" data-action="coach" aria-label="${t('coach')}" role="switch" aria-checked="${cfg.coach}"></button></div>
  <button id="start-btn" class="start-btn" data-action="start">${t('start')}<span>→</span></button><p class="no-login">${t('noLogin')}</p></section></div>
  <footer class="intro-footer"><span>${t('footer')} <button class="text-btn" data-action="scores">${t('scores')}</button></span><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">FUTURE READY ↗</a></footer></div>`;
 }
-function resetMatch(){token++;match={score:[0,0],stats:[statsEmpty(),statsEmpty()]};newGame();}
+function resetMatch(){token++;if(linkMode()){mySeat=0;linkLock=false;linkDbl=null;storage.set('linkgame',null);}match={score:[0,0],stats:[statsEmpty(),statsEmpty()]};newGame();}
 function newGame(){
- token++;s=E.initial();cube={enabled:cfg.cube,value:1,owner:null};player=0;dice=[];pair=[1,1];openingPair=true;phase='opening';selected=null;history=[];result=null;notice='';modal=null;busy=false;rolling=false;hint=null;legal=[];render();
+ token++;s=E.initial();cube={enabled:cfg.cube,value:1,owner:null};player=0;dice=[];pair=[1,1];openingPair=true;phase='opening';selected=null;history=[];result=null;notice='';modal=null;busy=false;rolling=false;hint=null;legal=[];linkLock=false;linkDbl=null;render();
 }
 function updateLegal(){
  legal=phase==='moving'?E.legalMoves(s,player,dice):[];
  hint=cfg.coach&&cfg.players===1&&player===0&&phase==='moving'&&legal.length?E.bestTurn(s,player,dice)[0]:null;
 }
 function status(){
+ if(linkLock)return t('waiting');
  if(phase==='opening')return t(notice==='tie'?'tie':'opening');
  if(phase==='rolling')return openingPair?t('opening'):names(player)+' · '+t('roll');
  if(phase==='done')return t(result?.matchEnd?'matchEnded':'gameWinner');
@@ -84,14 +97,14 @@ function renderGame(){
  const pcard=p=>`<div class="player-card ${player===p&&phase!=='opening'?'active':''}"><div class="avatar ${p?'black':''}"><img src="${HERO}" alt=""></div><div><div class="player-name"><span class="mini-checker ${p?'black':''}"></span>${names(p)}</div><div class="pip-label">${t('pips')} <b data-pip="${p}">${E.pip(s,p)}</b></div></div></div>`;
  const canConfirm=phase==='moving'&&!legal.length;
  const primary=phase==='opening'?'rollStart':phase==='preroll'?'roll':history.length||legal.length?'confirm':'pass';
- const primaryDisabled=!human()&&phase!=='opening'||busy||!['opening','preroll','moving'].includes(phase)||phase==='moving'&&!canConfirm;
+ const primaryDisabled=!human()&&phase!=='opening'||busy||linkLock||!['opening','preroll','moving'].includes(phase)||phase==='moving'&&!canConfirm;
  $('#app').innerHTML=`<div class="game ${forced&&portraitPhone()?'forced-landscape':''}">
  <header class="game-header">${pcard(0)}<div class="scorebox"><div class="match-label">${t('match')}: ${t('first')} ${cfg.target} ${t(cfg.cube?'points':'games')}</div><div class="score-line">${names(0)} ${match.score[0]} <span> · </span> ${names(1)} ${match.score[1]}</div></div>${pcard(1)}
- <div class="game-actions"><button data-action="menu">${t('menu')}</button><button data-action="sound" aria-pressed="${sound}">${t('sound')} ${t(sound?'on':'off')}</button><button data-action="qr">QR</button><button data-action="language">${lang==='en'?'ES':'EN'}</button></div></header>
+ <div class="game-actions"><button data-action="menu">${t('menu')}</button>${linkLock?`<button data-action="send">${t('sendBtn')}</button>`:''}<button data-action="sound" aria-pressed="${sound}">${t('sound')} ${t(sound?'on':'off')}</button><button data-action="qr">QR</button><button data-action="language">${lang==='en'?'ES':'EN'}</button></div></header>
  <div class="board-wrap"><svg class="board-svg" id="board" role="group" aria-label="${lang==='en'?'Backgammon board':'Tablero de backgammon'}"></svg>
  <div class="dice-layer side${player} ${rolling?'rolling':''}"><div class="dice-zone ${rolling?'rolling':''}" id="dice-zone">${renderDice()}</div></div>
  <div class="center-controls"><div class="action-zone"><button class="undo-btn" data-action="undo" ${history.length&&human()&&phase==='moving'&&!busy?'':'disabled'}>${t('undo')}</button><button class="primary-action" id="primary-action" data-action="primary" ${primaryDisabled?'disabled':''}>${!human()&&phase!=='opening'?t('thinking'):t(primary)}</button></div></div>
- ${cfg.cube?`<div class="cube-ui"><button data-action="double" title="${t('double')}" aria-label="${t('double')} · ${cube.value}" ${E.canDouble(cube,player,phase)&&human()&&!busy?'':'disabled'}>${cube.value}</button><span>${E.canDouble(cube,player,phase)&&human()?t('double'):cube.owner===null?t('center'):names(cube.owner)}</span></div>`:''}
+ ${cfg.cube?`<div class="cube-ui"><button data-action="double" title="${t('double')}" aria-label="${t('double')} · ${cube.value}" ${E.canDouble(cube,player,phase)&&human()&&!busy&&!linkLock?'':'disabled'}>${cube.value}</button><span>${E.canDouble(cube,player,phase)&&human()?t('double'):cube.owner===null?t('center'):names(cube.owner)}</span></div>`:''}
  ${hint?`<div class="guide-pill">${t('try')}</div>`:''}${!seen&&human()&&phase==='moving'&&!legal.length?`<div class="guide-pill confirm-guide">${t('confirmHelp')}</div>`:''}
  </div>
  <footer class="game-footer"><span aria-live="polite">${status()}</span><span class="footer-brand">FUTURE READY</span></footer></div>
@@ -177,7 +190,7 @@ function drawBoard(){
 }
 const relativeLabel=i=>player===1?25-i:i;
 async function roll(){
- if(!['opening','preroll'].includes(phase)||busy)return;
+ if(!['opening','preroll'].includes(phase)||busy||linkLock)return;
  const opening=phase==='opening',tk=token;busy=true;phase='rolling';rolling=true;openingPair=opening;soundPlay('roll');render();
  const a=randomDie(),b=randomDie();
  const timer=setInterval(()=>{pair=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];const dz=$('#dice-zone');if(dz)dz.innerHTML=renderDice();},Math.max(20,85*fast));
@@ -186,6 +199,7 @@ async function roll(){
  if(opening){const res=E.opening(a,b);if(!res){phase='opening';notice='tie';render();return;}player=res.player;dice=res.dice;}
  else dice=E.rollDice(a,b);
  phase='moving';history=[];selected=null;notice='';updateLegal();render();
+ if(linkMode()&&opening&&player!==mySeat){openSend();return;}
  if(!human())aiMoves(tk);
 }
 function clientCoord(pt,p){
@@ -196,7 +210,7 @@ function burstAt(x,y,type='hit'){
  for(let i=0;i<12;i++){const el=document.createElement('i');el.className='burst';el.style.cssText=`left:${x}px;top:${y}px;--c:${colors[i%3]};--dx:${Math.cos(i*Math.PI/6)*(25+Math.random()*35)}px;--dy:${Math.sin(i*Math.PI/6)*(25+Math.random()*35)}px`;document.body.append(el);setTimeout(()=>el.remove(),800);}
 }
 async function doMove(m,ai=false){
- if(phase!=='moving'||busy||!legal.some(x=>x.from===m.from&&x.to===m.to&&x.die===m.die)||!ai&&!human())return false;
+ if(phase!=='moving'||busy||linkLock||!legal.some(x=>x.from===m.from&&x.to===m.to&&x.die===m.die)||!ai&&!human())return false;
  const tk=token,p=player,from=clientCoord(m.from,p),to=clientCoord(m.to,p),hit=m.to!==25&&s.points[m.to]===-E.sign(p);
  history.push({s:E.clone(s),dice:[...dice]});busy=true;phase='animating';selected=null;
  const fly=document.createElement('div');fly.className='flying-checker '+(p?'black':'white');const rr=boardGeom.r;fly.style.cssText=`left:${from.x-rr}px;top:${from.y-rr}px;width:${rr*2}px;height:${rr*2}px`;document.body.append(fly);
@@ -208,13 +222,14 @@ async function doMove(m,ai=false){
  return true;
 }
 function undo(){
- if(!history.length||phase!=='moving'||busy||!human())return;const old=history.pop();s=old.s;dice=old.dice;selected=null;updateLegal();soundPlay('click');render();
+ if(!history.length||phase!=='moving'||busy||linkLock||!human())return;const old=history.pop();s=old.s;dice=old.dice;selected=null;updateLegal();soundPlay('click');render();
 }
 function confirm(){
- if(phase!=='moving'||busy||legal.length)return;
+ if(phase!=='moving'||busy||linkLock||legal.length)return;
  if(human()&&!seen){seen=true;storage.set('guided',true);}
  if(s.off[player]===15){finish(player,E.winType(s,player));return;}
  player=1-player;phase='preroll';history=[];dice=[];selected=null;hint=null;legal=[];openingPair=false;render();
+ if(linkMode()){openSend();return;}
  if(!human())aiTurn(token);
 }
 async function aiTurn(tk){
@@ -229,14 +244,45 @@ async function aiMoves(tk){
  if(tk!==token)return;await sleep(260);confirm();
 }
 function offerDouble(){
- if(!E.canDouble(cube,player,phase)||busy)return;
+ if(!E.canDouble(cube,player,phase)||busy||linkLock)return;
+ if(linkMode()){soundPlay('cube');linkDbl=player;openSend();return;}
  soundPlay('cube');modal={kind:'double',offerer:player};renderModal();
  if(cfg.players===1&&player===0){const tk=token;sleep(1100).then(()=>{if(tk!==token||modal?.kind!=='double')return;respondDouble(E.cubeEquity(s,1)>-.55);});}
 }
 function respondDouble(accept){
  if(modal?.kind!=='double')return;const offerer=modal.offerer;modal=null;
- if(accept){cube=E.acceptDouble(cube,offerer);notice='accepted';soundPlay('cube');render();if(!human())sleep(500).then(()=>{if(phase==='preroll'&&!human())roll();});}
+ if(accept){cube=E.acceptDouble(cube,offerer);notice='accepted';soundPlay('cube');render();if(linkMode()){openSend();return;}if(!human())sleep(500).then(()=>{if(phase==='preroll'&&!human())roll();});}
  else finish(offerer,1,true);
+}
+function currentLinkState(){
+ return {points:[...s.points],bar:[...s.bar],off:[...s.off],
+  turn:linkDbl!==null?1-linkDbl:player,
+  phase:phase==='moving'?'moving':'preroll',
+  dice:phase==='moving'?[...dice]:[],pair:[...pair],
+  cube:{enabled:cfg.cube,value:cube.value,owner:cube.owner},
+  target:cfg.target,score:[...match.score],dbl:linkDbl,
+  names:[...linkNames],phone:cleanPhone(linkContact.self)};
+}
+function openSend(){
+ if(!linkMode())return;
+ const payload=encodeLink(currentLinkState());
+ lastLink=location.href.split('#')[0]+'#g='+payload;sendNote='';
+ try{window.history.replaceState(null,'',lastLink);}catch{}
+ storage.set('linkgame',{payload,seat:mySeat,lock:true});
+ linkLock=true;modal={kind:'send'};render();
+}
+function applyLinkState(st){
+ token++;cfg.players=3;cfg.cube=st.cube.enabled;cfg.target=st.target;persist();
+ linkNames=[st.names[0]||'',st.names[1]||''];storage.set('linknames',linkNames);
+ if(st.phone){linkContact.phone=st.phone;if(st.names[1-st.turn])linkContact.name=st.names[1-st.turn];storage.set('linkcontact',linkContact);}
+ match={score:[...st.score],stats:[statsEmpty(),statsEmpty()]};
+ s={points:[...st.points],bar:[...st.bar],off:[...st.off]};cube={enabled:st.cube.enabled,value:st.cube.value,owner:st.cube.owner};
+ mySeat=st.turn;linkDbl=null;linkLock=false;linkError=false;lastLink='';sendNote='';
+ dice=[...st.dice];pair=[...st.pair];openingPair=false;history=[];selected=null;result=null;notice='';busy=false;rolling=false;hint=null;modal=null;
+ if(st.dbl!==null){player=st.dbl;phase='preroll';modal={kind:'double',offerer:st.dbl};}
+ else{player=st.turn;phase=st.phase;}
+ storage.set('linkgame',{payload:location.hash.slice(3),seat:mySeat,lock:false});
+ updateLegal();render();
 }
 function finish(winner,type,declined=false){
  const value=E.pointsWon(cfg.cube,cube.value,type,declined),st=match.stats[winner],lt=lifetime[winner];
@@ -264,8 +310,19 @@ function renderModal(){
  }else if(modal.kind==='win'){
   const unit=result.value===1?(lang==='en'?(cfg.cube?'point':'win'):(cfg.cube?'punto':'victoria')):t(cfg.cube?'points':'games');
   content=`<img class="win-art" src="${HERO}" alt=""><div class="win-kicker">${t(result.matchEnd?'matchWinner':'gameWinner')}</div><h2>${names(result.winner)} ${t('win')}</h2><p>${t(result.declined?'declined':result.type===3?'backgammon':result.type===2?'gammon':'single')} · +${result.value} ${unit}</p>${table(match.stats)}<div class="modal-actions">${result.matchEnd?modalBtn('again','again',true):modalBtn('next','next',true)}${modalBtn('change','intro')}${modalBtn('menu','menu-from-win')}</div>`;
+ }else if(modal.kind==='send'){
+  let qrSvg='';try{const qr=qrcode(0,'M');qr.addData(lastLink);qr.make();qrSvg=qr.createSvgTag({cellSize:4,margin:2,scalable:true});}catch{}
+  const smsHref=`sms:${linkContact.phone}?&body=${encodeURIComponent(t('shareText')+' '+lastLink)}`;
+  content=`<button class="close-btn" data-action="close">${t('close')}</button><h2>${t('sendTitle')}</h2><p>${t('sendBody')}</p><a class="sms-btn" href="${smsHref}">${t('textMove')}</a>
+  <div class="modal-actions"><button data-action="copy-link">${t('copyLink')}</button><button data-action="share-link" class="main">${t('shareLink')}</button></div>
+  ${sendNote?`<p class="send-note">${esc(sendNote)}</p>`:''}
+  <label class="link-label">${t('oppPhone')}<input data-link-input="phone" inputmode="tel" value="${esc(linkContact.phone)}" placeholder="${t('phonePh')}"></label>
+  <label class="link-label">${t('oppName')}<input data-link-input="oppname" value="${esc(linkContact.name)}" placeholder="${t('namePh')}"></label>
+  <div class="link-box">${esc(lastLink)}</div>
+  ${qrSvg?`<div class="qr-code">${qrSvg}</div><p>${t('scan')}</p>`:''}
+  <p class="field-explain">${t('phoneNote')}</p>`;extra='send-modal';
  }else if(modal.kind==='menu'){
-  content=`<h2>${t('menu')}</h2><p>${phase==='done'?t('matchEnded'):status()}</p><div class="modal-actions">${phase!=='done'?modalBtn('resume','close',true):modalBtn('again','again',true)}${modalBtn('intro','intro')}</div><div class="modal-actions">${modalBtn('scores','scores')}${modalBtn('how','rules')}</div><div class="modal-actions">${modalBtn('reset','reset')}</div>`;
+  content=`<h2>${t('menu')}</h2><p>${phase==='done'?t('matchEnded'):status()}</p><div class="modal-actions">${phase!=='done'?modalBtn('resume','close',true):modalBtn('again','again',true)}${modalBtn('intro','intro')}</div>${linkMode()?`<div class="modal-actions">${modalBtn('again','again')}</div>`:''}<div class="modal-actions">${modalBtn('scores','scores')}${modalBtn('how','rules')}</div><div class="modal-actions">${modalBtn('reset','reset')}</div>`;
  }else if(modal.kind==='scores'){
   content=`<button class="close-btn" data-action="close">${t('close')}</button><h2>${t('scores')}</h2>${table(lifetime,true)}<div class="modal-actions">${modalBtn('reset','reset')}</div>`;
  }else if(modal.kind==='reset'){
@@ -273,7 +330,7 @@ function renderModal(){
  }else if(modal.kind==='rules'){
   content=`<button class="close-btn" data-action="close">${t('close')}</button><h2>${t('how')}</h2><div style="text-align:left">${rules()}</div>`;
  }
- $('#overlay').innerHTML=`<div class="modal-backdrop"><section class="modal ${extra}" role="dialog" aria-modal="true" aria-label="${t(modal.kind==='win'?'gameWinner':modal.kind==='qr'?'qrTitle':modal.kind==='double'?'doubleTitle':'menu')}">${content}</section></div>`;
+ $('#overlay').innerHTML=`<div class="modal-backdrop"><section class="modal ${extra}" role="dialog" aria-modal="true" aria-label="${t(modal.kind==='win'?'gameWinner':modal.kind==='qr'?'qrTitle':modal.kind==='double'?'doubleTitle':modal.kind==='send'?'sendTitle':'menu')}">${content}</section></div>`;
 }
 function toIntro(){token++;phase='intro';modal=null;busy=false;rolling=false;forced=false;render();}
 document.addEventListener('click',e=>{
@@ -282,7 +339,10 @@ document.addEventListener('click',e=>{
  if(action==='sound'){sound=!sound;if(!sound&&audioCtx){audioCtx.close().catch(()=>{});audioCtx=null;}persist();render();if(sound)soundPlay();}
  else if(action==='language'){lang=lang==='en'?'es':'en';persist();render();}
  else if(action==='qr'){modal={kind:'qr'};renderModal();}
- else if(action==='players'){cfg.players=+v;persist();render();}
+ else if(action==='players'){cfg.players=+v;if(+v===3){mySeat=0;linkLock=false;linkDbl=null;}persist();render();}
+ else if(action==='send'){modal={kind:'send'};renderModal();}
+ else if(action==='copy-link'){const done=()=>{sendNote=t('copied');renderModal();};if(navigator.clipboard?.writeText)navigator.clipboard.writeText(lastLink).then(done).catch(done);else done();}
+ else if(action==='share-link'){if(navigator.share)navigator.share({text:t('shareText'),url:lastLink}).catch(()=>{});else if(navigator.clipboard?.writeText)navigator.clipboard.writeText(lastLink).then(()=>{sendNote=t('copied');renderModal();}).catch(()=>{});}
  else if(action==='cube-mode'){cfg.cube=v==='true';if(cfg.cube&&cfg.target===1)cfg.target=3;persist();render();}
  else if(action==='target'){cfg.target=+v;persist();render();}
  else if(action==='coach'){cfg.coach=!cfg.coach;persist();render();}
@@ -302,16 +362,16 @@ document.addEventListener('click',e=>{
  else if(action==='rotate'){forced=true;render();}
 });
 let pointer=null,ghost=null;
-function choose(from){if(phase!=='moving'||busy||!human()||!legal.some(m=>m.from===from))return;selected=from;drawBoard();}
+function choose(from){if(phase!=='moving'||busy||linkLock||!human()||!legal.some(m=>m.from===from))return;selected=from;drawBoard();}
 function destMove(to){if(selected===null)return false;const moves=legal.filter(m=>m.from===selected&&m.to===to);if(!moves.length)return false;const m=moves.sort((a,b)=>b.die-a.die)[0];doMove(m);return true;}
 document.addEventListener('pointerdown',e=>{
- const board=e.target.closest('#board');if(!board||modal||phase!=='moving'||busy||!human())return;
+ const board=e.target.closest('#board');if(!board||modal||phase!=='moving'||busy||linkLock||!human())return;
  const pt=e.target.closest('[data-point]'),checker=e.target.closest('[data-from]'),to=pt?+pt.dataset.point:null;
  if(selected!==null&&to!==null&&legal.some(m=>m.from===selected&&m.to===to)){destMove(to);e.preventDefault();return;}
  if(checker){const from=+checker.dataset.from;const fromMoves=legal.filter(m=>m.from===from);if(!fromMoves.length)return;const dests=[...new Set(fromMoves.map(m=>m.to))];if(dests.length===1){choose(from);destMove(dests[0]);e.preventDefault();return;}pointer={id:e.pointerId,from,x:e.clientX,y:e.clientY,drag:false};choose(from);e.preventDefault();}
 });
 document.addEventListener('pointerdown',e=>{
- if(modal||busy||!human()||rolling)return;
+ if(modal||busy||linkLock||!human()||rolling)return;
  if(!e.target.closest('#board'))return;
  if(phase==='opening'||phase==='preroll'){e.preventDefault();roll();}
 });
@@ -340,4 +400,32 @@ if(['127.0.0.1','localhost'].includes(location.hostname))window.__test={
  stage(v){token++;busy=false;rolling=false;modal=null;if(v.s)s=E.clone(v.s);if(v.player!==undefined)player=v.player;if(v.dice)dice=[...v.dice];if(v.phase)phase=v.phase;if(v.cfg)cfg={...cfg,...v.cfg};if(v.cube)cube={...cube,...v.cube};if(v.score)match.score=[...v.score];history=[];selected=null;pair=v.pair||dice.slice(0,2);if(pair.length<2)pair=[1,1];openingPair=false;updateLegal();render();},
  start:resetMatch,roll,confirm,move:doMove,undo,finish,E
 };
-render();
+document.addEventListener('change',e=>{
+ const inp=e.target.closest('[data-link-input]');if(!inp)return;
+ const k=inp.dataset.linkInput,seat=phase==='intro'?0:mySeat;
+ if(k==='phone')linkContact.phone=cleanPhone(inp.value);
+ else if(k==='selfphone')linkContact.self=cleanPhone(inp.value);
+ else if(k==='oppname'){linkContact.name=inp.value.slice(0,24);linkNames[1-seat]=linkContact.name;storage.set('linknames',linkNames);}
+ else if(k==='selfname'){linkNames[seat]=inp.value.slice(0,24);storage.set('linknames',linkNames);}
+ storage.set('linkcontact',linkContact);
+ if(modal?.kind==='send'){if(k==='oppname')openSend();else renderModal();}
+});
+function bootFromHash(){
+ if(!location.hash.startsWith('#g='))return false;
+ const st=stateFromHash(location.hash);
+ if(st){
+  const saved=storage.get('linkgame',null);
+  applyLinkState(st);
+  if(saved&&saved.lock&&saved.payload===location.hash.slice(3)){
+   // This device SENT this link: restore the waiting lock, not the opponent's turn.
+   mySeat=saved.seat;linkLock=true;modal=null;
+   storage.set('linkgame',{payload:saved.payload,seat:mySeat,lock:true});
+   render();
+  }
+  return true;
+ }
+ linkError=true;try{window.history.replaceState(null,'',location.pathname+location.search);}catch{}
+ return false;
+}
+addEventListener('hashchange',()=>{if(location.hash.startsWith('#g=')&&!bootFromHash())render();});
+if(!bootFromHash())render();
