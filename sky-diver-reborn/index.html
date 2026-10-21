@@ -254,6 +254,45 @@
   }
   .intro-foot a{color:#9d97c9; text-decoration:none; letter-spacing:2.5px;}
   .intro-foot a:hover{color:#cfc9ee; text-decoration:underline;}
+
+  /* ---------- rotate gate (tablets play in portrait) ---------- */
+  .rotate-gate{
+    position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#120d2e 0%,#1c1445 52%,#2a1444 100%);
+    color:#eef0ff; font-family:"Baloo 2","Trebuchet MS",Verdana,sans-serif;
+    padding:20px; text-align:center;
+  }
+  .rotate-gate[hidden]{display:none;}
+  .rg-col{display:flex; flex-direction:column; align-items:center; gap:18px; max-width:440px;}
+  .rg-stage{position:relative; width:170px; height:170px;}
+  .rg-arrow{position:absolute; inset:0; animation:rg-fade 2.6s ease-in-out infinite;}
+  .rg-tab{
+    position:absolute; left:50%; top:50%; width:118px; height:80px; margin:-40px 0 0 -59px;
+    border:4px solid #dfe2ff; border-radius:14px; background:rgba(16,12,44,.55);
+    animation:rg-turn 2.6s ease-in-out infinite;
+  }
+  .rg-tab::after{
+    content:""; position:absolute; left:50%; bottom:5px; width:22px; height:4px; margin-left:-11px;
+    border-radius:2px; background:#ffd21f;
+  }
+  @keyframes rg-turn{
+    0%,22%{transform:rotate(0deg);}
+    58%,100%{transform:rotate(90deg);}
+  }
+  @keyframes rg-fade{
+    0%,22%{opacity:.25;}
+    58%,100%{opacity:1;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .rg-tab{animation:none; transform:rotate(90deg);}
+    .rg-arrow{animation:none; opacity:1;}
+  }
+  .rg-title{
+    font-family:"Luckiest Guy","Baloo 2",sans-serif; font-size:clamp(26px,6vw,40px);
+    line-height:1.1; letter-spacing:1px; color:#ffd21f;
+    text-shadow:0 0 14px rgba(255,198,26,.55),0 3px 0 rgba(10,6,40,.55);
+  }
+  .rg-how{font-size:clamp(16px,4.4vw,20px); font-weight:700; color:#d7d4f5; line-height:1.45; margin:0;}
 </style>
 </head>
 <body>
@@ -339,6 +378,20 @@
   </div>
 </div>
 
+<div class="rotate-gate" id="rotateOverlay" hidden role="alertdialog" aria-live="polite">
+  <div class="rg-col">
+    <div class="rg-stage" aria-hidden="true">
+      <svg class="rg-arrow" viewBox="0 0 170 170" fill="none">
+        <path d="M 138 44 A 66 66 0 1 1 126 30" stroke="#ffd21f" stroke-width="6" stroke-linecap="round"/>
+        <path d="M 108 18 L 128 28 L 114 46 Z" fill="#ffd21f"/>
+      </svg>
+      <div class="rg-tab"></div>
+    </div>
+    <div class="rg-title" data-i18n="rotateTitle">Sky Diver flies best standing up!</div>
+    <p class="rg-how" data-i18n="rotateHow">Please turn your iPad upright — this game plays in portrait.</p>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ================= i18n ================= */
@@ -373,6 +426,8 @@ var I18N = {
     tie: "It's a tie! 🤝",
     finalScore: "Final score",
     ouch: "OUCH −4",
+    rotateTitle: "Sky Diver flies best standing up!",
+    rotateHow: "Please turn your iPad upright — this game plays in portrait.",
     altTumble: "Dizzy diver tumbling after a crash",
     altVictory: "Diver cheering with both arms up on the landing pad"
   },
@@ -406,6 +461,8 @@ var I18N = {
     tie: "¡Empate! 🤝",
     finalScore: "Puntuación final",
     ouch: "¡AY! −4",
+    rotateTitle: "¡Sky Diver vuela mejor de pie!",
+    rotateHow: "Gira tu iPad a vertical, por favor — este juego se juega en vertical.",
     altTumble: "Dizzy diver tumbling after a crash",
     altVictory: "Diver cheering with both arms up on the landing pad"
   }
@@ -602,7 +659,11 @@ var MAX_JUMPS = 9, CRASH_POINTS = -4, DROP_OFFSET = 22;
 /* Touch devices play the harder, faster build — same as the original. */
 var isTouch = window.matchMedia("(pointer: coarse)").matches ||
   (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches);
-var DS = isTouch ? 1.6 : 0.8;                    /* diver art scale (visual only) */
+var DS = 0.8;                                    /* diver art scale (visual only) */
+function setDiverScale(){
+  DS = isTouch ? 1.6 : 0.8;                      /* canonical port scale, all devices */
+}
+setDiverScale();
 var FALL_MULT = isTouch ? 1.35 * 1.33 : 1;
 var CANOPY_MULT = isTouch ? 1.33 : 1;
 var WIND_MULT = isTouch ? 0.75 : 1;
@@ -850,6 +911,7 @@ var overAt = -1, overShown = false, newBestFlag = false;
 var finalCrashed = [false, false]; /* each player's LAST jump ended in a crash */
 
 function startGame(){
+  if (rotateGateOn) return;               /* rotate gate up: no starting sideways */
   G = createGame(state.players, variantOf());
   scene = { id: "golden", pass: 0, lo: 0, t0: -99, prev: undefined, silly: false, rainbow: false };
   delights = [];
@@ -1208,13 +1270,14 @@ $("shareBtn").addEventListener("click", function(){
     $("qrOverlay").hidden = false;
   }
 });
-window.addEventListener("resize", function(){ fitCanvas(); refreshPlayerAvailability(); });
+window.addEventListener("resize", function(){ setDiverScale(); fitCanvas(); refreshPlayerAvailability(); });
 $("startBtn").addEventListener("click", function(){ ac(); SFX.click(); startGame(); });
 $("againBtn").addEventListener("click", function(){ SFX.click(); startGame(); });
 $("menuBtn").addEventListener("click", function(){ SFX.click(); toMenu(); });
 $("menuHudBtn").addEventListener("click", function(){ SFX.click(); toMenu(); });
 $("pauseBtn").addEventListener("click", function(){ togglePause(); });
 function togglePause(){
+  if (rotateGateOn) return;               /* the gate owns pausing while it is up */
   if (!G || G.over || state.screen !== "play") return;
   state.paused = !state.paused;
   $("pausedPill").hidden = !state.paused;
@@ -1951,8 +2014,41 @@ function draw(t){
     text2(T().finalJump, HALF, 200, 34, "center", "#ffd23f");
 }
 
+/* ================= rotate gate: tablets play in portrait =================
+   Shown only on a touch device whose smaller screen side is tablet-sized
+   (>= 600 CSS px) while it is held in landscape. Phones, desktops, and
+   portrait tablets never see it. It changes no sizes: it pauses a running
+   game underneath and resumes it when the device turns upright. */
+var rotateGateOn = false, gatePausedGame = false;
+function tabletLandscape(){
+  if (!isTouch) return false;
+  var w = window.innerWidth || 0, h = window.innerHeight || 0;
+  return Math.min(w, h) >= 600 && w > h;
+}
+function checkRotateGate(){
+  var on = tabletLandscape();
+  if (on === rotateGateOn) return;
+  rotateGateOn = on;
+  $("rotateOverlay").hidden = !on;
+  if (on){
+    if (G && state.screen === "play" && !G.over && !state.paused){
+      state.paused = true; gatePausedGame = true;
+      $("pausedPill").hidden = false;
+      $("pauseLabel").textContent = T().resume;
+    }
+  } else if (gatePausedGame){
+    gatePausedGame = false;
+    state.paused = false;
+    $("pausedPill").hidden = true;
+    $("pauseLabel").textContent = T().pause;
+  }
+}
+window.addEventListener("resize", checkRotateGate);
+window.addEventListener("orientationchange", checkRotateGate);
+
 /* ================= init ================= */
 fitCanvas();
+checkRotateGate();
 refreshPlayerAvailability();
 applyI18n();
 updatePlanePills();
