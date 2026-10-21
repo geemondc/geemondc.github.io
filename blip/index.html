@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Blip</title>
+  <style>
+    :root{
+      color-scheme:light dark;
+      --page:#d5d1c7; --ink:#171612; --device:#171716; --device2:#242321;
+      --cream:#e7debb; --cream-edge:#a49a75; --red:#d62d25; --red-dark:#731511;
+      --glass:#111917; --glass-line:#d8d5c8; --muted:#817e72; --invite-glow:#b87900;
+      --reset-bg:#ebe8ded9; --reset-border:#8a867c; --reset-ink:#34322d;
+    }
+    @media(prefers-color-scheme:dark){:root{--page:#0d0d0c;--ink:#f0eee5;--invite-glow:#ffd34a;--reset-bg:#252522e8;--reset-border:#68665e;--reset-ink:#e4e0d4}}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;min-height:100%;background:var(--page);font-family:"Arial Narrow","Helvetica Neue",sans-serif;color:var(--ink);overflow-x:hidden}
+    body{min-height:100svh;display:grid;place-items:center;padding:max(8px,env(safe-area-inset-top)) 8px max(10px,env(safe-area-inset-bottom));touch-action:manipulation}
+    .page{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .device{
+      width:min(calc(100vw - 20px),500px,calc(62svh - 30px));aspect-ratio:.62;position:relative;overflow:hidden;
+      padding:clamp(12px,3vw,20px);border-radius:28px 28px 24px 24px;
+      background:
+        radial-gradient(circle at 20% 17%,#2d2c29 0 1px,transparent 1.8px) 0 0/13px 13px,
+        radial-gradient(circle at 73% 62%,#090909 0 1px,transparent 1.7px) 0 0/17px 17px,
+        linear-gradient(135deg,var(--device2),var(--device) 43%,#0b0b0b);
+      border:3px solid #090909;box-shadow:inset 0 0 0 2px #33322e,inset 0 -18px 35px #050505,0 14px 30px #0005;
+      color:#f5f1df;user-select:none;
+    }
+    .screw{position:absolute;width:9px;height:9px;border-radius:50%;background:#080808;box-shadow:inset 1px 1px 2px #555;z-index:3}
+    .screw:after{content:"";position:absolute;left:2px;right:2px;top:4px;height:1px;background:#555;transform:rotate(-22deg)}
+    .s1{left:12px;top:12px}.s2{right:12px;top:12px}.s3{left:12px;bottom:12px}.s4{right:12px;bottom:12px}
+    .score-head{height:12%;display:grid;grid-template-columns:88px 1fr 88px;align-items:start;position:relative}
+    .brand{text-align:center;padding-top:4px;line-height:.85;filter:drop-shadow(0 1px 0 #000)}
+    .brand .tomy{font:900 clamp(17px,4vw,25px)/1 "Arial Black",sans-serif;letter-spacing:-1px;color:#f8f1d7}
+    .brand .blip{font:900 clamp(21px,5.5vw,34px)/.86 "Arial Black",sans-serif;letter-spacing:-2px;font-style:italic;color:#d92e27;text-shadow:1px 1px 0 #fff1c9}
+    .brand .digital{font-size:clamp(7px,1.7vw,10px);font-weight:900;letter-spacing:.11em;color:#eee8cf}
+    .wind-read-top{display:none;margin-top:2px;font:900 8px/1 sans-serif;letter-spacing:.05em;color:#e23a31;text-shadow:0 1px #000}
+    .score-wrap{text-align:center;font-weight:900;font-size:8px;letter-spacing:.08em;color:#e7ddbe}
+    .score-dial{margin:3px auto 0;width:clamp(44px,11vw,58px);aspect-ratio:1;border:0;border-radius:50%;color:#fff8e7;font:900 clamp(19px,5vw,27px)/1 "Arial Black",sans-serif;cursor:pointer;
+      background:repeating-conic-gradient(#ad1d17 0 8deg,#67110e 8deg 13deg);box-shadow:inset 0 0 0 8px #c92c24,inset 0 0 0 11px #6d0d0b,0 3px 0 #070707,0 4px 6px #000}
+    .score-dial span{display:grid;place-items:center;width:58%;height:58%;margin:21%;border-radius:50%;background:#891713;box-shadow:inset 1px 2px 3px #3b0504}
+    .score-dial:focus-visible,.key:focus-visible,.lever:focus-visible,.help:focus-visible,.switch button:focus-visible,.power-toggle:focus-visible,.timer:focus-visible,.page-reset:focus-visible{outline:3px solid #ffd34a;outline-offset:3px}
+    .page-reset{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:30;border:1px solid var(--reset-border);border-radius:5px;background:var(--reset-bg);color:var(--reset-ink);padding:7px 9px;font:800 12px/1 "Arial Narrow","Helvetica Neue",sans-serif;letter-spacing:.02em;box-shadow:0 1px 3px #0003;cursor:pointer;opacity:.78}
+    .page-reset:hover,.page-reset:active{opacity:1}
+    .game-area{height:64%;display:grid;grid-template-rows:minmax(44px,.58fr) minmax(0,3.5fr) minmax(44px,.58fr);gap:6px;align-items:stretch}
+    .bank{display:grid;grid-template-columns:repeat(3,minmax(44px,1fr)) minmax(58px,.9fr);gap:7px;align-items:center;padding:0 clamp(8px,4vw,24px)}
+    .bank.top{}
+    .key-row{display:grid;place-items:center}
+    .scale{display:none}
+    .key{border:0;width:100%;max-width:58px;height:clamp(42px,10vw,48px);border-radius:7px 7px 9px 9px;background:linear-gradient(#fff9df,#d7cc9f 63%,#a69c73);color:#222016;font:900 clamp(17px,4.5vw,20px)/1 "Arial Black",sans-serif;box-shadow:inset 0 2px 1px #fff,0 4px 0 #827856,0 6px 4px #0009;cursor:pointer;touch-action:none}
+    .key:active,.key.pressed{transform:translateY(4px);box-shadow:inset 0 2px 4px #8d835f,0 1px 0 #70684c}
+    .bank.practice{opacity:.48}
+    .serve-box{text-align:center}.serve-label{display:block;font:900 8px/1 sans-serif;letter-spacing:.1em;margin-bottom:4px;color:#f3ead0}
+    .lever{position:relative;width:100%;max-width:72px;height:42px;border:0;border-radius:7px;background:#370805;box-shadow:inset 0 2px 4px #000,0 2px 0 #46443e;cursor:pointer;padding:0;overflow:visible;touch-action:none}
+    .lever:before{content:"";position:absolute;left:7%;right:7%;height:34px;top:-5px;border-radius:6px;background:linear-gradient(#ed3b31,#aa1d17);box-shadow:inset 0 2px 2px #ff7269,0 5px 0 #65100d,0 6px 4px #000;transition:transform .1s}
+    .lever:active:before,.lever.pulled:before{transform:translateY(8px)}
+    .court-wrap{position:relative;margin:0 clamp(20px,7vw,42px);border-radius:12px;padding:7px;background:#050505;box-shadow:inset 0 0 0 2px #4d4b43,0 4px 7px #000}
+    .court{height:100%;position:relative;overflow:hidden;border-radius:7px;background:radial-gradient(ellipse at center,#192522,#090d0c 70%);box-shadow:inset 0 0 18px #000,inset 0 0 0 2px #0b1513}
+    .court svg{position:absolute;inset:0;width:100%;height:100%}.track{fill:none;stroke:#80918a;stroke-width:.6;opacity:.2}
+    .net{position:absolute;left:8%;right:8%;top:50%;border-top:2px dashed #e5e2d5;opacity:.78;transform:translateY(-1px)}
+    .midmark{position:absolute;left:50%;top:50%;width:9px;height:9px;border:1px solid #d8d6c9;border-radius:50%;transform:translate(-50%,-50%);opacity:.35}
+    .ball{position:absolute;width:clamp(10px,2.9vw,14px);aspect-ratio:1;border-radius:50%;background:#ff3428;box-shadow:0 0 4px #ff321f,0 0 12px #f32b1f,0 0 20px #bf1a12;transform:translate(-50%,-50%);opacity:0}
+    .ball.live{opacity:1}.ball.stalled{animation:pulse .8s steps(2,end) infinite}
+    @keyframes pulse{50%{opacity:.45}}
+    .message{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:12px;font:900 clamp(10px,2.5vw,13px)/1.35 "Arial Narrow",sans-serif;letter-spacing:.08em;color:#f2ebd1;text-shadow:0 2px 3px #000;pointer-events:none}
+    .message small{display:block;font-size:.72em;letter-spacing:.03em;margin-top:5px;color:#c9c3ad}
+    .side-indicator{position:absolute;left:0;right:0;top:50%;text-align:center;font:700 8px/1 sans-serif;letter-spacing:.12em;color:#8b988f;transform:translateY(13px)}
+    .badge{position:absolute;left:4px;right:4px;text-align:center;font:900 9px/1 sans-serif;color:#c5c8bc}.badge.top{top:4px;transform:rotate(180deg)}.badge.bottom{bottom:4px}
+    .lower{height:24%;display:grid;grid-template-columns:1fr .72fr 1.1fr;gap:8px;padding-top:4px;align-items:center}
+    .switch-stack{display:grid;gap:7px;align-content:center}.switch-label{text-align:center;font:900 8px/1 sans-serif;letter-spacing:.08em;color:#e9dfc2;margin-bottom:4px}
+    .switch,.power-toggle{height:32px;padding:3px;border:0;border-radius:5px;background:#070707;box-shadow:inset 0 2px 4px #000,0 1px 0 #444;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:100%;color:#aaa28b}
+    .switch.two,.power-toggle{grid-template-columns:repeat(2,1fr)}
+    .switch button,.power-toggle .power-option{position:relative;z-index:2;border:0;background:transparent;color:#aaa28b;font:900 8px/1 sans-serif;cursor:pointer;padding:0;display:grid;place-items:center}
+    .switch button.on,.power-toggle .power-option.on{color:#fff8de}.slider{position:absolute;top:4px;bottom:4px;width:calc(33.333% - 4px);left:4px;border-radius:3px;background:linear-gradient(#eee4c2,#9e9575);box-shadow:0 1px 2px #000;transition:left .15s}
+    .switch.two .slider,.power-toggle .slider{width:calc(50% - 5px)}
+    .switch[data-pos="1"] .slider{left:calc(33.333% + 2px)}.switch[data-pos="2"] .slider{left:calc(66.666%)}
+    .switch.two[data-pos="1"] .slider,.power-toggle[data-pos="1"] .slider{left:calc(50% + 1px)}
+    .power-toggle{height:42px;cursor:pointer;touch-action:manipulation}
+    .power-toggle:active{box-shadow:inset 0 3px 6px #000,0 1px 0 #444}
+    .center-bottom{text-align:center;align-self:end;padding-bottom:5px}.how{font-size:9px;color:#c4bda3;letter-spacing:.08em;line-height:1.3}.help{margin-top:8px;border:1px solid #6d695d;background:#171715;color:#eee6cc;border-radius:50%;width:31px;height:31px;font:900 14px/1 sans-serif;cursor:pointer}
+    .timer-wrap{text-align:center;position:relative}.timer-label{font:900 9px/1 sans-serif;letter-spacing:.13em;color:#ece3c6;margin-bottom:2px}
+    .timer{width:clamp(92px,25vw,120px);aspect-ratio:1;border:0;border-radius:50%;position:relative;cursor:grab;touch-action:none;color:#e9dfc0;background:repeating-conic-gradient(#777265 0 2deg,#292824 2deg 10deg);box-shadow:inset 0 0 0 8px #2b2a26,inset 0 0 0 10px #8e8979,0 6px 0 #080808,0 8px 9px #000;padding:0}
+    .timer:active{cursor:grabbing}.timer-face{position:absolute;inset:15%;border-radius:50%;background:radial-gradient(circle,#393731,#1c1b19);box-shadow:inset 0 2px 4px #000;display:grid;place-items:center;font:900 12px/1 sans-serif;letter-spacing:.04em;transform:rotate(var(--turn,0deg))}
+    .timer-face:before{content:"";position:absolute;top:3px;left:50%;width:4px;height:24%;border-radius:2px;background:#e9dfc0;transform:translateX(-50%)}
+    .wind-read{position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);font:900 8px/1 sans-serif;color:#e23a31;white-space:nowrap;text-shadow:0 1px #000}
+    .modal{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:24px;background:#050505db;backdrop-filter:blur(2px)}
+    .modal.open{display:flex}.sheet{width:min(94%,370px);max-height:90%;overflow:auto;background:#e8dfc3;color:#1b1a16;border-radius:12px;padding:18px 20px;box-shadow:0 10px 30px #000}
+    .sheet h2{margin:0 0 8px;font:900 24px/1 "Arial Black",sans-serif;color:#c52b23}.sheet p{margin:8px 0;font:700 13px/1.35 sans-serif}.sheet ol{margin:8px 0 12px;padding-left:20px;font:700 12px/1.4 sans-serif}.close{width:100%;border:0;background:#191815;color:#f1e8cb;border-radius:7px;padding:10px;font-weight:900;cursor:pointer}
+    footer{font-size:12px;font-weight:800;letter-spacing:.03em}footer a{display:inline-block;color:var(--ink);text-decoration-thickness:2px;text-underline-offset:3px;animation:future-ready-glow 3.2s ease-in-out infinite}footer a:focus-visible{outline:3px solid var(--invite-glow);outline-offset:4px;border-radius:2px}
+    @keyframes future-ready-glow{0%,100%{text-shadow:0 0 0 transparent}50%{text-shadow:0 0 7px color-mix(in srgb,var(--invite-glow) 78%,transparent)}}
+    @media(max-height:680px) and (orientation:portrait){body{padding-top:max(4px,env(safe-area-inset-top));padding-bottom:max(6px,env(safe-area-inset-bottom))}.page{gap:4px}.key{height:40px}.lever{height:38px}.lever:before{height:31px}.lower{padding-top:2px}.timer{width:92px}}
+    @media(pointer:coarse){.key{min-width:48px;min-height:44px}.lever{min-width:58px;min-height:44px}.switch button{min-height:36px}.power-toggle{min-height:44px}.help{width:44px;height:44px}.timer{min-width:96px}}
+    @media(max-width:520px) and (orientation:portrait){
+      body{padding:max(10px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));min-height:100dvh}.device{width:min(calc(100vw - 48px),calc((100dvh - 76px)*.60));aspect-ratio:.60;padding:11px;border-radius:24px 24px 21px 21px}
+      .score-head{height:10%;grid-template-columns:74px 1fr 74px}.wind-read-top{display:block}.game-area{height:59%;grid-template-rows:minmax(38px,.56fr) minmax(0,3.5fr) minmax(38px,.56fr);gap:4px}.lower{height:31%;gap:5px;padding:2px 0 8px;align-items:center}
+      .bank{grid-template-columns:repeat(3,minmax(38px,1fr)) minmax(52px,.9fr);gap:5px;padding:0 7px}.key{min-width:40px;min-height:40px;height:40px}.lever{min-width:52px;min-height:40px;height:38px}.lever:before{height:31px}
+      .switch-stack{gap:5px}.switch{height:30px}.power-toggle{height:40px;min-height:40px}.center-bottom{align-self:center;padding-bottom:0}.help{width:36px;height:36px;margin-top:5px}.timer{width:86px;min-width:86px}.timer-label{margin-bottom:1px}
+    }
+    @media(min-width:760px){body{padding:20px}.device{width:min(calc(100vw - 40px),500px,calc(62svh - 34px))}}
+    @media(prefers-reduced-motion:reduce){.lever:before,.slider{transition:none}.ball.stalled,footer a{animation:none}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <button class="page-reset" id="resetGame" type="button" aria-label="Reset game to starting state">↻ Reset</button>
+    <footer><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Visit Future Ready</a></footer>
+    <main class="device" aria-label="Playable recreation of Tomy Blip">
+      <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
+      <section class="score-head" aria-label="Score">
+        <div class="score-wrap">P2 POINTS<button class="score-dial" id="scoreP2" aria-label="Player two score, tap to reset"><span>0</span></button></div>
+        <div class="brand"><div class="tomy">TOMY</div><div class="blip">blip</div><div class="digital">THE DIGITAL GAME</div><div class="wind-read-top" id="windReadTop">EMPTY</div></div>
+        <div class="score-wrap">P1 POINTS<button class="score-dial" id="scoreP1" aria-label="Player one score, tap to reset"><span>0</span></button></div>
+      </section>
+
+      <section class="game-area" aria-label="Vertical playfield and controls">
+        <div class="bank top practice" id="bankTop" aria-label="Player two controls at the top">
+          <div class="key-row"><button class="key" data-side="top" data-lane="1" aria-label="Top player button 1">1</button></div>
+          <div class="key-row"><button class="key" data-side="top" data-lane="2" aria-label="Top player button 2">2</button></div>
+          <div class="key-row"><button class="key" data-side="top" data-lane="3" aria-label="Top player button 3">3</button></div>
+          <div class="serve-box"><span class="serve-label">P2 · SERVE</span><button class="lever" id="serveTop" aria-label="Top player serve lever"></button></div>
+        </div>
+        <div class="court-wrap">
+          <div class="court" id="court">
+            <svg viewBox="0 0 100 100" aria-hidden="true"><path class="track" d="M16 2 Q24 28 50 50 Q76 72 84 98"/><path class="track" d="M50 2 Q50 25 50 50 Q50 75 50 98"/><path class="track" d="M84 2 Q76 28 50 50 Q24 72 16 98"/></svg>
+            <div class="net"></div><div class="midmark"></div>
+            <span class="badge top">PLAYER 2</span><span class="badge bottom">PLAYER 1</span>
+            <div class="ball" id="ball"></div>
+            <div class="message" id="message"><div>POWER OFF<small>switch ON to begin</small></div></div>
+            <div class="side-indicator" id="turnLabel">PLAYER 1 SERVES FIRST</div>
+          </div>
+        </div>
+        <div class="bank bottom" id="bankBottom" aria-label="Player one controls at the bottom">
+          <div class="key-row"><button class="key" data-side="bottom" data-lane="1" aria-label="Bottom player button 1">1</button></div>
+          <div class="key-row"><button class="key" data-side="bottom" data-lane="2" aria-label="Bottom player button 2">2</button></div>
+          <div class="key-row"><button class="key" data-side="bottom" data-lane="3" aria-label="Bottom player button 3">3</button></div>
+          <div class="serve-box"><span class="serve-label">P1 · SERVE</span><button class="lever" id="serveBottom" aria-label="Bottom player serve lever"></button></div>
+        </div>
+      </section>
+
+      <section class="lower" aria-label="Game settings and timer">
+        <div class="switch-stack">
+          <div><div class="switch-label">PLAYER</div><div class="switch two" id="playerSwitch" data-pos="0"><span class="slider"></span><button class="on" data-value="1">1</button><button data-value="2">2</button></div></div>
+          <div><div class="switch-label" id="powerLabel">POWER</div><button class="power-toggle" id="powerSwitch" type="button" data-pos="0" aria-labelledby="powerLabel" aria-pressed="false"><span class="slider"></span><span class="power-option on">OFF</span><span class="power-option">ON</span></button></div>
+        </div>
+        <div class="center-bottom"><div class="how">FAST HANDS<br>WIN THE POINT</div><button class="help" id="help" aria-label="How to play">?</button></div>
+        <div class="timer-wrap"><div class="timer-label">TIMER</div><button class="timer" id="timer" aria-label="Wind-up timer. Ten full clockwise turns reach maximum. Drag clockwise or press and hold"><span class="timer-face" id="timerFace">WIND</span></button><div class="wind-read" id="windRead">EMPTY</div></div>
+      </section>
+
+      <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <div class="sheet"><h2 id="helpTitle">HOW TO PLAY</h2><p>This toy runs on spring power—no electronic bounce.</p><ol><li>Tap the TIMER for one turn, press and hold for automatic winding, or drag it in full clockwise circles. Each turn adds 10%; ten turns reach MAX.</li><li>Every new game and reset starts with an empty spring and POWER OFF. Switch POWER ON, choose 1 or 2 players (the default is 1), wind the TIMER ten turns to MAX, then pull the P1 red SERVE lever once; Player 1 always serves first.</li><li>Watch which 1–3 track the red dot takes. Press the matching button any time before it arrives. Once your press is registered, you can let go—the return is locked in.</li><li>Player 1 always makes the opening serve. In 1-player mode, the top acts as a practice wall and you defend the bottom. In 2-player mode, one player takes each end; after every point, the player who missed serves next.</li><li>A miss gives the opponent a point. The ball stays at the missed end, so the player who lost the point serves next using their own lever. First to 10 wins. A full 10-turn wind lasts the entire game, so wind only before a new game or after one ends.</li></ol><button class="close" id="closeHelp">BACK TO GAME</button></div>
+      </div>
+    </main>
+  </div>
+<script>
+(function(){
+  'use strict';
+  var state={power:false,players:1,wind:0,scores:[0,0],server:0,openingServe:true,gameActive:false,running:false,paused:false,arrivalGrace:false,graceTimer:null,dir:-1,progress:0,fromLane:2,targetLane:2,lastTime:0,winner:null,rallyId:0,returnArmed:false,armedSide:null,armedLane:null,held:{top:{},bottom:{}}};
+  var ball=document.getElementById('ball'), msg=document.getElementById('message'), turnLabel=document.getElementById('turnLabel');
+  var scoreEls=[document.querySelector('#scoreP1 span'),document.querySelector('#scoreP2 span')];
+  var timer=document.getElementById('timer'),timerFace=document.getElementById('timerFace'),windRead=document.getElementById('windRead'),windReadTop=document.getElementById('windReadTop');
+  var audio=null,whirr=null,tickTimer=null,windHold=null,windHoldDelay=null,windAngle=null,windTravel=0,turnDeg=0;
+
+  function ensureAudio(){
+    if(audio){
+      if(audio.state==='suspended'&&audio.resume)audio.resume().catch(function(){});
+      return true;
+    }
+    var AudioCtor=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtor)return false;
+    try{
+      audio=new AudioCtor();
+      if(audio.state==='suspended'&&audio.resume)audio.resume().catch(function(){});
+      return true;
+    }catch(ignore){
+      audio=null;
+      return false;
+    }
+  }
+  function noiseBurst(duration,frequency,gain,delay){
+    if(!ensureAudio())return;var len=Math.floor(audio.sampleRate*duration),buf=audio.createBuffer(1,len,audio.sampleRate),d=buf.getChannelData(0);
+    for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);
+    var src=audio.createBufferSource(),filter=audio.createBiquadFilter(),g=audio.createGain();
+    filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=1.2;g.gain.value=gain;
+    src.buffer=buf;src.connect(filter);filter.connect(g);g.connect(audio.destination);src.start(audio.currentTime+(delay||0));
+  }
+  function clack(kind){
+    noiseBurst(kind==='serve'?.055:.028,kind==='serve'?430:1050,kind==='serve'?.28:.19,0);
+    noiseBurst(.018,kind==='serve'?130:520,.13,.018);
+  }
+  function bell(){
+    if(!ensureAudio())return;[760,1128,1580,2240].forEach(function(f,i){var o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.11/(i+1),audio.currentTime);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+(.55-i*.06));o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.58)});
+    noiseBurst(.025,1800,.08,0);
+  }
+  function startWhirr(){
+    if(!audio||whirr||!state.running||!state.power||state.wind<=0)return;
+    var len=audio.sampleRate,buf=audio.createBuffer(1,len,audio.sampleRate),d=buf.getChannelData(0);for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+    var src=audio.createBufferSource(),filter=audio.createBiquadFilter(),g=audio.createGain();src.buffer=buf;src.loop=true;filter.type='bandpass';filter.frequency.value=165;filter.Q.value=.9;g.gain.value=.022;src.connect(filter);filter.connect(g);g.connect(audio.destination);src.start();whirr={src:src,g:g};
+    tickTimer=setInterval(function(){if(state.running&&state.power&&state.wind>0)noiseBurst(.012,700+Math.random()*300,.025,0)},92);
+  }
+  function stopWhirr(){if(whirr){try{whirr.src.stop()}catch(e){}whirr=null}if(tickTimer){clearInterval(tickTimer);tickTimer=null}}
+  function setMessage(text,small){msg.innerHTML=text?'<div>'+text+(small?'<small>'+small+'</small>':'')+'</div>':''}
+  function updateWind(){
+    var pct=Math.round(state.wind),windText=pct<=0?'EMPTY':pct>=100?'MAX':pct+'% WOUND';windRead.textContent=windText;windReadTop.textContent=windText;timer.style.setProperty('--turn',turnDeg+'deg');
+    if(state.wind<=0&&state.running){state.paused=true;stopWhirr();ball.classList.add('stalled');setMessage('SPRING STOPPED','wind the timer')}
+    else if(state.paused&&!state.arrivalGrace&&!state.graceTimer&&state.wind>2&&state.power&&state.running){state.paused=false;ball.classList.remove('stalled');setMessage('','');state.lastTime=performance.now();startWhirr();var rallyId=state.rallyId;requestAnimationFrame(function(now){loop(now,rallyId)})}
+  }
+  function addWindTurn(){
+    ensureAudio();
+    if(state.gameActive||state.wind>=100)return 0;
+    var added=Math.min(10,100-state.wind);state.wind+=added;updateWind();if(state.wind>=100){setMessage('READY','pull '+servePrompt());turnLabel.textContent='PLAYER '+(state.server+1)+' SERVES'}noiseBurst(.018,420,.055,0);return added
+  }
+  function updateScores(){scoreEls[0].textContent=state.scores[0];scoreEls[1].textContent=state.scores[1]}
+  function setSwitch(el,pos){el.dataset.pos=String(pos);el.querySelectorAll('button').forEach(function(b,i){b.classList.toggle('on',i===pos)})}
+  function setPowerToggle(on){var el=document.getElementById('powerSwitch');el.dataset.pos=on?'1':'0';el.setAttribute('aria-pressed',on?'true':'false');el.querySelectorAll('.power-option').forEach(function(label,i){label.classList.toggle('on',i===(on?1:0))})}
+  function resetRally(){state.rallyId++;if(state.graceTimer){clearTimeout(state.graceTimer);state.graceTimer=null}state.running=false;state.paused=false;state.arrivalGrace=false;state.progress=0;state.returnArmed=false;state.armedSide=null;state.armedLane=null;ball.className='ball';stopWhirr()}
+  function servePrompt(){return (state.server===0?'P1':'P2')+' · SERVE'}
+  function power(on){ensureAudio();state.power=on;setPowerToggle(on);clack('button');if(!on){resetRally();setMessage('POWER OFF','switch ON to begin');turnLabel.textContent='PLAYER 1 SERVES FIRST'}else if(state.wind<=0){setMessage('NO SPRING POWER','choose players, then wind the timer');turnLabel.textContent='PLAYER 1 SERVES FIRST'}else{setMessage('READY','pull '+servePrompt());turnLabel.textContent='PLAYER '+(state.server+1)+' SERVES'}}
+  function chooseLane(){return 1+Math.floor(Math.random()*3)}
+  function serve(side){
+    ensureAudio();var idx=side==='bottom'?0:1,leverId=idx===0?'serveBottom':'serveTop';document.getElementById(leverId).classList.add('pulled');setTimeout(function(){document.getElementById(leverId).classList.remove('pulled')},120);clack('serve');
+    if(state.winner!==null){setMessage('GAME OVER','tap either score dial to start a new game');return}if(!state.power){setMessage('POWER OFF','slide switch to ON');return}if(state.wind<=0){setMessage('WIND TIMER','10 full turns to MAX');return}if(!state.gameActive&&state.wind<100){setMessage('WIND TO MAX','10 turns power a full game');return}if(state.running)return;
+    if(idx!==state.server){setMessage('PLAYER '+(state.server+1)+' SERVES','use the '+(state.server===0?'bottom':'top')+' lever');return}
+    state.gameActive=true;state.server=idx;state.openingServe=false;state.rallyId++;var rallyId=state.rallyId;
+    state.dir=idx===1?1:-1;state.fromLane=2;state.targetLane=chooseLane();state.progress=0;state.returnArmed=false;state.armedSide=null;state.armedLane=null;state.running=true;state.paused=false;state.lastTime=performance.now();ball.className='ball live';setMessage('','');turnLabel.textContent='BALL IN PLAY';startWhirr();requestAnimationFrame(function(now){loop(now,rallyId)})
+  }
+  function laneX(lane,atTop){
+    var side=atTop?'top':'bottom';
+    var key=document.querySelector('.key[data-side="'+side+'"][data-lane="'+lane+'"]');
+    var keyRect=key.getBoundingClientRect(),courtRect=document.getElementById('court').getBoundingClientRect();
+    var x=((keyRect.left+keyRect.width/2-courtRect.left)/courtRect.width)*100;
+    return Math.max(3,Math.min(97,x));
+  }
+  function ballPosition(t){
+    var startsAtTop=state.dir===1,endsAtTop=state.dir!==1;
+    var startY=startsAtTop?3:97,endY=endsAtTop?3:97;
+    var startX=laneX(state.fromLane,startsAtTop),endX=laneX(state.targetLane,endsAtTop),x,y,u;
+    if(t<=.5){u=t*2;y=startY+(50-startY)*u;x=startX+(50-startX)*(u*u*(3-2*u))+Math.sin(Math.PI*u)*(state.fromLane-2)*(startsAtTop?-2.4:2.4)}
+    else{u=(t-.5)*2;y=50+(endY-50)*u;x=50+(endX-50)*(u*u*(3-2*u))-Math.sin(Math.PI*u)*(state.targetLane-2)*(endsAtTop?-2.4:2.4)}
+    return{x:x,y:y}
+  }
+  function renderBall(){var p=ballPosition(state.progress);ball.style.left=p.x+'%';ball.style.top=p.y+'%'}
+  function queueLoop(rallyId){requestAnimationFrame(function(now){loop(now,rallyId)})}
+  function loop(now,rallyId){
+    if(rallyId!==state.rallyId||!state.running||state.paused||!state.power)return;
+    var dt=Math.min(40,now-state.lastTime);state.lastTime=now;state.wind=Math.max(state.gameActive?10:0,state.wind-dt*.0003);updateWind();if(state.wind<=0)return;
+    var duration=1550-(state.wind*2.2);state.progress+=dt/duration;renderBall();
+    if(state.progress>=1){arrive(rallyId)}else queueLoop(rallyId)
+  }
+  function returnBall(){
+    if(state.graceTimer){clearTimeout(state.graceTimer);state.graceTimer=null}state.paused=false;state.arrivalGrace=false;state.progress=0;state.dir*=-1;state.fromLane=state.targetLane;state.targetLane=chooseLane();state.returnArmed=false;state.armedSide=null;state.armedLane=null;state.lastTime=performance.now();turnLabel.textContent='GOOD RETURN'
+  }
+  function rebound(rallyId){
+    if(rallyId!==state.rallyId||!state.running)return;
+    state.paused=true;state.arrivalGrace=false;
+    state.graceTimer=setTimeout(function(){state.graceTimer=null;if(rallyId!==state.rallyId||!state.running)return;clack('button');returnBall();queueLoop(rallyId)},70)
+  }
+  function receivingSide(){return state.dir===1?'bottom':'top'}
+  function humanSideIsActive(side){return state.players===2||side==='bottom'}
+  function laneMatches(pressedLane,targetLane){return pressedLane===targetLane}
+  function arrive(rallyId){
+    if(rallyId!==state.rallyId)return;
+    var side=receivingSide(),receiver=side==='bottom'?0:1;
+    state.progress=1;renderBall();
+    if(state.returnArmed&&state.armedSide===side&&state.armedLane===state.targetLane){rebound(rallyId);return}
+    if(state.players===1&&receiver===1){rebound(rallyId);return}
+    state.paused=true;state.arrivalGrace=true;turnLabel.textContent='HIT '+state.targetLane;
+    state.graceTimer=setTimeout(function(){state.graceTimer=null;if(rallyId!==state.rallyId||!state.running||!state.arrivalGrace)return;state.arrivalGrace=false;miss(receiver)},260)
+  }
+  function hit(side,lane){
+    ensureAudio();clack('button');
+    if(!state.running||!humanSideIsActive(side)||receivingSide()!==side)return;
+    if(laneMatches(lane,state.targetLane)){
+      if(!state.returnArmed){
+        state.returnArmed=true;state.armedSide=side;state.armedLane=lane;
+        turnLabel.textContent='RETURN SET · PLAYER '+(side==='bottom'?1:2);
+      }
+      if(state.arrivalGrace){rebound(state.rallyId)}
+      return;
+    }
+    /* A stray mobile tap does not end the rally; only missing the ball does. */
+  }
+  function miss(receiver){
+    resetRally();var scorer=receiver===0?1:0;state.scores[scorer]++;bell();updateScores();
+    state.server=receiver;
+    if(state.scores[scorer]>=10){state.winner=scorer;state.gameActive=false;state.wind=0;updateWind();setMessage('PLAYER '+(scorer+1)+' WINS','tap either score dial to reset');turnLabel.textContent='GAME OVER';return}
+    var nextServe=state.server===0?'bottom':'top';
+    setMessage('POINT · PLAYER '+(scorer+1),'PLAYER '+(state.server+1)+' · pull '+nextServe+' SERVE');turnLabel.textContent='PLAYER '+(state.server+1)+' SERVES';
+  }
+  function resetScores(keepPower){state.scores=[0,0];state.winner=null;state.server=0;state.openingServe=true;state.gameActive=false;state.wind=0;turnDeg=0;resetRally();if(!keepPower)state.power=false;setPowerToggle(state.power);updateScores();updateWind();if(state.power){setMessage('WIND TIMER','10 turns, then pull '+servePrompt())}else{setMessage('POWER OFF','switch ON to begin')}turnLabel.textContent='PLAYER 1 SERVES FIRST';clack('button')}
+  function resetGame(){
+    stopWind();resetRally();state.power=false;state.players=1;state.wind=0;state.scores=[0,0];state.server=0;state.openingServe=true;state.gameActive=false;state.winner=null;state.dir=-1;state.progress=0;state.fromLane=2;state.targetLane=2;state.held={top:{},bottom:{}};turnDeg=0;
+    setSwitch(document.getElementById('playerSwitch'),0);setPowerToggle(false);document.getElementById('bankTop').classList.add('practice');document.getElementById('modal').classList.remove('open');document.querySelectorAll('.key').forEach(function(k){k.classList.remove('pressed');k.setAttribute('aria-pressed','false')});
+    updateScores();updateWind();setMessage('POWER OFF','switch ON to begin');turnLabel.textContent='PLAYER 1 SERVES FIRST';clack('button')
+  }
+
+  function pressKey(k,e){
+    if(e){e.preventDefault();try{k.setPointerCapture(e.pointerId)}catch(ignore){}}
+    var side=k.dataset.side,lane=Number(k.dataset.lane);if(state.held[side][lane])return;
+    state.held[side][lane]=true;k.classList.add('pressed');k.setAttribute('aria-pressed','true');
+    if(navigator.vibrate)navigator.vibrate(8);hit(side,lane)
+  }
+  function releaseKey(k){var side=k.dataset.side,lane=Number(k.dataset.lane);state.held[side][lane]=false;k.classList.remove('pressed');k.setAttribute('aria-pressed','false')}
+  document.querySelectorAll('.key').forEach(function(k){
+    k.setAttribute('aria-pressed','false');
+    k.addEventListener('pointerdown',function(e){pressKey(k,e)});
+    k.addEventListener('pointerup',function(){releaseKey(k)});
+    k.addEventListener('pointercancel',function(){releaseKey(k)});
+    k.addEventListener('lostpointercapture',function(){releaseKey(k)})
+  });
+  function bindServe(id,side){
+    var lever=document.getElementById(id);
+    lever.addEventListener('pointerdown',function(e){e.preventDefault();serve(side)});
+    lever.addEventListener('click',function(e){if(e.detail===0){e.preventDefault();serve(side)}});
+  }
+  bindServe('serveTop','top');bindServe('serveBottom','bottom');
+  document.getElementById('playerSwitch').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;state.players=Number(b.dataset.value);setSwitch(this,state.players-1);document.getElementById('bankTop').classList.toggle('practice',state.players===1);resetScores(true)});
+  document.getElementById('powerSwitch').addEventListener('click',function(){power(!state.power)});
+  document.getElementById('scoreP1').addEventListener('click',function(){resetScores(false)});document.getElementById('scoreP2').addEventListener('click',function(){resetScores(false)});document.getElementById('resetGame').addEventListener('click',resetGame);
+  timer.addEventListener('pointerdown',function(e){
+    e.preventDefault();ensureAudio();try{timer.setPointerCapture(e.pointerId)}catch(ignore){}var r=timer.getBoundingClientRect();
+    windAngle=Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2));windTravel=0;
+    addWindTurn();turnDeg=(turnDeg+360)%360;updateWind();
+    windHoldDelay=setTimeout(function(){windHold=setInterval(function(){addWindTurn();turnDeg=(turnDeg+360)%360;updateWind()},160)},320)
+  });
+  timer.addEventListener('pointermove',function(e){
+    if(windAngle===null)return;var r=timer.getBoundingClientRect(),a=Math.atan2(e.clientY-(r.top+r.height/2),e.clientX-(r.left+r.width/2)),delta=a-windAngle;
+    if(delta>Math.PI)delta-=Math.PI*2;if(delta<-Math.PI)delta+=Math.PI*2;
+    if(Math.abs(delta)>.025){
+      if(windHoldDelay){clearTimeout(windHoldDelay);windHoldDelay=null}if(windHold){clearInterval(windHold);windHold=null}
+      windTravel=Math.max(0,windTravel+delta);turnDeg=(turnDeg+delta*180/Math.PI)%360;windAngle=a;
+      while(windTravel>=Math.PI*2){addWindTurn();windTravel-=Math.PI*2}
+      updateWind()
+    }
+  });
+  function stopWind(){windAngle=null;windTravel=0;if(windHoldDelay){clearTimeout(windHoldDelay);windHoldDelay=null}if(windHold){clearInterval(windHold);windHold=null}}
+  timer.addEventListener('pointerup',stopWind);timer.addEventListener('pointercancel',stopWind);
+  timer.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&!e.repeat){e.preventDefault();addWindTurn()}});
+  document.getElementById('help').addEventListener('click',function(){document.getElementById('modal').classList.add('open')});document.getElementById('closeHelp').addEventListener('click',function(){document.getElementById('modal').classList.remove('open')});
+  document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')});
+  var keyMap={q:['top',1],w:['top',2],e:['top',3],j:['bottom',1],k:['bottom',2],l:['bottom',3]};
+  document.addEventListener('keydown',function(e){
+    var mapped=keyMap[e.key.toLowerCase()];
+    if(mapped&&!e.repeat){e.preventDefault();pressKey(document.querySelector('.key[data-side="'+mapped[0]+'"][data-lane="'+mapped[1]+'"]'))}
+    if(e.key===' '&&!e.repeat){e.preventDefault();serve(state.server===0?'bottom':'top')}
+  });
+  document.addEventListener('keyup',function(e){var mapped=keyMap[e.key.toLowerCase()];if(mapped)releaseKey(document.querySelector('.key[data-side="'+mapped[0]+'"][data-lane="'+mapped[1]+'"]'))});
+  updateWind();updateScores();
+})();
+</script>
+</body>
+</html>

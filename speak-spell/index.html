@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Speak &amp; Spell</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Ubuntu+Condensed&display=swap');
+    :root{
+      color-scheme:light dark;
+      --page:#d9d4c8;--ink:#1f211f;--muted:#5a5b55;--panel:#f3efe5;
+      --device:#b82520;--device-dark:#7e1716;--device-edge:#5c0d0c;
+      --cream:#d7bf83;--cream-dark:#9d844a;--orange:#ed6a1e;--orange-dark:#9a3107;
+      --yellow:#f1c531;--yellow-dark:#9e7911;--blue:#0c4771;--blue-dark:#062b47;
+      --screen:#081816;--glow:#7fffd7;--shadow:rgba(45,34,20,.3);
+    }
+    @media (prefers-color-scheme:dark){
+      :root{--page:#171614;--ink:#f0eadc;--muted:#c8bfae;--panel:#28241f;--shadow:rgba(0,0,0,.66)}
+    }
+    *{box-sizing:border-box}
+    html{background:var(--page)}
+    body{margin:0;min-height:100svh;background:
+      radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--page) 88%,#fff 12%) 0,var(--page) 52%);
+      color:var(--ink);font-family:"Ubuntu Condensed","Arial Narrow",sans-serif;padding:clamp(18px,4vw,44px) 12px 36px}
+    button,a{font:inherit}
+    button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    .stage{width:min(760px,100%);margin:auto;display:grid;justify-items:center;gap:20px}
+    .device-wrap{width:min(580px,96vw);padding-top:45px;position:relative;filter:drop-shadow(0 22px 24px var(--shadow))}
+    .handle{position:absolute;top:0;left:12%;right:12%;height:95px;border:27px solid var(--device);border-bottom:0;border-radius:37px 37px 7px 7px;background:transparent;box-shadow:inset 7px 6px 0 rgba(255,255,255,.08),0 -4px 0 var(--device-edge);z-index:0}
+    .machine{position:relative;z-index:1;background:linear-gradient(90deg,var(--device-dark),var(--device) 4%,#ce312a 48%,var(--device) 96%,var(--device-dark));border:4px solid var(--device-edge);border-radius:24px 24px 42px 42px;padding:clamp(14px,3.6vw,25px);box-shadow:inset 7px 0 rgba(255,255,255,.09),inset -8px 0 rgba(70,0,0,.18),inset 0 -10px rgba(73,7,5,.2)}
+    .machine:before{content:"";position:absolute;inset:8px;border:1px solid rgba(255,255,255,.12);border-radius:17px 17px 35px 35px;pointer-events:none}
+    .top-deck{background:linear-gradient(#123431,#071715);border:4px solid #4b150f;border-radius:7px;padding:12px 14px;display:grid;grid-template-columns:106px 1fr;gap:14px;align-items:center;box-shadow:inset 0 3px 7px #000,0 2px rgba(255,255,255,.15)}
+    .speaker{height:70px;display:flex;gap:6px;align-items:stretch;justify-content:center;padding:6px 0}
+    .slot{width:5px;border-radius:5px;background:#020707;box-shadow:inset 1px 0 #24433e,0 1px #17312d}
+    .display-shell{min-width:0}
+    .vfd{height:54px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:4px;background:
+      repeating-linear-gradient(0deg,rgba(100,255,213,.035) 0 1px,transparent 1px 4px),
+      #020b0a;border:2px solid #000;box-shadow:inset 0 0 13px #000}
+    #display{font-family:"Share Tech Mono",monospace;font-size:clamp(23px,6vw,37px);letter-spacing:.11em;color:var(--glow);text-shadow:0 0 3px var(--glow),0 0 10px #1d9e7d;white-space:pre;max-width:100%;line-height:1}
+    .meter{display:flex;justify-content:space-between;margin-top:5px;color:#739c91;font:11px/1 "Share Tech Mono",monospace;letter-spacing:.09em}
+    .meter .speak-led{color:#427169;transition:.12s}
+    .meter .speak-led.on{color:var(--glow);text-shadow:0 0 6px var(--glow)}
+    .functions{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:4px;margin:13px 0 11px}
+    .fn{min-width:0;min-height:42px;padding:3px 1px 2px;background:linear-gradient(#f0ce6d,#c89622);border:0;border-bottom:4px solid #7a4d0b;border-radius:4px;color:#2d1c0c;font-size:clamp(7px,1.5vw,9px);line-height:1.05;font-weight:800;text-transform:uppercase;cursor:pointer;box-shadow:0 2px 1px rgba(0,0,0,.3)}
+    .fn:nth-child(2),.fn:nth-child(10){background:linear-gradient(#fa8c42,#d84c12);border-bottom-color:#872a0b;color:#281108}
+    .fn.power{background:linear-gradient(#d8d4c4,#a8a18d);border-bottom-color:#625d50;color:#211f1b}
+    .fn[aria-pressed="true"]{outline:3px solid #8fffe0;outline-offset:1px;box-shadow:0 0 10px #5be1bd}
+    .fn:active,.letter:active,.utility:active{transform:translateY(2px);border-bottom-width:2px}
+    .key-bed{background:linear-gradient(#e5c766,#c79c2f);border:3px solid #795a1b;border-radius:8px;padding:clamp(9px,2.4vw,15px);box-shadow:inset 0 2px rgba(255,255,255,.45)}
+    .letters{display:grid;gap:6px}
+    .key-row{display:grid;gap:6px}
+    .key-row.r1,.key-row.r2{grid-template-columns:repeat(10,1fr)}
+    .key-row.r3{grid-template-columns:repeat(6,1fr);padding-inline:20%}
+    .letter{aspect-ratio:1.13;min-width:0;padding:0;border:0;border-bottom:4px solid var(--orange-dark);border-radius:5px;background:linear-gradient(#ff8739,var(--orange));color:#311305;font:700 clamp(15px,4vw,25px)/1 "Share Tech Mono",monospace;cursor:pointer;box-shadow:0 2px 2px rgba(80,39,0,.35)}
+    .letter.vowel{background:linear-gradient(#ffe66f,var(--yellow));border-bottom-color:var(--yellow-dark)}
+    .utility-row{display:grid;grid-template-columns:1fr 1.3fr 1.3fr;gap:8px;margin-top:11px}
+    .utility{min-height:40px;border:0;border-bottom:4px solid var(--blue-dark);border-radius:5px;background:linear-gradient(#226994,var(--blue));color:#f6e8ae;font-weight:900;font-size:13px;letter-spacing:.04em;cursor:pointer;box-shadow:0 2px 2px rgba(0,0,0,.35)}
+    .logo{margin:15px 0 2px;text-align:center;font:bold clamp(28px,7vw,43px)/.9 "Ubuntu Condensed",sans-serif;letter-spacing:-.055em;text-transform:lowercase;transform:skew(-5deg)}
+    .logo .speak{color:#f07722;text-shadow:1px 1px 0 #7f1f0a,-1px -1px 0 #ffd27e}.logo .spell{color:#5bc8e8;text-shadow:1px 1px 0 #084b77,-1px -1px 0 #c2f5ff}.logo small{font-size:.4em;color:#efe0b9;letter-spacing:.02em;vertical-align:middle;text-shadow:1px 1px #4d160c}
+    .brandline{text-align:center;color:#efc782;font-size:10px;letter-spacing:.17em;text-transform:uppercase;margin-top:6px}
+    .reset{position:absolute;right:16px;bottom:14px;width:18px;height:18px;border-radius:50%;border:2px solid #5c100e;background:#8c1a17;color:transparent;box-shadow:inset 0 1px 3px #390706;cursor:pointer}
+    .reset:after{content:"RESET";position:absolute;right:23px;top:2px;color:#e7b49a;font-size:8px;letter-spacing:.08em}
+    .statusbar{width:min(580px,96vw);display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px;background:var(--panel);border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);padding:10px 14px;border-radius:8px}
+    .statuscopy{min-width:0}.statuscopy strong{display:block;font-size:18px}.statuscopy span{color:var(--muted);font-size:14px}
+    .score{font-family:"Share Tech Mono",monospace;font-size:18px;color:var(--ink);white-space:nowrap}
+    .manual{width:min(700px,96vw);background:var(--panel);border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);border-radius:10px;overflow:hidden}
+    .manual summary{cursor:pointer;list-style:none;padding:13px 16px;font-weight:800;font-size:17px;display:flex;justify-content:space-between;align-items:center}.manual summary::-webkit-details-marker{display:none}.manual summary:after{content:"+";font:22px/1 monospace}.manual[open] summary:after{content:"−"}
+    .manual-body{border-top:1px solid color-mix(in srgb,var(--ink) 14%,transparent);padding:14px 16px 18px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px 24px}
+    .manual h2{font-size:17px;margin:0 0 5px}.manual p{margin:0;color:var(--muted);line-height:1.35;font-size:15px}.manual kbd{font-family:inherit;font-weight:bold;color:var(--ink)}
+    .future{color:var(--ink);text-decoration:none;font-weight:900;letter-spacing:.06em;font-size:16px;padding:8px 12px;animation:pulse 2.2s ease-in-out infinite}.future span{color:#d14b23}
+    @keyframes pulse{50%{opacity:.55;text-shadow:0 0 8px color-mix(in srgb,var(--orange) 75%,transparent)}}
+    @media (prefers-reduced-motion:reduce){.future{animation:none}}
+    @media (max-width:560px){
+      body{padding-inline:4px}.device-wrap{width:100%;padding-top:34px}.handle{height:74px;border-width:20px;left:13%;right:13%}.machine{border-width:3px;border-radius:18px 18px 31px 31px;padding:10px 9px 16px}.top-deck{grid-template-columns:74px 1fr;gap:8px;padding:8px}.speaker{height:54px;gap:4px}.slot{width:4px}.vfd{height:44px}.functions{gap:2px;margin:9px 0 8px}.fn{min-height:38px;font-size:6.8px;border-bottom-width:3px}.key-bed{padding:8px 7px}.letters,.key-row{gap:4px}.letter{border-bottom-width:3px}.key-row.r3{padding-inline:18%}.utility{min-height:36px;font-size:11px}.logo{margin-top:12px}.brandline{font-size:8px}.reset{right:11px;bottom:11px}.manual-body{grid-template-columns:1fr}.statusbar{width:98%}.manual{width:98%}
+    }
+
+    /* 1978 case reconstruction — proportions and surfaces follow the supplied unit */
+    body{padding-top:22px;background:var(--page)}
+    .stage{width:min(720px,100%);gap:15px}
+    .device-wrap{width:min(522px,96vw);padding-top:0;filter:drop-shadow(0 22px 20px var(--shadow))}
+    .handle{
+      z-index:4;top:0;left:7.5%;right:7.5%;height:127px;
+      border:25px solid #f12d20;border-bottom-width:22px;border-radius:54px 54px 25px 25px;
+      background:var(--page);
+      box-shadow:inset 0 5px 7px rgba(80,0,0,.35),inset 0 -3px 0 rgba(255,255,255,.15),0 -3px 0 #a71914;
+    }
+    .machine{
+      z-index:1;margin:0;background:linear-gradient(90deg,#c7261d 0,#f13a2c 6%,#f54232 49%,#ef3528 94%,#bf211a 100%);
+      border:4px solid #971711;border-radius:42px 42px 58px 58px;padding:108px 17px 22px;
+      box-shadow:inset 7px 0 rgba(255,255,255,.09),inset -8px 0 rgba(95,0,0,.13),inset 0 -9px rgba(104,7,3,.12)
+    }
+    .machine:before{inset:7px;border-color:rgba(255,255,255,.16);border-radius:35px 35px 51px 51px}
+    .top-deck{
+      position:relative;z-index:5;margin:0 -17px;background:#120e10;border:0;border-top:5px solid #33090a;border-bottom:5px solid #7c1713;
+      border-radius:0;padding:10px 20px 10px 14px;height:112px;grid-template-columns:42% 58%;gap:18px;box-shadow:inset 0 5px 10px #000,0 2px rgba(255,255,255,.15)
+    }
+    .speaker{height:84px;display:flex;flex-direction:row;gap:6px;align-items:stretch;justify-content:flex-start;padding:5px 6px}
+    .slot{display:block;width:6px;height:100%;border-radius:5px;background:linear-gradient(90deg,#030304,#323239 48%,#030304 60%);box-shadow:none}
+    .display-shell{align-self:center}.vfd{height:45px;border:0;background:#070809;box-shadow:inset 0 0 17px #000;border-radius:1px}
+    #display{font-size:26px;letter-spacing:.15em;color:#56c79a;text-shadow:0 0 2px #56c79a,0 0 8px #187451}
+    .meter{display:none}
+    .key-bed{
+      position:relative;margin:28px 4px 0;padding:24px 17px 18px;background:#ffdc2f;border:4px solid #db5a3d;border-radius:36px 36px 44px 44px;
+      box-shadow:0 0 0 6px #ffe33e,inset 0 2px rgba(255,255,255,.45);overflow:hidden
+    }
+    .key-bed:before{content:"";position:absolute;z-index:0;left:12px;right:12px;top:16px;height:272px;background:#0ba1da;border:4px solid #ef846f;border-radius:9px;box-shadow:inset 0 1px rgba(255,255,255,.25)}
+    .functions,.letters,.utility-row,.logo-panel{position:relative;z-index:1}
+    .functions{grid-template-columns:repeat(11,minmax(0,1fr));gap:4px;margin:0 0 7px}
+    .fn,.fn:nth-child(2),.fn:nth-child(10),.fn.power{
+      min-height:43px;padding:3px 1px 2px;background:#df554c;border:0;border-bottom:3px solid #8e2825;border-radius:5px;color:#292b30;
+      font:bold 8px/1 "Ubuntu Condensed","Arial Narrow",sans-serif;box-shadow:0 1px 2px rgba(56,0,0,.34);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px
+    }
+    .fn span{display:block;color:#ffe443;font-size:7px;line-height:.9;text-shadow:0 1px #8f4938}
+    .fn[aria-pressed="true"]{outline:2px solid #fff176;outline-offset:1px;box-shadow:0 0 9px #fff176}
+    .letters{gap:6px}.key-row{gap:5px}.key-row.r3{padding-inline:20%}
+    .letter{
+      aspect-ratio:1.12;min-width:0;background:#ee8260;border:0;border-bottom:3px solid #a7462d;border-radius:5px;color:#424047;
+      font:900 23px/1 "Ubuntu Condensed","Arial Narrow",sans-serif;box-shadow:0 1px 2px rgba(70,0,0,.28)
+    }
+    .letter.vowel{background:#dce45c;border-bottom-color:#879331}
+    .utility-row{grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}
+    .utility{
+      min-height:47px;padding:2px;background:#eb766c;border:0;border-bottom:3px solid #a73b35;border-radius:5px;color:#35343b;
+      box-shadow:0 1px 2px rgba(56,0,0,.34);display:flex;flex-direction:column;align-items:center;justify-content:center
+    }
+    .utility b{font-size:24px;line-height:.8}.utility span{margin-top:5px;color:#ffed56;font-size:9px;line-height:1}
+    .logo-panel{margin:23px -4px -5px;min-height:91px;display:flex;align-items:center;padding:5px 8px;background:#ffdf31;border-radius:0 0 25px 25px}
+    .logo{margin:0;text-align:left;text-transform:none;transform:none;font:900 36px/.74 Georgia,"Times New Roman",serif;letter-spacing:-.08em;white-space:nowrap}
+    .logo .speak{display:inline-block;color:#ed7651;text-shadow:none;transform:translateY(-8px)}
+    .logo small{display:inline-block;margin:-3px 2px 0 -56px;color:#129ccc;font-size:.9em;line-height:.7;text-shadow:none;transform:translateY(20px)}
+    .logo .spell{display:inline-block;color:#159dce;text-shadow:none;transform:translateY(15px)}
+    .logo sup{font:8px/1 sans-serif;color:#42818b;vertical-align:bottom;margin-left:3px}
+    .brandline{margin:16px 0 0;color:#ffd4a5;font-size:8px;letter-spacing:.2em}
+    .reset{right:17px;bottom:13px}
+    .statusbar{width:min(522px,96vw)}
+    @media (max-width:560px){
+      body{padding:10px 3px 28px}.stage{gap:12px}.device-wrap{width:100%}
+      .handle{left:8%;right:8%;height:90px;border-width:18px;border-bottom-width:16px;border-radius:39px 39px 18px 18px}
+      .machine{border-width:3px;border-radius:29px 29px 41px 41px;padding:76px 11px 17px}
+      .machine:before{border-radius:23px 23px 35px 35px}
+      .top-deck{margin:0 -11px;height:81px;padding:7px 12px 7px 10px;gap:10px;border-top-width:4px;border-bottom-width:4px}
+      .speaker{height:65px;gap:4px;padding:4px}.slot{width:4px;height:100%}.vfd{height:35px}#display{font-size:clamp(17px,5.5vw,23px)}
+      .key-bed{margin:19px 3px 0;padding:17px 10px 12px;border-width:3px;border-radius:25px 25px 31px 31px;box-shadow:0 0 0 4px #ffe33e}
+      .key-bed:before{left:7px;right:7px;top:10px;height:206px;border-width:3px}
+      .functions{gap:2px;margin-bottom:5px}.fn,.fn:nth-child(2),.fn:nth-child(10),.fn.power{min-height:33px;padding:2px 0;font-size:6px;border-bottom-width:2px}.fn span{font-size:5.2px}
+      .letters{gap:4px}.key-row{gap:3px}.letter{font-size:clamp(15px,5vw,20px);border-bottom-width:2px}
+      .utility-row{gap:4px;margin-top:5px}.utility{min-height:36px;border-bottom-width:2px}.utility b{font-size:18px}.utility span{font-size:7px;margin-top:3px}
+      .logo-panel{margin:18px -2px -3px;min-height:67px;padding-left:6px;border-radius:0 0 19px 19px}.logo{font-size:clamp(24px,8.4vw,33px)}
+      .brandline{margin-top:12px;font-size:6px}.reset{right:10px;bottom:9px}.statusbar,.manual{width:98%}
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="device-wrap">
+      <div class="handle" aria-hidden="true"></div>
+      <section class="machine" aria-label="1978 Speak and Spell recreation">
+        <div class="top-deck">
+          <div class="speaker" aria-label="Speaker grille" aria-hidden="true">
+            <i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i><i class="slot"></i>
+          </div>
+          <div class="display-shell">
+            <div class="vfd" aria-live="polite" aria-atomic="true"><div id="display">OFF     </div></div>
+            <div class="meter"><span>8 CHARACTER VFD</span><span class="speak-led" id="voiceLed">● VOICE</span></div>
+          </div>
+        </div>
+
+        <div class="key-bed">
+          <div class="functions" aria-label="Game and function controls">
+            <button class="fn power" data-action="off">OFF</button>
+            <button class="fn" data-action="go">GO</button>
+            <button class="fn" data-action="replay" aria-label="Replay"><span>REPLAY</span>↶</button>
+            <button class="fn" data-action="repeat" aria-label="Repeat"><span>REPEAT</span>〃</button>
+            <button class="fn" data-action="clue"><span>CLUE</span>━</button>
+            <button class="fn" data-mode="mystery"><span>MYSTERY<br>WORD</span>?</button>
+            <button class="fn" data-mode="secret"><span>SECRET<br>CODE</span>♟</button>
+            <button class="fn" data-mode="letter"><span>LETTER</span>??</button>
+            <button class="fn" data-mode="say"><span>SAY IT</span>●</button>
+            <button class="fn" data-mode="spell"><span>SPELL</span>●</button>
+            <button class="fn power" data-action="on">ON</button>
+          </div>
+          <div class="letters" id="letterKeys" aria-label="Alphabet keyboard">
+            <div class="key-row r1" data-letters="ABCDEFGHIJ"></div>
+            <div class="key-row r2" data-letters="KLMNOPQRST"></div>
+            <div class="key-row r3" data-letters="UVWXYZ"></div>
+          </div>
+          <div class="utility-row">
+            <button class="utility" data-action="volume"><b>♪</b><span>VOLUME</span></button>
+            <button class="utility" data-action="erase"><b>#</b><span>ERASE</span></button>
+            <button class="utility" data-action="enter"><b>↑</b><span>ENTER</span></button>
+          </div>
+          <div class="logo-panel">
+            <div class="logo"><span class="speak">Speak</span><small>&amp;</small><span class="spell">Spell</span><sup>™</sup></div>
+          </div>
+        </div>
+        <div class="brandline">Texas Instruments · Solid State Speech</div>
+        <button class="reset" data-action="reset" aria-label="Reset game"></button>
+      </section>
+    </div>
+
+    <div class="statusbar" aria-live="polite">
+      <div class="statuscopy"><strong id="modeName">Power is off</strong><span id="hint">Press ON, then choose a game.</span></div>
+      <div class="score" id="score">0 / 0</div>
+    </div>
+
+    <details class="manual">
+      <summary>Rules &amp; controls</summary>
+      <div class="manual-body">
+        <section><h2>Spell / Say It</h2><p><kbd>SPELL</kbd> speaks a word; type it and press <kbd>ENTER</kbd>. In <kbd>SAY IT</kbd>, type any word and press <kbd>SAY IT</kbd> again or <kbd>ENTER</kbd> to hear it. <kbd>REPLAY</kbd> repeats the last word. SPELL words advance from Level A to C.</p></section>
+        <section><h2>Mystery Word</h2><p>Electronic hangman. Guess one letter at a time. Correct letters appear in place; six misses ends the round. <kbd>CLUE</kbd> reveals one letter.</p></section>
+        <section><h2>Secret Code</h2><p>Type up to eight letters and press <kbd>ENTER</kbd> to shift each letter three places. <kbd>REPEAT</kbd> toggles ENCODE / DECODE. Press <kbd>GO</kbd> to clear.</p></section>
+        <section><h2>Letter</h2><p>Type up to eight letters and press <kbd>ENTER</kbd>. Each letter moves one place down the alphabet (Z returns to A). <kbd>ERASE</kbd> removes the last letter.</p></section>
+        <section><h2>Keyboard</h2><p>Tap the original alphabetical membrane keys, or use a physical keyboard. <kbd>Enter</kbd>, <kbd>Backspace</kbd>, and <kbd>Escape</kbd> work too.</p></section>
+        <section><h2>Sound</h2><p>The first tap unlocks audio. <kbd>VOLUME</kbd> cycles loud, soft, and mute. The synthesized voice uses a low pitch and measured cadence to evoke the 1978 LPC voice.</p></section>
+      </div>
+    </details>
+
+    <a class="future" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">Visit <span>Future Ready</span> →</a>
+  </main>
+
+  <script>
+  (function(){
+    'use strict';
+    var vowels='AEIOU';
+    var rows=document.querySelectorAll('.key-row');
+    rows.forEach(function(row){
+      row.dataset.letters.split('').forEach(function(ch){
+        var b=document.createElement('button'); b.className='letter'+(vowels.indexOf(ch)>-1?' vowel':''); b.textContent=ch; b.dataset.letter=ch; b.setAttribute('aria-label','Letter '+ch); row.appendChild(b);
+      });
+    });
+
+    var display=document.getElementById('display'), voiceLed=document.getElementById('voiceLed');
+    var modeName=document.getElementById('modeName'), hint=document.getElementById('hint'), scoreEl=document.getElementById('score');
+    var power=false, mode='spell', buffer='', answer='', correct=0, rounds=0, volume=1, codeDirection=1, misses=0, guessed=[], sayTimer=0, roundLocked=false;
+    var audioCtx=null;
+    var synth=('speechSynthesis' in window)?window.speechSynthesis:null, voices=[], activeUtterance=null;
+    var words={
+      A:['CAT','DOG','SUN','RED','TREE','BOOK','MILK','FISH','HAND','BALL','HOUSE','GREEN'],
+      B:['APPLE','CHAIR','WATER','SMILE','BREAD','TRAIN','CLOCK','LIGHT','PLANT','SCHOOL','BRIDGE','CLOUD'],
+      C:['FRIEND','YELLOW','WINDOW','PLANET','GARDEN','POCKET','MARKET','THUNDER','PENCIL','RABBIT','WINTER','BUTTON']
+    };
+    var levelKeys=['A','B','C'], levelIndex=0, used=[];
+
+    function fit8(s){s=String(s||'').toUpperCase();return (s+'        ').slice(0,8)}
+    function show(s){display.textContent=fit8(s)}
+    function setStatus(title,text){modeName.textContent=title;hint.textContent=text}
+    function updateScore(){scoreEl.textContent=correct+' / '+rounds}
+    function ensureAudio(){
+      if(!audioCtx){var AC=window.AudioContext||window.webkitAudioContext;if(AC)audioCtx=new AC()}
+      if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+    }
+    function tone(freq,dur,type,delay,gain){
+      ensureAudio(); if(!audioCtx||volume===0)return;
+      var t=audioCtx.currentTime+(delay||0),o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.type=type||'square';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime((gain||.07)*volume,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+dur);
+    }
+    function keyClick(){tone(180,.035,'square',0,.035)}
+    function happy(){tone(440,.09,'square',0,.065);tone(660,.1,'square',.1,.065);tone(880,.16,'square',.22,.065)}
+    function buzz(){tone(118,.27,'sawtooth',0,.08);tone(83,.3,'square',.04,.045)}
+    function robotLead(){tone(370,.045,'square',0,.03);tone(250,.055,'square',.055,.025)}
+
+    function refreshVoices(){
+      voices=synth?synth.getVoices():[];
+      return voices;
+    }
+    function chooseVoice(){
+      var vs=voices.length?voices:refreshVoices();
+      var prefs=['Fred','Zarvox','Daniel','Alex','Microsoft David','Google US English'];
+      for(var p=0;p<prefs.length;p++){for(var i=0;i<vs.length;i++){if(vs[i].name.indexOf(prefs[p])>-1)return vs[i]}}
+      for(var j=0;j<vs.length;j++){if(/^en([-_]|$)/i.test(vs[j].lang))return vs[j]}
+      return vs[0]||null;
+    }
+    function speak(text){
+      if(!power||volume===0)return;
+      ensureAudio();robotLead();
+      if(!synth||typeof window.SpeechSynthesisUtterance!=='function'){setStatus(modeLabel(),'Voice unavailable in this browser.');return}
+      var phrase=String(text||'').trim();if(!phrase)return;
+      var wasBusy=synth.speaking||synth.pending;
+      if(wasBusy)synth.cancel();
+      var u=new SpeechSynthesisUtterance(phrase.toLowerCase());
+      var v=chooseVoice();if(v){u.voice=v;u.lang=v.lang||'en-US'}else{u.lang='en-US'}
+      u.rate=.68;u.pitch=.58;u.volume=Math.min(1,.88*volume);activeUtterance=u;
+      u.onstart=function(){if(activeUtterance===u)voiceLed.classList.add('on')};
+      u.onend=function(){if(activeUtterance===u){voiceLed.classList.remove('on');activeUtterance=null}};
+      u.onerror=function(event){
+        if(activeUtterance===u){voiceLed.classList.remove('on');activeUtterance=null}
+        if(event&&event.error==='not-allowed')setStatus(modeLabel(),'Tap REPLAY once to enable the voice.');
+      };
+      var play=function(){if(!power||volume===0)return;if(typeof synth.resume==='function')synth.resume();synth.speak(u)};
+      if(wasBusy)setTimeout(play,0);else play();
+    }
+    if(synth){
+      refreshVoices();
+      if(typeof synth.addEventListener==='function')synth.addEventListener('voiceschanged',refreshVoices);
+      else synth.onvoiceschanged=refreshVoices;
+    }
+
+    function modeLabel(){return {spell:'SPELL',say:'SAY IT',mystery:'MYSTERY WORD',secret:'SECRET CODE',letter:'LETTER'}[mode]||'SPELL'}
+    function pressState(){document.querySelectorAll('.fn[data-mode]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.mode===mode))})}
+    function nextWord(){
+      var pool=words[levelKeys[levelIndex]],available=pool.filter(function(w){return used.indexOf(w)<0});if(!available.length){used=[];available=pool.slice()}
+      answer=available[Math.floor(Math.random()*available.length)];used.push(answer);buffer='';guessed=[];misses=0;roundLocked=false;
+      if(mode==='spell'){
+        show('SPELL');setStatus('Spell · Level '+levelKeys[levelIndex],'Listen, type the word, then press ENTER.');speak(answer);setTimeout(function(){if(power&&mode==='spell'&&!buffer)show('')},850)
+      }else if(mode==='mystery'){
+        show(mysteryMask());setStatus('Mystery Word','Guess a letter · '+(6-misses)+' misses left.');speak('Mystery word')
+      }
+    }
+    function mysteryMask(){return answer.split('').map(function(c){return guessed.indexOf(c)>-1?c:'_'}).join('')}
+    function startMode(next){
+      if(!power)return;mode=next;buffer='';roundLocked=false;pressState();
+      if(mode==='secret'){show('ENCODE');setStatus('Secret Code · Encode','Type up to eight letters, then press ENTER.');speak('Secret code')}
+      else if(mode==='letter'){show('LETTER');setStatus('Letter','Type a word. ENTER shifts every letter forward.');speak('Letter')}
+      else if(mode==='say'){answer='';show('');setStatus('Say It','Type any word, then press SAY IT or ENTER.');speak('Say it')}
+      else nextWord();
+    }
+    function powerOn(){ensureAudio();power=true;show('READY');setStatus('Ready','Choose SPELL, SAY IT, MYSTERY WORD, SECRET CODE, or LETTER.');speak('Ready');tone(250,.06,'square');tone(430,.1,'square',.08)}
+    function powerOff(){power=false;buffer='';answer='';roundLocked=false;if(window.speechSynthesis)window.speechSynthesis.cancel();voiceLed.classList.remove('on');show('OFF');setStatus('Power is off','Press ON, then choose a game.');document.querySelectorAll('.fn[data-mode]').forEach(function(b){b.setAttribute('aria-pressed','false')})}
+    function addLetter(ch){
+      if(!power)return;keyClick();
+      if(mode==='mystery'){
+        if(guessed.indexOf(ch)>-1)return;guessed.push(ch);
+        if(answer.indexOf(ch)<0){misses++;buzz()}
+        show(mysteryMask());setStatus('Mystery Word','Guess a letter · '+Math.max(0,6-misses)+' misses left.');
+        if(mysteryMask().indexOf('_')<0){correct++;rounds++;updateScore();happy();setStatus('Correct!','The word was '+answer+'.');speak('Correct. '+answer);setTimeout(nextWord,1900)}
+        else if(misses>=6){rounds++;updateScore();buzz();show(answer);setStatus('Round over','The word was '+answer+'.');speak('The word is '+answer);setTimeout(nextWord,2200)}
+        return;
+      }
+      if(buffer.length<8){buffer+=ch;show(buffer)}
+    }
+    function erase(){if(!power||mode==='mystery')return;buffer=buffer.slice(0,-1);show(buffer);keyClick()}
+    function submit(){
+      if(!power||roundLocked)return;ensureAudio();
+      if(mode==='say'){
+        if(!buffer){setStatus('Say It','Type any word, then press SAY IT or ENTER.');return}
+        var sayWord=buffer.trim().toUpperCase();answer=sayWord;buffer='';show(sayWord);setStatus('Say It','Speaking “'+sayWord+'”. Type another word whenever you’re ready.');speak(sayWord)
+      }else if(mode==='spell'){
+        if(!buffer){speak(answer);return}
+        var typed=buffer.trim().toUpperCase(),expected=String(answer||'').trim().toUpperCase();
+        rounds++;roundLocked=true;
+        if(typed===expected){correct++;updateScore();show('CORRECT');setStatus('Correct!','Good spelling. Next word…');happy();speak('Correct');if(correct>0&&correct%4===0&&levelIndex<2)levelIndex++;setTimeout(nextWord,1700)}
+        else{updateScore();show('TRYAGAIN');setStatus('Try again','Listen carefully and spell the same word.');buzz();buffer='';setTimeout(function(){roundLocked=false;show('');speak(answer)},850)}
+      }else if(mode==='secret'||mode==='letter'){
+        if(!buffer){show(mode==='secret'?(codeDirection===1?'ENCODE':'DECODE'):'LETTER');return}
+        var shift=mode==='letter'?1:3*codeDirection;
+        var out=buffer.split('').map(function(c){var n=(c.charCodeAt(0)-65+shift+26)%26;return String.fromCharCode(65+n)}).join('');
+        show(out);setStatus(mode==='secret'?'Secret Code · Result':'Letter · Result',buffer+' → '+out+' · Press GO to clear.');speak(out.split('').join(' '));buffer=out;
+      }
+    }
+    function replay(){if(!power)return;if((mode==='spell'||mode==='say')&&answer)speak(answer);else if(buffer)speak(mode==='say'?buffer:buffer.split('').join(' '));else speak(modeLabel())}
+    function clue(){
+      if(!power)return;
+      if(mode==='mystery'){
+        var hidden=answer.split('').filter(function(c){return guessed.indexOf(c)<0});if(hidden.length){var c=hidden[Math.floor(Math.random()*hidden.length)];guessed.push(c);show(mysteryMask());speak('The letter '+c)}
+      }else if(mode==='spell'&&answer){show(answer.charAt(0)+new Array(answer.length).join('_'));speak('The first letter is '+answer.charAt(0))}
+    }
+    function repeat(){
+      if(!power)return;
+      if(mode==='secret'){codeDirection*=-1;buffer='';show(codeDirection===1?'ENCODE':'DECODE');setStatus('Secret Code · '+(codeDirection===1?'Encode':'Decode'),'Type up to eight letters, then press ENTER.');speak(codeDirection===1?'Encode':'Decode')}
+      else replay();
+    }
+    function go(){if(!power)return;if(mode==='spell'||mode==='mystery')nextWord();else if(mode==='say'){buffer='';answer='';show('');setStatus('Say It','Type any word, then press SAY IT or ENTER.')}else{buffer='';show(mode==='secret'?(codeDirection===1?'ENCODE':'DECODE'):'LETTER');setStatus(mode==='secret'?'Secret Code · '+(codeDirection===1?'Encode':'Decode'):'Letter','Type up to eight letters, then press ENTER.')}}
+    function reset(){correct=0;rounds=0;levelIndex=0;used=[];updateScore();if(power)startMode(mode);else powerOff()}
+    function cycleVolume(){volume=volume===1?.55:volume===.55?0:1;show(volume===1?'VOL HI':volume===.55?'VOL LO':'MUTED');setStatus(modeLabel(),'Volume '+(volume===1?'high':volume===.55?'low':'muted')+'.');if(volume)speak('Volume')}
+
+    document.addEventListener('click',function(e){
+      var b=e.target.closest('button');if(!b)return;ensureAudio();
+      if(b.dataset.letter){addLetter(b.dataset.letter);return}
+      if(b.dataset.mode){
+        if(b.dataset.mode==='say'&&buffer){mode='say';roundLocked=false;pressState();submit()}
+        else startMode(b.dataset.mode);
+        return;
+      }
+      var a=b.dataset.action;
+      if(a==='on')powerOn();else if(a==='off')powerOff();else if(a==='go')go();else if(a==='replay')replay();else if(a==='repeat')repeat();else if(a==='clue')clue();else if(a==='volume')cycleVolume();else if(a==='erase')erase();else if(a==='enter')submit();else if(a==='reset')reset();
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.ctrlKey||e.metaKey||e.altKey)return;
+      var k=e.key.toUpperCase();
+      if(/^[A-Z]$/.test(k)){e.preventDefault();addLetter(k)}
+      else if(e.key==='Enter'){e.preventDefault();submit()}
+      else if(e.key==='Backspace'){e.preventDefault();erase()}
+      else if(e.key==='Escape'){e.preventDefault();reset()}
+    });
+    powerOff();updateScore();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#161310" />
+  <link rel="icon" href="data:," />
+  <title>Mattel Baseball</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Chakra+Petch:wght@500;600;700&display=swap');
+    :root{color-scheme:light dark;--page:#d5cfbf;--ink:#201b15;--panel:#f2ede1;--muted:#5c5449;--rule:#a99f8c}
+    @media(prefers-color-scheme:dark){:root{--page:#151310;--ink:#f5eee0;--panel:#211e19;--muted:#c9beaa;--rule:#4f483e}}
+    *{box-sizing:border-box}
+    html{min-width:320px;background:var(--page)}
+    body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% 9%,color-mix(in srgb,var(--page) 86%,white 14%),var(--page) 58%);color:var(--ink);font-family:"Barlow Condensed",sans-serif;overscroll-behavior:none}
+    main{width:100%;padding:10px 12px 18px;display:grid;justify-items:center;gap:10px}
+    .players{display:flex;align-items:center;gap:10px;font:700 14px/1 "Chakra Petch",sans-serif;color:var(--muted)}
+    .players button{appearance:none;border:1px solid var(--rule);background:var(--panel);color:var(--ink);font:700 13px/1 "Chakra Petch",sans-serif;padding:8px 12px;cursor:pointer;box-shadow:0 2px 0 color-mix(in srgb,var(--rule) 80%,black 20%)}
+    .players button[aria-pressed="true"]{background:#382a20;color:#fff4dc;border-color:#382a20}
+    .device{position:relative;width:min(94vw,430px);aspect-ratio:0.62;background:linear-gradient(90deg,#c8b487 0%,#f0deb1 5%,#eed9a5 48%,#d8c493 94%,#bca777 100%);border-radius:34px 34px 15px 15px;padding:6.2% 5.3% 4%;box-shadow:0 3px 0 #a38c61,0 18px 34px rgba(29,22,13,.35),inset 0 1px 3px #fff9da,inset 0 -5px 12px rgba(111,87,42,.28);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+    .device:before{content:"";position:absolute;inset:1.4% 2.1%;border-radius:29px 29px 12px 12px;border:1px solid rgba(255,255,255,.35);pointer-events:none}
+    .stadium{height:56%;position:relative;border-radius:40% 40% 44% 44% / 14% 14% 33% 33%;padding:9.5% 8.4% 11.5%;background:repeating-linear-gradient(90deg,#88734b 0 4px,#aa9565 4px 8px,#6f5a3d 8px 11px);box-shadow:inset 0 0 0 3px #5d4935,inset 0 0 0 7px #b9a16d,0 3px 2px rgba(255,255,255,.45)}
+    .scoreboard{position:absolute;z-index:6;top:-1.2%;left:15.5%;right:15.5%;height:18%;background:linear-gradient(#dddacb,#b7b6ae 34%,#eceadc 35%,#c9c7b9);border:3px solid #4a3c34;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.48);padding:1.5% 2%}
+    .score-top{height:29%;display:grid;grid-template-columns:1fr 1fr;text-align:center;color:#2e4d7b;font:700 clamp(7px,1.9vw,10px)/1 "Chakra Petch",sans-serif;letter-spacing:.06em}
+    .score-digits{height:50%;display:grid;grid-template-columns:repeat(4,1fr);gap:4%;align-items:center}
+    .digit{position:relative;height:100%;background:#150f0d;border:1px solid #716a62;box-shadow:inset 0 1px 4px #000}
+    .seg{position:absolute;background:#3e1713;opacity:.38;border-radius:3px;transition:none}
+    .seg.on{background:#ff321f;opacity:1;box-shadow:0 0 3px #ff2b19,0 0 7px #ff3b25}
+    .seg.a,.seg.g,.seg.d{left:24%;width:52%;height:10%;clip-path:polygon(9% 0,91% 0,100% 50%,91% 100%,9% 100%,0 50%)}
+    .seg.a{top:8%}.seg.g{top:45%}.seg.d{bottom:7%}
+    .seg.b,.seg.c,.seg.e,.seg.f{width:10%;height:34%;clip-path:polygon(50% 0,100% 10%,100% 90%,50% 100%,0 90%,0 10%)}
+    .seg.b{right:14%;top:12%}.seg.c{right:14%;bottom:11%}.seg.f{left:14%;top:12%}.seg.e{left:14%;bottom:11%}
+    .score-labels{height:21%;display:grid;grid-template-columns:repeat(4,1fr);text-align:center;color:#32466c;font:800 clamp(5px,1.45vw,8px)/1 "Barlow Condensed",sans-serif;letter-spacing:.03em;align-items:end}
+    .field{height:100%;position:relative;overflow:hidden;border-radius:32% 32% 42% 42% / 15% 15% 34% 34%;background:#68a83f;border:2px solid #50822e;box-shadow:inset 0 0 15px rgba(30,55,18,.38)}
+    .field svg{position:absolute;inset:0;width:100%;height:100%}
+    .fielder{position:absolute;width:8%;height:13%;z-index:2}
+    .fielder:before{content:"";position:absolute;left:33%;top:0;width:26%;aspect-ratio:1;border-radius:50%;background:#f7f2df;box-shadow:0 8px 0 -1px #f7f2df}
+    .fielder:after{content:"";position:absolute;left:22%;top:35%;width:56%;height:52%;background:#f7f2df;clip-path:polygon(35% 0,64% 0,100% 38%,72% 48%,66% 100%,48% 100%,42% 54%,14% 81%,0 65%,34% 32%)}
+    .f1{left:24%;top:24%}.f2{left:54%;top:13%}.f3{right:21%;top:24%}
+    .pitcher{position:absolute;z-index:2;left:40%;top:52%;width:8%;height:13%}
+    .pitcher:before{content:"";position:absolute;left:35%;width:25%;aspect-ratio:1;border-radius:50%;background:#f7f2df}
+    .pitcher:after{content:"";position:absolute;left:12%;top:24%;width:78%;height:68%;background:#f7f2df;clip-path:polygon(42% 0,68% 0,100% 20%,78% 39%,61% 26%,68% 100%,51% 100%,43% 56%,20% 85%,0 70%,37% 26%)}
+    .batter{position:absolute;z-index:2;left:40%;bottom:3%;width:8%;height:13%}
+    .batter:before{content:"";position:absolute;left:35%;width:25%;aspect-ratio:1;border-radius:50%;background:#3278b3}
+    .batter:after{content:"";position:absolute;left:8%;top:24%;width:84%;height:70%;background:#3278b3;clip-path:polygon(38% 0,64% 0,78% 25%,100% 3%,100% 16%,75% 43%,64% 100%,48% 100%,40% 54%,19% 96%,0 88%,32% 36%)}
+    .window{position:absolute;z-index:3;width:10%;aspect-ratio:1.05;background:#140d09;border-radius:5px;box-shadow:inset 0 2px 4px #000,0 1px 1px rgba(255,255,255,.25)}
+    .w-left{left:12%;top:25%}.w-center{left:45%;top:13%}.w-right{right:9%;top:25%}.w-mound{left:46%;top:53%;height:21%;width:9%;border-radius:10px}.w-home{left:47%;bottom:2%;height:20%;width:10%;border-radius:6px}
+    .led{position:absolute;z-index:5;width:3px;height:3px;margin:-1.5px;background:#280503;border:0;border-radius:50%;opacity:.3;transition:none;pointer-events:none}
+    .led.on{opacity:1;background:#ff260d;box-shadow:0 0 .5px #fff7ec,0 0 2px #ff2108,0 0 4px rgba(255,25,5,.62)}
+    .led.on:after{content:"";position:absolute;inset:.75px;border-radius:50%;background:#fff3dc}
+    .led.flash{animation:blink .12s steps(1,end) infinite}
+    @keyframes blink{50%{opacity:.16;box-shadow:none}}
+    .base{position:absolute;z-index:4;width:7%;aspect-ratio:1;transform:rotate(45deg);border:3px solid #eee6d3;background:transparent}
+    .base.on{background:radial-gradient(circle at 50% 50%,#fff6e8 0 .65px,#ff260d .85px 1.75px,rgba(255,28,8,.35) 2.1px,transparent 3.2px);border-color:#eee6d3;box-shadow:none}
+    .base1{right:18%;bottom:25%}.base2{left:47%;top:39%}.base3{left:18%;bottom:25%}
+    .homeplate{position:absolute;z-index:4;left:48%;bottom:2%;width:7%;height:6%;border:3px solid #eee6d3;clip-path:polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)}
+    .play-leds .led:nth-child(1){left:50%;top:57%}.play-leds .led:nth-child(2){left:50%;top:65%}.play-leds .led:nth-child(3){left:50%;top:73%}.play-leds .led:nth-child(4){left:50%;top:82%}.play-leds .led:nth-child(5){left:17%;top:29%}.play-leds .led:nth-child(6){left:50%;top:17%}.play-leds .led:nth-child(7){left:87%;top:29%}.play-leds .led:nth-child(8){left:30%;top:43%}.play-leds .led:nth-child(9){left:70%;top:43%}.play-leds .led:nth-child(10){left:22%;top:62%}.play-leds .led:nth-child(11){left:78%;top:62%}.play-leds .led:nth-child(12){left:50%;top:34%}
+    .control{position:relative;height:29%;margin-top:1.2%;background:linear-gradient(150deg,#51372d,#35231f 60%,#2d1d19);clip-path:polygon(4% 0,27% 0,39% 20%,61% 20%,73% 0,96% 0,100% 8%,100% 88%,96% 96%,4% 96%,0 88%,0 8%);border-radius:10px;color:#f5ead2;padding:3.8% 6% 0;display:grid;grid-template-columns:1fr .82fr 1fr;grid-template-rows:1fr 1fr 19%;gap:2% 7%;box-shadow:inset 0 0 0 3px #8f7860,inset 0 0 0 5px #241612,0 3px 3px rgba(67,45,25,.4)}
+    .game-button{appearance:none;align-self:center;justify-self:center;width:62%;aspect-ratio:1;border:0;border-radius:7px;background:linear-gradient(145deg,#59d0f4,#198ab9);box-shadow:0 0 0 4px #cab998,0 0 0 7px #221713,inset 0 -5px 4px rgba(0,45,72,.32),0 4px 0 #17100d;color:#efe8d6;font:800 clamp(7px,2vw,11px)/1 "Barlow Condensed",sans-serif;text-shadow:0 1px #133849;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    .game-button:active,.game-button.pressed{transform:translateY(3px);box-shadow:0 0 0 4px #cab998,0 0 0 7px #221713,inset 0 -2px 4px rgba(0,45,72,.45),0 1px 0 #17100d}
+    .hit{background:linear-gradient(145deg,#ff8b61,#d94e35);text-shadow:0 1px #702318}
+    .score{grid-column:1;grid-row:1}.pitch{grid-column:1;grid-row:2}.run{grid-column:3;grid-row:1}.hit{grid-column:3;grid-row:2}
+    .switcher{grid-column:2;grid-row:2;align-self:center;text-align:center;color:#d7c9ad;font:800 clamp(6px,1.6vw,9px)/1 "Barlow Condensed",sans-serif}
+    .switch-track{height:24px;margin-top:4px;background:#d9c7a1;border:3px solid #d2ba8c;box-shadow:inset 0 2px 3px #20130f;display:flex;align-items:center;justify-content:center;gap:3px;padding:2px}
+    .switch-track button{appearance:none;border:0;width:31%;height:100%;padding:0;background:transparent;color:#35251e;font:800 8px/1 "Chakra Petch",sans-serif;cursor:pointer}
+    .switch-track button.active{background:#201510;color:#fff0d0;box-shadow:0 1px 2px #000}
+    .brand{grid-column:1/4;grid-row:3;align-self:center;text-align:center;font:700 clamp(13px,4vw,22px)/1 "Chakra Petch",sans-serif;letter-spacing:-.08em;color:#e8dcc5;text-shadow:0 2px #231511}
+    .lower{height:14%;position:relative;margin-top:1.5%}
+    .speaker{position:absolute;left:4%;top:12%;width:45%;height:70%;display:flex;flex-direction:column;justify-content:space-around}
+    .speaker i{display:block;height:3px;background:#9d885e;border-radius:4px;box-shadow:0 1px 0 rgba(255,255,255,.46)}
+    .ballmark{position:absolute;right:7%;top:2%;width:19%;aspect-ratio:1;border:3px solid #b39b6c;border-radius:50%;opacity:.7}
+    .ballmark:before,.ballmark:after{content:"";position:absolute;top:8%;bottom:8%;width:42%;border-radius:50%;border-color:#aa9264;border-style:dashed;border-width:0 2px}
+    .ballmark:before{left:2%;border-right-width:2px}.ballmark:after{right:2%;border-left-width:2px}
+    .nameplate{position:absolute;right:4%;bottom:1%;background:#38231f;color:#ded5c7;border:2px solid #79604d;padding:2% 5%;font:800 clamp(13px,4vw,21px)/1 "Chakra Petch",sans-serif;letter-spacing:.02em;box-shadow:inset 0 0 0 2px #1e1310}
+    .status{position:absolute;z-index:10;left:9%;right:9%;bottom:1.9%;text-align:center;color:#2c211a;font:800 clamp(10px,2.7vw,14px)/1 "Chakra Petch",sans-serif;letter-spacing:.02em;min-height:1em}
+    .guide{width:min(94vw,430px);border-top:1px solid var(--rule);padding-top:14px}
+    .guide h2{font:800 18px/1 "Chakra Petch",sans-serif;margin:0 0 8px}
+    .guide p{font:600 16px/1.35 "Barlow Condensed",sans-serif;margin:0;color:var(--muted)}
+    .guide strong{color:var(--ink)}
+    @media(max-width:600px){
+      body{height:100svh;min-height:100svh;overflow:hidden}
+      main{height:100svh;padding:max(5px,env(safe-area-inset-top)) 6px max(5px,env(safe-area-inset-bottom));gap:5px;align-content:start}
+      .players{height:34px;gap:7px;font-size:12px}
+      .players button{padding:6px 9px;font-size:11px}
+      .device{width:min(96vw,calc((100svh - 49px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .62));max-height:calc(100svh - 49px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+      .guide{display:none}
+    }
+    @media(max-width:360px){.device{width:min(97vw,calc((100svh - 47px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .62))}}
+    @media(prefers-reduced-motion:reduce){.led.flash{animation-duration:.55s}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="players" role="group" aria-label="Number of players">
+    PLAYERS
+    <button type="button" id="onePlayer" aria-pressed="true">1 PLAYER</button>
+    <button type="button" id="twoPlayer" aria-pressed="false">2 PLAYERS</button>
+  </div>
+
+  <section class="device" aria-label="Mattel Electronics Baseball handheld game">
+    <div class="stadium">
+      <div class="scoreboard">
+        <div class="score-top"><span>VISITORS</span><span>HOME</span></div>
+        <div class="score-digits" id="digits"></div>
+        <div class="score-labels"><span>INNINGS</span><span>OUTS</span><span>BALLS</span><span>STRIKES</span></div>
+      </div>
+      <div class="field" id="field">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M4,63 Q15,42 29,33 Q50,19 71,33 Q85,42 96,63 L85,72 Q75,53 50,39 Q25,53 15,72Z" fill="#201511"/>
+          <path d="M15,72 L50,98 L85,72" fill="none" stroke="#231712" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15,72 L50,98 L85,72" fill="none" stroke="#eee9d7" stroke-width="1.2"/>
+        </svg>
+        <span class="fielder f1"></span><span class="fielder f2"></span><span class="fielder f3"></span>
+        <span class="pitcher"></span><span class="batter"></span>
+        <span class="window w-left"></span><span class="window w-center"></span><span class="window w-right"></span><span class="window w-mound"></span><span class="window w-home"></span>
+        <span class="base base1" id="base1"></span><span class="base base2" id="base2"></span><span class="base base3" id="base3"></span><span class="homeplate"></span>
+        <div class="play-leds" id="playLeds" aria-hidden="true">
+          <i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i><i class="led"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="control">
+      <button type="button" class="game-button score" id="scoreBtn" aria-label="Hold to show score">SCORE</button>
+      <button type="button" class="game-button pitch" id="pitchBtn">PITCH</button>
+      <button type="button" class="game-button run" id="runBtn">RUN</button>
+      <button type="button" class="game-button hit" id="hitBtn">HIT</button>
+      <div class="switcher">OFF&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;&nbsp;PRO 2
+        <div class="switch-track" role="group" aria-label="Power and difficulty">
+          <button type="button" data-mode="off" class="active">OFF</button><button type="button" data-mode="1">1</button><button type="button" data-mode="2">2</button>
+        </div>
+      </div>
+      <div class="brand">MATTEL ELECTRONICS</div>
+    </div>
+    <div class="lower"><div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="ballmark" aria-hidden="true"></div><div class="nameplate">BASEBALL</div></div>
+    <div class="status" id="status" aria-live="polite">POWER OFF</div>
+  </section>
+
+  <section class="guide">
+    <h2>HOW TO PLAY</h2>
+    <p><strong>Batting:</strong> press PITCH, then time HIT as the red dot reaches home. After a hit, hold RUN to take bases and release to stop. <strong>Solo defense:</strong> when the computer bats, you control PITCH. Hold SCORE anytime to see the score.</p>
+  </section>
+</main>
+<script>
+(function(){
+  'use strict';
+  var leds=Array.prototype.slice.call(document.querySelectorAll('.led'));
+  var digitsEl=document.getElementById('digits');
+  var statusEl=document.getElementById('status');
+  var field=document.getElementById('field');
+  var audio=null;
+  var mode='off',players=1,showingScore=false,pitchTimer=null,pitchStepTimer=null,ballFlightTimer=null,runTimer=null;
+  var state={inning:1,half:0,outs:0,balls:0,strikes:0,scores:[0,0],bases:[false,false,false],phase:'off',pitchStep:-1,pitchKind:'',pitchStepAt:0,nextPitchStepAt:0,targetBases:0,runnerSteps:0};
+  var maps={0:'abcdef',1:'bc',2:'abdeg',3:'abcdg',4:'bcfg',5:'acdfg',6:'acdefg',7:'abc',8:'abcdefg',9:'abcdfg'};
+
+  for(var d=0;d<4;d++){
+    var box=document.createElement('div');box.className='digit';
+    'abcdefg'.split('').forEach(function(s){var i=document.createElement('i');i.className='seg '+s;box.appendChild(i)});
+    digitsEl.appendChild(box);
+  }
+  var digitEls=Array.prototype.slice.call(digitsEl.children);
+  function setDigit(el,n){var active=maps[Math.max(0,Math.min(9,Number(n)||0))];Array.prototype.forEach.call(el.children,function(s){s.classList.toggle('on',active.indexOf(s.classList[1])>-1)})}
+  function updateDisplay(){
+    if(mode==='off'){
+      digitEls.forEach(function(el){Array.prototype.forEach.call(el.children,function(s){s.classList.remove('on')})});
+      for(var b=0;b<3;b++)document.getElementById('base'+(b+1)).classList.remove('on');
+      return;
+    }
+    var vals=showingScore?[state.scores[0]%10,state.scores[1]%10,state.inning%10,state.half]:[state.inning%10,state.outs,state.balls,state.strikes];
+    vals.forEach(function(v,i){setDigit(digitEls[i],v)});
+    for(var i=0;i<3;i++)document.getElementById('base'+(i+1)).classList.toggle('on',!!state.bases[i]);
+  }
+  function setStatus(t){statusEl.textContent=t}
+  function ensureAudio(){if(!audio){audio=new(window.AudioContext||window.webkitAudioContext)()}if(audio.state==='suspended')audio.resume()}
+  function tone(freq,dur,delay,level){
+    if(mode==='off')return;
+    ensureAudio();
+    var t=audio.currentTime+(delay||0),o=audio.createOscillator(),g=audio.createGain();
+    o.type='square';
+    o.frequency.setValueAtTime(freq,t);
+    /* Deliberately hard-gated: the original toy's piezo speaker clicked on and off with no envelope. */
+    g.gain.setValueAtTime(level||.082,t);
+    g.gain.setValueAtTime(level||.082,t+dur-.001);
+    g.gain.setValueAtTime(0,t+dur);
+    o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+dur+.002);
+  }
+  function pulses(count,freq,dur,gap,level){for(var i=0;i<count;i++)tone(freq,dur,i*(dur+gap),level)}
+  function sound(kind){
+    if(kind==='pitch'){tone(930,.018,0,.072)}
+    if(kind==='hit'){tone(170,.032,0,.105)}
+    if(kind==='single'){pulses(1,720,.042,.04,.085)}
+    if(kind==='double'){pulses(2,720,.034,.048,.085)}
+    if(kind==='triple'){pulses(4,720,.028,.043,.085)}
+    if(kind==='run'){tone(840,.032,0,.082);tone(1040,.032,.052,.082)}
+    if(kind==='strike'){tone(190,.056,0,.1)}
+    if(kind==='ball'){tone(410,.026,0,.08)}
+    if(kind==='out'){tone(185,.052,0,.1);tone(132,.074,.066,.1)}
+    if(kind==='foul'){tone(305,.026,0,.09);tone(220,.034,.038,.09)}
+    if(kind==='homer'){for(var i=0;i<12;i++)tone(i%2?930:650,.024,i*.038,.087)}
+  }
+  function clearLeds(){leds.forEach(function(l){l.classList.remove('on','flash')})}
+  function light(index,flash){clearLeds();if(index>=0&&leds[index]){leds[index].classList.add('on');if(flash)leds[index].classList.add('flash')}}
+  function flashAll(ms){leds.forEach(function(l){l.classList.add('on','flash')});setTimeout(function(){clearLeds();updateDisplay()},ms||1000)}
+  function snapFlight(path,stepMs,done){
+    if(ballFlightTimer)clearTimeout(ballFlightTimer);
+    var n=0;
+    function step(){
+      light(path[n]);
+      if(n>0)tone(930,.014,0,.058);
+      n++;
+      if(n<path.length)ballFlightTimer=setTimeout(step,stepMs);
+      else{ballFlightTimer=null;if(done)setTimeout(done,stepMs)}
+    }
+    step();
+  }
+  function resetGame(){
+    if(pitchTimer)clearTimeout(pitchTimer);if(pitchStepTimer)clearTimeout(pitchStepTimer);if(ballFlightTimer)clearTimeout(ballFlightTimer);if(runTimer)clearInterval(runTimer);
+    state={inning:1,half:0,outs:0,balls:0,strikes:0,scores:[0,0],bases:[false,false,false],phase:mode==='off'?'off':'ready',pitchStep:-1,pitchKind:'',pitchStepAt:0,nextPitchStepAt:0,targetBases:0,runnerSteps:0};
+    clearLeds();showingScore=false;updateDisplay();
+    setStatus(mode==='off'?'POWER OFF':battingLabel()+' — PRESS PITCH');
+  }
+  function battingSide(){return state.half===0?0:1}
+  function isCpuBatting(){return players===1&&state.half===1}
+  function battingLabel(){if(players===2)return 'PLAYER '+(state.half+1)+' BATTING';return isCpuBatting()?'COMPUTER BATTING':'YOU ARE BATTING'}
+  function setPlayers(n){if(mode!=='off'&&state.phase!=='ready'){setStatus('CHANGE PLAYERS BETWEEN GAMES');return}players=n;document.getElementById('onePlayer').setAttribute('aria-pressed',n===1?'true':'false');document.getElementById('twoPlayer').setAttribute('aria-pressed',n===2?'true':'false');if(mode!=='off')resetGame()}
+  document.getElementById('onePlayer').onclick=function(){setPlayers(1)};document.getElementById('twoPlayer').onclick=function(){setPlayers(2)};
+
+  function advanceCount(type){
+    if(type==='ball'){state.balls++;sound('ball');setStatus('BALL '+state.balls);if(state.balls>=4){walk();return}}
+    else{state.strikes++;sound('strike');setStatus('STRIKE '+state.strikes);if(state.strikes>=3){recordOut('STRIKEOUT');return}}
+    updateDisplay();state.phase='ready';setTimeout(function(){if(state.phase==='ready')setStatus(battingLabel()+' — PRESS PITCH')},650)
+  }
+  function resetCount(){state.balls=0;state.strikes=0;updateDisplay()}
+  function walk(){resetCount();var newBases=[true,state.bases[0],state.bases[1]];if(state.bases[0]&&state.bases[1]&&state.bases[2])scoreRun();state.bases=newBases;state.phase='ready';updateDisplay();setStatus('BALL FOUR — TAKE FIRST')}
+  function scoreRun(){state.scores[battingSide()]++;sound('run')}
+  function recordOut(label,amount){amount=amount||1;state.outs+=amount;sound('out');resetCount();clearLeds();setStatus(label+(amount===2?' — DOUBLE PLAY':''));updateDisplay();if(state.outs>=3)setTimeout(changeSides,850);else{state.phase='ready';setTimeout(function(){if(state.phase==='ready')setStatus(battingLabel()+' — PRESS PITCH')},800)}}
+  function changeSides(){state.outs=0;state.balls=0;state.strikes=0;state.bases=[false,false,false];state.half++;
+    if(state.half>1){state.half=0;state.inning++}
+    if(state.inning>9){endGame();return}
+    state.phase='ready';updateDisplay();setStatus('SIDE RETIRED — '+battingLabel());sound('run')}
+  function endGame(){state.phase='gameover';var a=state.scores[0],b=state.scores[1],msg=a===b?'TIE GAME':(players===2?'PLAYER '+(a>b?'1':'2')+' WINS':(a>b?'YOU WIN':'COMPUTER WINS'));setStatus(msg+' '+a+'–'+b);flashAll(1800)}
+
+  function startPitch(){
+    if(mode==='off'){setStatus('MOVE SWITCH TO 1 OR PRO 2');return}
+    ensureAudio();
+    if(state.phase==='gameover'){resetGame();return}
+    if(state.phase!=='ready')return;
+    state.phase='delay';state.pitchStep=-1;clearLeds();
+    var kinds=['FASTBALL','CURVE','CHANGE-UP'];state.pitchKind=kinds[Math.floor(Math.random()*kinds.length)];
+    setStatus('PITCH SET…');
+    pitchTimer=setTimeout(function(){state.phase='pitch';pitchTravel()},360+Math.random()*720);
+  }
+  function pitchTravel(){
+    var base=mode==='2'?76:102;
+    if(state.pitchKind==='FASTBALL')base*=.8;if(state.pitchKind==='CHANGE-UP')base*=1.24;
+    state.pitchStep++;state.pitchStepAt=performance.now();state.nextPitchStepAt=state.pitchStepAt+base;
+    var path=[0,1,2,3];light(path[state.pitchStep]);
+    sound('pitch');
+    if(isCpuBatting()&&state.pitchStep===3){setTimeout(cpuSwing,Math.random()*30+10);return}
+    if(state.pitchStep<3){pitchStepTimer=setTimeout(pitchTravel,base)}
+    else{pitchStepTimer=setTimeout(function(){if(state.phase==='pitch')advanceCount(Math.random()<.23?'ball':'strike')},base+82)}
+  }
+  function swing(){
+    if(mode==='off')return;ensureAudio();
+    if(isCpuBatting()){setStatus('COMPUTER IS BATTING');return}
+    if(state.phase!=='pitch'){if(state.phase==='ready'){sound('strike');setStatus('NO PITCH')}return}
+    var step=state.pitchStep,now=performance.now();
+    var earlyWindow=mode==='2'?20:30,lateWindow=mode==='2'?44:66;
+    var contact=(step===2&&state.nextPitchStepAt-now>=-4&&state.nextPitchStepAt-now<=earlyWindow)||(step===3&&now-state.pitchStepAt<=lateWindow);
+    state.phase='resolving';if(pitchStepTimer)clearTimeout(pitchStepTimer);
+    if(!contact){foulOrStrike(step<3?'TOO EARLY':'TOO LATE');return}
+    resolveContact(3);
+  }
+  function cpuSwing(){if(state.phase!=='pitch')return;state.phase='resolving';if(pitchStepTimer)clearTimeout(pitchStepTimer);if(Math.random()<.17){advanceCount(Math.random()<.25?'ball':'strike')}else resolveContact(2+Math.floor(Math.random()*2),true)}
+  function foulOrStrike(label){if(Math.random()<.38){foulBall()}else{setStatus(label);advanceCount('strike')}}
+  function foulBall(target){sound('foul');light(typeof target==='number'?target:(Math.random()<.5?7:8),true);if(state.strikes<2)state.strikes++;updateDisplay();setStatus('FOUL BALL');setTimeout(function(){clearLeds();state.phase='ready';setStatus(battingLabel()+' — PRESS PITCH')},700)}
+  function resolveContact(timing,cpu){
+    sound('hit');var r=Math.random(),outcome,target;
+    var sweet=timing===3;
+    if(r<(sweet?.06:.11))outcome='ground';
+    else if(r<(sweet?.16:.26))outcome='caught';
+    else if(r<(sweet?.28:.39))outcome='foul';
+    else if(r<(sweet?.64:.70))outcome='single';
+    else if(r<(sweet?.84:.87))outcome='double';
+    else if(r<(sweet?.94:.95))outcome='triple';
+    else outcome='homer';
+    if(outcome==='foul'){
+      target=Math.random()<.5?7:8;
+      snapFlight([3,2,1,target],64,function(){foulBall(target)});
+      return;
+    }
+    if(outcome==='ground'){
+      target=Math.random()<.5?9:10;
+      snapFlight([3,2,target],70,function(){
+        light(target,true);
+        setTimeout(function(){if(state.bases.some(Boolean)&&state.outs<2&&Math.random()<.42)recordOut('GROUNDER',2);else recordOut('GROUNDER OUT')},260);
+      });
+      return;
+    }
+    if(outcome==='caught'){
+      target=4+Math.floor(Math.random()*3);
+      snapFlight([3,2,11,target],68,function(){light(target,true);setTimeout(function(){recordOut('CAUGHT OUT')},330)});
+      return;
+    }
+    var count={single:1,double:2,triple:3,homer:4}[outcome];
+    target=count===1?7:count===2?8:count===3?5:11;
+    snapFlight([3,2,1,target],64,function(){
+      state.targetBases=count;state.runnerSteps=0;resetCount();sound(outcome);
+      if(outcome==='homer'){flashAll(650);setStatus('HOME RUN! HOLD RUN')}
+      else{light(target,false);setStatus(outcome.toUpperCase()+' — HOLD RUN')}
+      state.phase='running';
+      if(cpu)setTimeout(function(){autoRun(count)},190);
+    });
+  }
+  function runStep(){
+    if(state.phase!=='running')return;
+    state.runnerSteps++;
+    var p=((state.runnerSteps-1)%4)+1;
+    document.getElementById('base1').classList.toggle('on',p===1||state.bases[0]);
+    document.getElementById('base2').classList.toggle('on',p===2||state.bases[1]);
+    document.getElementById('base3').classList.toggle('on',p===3||state.bases[2]);
+    tone(520+(p*65),.022,0,.074);
+    if(state.runnerSteps>state.targetBases&&Math.random()<(mode==='2'?.78:.58)){finishRun(true)}
+  }
+  function startRun(){if(state.phase!=='running')return;ensureAudio();document.getElementById('runBtn').classList.add('pressed');if(!runTimer){runStep();runTimer=setInterval(runStep,mode==='2'?185:225)}}
+  function stopRun(){document.getElementById('runBtn').classList.remove('pressed');if(runTimer){clearInterval(runTimer);runTimer=null}if(state.phase!=='running')return;if(state.runnerSteps===0){setStatus('HOLD RUN TO LEAVE HOME');return}finishRun(false)}
+  function autoRun(n){var steps=0;var t=setInterval(function(){if(state.phase!=='running'){clearInterval(t);return}runStep();steps++;if(steps>=n){clearInterval(t);setTimeout(function(){finishRun(false)},60)}},mode==='2'?185:225)}
+  function finishRun(thrownOut){if(runTimer){clearInterval(runTimer);runTimer=null}if(state.phase!=='running')return;document.getElementById('runBtn').classList.remove('pressed');
+    if(thrownOut){recordOut('THROWN OUT');return}
+    var moved=Math.min(state.runnerSteps,state.targetBases);if(moved<1){setStatus('HOLD RUN');return}
+    var old=state.bases.slice(),next=[false,false,false],runs=0;
+    for(var i=2;i>=0;i--){if(old[i]){var dest=i+1+moved;if(dest>=4)runs++;else next[dest-1]=true}}
+    if(moved>=4)runs++;else next[moved-1]=true;
+    state.bases=next;for(var j=0;j<runs;j++)scoreRun();
+    state.phase='ready';clearLeds();updateDisplay();setStatus(runs?(runs+' RUN'+(runs>1?'S':'')+' SCORED'):'SAFE AT '+(['FIRST','SECOND','THIRD'][moved-1]||'HOME'));
+    setTimeout(function(){if(state.phase==='ready')setStatus(battingLabel()+' — PRESS PITCH')},850)
+  }
+
+  document.getElementById('pitchBtn').addEventListener('click',startPitch);
+  document.getElementById('hitBtn').addEventListener('pointerdown',function(e){e.preventDefault();this.classList.add('pressed');swing()});
+  document.getElementById('hitBtn').addEventListener('pointerup',function(){this.classList.remove('pressed')});
+  document.getElementById('hitBtn').addEventListener('pointercancel',function(){this.classList.remove('pressed')});
+  var runBtn=document.getElementById('runBtn');runBtn.addEventListener('pointerdown',function(e){e.preventDefault();startRun()});runBtn.addEventListener('pointerup',stopRun);runBtn.addEventListener('pointercancel',stopRun);runBtn.addEventListener('pointerleave',function(e){if(e.buttons)stopRun()});
+  var scoreBtn=document.getElementById('scoreBtn');
+  function showScore(){if(mode==='off')return;showingScore=true;scoreBtn.classList.add('pressed');updateDisplay();setStatus('VISITORS '+state.scores[0]+'  HOME '+state.scores[1]+'  INNING '+state.inning)}
+  function hideScore(){showingScore=false;scoreBtn.classList.remove('pressed');updateDisplay();if(mode!=='off')setStatus(battingLabel()+' — '+(state.phase==='running'?'HOLD RUN':state.phase==='pitch'?'TIME YOUR HIT':'PRESS PITCH'))}
+  scoreBtn.addEventListener('pointerdown',function(e){e.preventDefault();showScore()});scoreBtn.addEventListener('pointerup',hideScore);scoreBtn.addEventListener('pointercancel',hideScore);scoreBtn.addEventListener('pointerleave',function(e){if(e.buttons)hideScore()});
+  document.querySelectorAll('.switch-track button').forEach(function(btn){btn.addEventListener('click',function(){mode=this.getAttribute('data-mode');document.querySelectorAll('.switch-track button').forEach(function(b){b.classList.toggle('active',b===btn)});ensureAudio();resetGame();if(mode!=='off'){tone(260,.07,0);tone(390,.08,.1)}})});
+  document.addEventListener('keydown',function(e){if(e.repeat)return;if(e.code==='KeyP')startPitch();if(e.code==='KeyH')swing();if(e.code==='KeyR')startRun();if(e.code==='KeyS')showScore()});
+  document.addEventListener('keyup',function(e){if(e.code==='KeyR')stopRun();if(e.code==='KeyS')hideScore()});
+  updateDisplay();
+})();
+</script>
+</body>
+</html>

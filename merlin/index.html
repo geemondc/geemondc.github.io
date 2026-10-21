@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Merlin</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page:#d7d3c8; --ink:#1d1a18; --muted:#665f59; --panel:#efede7;
+      --red:#b21f27; --red-hi:#d92d35; --red-deep:#761017; --edge:#4c0a0f;
+      --button:#f4efe3; --button-edge:#b6ab98; --button-ink:#531317;
+      --led:#fff2bd; --led-glow:#ffe668; --screen:#24090b; --screen-ink:#ffd866;
+      --shadow:rgba(28,17,12,.34); --focus:#0f6fab;
+    }
+    @media (prefers-color-scheme: dark){
+      :root { --page:#151211; --ink:#f4efe6; --muted:#bdb3aa; --panel:#211d1b; --shadow:rgba(0,0,0,.62); --focus:#70c8ff; }
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;background:var(--page)}
+    body{margin:0;min-height:100%;font-family:"Trebuchet MS",Verdana,sans-serif;color:var(--ink);background:
+      radial-gradient(circle at 50% 0,rgba(255,255,255,.24),transparent 38rem),var(--page);padding:14px 12px 40px}
+    button,select{font:inherit}
+    button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+    .toolbar{width:min(100%,620px);margin:0 auto 12px;display:flex;gap:8px;align-items:center;justify-content:center}
+    .selector-wrap{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid color-mix(in srgb,var(--ink) 18%,transparent);padding:7px 9px 7px 12px;border-radius:8px;box-shadow:0 2px 8px var(--shadow)}
+    .selector-wrap label{font-size:.76rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    select{max-width:230px;border:1px solid color-mix(in srgb,var(--ink) 24%,transparent);background:var(--panel);color:var(--ink);border-radius:5px;padding:7px 28px 7px 9px;font-weight:800}
+    .reset{border:0;background:transparent;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:7px 4px;font-size:.78rem;cursor:pointer}
+    .display{width:min(100%,330px);position:relative;margin:0 auto 12px;background:var(--screen);color:var(--screen-ink);border:3px solid #650d12;border-radius:7px;padding:10px 12px;min-height:86px;box-shadow:inset 0 3px 8px rgba(0,0,0,.72),0 3px 10px var(--shadow);display:flex;flex-direction:column;justify-content:center;text-align:center}
+    .display strong{font-family:"Courier New",monospace;font-size:1rem;letter-spacing:.04em;text-transform:uppercase}
+    .display span{font-size:.79rem;line-height:1.35;margin-top:4px;color:#f4dca0}
+    .progress{font-family:"Courier New",monospace!important;color:#fff6cb!important;font-weight:700}
+    .history{min-height:0;margin:5px auto 0;max-width:300px;font:700 .69rem/1.4 "Courier New",monospace;color:#ffe9ad;text-align:center}
+    .device{position:relative;width:min(100%,320px);min-height:790px;margin:0 auto;padding:24px 30px 27px;background:
+      linear-gradient(90deg,rgba(255,255,255,.11),transparent 10% 88%,rgba(70,0,4,.18)),
+      linear-gradient(150deg,#e43a42 0%,#c8232b 32%,#ad1820 72%,#8d1118 100%);
+      clip-path:polygon(18% 0,82% 0,88% 7%,88% 15%,100% 19%,100% 72%,88% 77%,84% 100%,16% 100%,12% 77%,0 72%,0 19%,12% 15%,12% 7%);
+      filter:drop-shadow(0 12px 14px var(--shadow))}
+    .device:before{content:"";position:absolute;inset:7px 8px;border:2px solid rgba(255,255,255,.14);clip-path:inherit;pointer-events:none}
+    .top{position:relative;display:flex;flex-direction:column;align-items:center;min-height:155px;padding-top:2px}
+    .brand{font-family:Impact,"Arial Black",sans-serif;color:#d92f37;font-size:2.55rem;line-height:1;letter-spacing:.035em;text-shadow:-1px -1px 0 #771017,1px 1px 0 #f35a60,0 2px 2px #760c12;white-space:nowrap}
+    .tag{display:none}
+    .speaker{width:176px;height:76px;margin-top:15px;padding:7px 15px;background:#a7151c;border:2px solid rgba(93,7,12,.42);border-radius:5px;display:grid;grid-template-columns:1fr;grid-auto-rows:3px;gap:3px;overflow:hidden;box-shadow:inset 0 3px 7px rgba(49,0,3,.48)}
+    .speaker i{display:block;width:100%;height:3px;background:#671017;border-radius:3px;box-shadow:0 1px rgba(239,68,74,.35)}
+    .speaker i:nth-child(n+13){display:none}
+    .board{position:relative;margin:14px auto 10px;width:226px;display:grid;grid-template-columns:repeat(3,58px);grid-auto-rows:58px;gap:8px 11px;justify-content:center}
+    .cell{position:relative;width:58px;height:58px;border:0;border-radius:6px;background:linear-gradient(145deg,#921219,#c62129);box-shadow:inset 3px 3px 5px rgba(54,0,3,.52),inset -2px -2px 3px rgba(255,88,92,.27),0 1px 0 rgba(255,255,255,.12);cursor:pointer;transition:transform .055s,filter .12s}
+    .cell:before{content:"";position:absolute;inset:8px;border-radius:50%;background:linear-gradient(145deg,#fcfcf7,#bfc5c4 72%,#899292);box-shadow:0 2px 2px rgba(50,0,3,.58),inset 1px 1px 1px #fff}
+    .cell:after{content:"";position:absolute;inset:15px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#43515d,#17232d 64%,#0b1117);box-shadow:inset 0 2px 4px #05080b,0 1px 0 rgba(255,255,255,.28);transition:background .12s,box-shadow .12s}
+    .cell:active,.cell.pressed{transform:translateY(2px);filter:brightness(.94)}
+    .cell.lit:after,.cell.mark-x:after{background:radial-gradient(circle at 38% 32%,#ffb3a8,#ef1f20 42%,#8b0508 78%);box-shadow:0 0 13px 5px rgba(255,41,34,.82),inset 0 1px 3px #ffe3d8}
+    .cell.mark-o:after{background:radial-gradient(circle at 40% 34%,#ffcabf,#e82a28 45%,#760408 80%);box-shadow:0 0 8px 2px rgba(255,48,40,.58),inset 0 1px 3px #ffe7de;animation:merlinMark .8s steps(2,end) infinite}
+    @keyframes merlinMark{50%{filter:brightness(.58)}}
+    .cell.inactive{opacity:.45;cursor:default}
+    .cell:nth-child(1){grid-column:2}.cell:nth-child(2){grid-column:1}.cell:nth-child(11){grid-column:2}
+    .cell:focus-visible,.control:focus-visible,select:focus-visible,.dialog button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+    .controls-unit{width:214px;margin:22px auto 0;padding:22px 28px 18px;background:linear-gradient(150deg,#cb2229,#9b1219);clip-path:polygon(14% 0,86% 0,100% 14%,92% 100%,8% 100%,0 14%);box-shadow:inset 0 4px 7px rgba(78,0,4,.42)}
+    .controls{display:grid;grid-template-columns:repeat(2,64px);grid-auto-rows:64px;justify-content:center;gap:12px 14px;margin:0}
+    .control{width:64px;height:64px;border:0;border-radius:4px;background:linear-gradient(145deg,#b9c4ca,#88969f);color:#111;font-weight:900;font-size:.62rem;line-height:1.12;padding:7px 4px;text-transform:uppercase;box-shadow:0 4px 0 #5d0b10,0 6px 5px rgba(38,0,0,.48),inset 1px 1px 1px #e8edef;cursor:pointer}
+    .control:active{transform:translateY(3px);box-shadow:0 1px 0 #5d0b10}
+    .control small{display:none}
+    .maker{display:none}
+    .instructions{width:min(100%,430px);margin:18px auto 0;background:var(--panel);border-radius:8px;padding:15px 17px;border:1px solid color-mix(in srgb,var(--ink) 15%,transparent)}
+    .instructions h2{margin:0 0 7px;font-family:Georgia,serif;font-size:1.12rem}.instructions p{margin:0;color:var(--muted);font-size:.86rem;line-height:1.55}
+    .legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:9px;color:var(--muted);font-size:.73rem}.legend b{color:var(--ink)}
+    .future{display:block;width:max-content;margin:26px auto 0;color:var(--ink);font-weight:900;font-size:.78rem;text-underline-offset:4px;animation:pulse 1.8s ease-in-out infinite}
+    @keyframes pulse{50%{opacity:.46;transform:scale(.97)}}
+    @media (prefers-reduced-motion:reduce){.future{animation:none}}
+    .modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:rgba(20,7,8,.74)}
+    .modal[hidden]{display:none}.dialog{width:min(100%,440px);max-height:min(86vh,650px);overflow:auto;background:var(--panel);color:var(--ink);border-radius:10px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+    .dialog .number{font:900 .7rem/1 "Courier New",monospace;color:var(--red);letter-spacing:.15em}.dialog h2{font-family:Georgia,serif;font-size:1.65rem;margin:7px 0 9px}.dialog p{color:var(--muted);line-height:1.55;font-size:.93rem}.dialog ul{padding-left:20px;color:var(--muted);font-size:.87rem;line-height:1.5}.start{width:100%;border:0;border-radius:6px;background:var(--red);color:white;padding:12px;font-weight:900;cursor:pointer;margin-top:6px}
+    @media(max-width:460px){
+      body{padding:9px 6px 32px}.toolbar{margin-bottom:8px}.selector-wrap{flex:1;justify-content:space-between}.selector-wrap label{display:none}select{width:100%;max-width:none}
+      .display{width:min(100%,320px);min-height:79px;padding:8px}.device{width:min(100%,310px);min-height:760px;padding:22px 27px 25px}.brand{font-size:2.42rem}.speaker{width:168px}.board{width:218px;grid-template-columns:repeat(3,56px);grid-auto-rows:56px;gap:7px 10px}.cell{width:56px;height:56px}.controls-unit{width:206px;padding:20px 25px 17px}.instructions{margin-top:12px}
+    }
+    @media(max-width:340px){.device{width:296px;padding-left:24px;padding-right:24px}.board{transform:scale(.95);margin-top:4px;margin-bottom:2px}.brand{font-size:2.28rem}.speaker{width:158px}.controls-unit{transform:scale(.94);margin-top:15px}}
+  </style>
+</head>
+<body>
+  <div class="toolbar" aria-label="Game controls">
+    <div class="selector-wrap">
+      <label for="gameSelect">Game</label>
+      <select id="gameSelect" aria-label="Choose one of Merlin's six games">
+        <option value="ttt">1 · Tic Tac Toe</option>
+        <option value="music">2 · Music Machine</option>
+        <option value="echo">3 · Echo</option>
+        <option value="blackjack">4 · Blackjack 13</option>
+        <option value="magic">5 · Magic Square</option>
+        <option value="mind">6 · Mindbender</option>
+      </select>
+    </div>
+    <button class="reset" id="resetBtn" type="button">↻ Reset</button>
+  </div>
+
+  <main>
+    <div class="display" role="status" aria-live="polite">
+      <strong id="statusTitle">Tic Tac Toe</strong>
+      <span id="statusText">Press NEW GAME to begin.</span>
+      <span class="progress" id="progress"></span>
+      <div class="history" id="history"></div>
+    </div>
+    <section class="device" aria-label="1978 Merlin electronic game">
+      <div class="top">
+        <div><div class="brand">MERLIN</div><span class="tag">The electronic wizard</span></div>
+        <div class="speaker" aria-hidden="true"></div>
+      </div>
+      <div class="board" id="board" aria-label="Eleven button game board"></div>
+      <div class="controls-unit">
+        <div class="controls">
+          <button class="control" id="newBtn" type="button">New<br>Game<small>start</small></button>
+          <button class="control" id="sameBtn" type="button">Same<br>Game<small>repeat</small></button>
+          <button class="control" id="hitBtn" type="button">Hit<br>Me<small>action</small></button>
+          <button class="control" id="compBtn" type="button">Merlin<small>enter</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="instructions" aria-live="polite">
+      <h2 id="rulesTitle">Tic Tac Toe</h2>
+      <p id="rulesText"></p>
+      <div class="legend" id="legend"></div>
+    </section>
+  </main>
+  <a class="future" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Visit Future Ready</a>
+
+  <div class="modal" id="modal">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="number" id="modalNumber">GAME 1 OF 6</div>
+      <h2 id="modalTitle">Tic Tac Toe</h2>
+      <p id="modalText"></p>
+      <ul id="modalList"></ul>
+      <button class="start" id="startBtn" type="button">Start game</button>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+    var boardEl=document.getElementById('board'), statusTitle=document.getElementById('statusTitle'), statusText=document.getElementById('statusText'), progress=document.getElementById('progress'), historyEl=document.getElementById('history');
+    var select=document.getElementById('gameSelect'), modal=document.getElementById('modal'), modalTitle=document.getElementById('modalTitle'), modalText=document.getElementById('modalText'), modalList=document.getElementById('modalList'), modalNumber=document.getElementById('modalNumber');
+    var rulesTitle=document.getElementById('rulesTitle'), rulesText=document.getElementById('rulesText'), legend=document.getElementById('legend');
+    var buttons=[], audio=null, game='ttt', active=false, timers=[];
+    var state={};
+    var gameDefs={
+      ttt:{n:1,title:'Tic Tac Toe',intro:'Make three in a row before Merlin does. The nine center buttons are the playing board.',list:['You are X and always move first.','Tap any empty button in the 3 × 3 center grid.','Merlin answers automatically. NEW GAME begins a new round.'],rules:'You are X. Tap an empty button in the middle 3 × 3 grid. Merlin plays O. First to make a horizontal, vertical, or diagonal line wins.',legend:'<b>Buttons:</b> center 3 × 3 &nbsp; <b>Goal:</b> three in a row'},
+      music:{n:2,title:'Music Machine',intro:'Turn Merlin into an eleven-note electronic instrument and record a tune.',list:['Every white button plays a different note.','Your notes are recorded as you play.','HIT ME plays your tune back. SAME GAME repeats it. NEW GAME clears it.'],rules:'Tap any of the eleven buttons to compose. Merlin remembers up to 32 notes. Use HIT ME or SAME GAME to hear the recording; NEW GAME clears it.',legend:'<b>Buttons:</b> 11 notes &nbsp; <b>HIT ME:</b> playback'},
+      echo:{n:3,title:'Echo',intro:'Listen, watch, and repeat Merlin’s growing sequence.',list:['Merlin lights and sounds a sequence.','Repeat it exactly by tapping the buttons.','Each success adds one more note. HIT ME replays the sequence.'],rules:'Watch Merlin’s light-and-sound sequence, then repeat it. One note is added each round. A wrong note ends the run.',legend:'<b>HIT ME:</b> replay &nbsp; <b>Goal:</b> longest sequence'},
+      blackjack:{n:4,title:'Blackjack 13',intro:'Draw numbers and get closer to 13 than Merlin without going over.',list:['Press HIT ME to draw a number from 1 to 6.','Press MERLIN when you want to stand.','Merlin then draws. Closest to 13 wins; over 13 is a bust.'],rules:'Build a total as close to 13 as possible. HIT ME draws 1–6. MERLIN stands and lets Merlin play. Going over 13 loses immediately.',legend:'<b>HIT ME:</b> draw &nbsp; <b>MERLIN:</b> stand'},
+      magic:{n:5,title:'Magic Square',intro:'Transform the nine center lights into the target: every light on except the center.',list:['Tap a center button to flip it and its horizontal and vertical neighbors.','The same puzzle can be replayed with SAME GAME.','Finish with all eight outside lights on and the center light off.'],rules:'Tap a center button to toggle that light plus its up, down, left, and right neighbors. Solve the square with every outer light on and only the center dark.',legend:'<b>Lit:</b> on &nbsp; <b>Dark:</b> off &nbsp; <b>Goal:</b> center only dark'},
+      mind:{n:6,title:'Mindbender',intro:'Crack Merlin’s hidden three-number code using logic and feedback.',list:['Choose three buttons from the center grid; repeats are allowed.','MERLIN submits your guess.','Feedback reports exact matches and right numbers in the wrong place.'],rules:'Build a three-number guess from the center 3 × 3 buttons, then press MERLIN. HIT ME clears an unfinished guess. Crack the code in eight tries.',legend:'<b>●:</b> exact spot &nbsp; <b>○:</b> right number, wrong spot'}
+    };
+
+    function makeSpeaker(){var s=document.querySelector('.speaker');for(var i=0;i<12;i++)s.appendChild(document.createElement('i'));}
+    function makeBoard(){for(var i=0;i<11;i++){var b=document.createElement('button');b.type='button';b.className='cell';b.dataset.i=i;b.setAttribute('aria-label','Game button position '+(i+1));b.addEventListener('click',function(){cellPress(+this.dataset.i);});boardEl.appendChild(b);buttons.push(b);}}
+    function ensureAudio(){if(!audio){audio=new(window.AudioContext||window.webkitAudioContext)();}if(audio.state==='suspended')audio.resume();}
+    function tone(freq,dur,delay,vol){ensureAudio();var o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+(delay||0);o.type='square';o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||.045,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+dur+.02);}
+    function clickSound(i){tone(215+((i*47)%480),.07,0,.028)}
+    function lightPattern(sequence,step){sequence.forEach(function(group,n){later(function(){group.forEach(function(i){buttons[i].classList.add('lit')});later(function(){group.forEach(function(i){buttons[i].classList.remove('lit')})},Math.max(90,(step||170)-55))},n*(step||170))})}
+    function success(){tone(523,.1,0,.045);tone(659,.1,.11,.045);tone(784,.18,.22,.05);lightPattern([[0,10],[1,4,7],[2,5,8],[3,6,9],[0,10]],145)}
+    function fail(){tone(170,.16,0,.05);tone(118,.28,.16,.05);lightPattern([[0,2,5,8,10],[1,3,4,6,7,9],[0,2,5,8,10]],210)}
+    function flash(i,dur){buttons[i].classList.add('lit','pressed');setTimeout(function(){buttons[i].classList.remove('lit','pressed')},dur||180)}
+    function clearTimers(){timers.forEach(clearTimeout);timers=[]}
+    function later(fn,ms){var t=setTimeout(fn,ms);timers.push(t);return t}
+    function setStatus(title,text,prog){statusTitle.textContent=title;statusText.textContent=text;progress.textContent=prog||''}
+    function clearBoard(){buttons.forEach(function(b){b.className='cell';b.textContent='';b.disabled=false;});historyEl.textContent='';progress.textContent=''}
+    function centralOnly(){buttons.forEach(function(b,i){if(i===0||i===10){b.classList.add('inactive');b.disabled=true;}})}
+    function showRules(){var d=gameDefs[game];modalNumber.textContent='GAME '+d.n+' OF 6';modalTitle.textContent=d.title;modalText.textContent=d.intro;modalList.innerHTML=d.list.map(function(x){return '<li>'+x+'</li>'}).join('');modal.hidden=false;document.getElementById('startBtn').focus();}
+    function updateRules(){var d=gameDefs[game];rulesTitle.textContent=d.title;rulesText.textContent=d.rules;legend.innerHTML=d.legend;statusTitle.textContent=d.title;}
+    function chooseGame(g,show){game=g;active=false;clearTimers();clearBoard();updateRules();setStatus(gameDefs[g].title,'Read the rules, then start a new game.');if(show)showRules();}
+    function begin(same){clearTimers();clearBoard();active=true;if(game==='ttt')startTTT();if(game==='music')startMusic();if(game==='echo')startEcho();if(game==='blackjack')startBlackjack();if(game==='magic')startMagic(same);if(game==='mind')startMind(same);}
+
+    function startTTT(){state.ttt=Array(9).fill('');centralOnly();setStatus('Tic Tac Toe','Your move — choose a square.','YOU: X   MERLIN: O')}
+    function cellTTT(i){if(i<1||i>9||!active)return;var p=i-1;if(state.ttt[p])return;state.ttt[p]='X';renderTTT();clickSound(i);var r=winner(state.ttt);if(r)return finishTTT(r);setStatus('Tic Tac Toe','Merlin is thinking…');active=false;later(function(){var move=bestMove(state.ttt);state.ttt[move]='O';renderTTT();var w=winner(state.ttt);if(w)return finishTTT(w);active=true;setStatus('Tic Tac Toe','Your move — choose a square.','YOU: X   MERLIN: O');},430)}
+    function renderTTT(){for(var i=1;i<=9;i++){var v=state.ttt[i-1];buttons[i].textContent='';buttons[i].classList.toggle('mark-x',v==='X');buttons[i].classList.toggle('mark-o',v==='O');buttons[i].setAttribute('aria-label','Game button position '+(i+1)+(v?' marked '+v:''));}}
+    function winner(a){var wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];for(var i=0;i<wins.length;i++){var q=wins[i];if(a[q[0]]&&a[q[0]]===a[q[1]]&&a[q[1]]===a[q[2]])return a[q[0]];}return a.every(Boolean)?'draw':null}
+    function bestMove(a){var empt=a.map(function(v,i){return v?'':i}).filter(function(v){return v!==''});for(var z=0;z<empt.length;z++){var c=a.slice();c[empt[z]]='O';if(winner(c)==='O')return empt[z]}for(var y=0;y<empt.length;y++){var d=a.slice();d[empt[y]]='X';if(winner(d)==='X')return empt[y]}if(!a[4])return 4;var corners=[0,2,6,8].filter(function(i){return !a[i]});return corners.length?corners[Math.floor(Math.random()*corners.length)]:empt[Math.floor(Math.random()*empt.length)]}
+    function finishTTT(w){active=false;if(w==='X'){setStatus('You win!','Three in a row. Press NEW GAME to play again.');success()}else if(w==='O'){setStatus('Merlin wins','Press NEW GAME and challenge the wizard again.');fail()}else{setStatus('Draw game','No empty squares remain. Press NEW GAME.');tone(350,.12,0,.04);tone(350,.12,.16,.04)}}
+
+    function startMusic(){state.music=[];setStatus('Music Machine','Compose on the eleven buttons.','0 / 32 NOTES')}
+    function cellMusic(i){if(!active||state.music.length>=32)return;state.music.push(i);flash(i,140);noteFor(i,.17,0);setStatus('Music Machine','Note '+(i+1)+' recorded.',''+state.music.length+' / 32 NOTES')}
+    function noteFor(i,d,delay){var scale=[262,294,330,349,392,440,494,523,587,659,698];tone(scale[i],d,delay,.04)}
+    function playMusic(){if(!state.music||!state.music.length){setStatus('Music Machine','Record a few notes first.','0 / 32 NOTES');fail();return}active=false;setStatus('Music Machine','Playing your tune…',state.music.length+' NOTES');state.music.forEach(function(n,j){later(function(){flash(n,210);noteFor(n,.2,0)},j*250)});later(function(){active=true;setStatus('Music Machine','Playback complete. Keep composing.',state.music.length+' / 32 NOTES')},state.music.length*250+80)}
+
+    function startEcho(){state.echo={seq:[rand(11)],input:[],round:1,showing:false};setStatus('Echo','Watch Merlin…','ROUND 1');later(playEcho,500)}
+    function rand(n){return Math.floor(Math.random()*n)}
+    function playEcho(){if(!state.echo)return;state.echo.showing=true;active=false;setStatus('Echo','Watch and listen…','ROUND '+state.echo.round);state.echo.seq.forEach(function(n,j){later(function(){flash(n,260);noteFor(n,.23,0)},j*430)});later(function(){state.echo.showing=false;state.echo.input=[];active=true;setStatus('Echo','Now repeat the pattern.','0 / '+state.echo.seq.length)},state.echo.seq.length*430+120)}
+    function cellEcho(i){if(!active||state.echo.showing)return;var p=state.echo.input.length;flash(i,150);noteFor(i,.14,0);if(i!==state.echo.seq[p]){active=false;setStatus('Echo','Wrong note — sequence ended.','REACHED ROUND '+state.echo.round);fail();return}state.echo.input.push(i);if(state.echo.input.length===state.echo.seq.length){active=false;success();state.echo.round++;state.echo.seq.push(rand(11));setStatus('Echo','Correct! Next round…','ROUND '+state.echo.round);later(playEcho,950)}else setStatus('Echo','Keep going…',state.echo.input.length+' / '+state.echo.seq.length)}
+
+    function startBlackjack(){state.bj={you:0,comp:0,draws:[]};setStatus('Blackjack 13','Press HIT ME to draw, or MERLIN to stand.','YOU 0   ·   MERLIN ?')}
+    function drawNum(){return 1+rand(6)}
+    function hitBlackjack(){if(!active)return;var v=drawNum();state.bj.you+=v;state.bj.draws.push(v);flash(v,200);noteFor(v,.16,0);historyEl.textContent='YOUR DRAWS: '+state.bj.draws.join(' + ');if(state.bj.you>13){active=false;setStatus('Bust!','Your total went over 13.','YOU '+state.bj.you+'   ·   MERLIN WINS');fail()}else if(state.bj.you===13){setStatus('Exactly 13!','Merlin takes a turn…','YOU 13');compBlackjack()}else setStatus('Blackjack 13','Draw again or stand.','YOU '+state.bj.you+'   ·   MERLIN ?')}
+    function compBlackjack(){if(!active)return;active=false;state.bj.comp=0;var draws=[];function step(){if(state.bj.comp<10||(state.bj.comp<state.bj.you&&state.bj.you<=13)){var v=drawNum();state.bj.comp+=v;draws.push(v);flash(v,180);noteFor(v,.14,0);setStatus('Merlin draws '+v,'Merlin is taking its turn…','YOU '+state.bj.you+'   ·   MERLIN '+state.bj.comp);historyEl.textContent='YOU: '+state.bj.draws.join('+')+'  |  MERLIN: '+draws.join('+');later(step,470)}else finishBJ()};step()}
+    function finishBJ(){var y=state.bj.you,c=state.bj.comp,msg;if(c>13||(y<=13&&y>c)){msg='You win!';success()}else if(y===c){msg='Tie game';tone(350,.12,0,.04);tone(350,.12,.16,.04)}else{msg='Merlin wins';fail()}setStatus(msg,'Press NEW GAME to deal again.','YOU '+y+'   ·   MERLIN '+c)}
+
+    function startMagic(same){centralOnly();var target=[1,1,1,1,0,1,1,1,1];if(same&&state.magic&&state.magic.start){state.magic.grid=state.magic.start.slice();state.magic.moves=0}else{var grid=target.slice();var turns=4+rand(5);for(var k=0;k<turns;k++)toggleGrid(grid,rand(9));if(grid.join('')===target.join(''))toggleGrid(grid,rand(9));state.magic={grid:grid,start:grid.slice(),moves:0}}if(!state.magic.moves)state.magic.moves=0;renderMagic();setStatus('Magic Square','Light every outer button; leave the center dark.','MOVES '+state.magic.moves)}
+    function toggleGrid(g,p){var r=Math.floor(p/3),c=p%3,ds=[[0,0],[-1,0],[1,0],[0,-1],[0,1]];ds.forEach(function(d){var rr=r+d[0],cc=c+d[1];if(rr>=0&&rr<3&&cc>=0&&cc<3){var q=rr*3+cc;g[q]=g[q]?0:1}})}
+    function renderMagic(){for(var i=1;i<=9;i++)buttons[i].classList.toggle('lit',!!state.magic.grid[i-1])}
+    function cellMagic(i){if(!active||i<1||i>9)return;toggleGrid(state.magic.grid,i-1);state.magic.moves++;clickSound(i);renderMagic();setStatus('Magic Square','Light every outer button; leave the center dark.','MOVES '+state.magic.moves);if(state.magic.grid.join('')==='111101111'){active=false;setStatus('Square solved!','You mastered the magic square.','SOLVED IN '+state.magic.moves+' MOVES');success()}}
+
+    function startMind(same){centralOnly();var code=same&&state.mind&&state.mind.code?state.mind.code.slice():[1+rand(9),1+rand(9),1+rand(9)];state.mind={code:code,guess:[],tries:0,lines:[]};setStatus('Mindbender','Choose three numbers, then press MERLIN.','TRY 1 OF 8')}
+    function cellMind(i){if(!active||i<1||i>9||state.mind.guess.length>=3)return;state.mind.guess.push(i);flash(i,150);noteFor(i,.14,0);setStatus('Mindbender','Current guess: '+state.mind.guess.join(' – '),state.mind.guess.length+' / 3 SELECTED')}
+    function submitMind(){if(!active)return;if(state.mind.guess.length!==3){setStatus('Mindbender','Choose three numbers before submitting.',state.mind.guess.length+' / 3 SELECTED');fail();return}var exact=0,codeCounts={},guessCounts={};for(var i=0;i<3;i++){if(state.mind.code[i]===state.mind.guess[i])exact++;else{codeCounts[state.mind.code[i]]=(codeCounts[state.mind.code[i]]||0)+1;guessCounts[state.mind.guess[i]]=(guessCounts[state.mind.guess[i]]||0)+1}}var wrong=0;Object.keys(guessCounts).forEach(function(k){wrong+=Math.min(guessCounts[k]||0,codeCounts[k]||0)});state.mind.tries++;var marks='●'.repeat(exact)+'○'.repeat(wrong)+'—'.repeat(3-exact-wrong);state.mind.lines.push(state.mind.guess.join('')+' '+marks);historyEl.textContent=state.mind.lines.slice(-4).join('  ·  ');if(exact===3){active=false;setStatus('Code cracked!','You bent Merlin’s mind in '+state.mind.tries+' tries.','CODE '+state.mind.code.join(' – '));success();return}if(state.mind.tries>=8){active=false;setStatus('Out of guesses','Merlin’s code was '+state.mind.code.join(' – ')+'.','TRY AGAIN');fail();return}state.mind.guess=[];setStatus('Mindbender',exact+' exact, '+wrong+' misplaced. Try again.','TRY '+(state.mind.tries+1)+' OF 8')}
+
+    function cellPress(i){ensureAudio();if(game==='ttt')cellTTT(i);else if(game==='music')cellMusic(i);else if(game==='echo')cellEcho(i);else if(game==='magic')cellMagic(i);else if(game==='mind')cellMind(i);else clickSound(i)}
+    document.getElementById('newBtn').addEventListener('click',function(){ensureAudio();begin(false)});
+    document.getElementById('sameBtn').addEventListener('click',function(){ensureAudio();if(game==='music')playMusic();else begin(true)});
+    document.getElementById('hitBtn').addEventListener('click',function(){ensureAudio();if(game==='music')playMusic();else if(game==='echo'&&state.echo){clearTimers();playEcho()}else if(game==='blackjack')hitBlackjack();else if(game==='mind'&&state.mind){state.mind.guess=[];setStatus('Mindbender','Current guess cleared.','TRY '+(state.mind.tries+1)+' OF 8')}else tone(240,.08,0,.03)});
+    document.getElementById('compBtn').addEventListener('click',function(){ensureAudio();if(game==='blackjack')compBlackjack();else if(game==='mind')submitMind();else if(game==='echo'&&state.echo){clearTimers();playEcho()}else tone(310,.08,0,.03)});
+    document.getElementById('resetBtn').addEventListener('click',function(){ensureAudio();chooseGame(game,true)});
+    document.getElementById('startBtn').addEventListener('click',function(){ensureAudio();modal.hidden=true;begin(false)});
+    select.addEventListener('change',function(){chooseGame(this.value,true)});
+    makeSpeaker();makeBoard();chooseGame('ttt',true);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#11100f" />
+  <link rel="icon" href="data:," />
+  <title>Simon</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #181715;
+      --page-deep: #0e0e0d;
+      --text: #ebe8df;
+      --muted: #aaa69d;
+      --console: #151514;
+      --console-edge: #050505;
+      --panel: #242321;
+      --cream: #e4dfcf;
+      --ink: #171614;
+      --led-bg: #250304;
+      --led: #ff2a22;
+      --green: #006f38;
+      --green-lit: #36ee72;
+      --red: #a40d1d;
+      --red-lit: #ff4653;
+      --yellow: #d1a900;
+      --yellow-lit: #fff04d;
+      --blue: #075b9a;
+      --blue-lit: #2fb8ff;
+      --focus: #f4ead0;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --page: #3a3935;
+        --page-deep: #242321;
+        --text: #f4f1e8;
+        --muted: #cac5b8;
+      }
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body { min-height: 100%; }
+
+    html { background: var(--page-deep); }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background:
+        radial-gradient(circle at 50% 50%, #393733 0%, var(--page) 45%, var(--page-deep) 100%);
+      color: var(--text);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    main {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+    }
+
+    .game-wrap {
+      width: min(94vw, 610px, calc(100svh - 24px));
+      display: grid;
+      place-items: center;
+    }
+
+    .device {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background:
+        radial-gradient(circle at 44% 35%, #353431 0 9%, transparent 28%),
+        radial-gradient(circle at 50% 50%, #20201e 0 62%, #0a0a09 79%, #000 100%);
+      border: clamp(7px, 1.7vw, 13px) solid var(--console-edge);
+      box-shadow:
+        0 2px 0 #484642 inset,
+        0 -9px 18px #000 inset,
+        0 22px 36px rgba(0,0,0,.58),
+        0 4px 6px rgba(0,0,0,.65);
+    }
+
+    .device::after {
+      content: "";
+      position: absolute;
+      inset: 1.8%;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(255,255,255,.14) inset;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    .pad {
+      appearance: none;
+      -webkit-appearance: none;
+      position: absolute;
+      width: 43.5%;
+      height: 43.5%;
+      border: 0;
+      outline: 0;
+      cursor: pointer;
+      transition: filter 70ms linear, transform 70ms ease, box-shadow 70ms ease;
+      transform: translateZ(0);
+      touch-action: none;
+      z-index: 1;
+    }
+
+    .pad::before {
+      content: "";
+      position: absolute;
+      inset: 3% 5% 6% 4%;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255,255,255,.22), transparent 20% 63%, rgba(0,0,0,.4));
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: .45;
+    }
+
+    .pad:focus-visible { outline: 3px solid var(--focus); outline-offset: -6px; }
+    .pad:active { transform: scale(.985); }
+
+    .green {
+      top: 4.2%; left: 4.2%;
+      border-radius: 100% 11% 15% 12%;
+      background: var(--green);
+      box-shadow: 0 -5px 9px rgba(255,255,255,.09) inset, 0 8px 0 #003f22, 0 12px 13px rgba(0,0,0,.58);
+    }
+    .red {
+      top: 4.2%; right: 4.2%;
+      border-radius: 11% 100% 12% 15%;
+      background: var(--red);
+      box-shadow: 0 -5px 9px rgba(255,255,255,.10) inset, 0 8px 0 #5c0711, 0 12px 13px rgba(0,0,0,.58);
+    }
+    .yellow {
+      bottom: 4.2%; left: 4.2%;
+      border-radius: 12% 15% 12% 100%;
+      background: var(--yellow);
+      box-shadow: 0 -5px 9px rgba(255,255,255,.12) inset, 0 8px 0 #755d00, 0 12px 13px rgba(0,0,0,.58);
+    }
+    .blue {
+      bottom: 4.2%; right: 4.2%;
+      border-radius: 15% 12% 100% 12%;
+      background: var(--blue);
+      box-shadow: 0 -5px 9px rgba(255,255,255,.11) inset, 0 8px 0 #03365c, 0 12px 13px rgba(0,0,0,.58);
+    }
+
+    .green.lit { background: var(--green-lit); box-shadow: 0 0 32px rgba(54,238,114,.78), 0 0 8px #c8ffd7 inset, 0 5px 0 #117a3a; filter: saturate(1.2) brightness(1.18); }
+    .red.lit { background: var(--red-lit); box-shadow: 0 0 32px rgba(255,70,83,.8), 0 0 8px #ffd5d8 inset, 0 5px 0 #94101c; filter: saturate(1.2) brightness(1.16); }
+    .yellow.lit { background: var(--yellow-lit); box-shadow: 0 0 34px rgba(255,240,77,.75), 0 0 8px #fffbd1 inset, 0 5px 0 #a78800; filter: saturate(1.18) brightness(1.12); }
+    .blue.lit { background: var(--blue-lit); box-shadow: 0 0 34px rgba(47,184,255,.8), 0 0 8px #d4f2ff inset, 0 5px 0 #07578b; filter: saturate(1.2) brightness(1.18); }
+
+    .cross-v, .cross-h {
+      position: absolute;
+      background: linear-gradient(90deg, #0b0b0a, #242320 50%, #090909);
+      z-index: 2;
+      pointer-events: none;
+      box-shadow: 0 1px 2px rgba(255,255,255,.07) inset, 0 4px 8px rgba(0,0,0,.62);
+    }
+    .cross-v { top: 1.8%; bottom: 1.8%; width: 8.6%; left: 45.7%; }
+    .cross-h { left: 1.8%; right: 1.8%; height: 8.6%; top: 45.7%; transform: rotate(90deg); }
+
+    .center {
+      position: absolute;
+      z-index: 5;
+      inset: 28.5%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 45% 35%, #34332f, var(--panel) 44%, #10100f 73%, #050505 100%);
+      border: clamp(5px, 1.2vw, 9px) solid #080807;
+      box-shadow: 0 2px 2px rgba(255,255,255,.16) inset, 0 -5px 9px #000 inset, 0 7px 12px rgba(0,0,0,.78);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(4px, 1vw, 8px);
+      padding: 7% 6% 5%;
+      touch-action: manipulation;
+    }
+
+    .logo {
+      margin-top: -3%;
+      color: #f3f0e8;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(22px, 7.2vw, 46px);
+      font-weight: 800;
+      font-style: italic;
+      line-height: .86;
+      letter-spacing: -0.075em;
+      text-shadow: 0 2px 0 #000;
+    }
+
+    .logo::after {
+      content: "";
+      display: block;
+      width: 82%;
+      height: clamp(2px, .7vw, 4px);
+      margin: 6% auto 0;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--green-lit) 0 25%, var(--red-lit) 25% 50%, var(--yellow-lit) 50% 75%, var(--blue-lit) 75%);
+      box-shadow: 0 1px 1px #000;
+    }
+
+    .display-row {
+      display: flex;
+      align-items: end;
+      justify-content: center;
+      gap: clamp(5px, 1.2vw, 9px);
+      width: 100%;
+    }
+
+    .display-block { text-align: center; }
+    .display {
+      min-width: clamp(35px, 10.5vw, 63px);
+      padding: .03em .12em .02em;
+      border-radius: 3px;
+      border: 3px solid #080808;
+      background: var(--led-bg);
+      color: var(--led);
+      font-family: "Courier New", monospace;
+      font-size: clamp(18px, 5.6vw, 34px);
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-shadow: 0 0 4px var(--led), 0 0 9px rgba(255,30,20,.65);
+      box-shadow: 0 2px 5px #000 inset, 0 1px 0 rgba(255,255,255,.1);
+    }
+
+    .mini-label {
+      display: block;
+      margin-top: 2px;
+      color: #c6c2b8;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+      font-size: clamp(6px, 1.8vw, 10px);
+      letter-spacing: .14em;
+    }
+
+    .controls {
+      width: 100%;
+      display: flex;
+      align-items: start;
+      justify-content: center;
+      gap: clamp(5px, 1.5vw, 10px);
+    }
+
+    .control {
+      display: grid;
+      justify-items: center;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .control-btn {
+      appearance: none;
+      width: clamp(20px, 5.8vw, 34px);
+      height: clamp(20px, 5.8vw, 34px);
+      padding: 0;
+      border-radius: 50%;
+      border: clamp(2px, .6vw, 4px) solid #0b0b0a;
+      background: radial-gradient(circle at 38% 30%, #ffef79 0 14%, #dfc225 32%, #8a6f00 75%);
+      box-shadow: 0 2px 1px rgba(255,255,255,.2) inset, 0 3px 0 #060606, 0 4px 5px #000;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .control-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #050505; }
+    .control-btn:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+    .strict-btn { background: radial-gradient(circle at 38% 30%, #ff755c 0 14%, #d51d13 34%, #710900 76%); }
+
+    .control-label {
+      color: #d8d4c8;
+      font: 800 clamp(6px, 1.8vw, 10px)/1 Arial, sans-serif;
+      letter-spacing: .07em;
+      white-space: nowrap;
+    }
+
+    .indicator {
+      width: clamp(5px, 1.4vw, 8px);
+      height: clamp(5px, 1.4vw, 8px);
+      border-radius: 50%;
+      background: #3a0505;
+      border: 1px solid #070707;
+      box-shadow: 0 1px 2px #000 inset;
+    }
+    .indicator.on { background: #ff2119; box-shadow: 0 0 6px #ff2119, 0 0 2px #fff inset; }
+
+    .power {
+      width: clamp(35px, 10vw, 60px);
+      height: clamp(17px, 4.7vw, 28px);
+      border-radius: 2px;
+      border: 3px solid #070706;
+      background: #11110f;
+      box-shadow: 0 2px 4px #000 inset, 0 1px 0 rgba(255,255,255,.1);
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .power-knob {
+      width: 48%;
+      height: 100%;
+      border-radius: 1px;
+      background: linear-gradient(#a8a59c, #605f5a);
+      box-shadow: 0 1px 0 #d8d5cb inset, 0 1px 2px #000;
+      transition: transform 120ms ease;
+    }
+    .power[aria-pressed="true"] .power-knob { transform: translateX(108%); }
+
+    .power-labels {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      color: #a9a59c;
+      font: 700 clamp(5px, 1.4vw, 8px)/1 Arial, sans-serif;
+      letter-spacing: .04em;
+    }
+
+    .status {
+      position: fixed;
+      left: 50%;
+      bottom: max(36px, calc(env(safe-area-inset-bottom) + 30px));
+      transform: translateX(-50%);
+      z-index: 20;
+      max-width: calc(100vw - 28px);
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: #f0ede4;
+      background: rgba(5,5,5,.72);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 12px;
+      line-height: 1.2;
+      letter-spacing: .02em;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 150ms ease;
+      pointer-events: none;
+    }
+    .status.show { opacity: 1; }
+
+    footer {
+      position: fixed;
+      left: max(12px, env(safe-area-inset-left));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 15;
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: .025em;
+    }
+    footer a {
+      color: #d8d3c7;
+      text-decoration: none;
+      text-shadow: 0 0 0 rgba(255,240,77,0);
+      animation: future-ready-pulse 3.6s ease-in-out infinite;
+    }
+    footer a:hover { color: var(--cream); }
+    footer a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+    @keyframes future-ready-pulse {
+      0%, 62%, 100% {
+        color: #d8d3c7;
+        text-shadow: 0 0 0 rgba(255,240,77,0);
+      }
+      76% {
+        color: #f4eed8;
+        text-shadow: 0 0 5px rgba(255,240,77,.38), 0 0 10px rgba(255,240,77,.12);
+      }
+    }
+
+    .reset-btn {
+      appearance: none;
+      position: fixed;
+      right: max(12px, env(safe-area-inset-right));
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 15;
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 3px;
+      background: rgba(10,10,9,.68);
+      color: #bbb7ad;
+      font: 700 10px/1 "Trebuchet MS", Verdana, sans-serif;
+      letter-spacing: .025em;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .reset-btn:hover { color: var(--cream); border-color: rgba(255,255,255,.28); }
+    .reset-btn:active { transform: translateY(1px); }
+    .reset-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+    .leaderboard {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      right: max(12px, env(safe-area-inset-right));
+      z-index: 15;
+      padding: 5px 7px 4px;
+      background: #121211;
+      border: 2px solid #050505;
+      box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 4px 8px rgba(0,0,0,.3);
+    }
+
+    .best-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      color: var(--led);
+      font: 800 10px/1.15 "Courier New", monospace;
+      letter-spacing: .08em;
+      text-shadow: 0 0 4px rgba(255,42,34,.5);
+      white-space: nowrap;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(0,0,0,.72);
+    }
+    .modal[hidden] { display: none; }
+
+    .initials-card {
+      width: min(100%, 330px);
+      padding: 22px 20px 18px;
+      background: #1b1a18;
+      color: var(--text);
+      border: 5px solid #070707;
+      box-shadow: 0 3px 0 rgba(255,255,255,.09) inset, 0 18px 34px rgba(0,0,0,.6);
+      text-align: center;
+    }
+
+    .initials-card h2 {
+      margin: 0 0 6px;
+      color: var(--cream);
+      font: 800 18px/1.2 "Courier New", monospace;
+      letter-spacing: .09em;
+    }
+
+    .initials-card p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+    .initials-input {
+      width: 5.3ch;
+      padding: 7px 6px 5px;
+      border: 3px solid #080808;
+      border-radius: 2px;
+      background: var(--led-bg);
+      color: var(--led);
+      font: 800 29px/1 "Courier New", monospace;
+      letter-spacing: .18em;
+      text-align: center;
+      text-transform: uppercase;
+      caret-color: var(--led);
+      outline: none;
+      box-shadow: 0 2px 5px #000 inset;
+    }
+    .initials-input:focus { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+    .initials-error {
+      min-height: 16px;
+      margin-top: 7px;
+      color: #ff8c83;
+      font-size: 12px;
+    }
+
+    .initials-submit {
+      appearance: none;
+      padding: 8px 18px;
+      border: 3px solid #090908;
+      border-radius: 3px;
+      background: #d5bd2c;
+      color: #17140a;
+      font: 800 12px/1 Arial, sans-serif;
+      letter-spacing: .08em;
+      box-shadow: 0 3px 0 #665600;
+      cursor: pointer;
+    }
+    .initials-submit:active { transform: translateY(2px); box-shadow: 0 1px 0 #665600; }
+    .initials-submit:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+    @media (max-width: 420px) and (max-height: 700px) {
+      .game-wrap { width: min(91vw, calc(100svh - 20px)); }
+      .status { bottom: 29px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+      footer a { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="game-wrap" aria-label="Simon memory game">
+      <div class="device" id="device">
+        <button class="pad green" data-pad="0" aria-label="Green"></button>
+        <button class="pad red" data-pad="1" aria-label="Red"></button>
+        <button class="pad yellow" data-pad="2" aria-label="Yellow"></button>
+        <button class="pad blue" data-pad="3" aria-label="Blue"></button>
+        <div class="cross-v"></div>
+        <div class="cross-h"></div>
+
+        <div class="center">
+          <div class="logo" aria-label="Simon">Simon</div>
+          <div class="display-row">
+            <div class="display-block">
+              <div class="display" id="score" aria-live="polite">--</div>
+              <span class="mini-label">COUNT</span>
+            </div>
+          </div>
+          <div class="controls">
+            <div class="control">
+              <button class="control-btn" id="start" aria-label="Start game"></button>
+              <span class="control-label">START</span>
+            </div>
+            <div class="control">
+              <button class="control-btn strict-btn" id="strict" aria-label="Strict mode" aria-pressed="false"></button>
+              <span class="indicator" id="strict-light" aria-hidden="true"></span>
+              <span class="control-label">STRICT</span>
+            </div>
+            <div class="control">
+              <button class="power" id="power" aria-label="Power" aria-pressed="false"><span class="power-knob"></span></button>
+              <span class="power-labels"><span>OFF</span><span>ON</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <section class="leaderboard" aria-label="Session high score">
+        <div class="best-line"><span>BEST</span><span id="best-entry">--- --</span></div>
+      </section>
+    </section>
+  </main>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <div class="modal" id="initials-modal" hidden>
+    <form class="initials-card" id="initials-form" role="dialog" aria-modal="true" aria-labelledby="initials-title">
+      <h2 id="initials-title">NEW HIGH SCORE</h2>
+      <p>Enter three initials</p>
+      <input class="initials-input" id="initials-input" type="text" maxlength="3" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Three initials" />
+      <div class="initials-error" id="initials-error" aria-live="polite"></div>
+      <button class="initials-submit" type="submit">ENTER</button>
+    </form>
+  </div>
+  <button class="reset-btn" id="reset" type="button" aria-label="Reset game">↻ Reset</button>
+  <footer><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Visit Future Ready</a></footer>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var frequencies = [415, 310, 252, 209];
+      var pads = Array.prototype.slice.call(document.querySelectorAll('.pad'));
+      var scoreEl = document.getElementById('score');
+      var bestEl = document.getElementById('best');
+      var startBtn = document.getElementById('start');
+      var strictBtn = document.getElementById('strict');
+      var strictLight = document.getElementById('strict-light');
+      var powerBtn = document.getElementById('power');
+      var resetBtn = document.getElementById('reset');
+      var statusEl = document.getElementById('status');
+      var bestEntryEl = document.getElementById('best-entry');
+      var initialsModal = document.getElementById('initials-modal');
+      var initialsForm = document.getElementById('initials-form');
+      var initialsInput = document.getElementById('initials-input');
+      var initialsError = document.getElementById('initials-error');
+
+      var audioCtx = null;
+      var powerOn = false;
+      var strictOn = false;
+      var sequence = [];
+      var inputIndex = 0;
+      var acceptingInput = false;
+      var playing = false;
+      var gameToken = 0;
+      var sessionBest = 0;
+      var statusTimer = 0;
+      var heldPadIndex = -1;
+      var heldInputId = null;
+      var heldOscillator = null;
+      var heldGain = null;
+      var pendingRoundToken = 0;
+      var pendingMistake = false;
+      var bestEntry = null;
+      var pendingLeaderboardScore = null;
+      var pendingLeaderboardDone = null;
+
+      function wakeAudio() {
+        if (!audioCtx) {
+          var Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtx = new Ctx();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }
+
+      function formatScore(value) {
+        return String(Math.min(value, 99)).padStart(2, '0');
+      }
+
+      function showStatus(text, duration) {
+        clearTimeout(statusTimer);
+        statusEl.textContent = text;
+        statusEl.classList.add('show');
+        statusTimer = setTimeout(function () { statusEl.classList.remove('show'); }, duration || 1200);
+      }
+
+      function setScore(value) {
+        scoreEl.textContent = powerOn ? formatScore(value) : '--';
+      }
+
+      function setBest() {
+        if (bestEl) bestEl.textContent = powerOn ? formatScore(sessionBest) : '--';
+      }
+
+      function renderLeaderboard() {
+        bestEntryEl.textContent = bestEntry ? bestEntry.initials + ' ' + formatScore(bestEntry.score) : '--- --';
+      }
+
+      function scoreQualifies(score) {
+        return score > 0 && (!bestEntry || score > bestEntry.score);
+      }
+
+      function askForInitials(score, done) {
+        pendingLeaderboardScore = score;
+        pendingLeaderboardDone = done;
+        initialsInput.value = '';
+        initialsError.textContent = '';
+        initialsModal.hidden = false;
+        setTimeout(function () { initialsInput.focus(); }, 0);
+      }
+
+      function tone(index, duration) {
+        if (!audioCtx) return;
+        var now = audioCtx.currentTime;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequencies[index], now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
+        gain.gain.setValueAtTime(0.22, now + Math.max(0.03, duration / 1000 - 0.035));
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration / 1000);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration / 1000 + 0.02);
+      }
+
+      function startHeldTone(index, inputId) {
+        heldPadIndex = index;
+        heldInputId = inputId;
+        pads[index].classList.add('lit');
+
+        if (!audioCtx) return;
+        var now = audioCtx.currentTime;
+        heldOscillator = audioCtx.createOscillator();
+        heldGain = audioCtx.createGain();
+        heldOscillator.type = 'sine';
+        heldOscillator.frequency.setValueAtTime(frequencies[index], now);
+        heldGain.gain.setValueAtTime(0.0001, now);
+        heldGain.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
+        heldOscillator.connect(heldGain);
+        heldGain.connect(audioCtx.destination);
+        heldOscillator.start(now);
+      }
+
+      function stopHeldTone(advanceRound) {
+        if (heldPadIndex < 0) return;
+
+        pads[heldPadIndex].classList.remove('lit');
+        if (heldOscillator && heldGain && audioCtx) {
+          var now = audioCtx.currentTime;
+          heldGain.gain.cancelScheduledValues(now);
+          heldGain.gain.setValueAtTime(Math.max(heldGain.gain.value, 0.0001), now);
+          heldGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+          heldOscillator.stop(now + 0.045);
+        }
+
+        heldPadIndex = -1;
+        heldInputId = null;
+        heldOscillator = null;
+        heldGain = null;
+
+        if (advanceRound && pendingMistake) {
+          pendingMistake = false;
+          handleMistake();
+          return;
+        }
+
+        if (advanceRound && pendingRoundToken) {
+          var token = pendingRoundToken;
+          pendingRoundToken = 0;
+          setTimeout(function () {
+            if (powerOn && token === gameToken) addRound(token);
+          }, 500);
+        } else if (!advanceRound) {
+          pendingRoundToken = 0;
+          pendingMistake = false;
+        }
+      }
+
+      function buzz() {
+        if (!audioCtx) return;
+        var now = audioCtx.currentTime;
+        var gain = audioCtx.createGain();
+        var oscA = audioCtx.createOscillator();
+        var oscB = audioCtx.createOscillator();
+        oscA.type = 'sawtooth';
+        oscB.type = 'square';
+        oscA.frequency.setValueAtTime(108, now);
+        oscB.frequency.setValueAtTime(83, now);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.linearRampToValueAtTime(0.14, now + 0.45);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.62);
+        oscA.connect(gain);
+        oscB.connect(gain);
+        gain.connect(audioCtx.destination);
+        oscA.start(now); oscB.start(now);
+        oscA.stop(now + 0.64); oscB.stop(now + 0.64);
+      }
+
+      function flash(index, duration) {
+        pads[index].classList.add('lit');
+        tone(index, duration);
+        setTimeout(function () { pads[index].classList.remove('lit'); }, duration);
+      }
+
+      function playbackTiming() {
+        var length = sequence.length;
+        if (length >= 14) return { on: 190, gap: 85 };
+        if (length >= 10) return { on: 250, gap: 105 };
+        if (length >= 6) return { on: 330, gap: 125 };
+        return { on: 430, gap: 160 };
+      }
+
+      function playSequence(token) {
+        if (!powerOn || token !== gameToken) return;
+        stopHeldTone(false);
+        playing = true;
+        acceptingInput = false;
+        inputIndex = 0;
+        var timing = playbackTiming();
+        var i = 0;
+
+        function next() {
+          if (!powerOn || token !== gameToken) return;
+          if (i >= sequence.length) {
+            playing = false;
+            acceptingInput = true;
+            showStatus('Your turn', 650);
+            return;
+          }
+          flash(sequence[i], timing.on);
+          i += 1;
+          setTimeout(next, timing.on + timing.gap);
+        }
+        setTimeout(next, 350);
+      }
+
+      function addRound(token) {
+        if (!powerOn || token !== gameToken) return;
+        sequence.push(Math.floor(Math.random() * 4));
+        setScore(sequence.length);
+        playSequence(token);
+      }
+
+      function resetGame() {
+        stopHeldTone(false);
+        clearTimeout(statusTimer);
+        gameToken += 1;
+        powerOn = false;
+        strictOn = false;
+        sequence = [];
+        inputIndex = 0;
+        acceptingInput = false;
+        playing = false;
+        sessionBest = 0;
+        bestEntry = null;
+        pendingRoundToken = 0;
+        pendingMistake = false;
+        pendingLeaderboardScore = null;
+        pendingLeaderboardDone = null;
+        powerBtn.setAttribute('aria-pressed', 'false');
+        strictBtn.setAttribute('aria-pressed', 'false');
+        strictLight.classList.remove('on');
+        pads.forEach(function (pad) { pad.classList.remove('lit'); });
+        scoreEl.textContent = '--';
+        setBest();
+        renderLeaderboard();
+        initialsModal.hidden = true;
+        initialsInput.value = '';
+        initialsError.textContent = '';
+        statusEl.classList.remove('show');
+        statusEl.textContent = '';
+      }
+
+      function beginGame() {
+        if (!powerOn) {
+          showStatus('Switch the power on', 1200);
+          return;
+        }
+        wakeAudio();
+        stopHeldTone(false);
+        gameToken += 1;
+        sequence = [];
+        inputIndex = 0;
+        acceptingInput = false;
+        playing = false;
+        setScore(0);
+        showStatus(strictOn ? 'Strict game' : 'New game', 650);
+        addRound(gameToken);
+      }
+
+      function handleMistake() {
+        acceptingInput = false;
+        playing = true;
+        stopHeldTone(false);
+        buzz();
+
+        if (strictOn && powerOn) {
+          var strictToken = ++gameToken;
+          var finalScore = Math.max(0, sequence.length - 1);
+          sequence = [];
+          setScore(finalScore);
+
+          function restartStrictGame() {
+            showStatus('Strict restart', 700);
+            setTimeout(function () {
+              if (powerOn && strictToken === gameToken) addRound(strictToken);
+            }, 650);
+          }
+
+          if (scoreQualifies(finalScore)) {
+            showStatus('New high score!', 700);
+            askForInitials(finalScore, restartStrictGame);
+          } else {
+            showStatus('Miss — strict restart', 950);
+            setTimeout(restartStrictGame, 400);
+          }
+        } else if (powerOn) {
+          showStatus('Miss — listen again', 950);
+          var retryToken = gameToken;
+          setTimeout(function () {
+            if (powerOn && retryToken === gameToken) playSequence(retryToken);
+          }, 850);
+        }
+      }
+
+      function playerPress(index, inputId) {
+        if (!powerOn || playing || !acceptingInput || heldPadIndex >= 0) return false;
+        wakeAudio();
+        startHeldTone(index, inputId);
+
+        if (index !== sequence[inputIndex]) {
+          acceptingInput = false;
+          pendingMistake = true;
+          return true;
+        }
+
+        inputIndex += 1;
+        if (inputIndex === sequence.length) {
+          acceptingInput = false;
+          if (sequence.length > sessionBest) {
+            sessionBest = sequence.length;
+            setBest();
+          }
+          pendingRoundToken = gameToken;
+          showStatus('Good', 450);
+        }
+        return true;
+      }
+
+      pads.forEach(function (pad, index) {
+        pad.addEventListener('pointerdown', function (event) {
+          event.preventDefault();
+          if (playerPress(index, event.pointerId)) {
+            pad.setPointerCapture(event.pointerId);
+          }
+        });
+
+        function releasePointer(event) {
+          if (heldInputId === event.pointerId) stopHeldTone(true);
+        }
+
+        pad.addEventListener('pointerup', releasePointer);
+        pad.addEventListener('pointercancel', releasePointer);
+        pad.addEventListener('lostpointercapture', releasePointer);
+      });
+
+      initialsInput.addEventListener('input', function () {
+        initialsInput.value = initialsInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+        initialsError.textContent = '';
+      });
+
+      initialsForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var initials = initialsInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+        if (initials.length !== 3) {
+          initialsError.textContent = 'ENTER 3 LETTERS';
+          initialsInput.focus();
+          return;
+        }
+
+        bestEntry = { initials: initials, score: pendingLeaderboardScore };
+        renderLeaderboard();
+        initialsModal.hidden = true;
+        var done = pendingLeaderboardDone;
+        pendingLeaderboardScore = null;
+        pendingLeaderboardDone = null;
+        if (done) done();
+      });
+
+      renderLeaderboard();
+
+      startBtn.addEventListener('click', beginGame);
+      resetBtn.addEventListener('click', resetGame);
+
+      strictBtn.addEventListener('click', function () {
+        if (!powerOn) {
+          showStatus('Switch the power on', 1000);
+          return;
+        }
+        strictOn = !strictOn;
+        strictBtn.setAttribute('aria-pressed', String(strictOn));
+        strictLight.classList.toggle('on', strictOn);
+        showStatus(strictOn ? 'Strict mode on' : 'Strict mode off', 900);
+      });
+
+      powerBtn.addEventListener('click', function () {
+        wakeAudio();
+        stopHeldTone(false);
+        powerOn = !powerOn;
+        powerBtn.setAttribute('aria-pressed', String(powerOn));
+        gameToken += 1;
+        sequence = [];
+        inputIndex = 0;
+        acceptingInput = false;
+        playing = false;
+        pads.forEach(function (pad) { pad.classList.remove('lit'); });
+        setBest();
+        if (powerOn) {
+          setScore(0);
+          tone(0, 100);
+          showStatus('Ready', 700);
+        } else {
+          setScore(0);
+          statusEl.classList.remove('show');
+        }
+      });
+
+      var keyMap = { 'q': 0, 'w': 1, 'a': 2, 's': 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+
+      window.addEventListener('keydown', function (event) {
+        if (event.target === initialsInput || event.repeat) return;
+        var key = event.key.toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(keyMap, key)) {
+          event.preventDefault();
+          playerPress(keyMap[key], 'key-' + key);
+        }
+      });
+
+      window.addEventListener('keyup', function (event) {
+        var key = event.key.toLowerCase();
+        if (heldInputId === 'key-' + key) stopHeldTone(true);
+      });
+
+      window.addEventListener('blur', function () {
+        stopHeldTone(true);
+      });
+
+      document.addEventListener('touchmove', function (event) {
+        if (event.target.closest('.device')) event.preventDefault();
+      }, { passive: false });
+    })();
+  </script>
+</body>
+</html>

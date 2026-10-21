@@ -1,0 +1,1210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Mattel Bowling</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --room: #312a24;
+      --room-hi: #5b4d3f;
+      --case: #b89662;
+      --case-hi: #d2b985;
+      --case-deep: #795b38;
+      --ink: #201812;
+      --screen: #100d0b;
+      --screen-edge: #050403;
+      --orange: #d56a25;
+      --orange-hi: #f59a3d;
+      --blue: #123e5b;
+      --blue-hi: #2e7295;
+      --led: #ff301c;
+      --led-core: #fff0d8;
+      --led-dim: #3a100d;
+      --paper: #f6ead0;
+    }
+    @media (prefers-color-scheme: light) {
+      :root { --room: #93806b; --room-hi: #c2ae96; }
+    }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--room); }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      overflow-x: hidden;
+      color: var(--paper);
+      background:
+        radial-gradient(circle at 50% 8%, color-mix(in srgb, var(--room-hi) 70%, transparent), transparent 42%),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 5px),
+        var(--room);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+    button, input { font: inherit; }
+    .page {
+      width: 100%;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 18px 12px 30px;
+    }
+    .game-shell { width: min(100%, 540px); }
+    .machine-wrap {
+      position: relative;
+      width: min(440px, calc(100vw - 52px));
+      margin: 0 auto;
+      filter: drop-shadow(0 22px 24px rgba(0,0,0,.45));
+    }
+    .machine {
+      position: relative;
+      width: 100%;
+      min-height: 760px;
+      padding: 22px 30px 26px;
+      overflow: hidden;
+      border: 3px solid #5b432a;
+      border-radius: 31px 31px 42px 42px;
+      background:
+        radial-gradient(circle at 24% 12%, rgba(255,255,255,.18) 0 1px, transparent 2px),
+        radial-gradient(circle at 80% 40%, rgba(62,35,17,.12) 0 1px, transparent 2px),
+        linear-gradient(100deg, transparent 0 14%, rgba(255,255,255,.06) 14.4%, transparent 15%),
+        linear-gradient(90deg, var(--case-deep), var(--case) 4%, var(--case-hi) 47%, var(--case) 90%, var(--case-deep));
+      box-shadow:
+        inset 0 0 0 4px rgba(255,255,255,.08),
+        inset 8px 0 10px rgba(255,255,255,.1),
+        inset -8px 0 14px rgba(42,22,7,.25);
+    }
+    .machine::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid rgba(58,36,18,.24);
+      border-radius: 23px 23px 35px 35px;
+      pointer-events: none;
+    }
+    .top-panel {
+      height: 112px;
+      display: grid;
+      grid-template-columns: 1fr 126px;
+      gap: 12px;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+    .brand {
+      align-self: start;
+      margin-top: 5px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: .92;
+      color: #19130f;
+      text-shadow: 0 1px rgba(255,255,255,.28);
+    }
+    .brand strong { font: 900 19px/1 Arial Black, sans-serif; letter-spacing: -.8px; }
+    .brand span { font: 700 11px/1.1 Arial, sans-serif; letter-spacing: 2.1px; margin-top: 4px; }
+    .power-control { width: 126px; justify-self: end; }
+    .power-labels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin-bottom: 4px;
+      color: #2d2117;
+      font: 800 9px/1 Arial, sans-serif;
+      text-align: center;
+      letter-spacing: .5px;
+    }
+    .slider-wrap {
+      position: relative;
+      height: 31px;
+      border-radius: 5px;
+      background: #3a3028;
+      border: 2px solid #6f5335;
+      box-shadow: inset 0 3px 5px #17120f, 0 1px rgba(255,255,255,.28);
+    }
+    #modeSlider {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 1;
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      cursor: pointer;
+      z-index: 2;
+    }
+    #modeSlider::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+    #modeSlider::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 30px; height: 27px; background: transparent; border: 0; }
+    #modeSlider::-moz-range-track { height: 100%; background: transparent; border: 0; }
+    #modeSlider::-moz-range-thumb { width: 30px; height: 27px; background: transparent; border: 0; }
+    .slider-notch {
+      position: absolute;
+      left: 7px; right: 7px; top: 13px;
+      height: 4px;
+      background: #100e0c;
+    }
+    .slider-knob {
+      position: absolute;
+      top: 3px;
+      left: 4px;
+      width: 27px;
+      height: 21px;
+      border-radius: 3px;
+      background: linear-gradient(#bbb2a6, #665f56);
+      border: 1px solid #342f29;
+      box-shadow: 0 2px 3px rgba(0,0,0,.65);
+      transform: translateX(0);
+      transition: transform .14s ease;
+      pointer-events: none;
+    }
+    .speed-control {
+      height: 51px;
+      margin-top: 5px;
+      display: grid;
+      grid-template-columns: 43px 1fr;
+      grid-template-rows: 11px 38px;
+      column-gap: 8px;
+      align-items: center;
+    }
+    .speed-label {
+      grid-column: 1;
+      color: #2d2117;
+      font: 900 8px/1 Arial, sans-serif;
+      letter-spacing: .6px;
+      text-align: center;
+    }
+    .indicator-window {
+      grid-column: 1;
+      width: 38px; height: 28px;
+      margin: 0 auto;
+      padding: 0;
+      display: grid; place-items: center;
+      appearance: none;
+      -webkit-appearance: none;
+      background: #1a1612;
+      border: 2px solid #694d31;
+      box-shadow: inset 0 2px 3px #000, 0 1px rgba(255,255,255,.2);
+      color: var(--led);
+      font: 900 17px/1 "Courier New", monospace;
+      text-shadow: 0 0 5px rgba(255,48,28,.8);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .indicator-window:active { transform: translateY(1px); }
+    .indicator-window:focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+    .speed-help {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      color: #2d2117;
+      font: 800 8px/1.2 Arial, sans-serif;
+      letter-spacing: .2px;
+      text-align: left;
+    }
+    .face {
+      position: relative;
+      width: 100%;
+      height: 548px;
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      gap: 0;
+      z-index: 2;
+    }
+    .rail {
+      position: relative;
+      overflow: hidden;
+      border-top: 4px solid #43311e;
+      border-bottom: 4px solid #43311e;
+      background:
+        repeating-linear-gradient(135deg, var(--orange) 0 12px, #f0aa50 12px 21px, #98401d 21px 26px),
+        var(--orange);
+      box-shadow: inset 0 0 8px rgba(0,0,0,.4);
+    }
+    .rail.left { border-left: 5px solid var(--blue); }
+    .rail.right { border-right: 5px solid var(--blue); }
+    .rail::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent 0 43px, rgba(255,241,186,.55) 43px 46px, transparent 46px 53px);
+      opacity: .7;
+    }
+    .display-frame {
+      position: relative;
+      padding: 8px 9px 10px;
+      background: linear-gradient(90deg, #251b15, #453227 8%, #241a14 92%, #0f0b09);
+      border-top: 4px solid #33241b;
+      border-bottom: 4px solid #33241b;
+      box-shadow: inset 0 0 0 2px #6f5438;
+    }
+    .display {
+      position: relative;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(88,17,10,.08), transparent 45%),
+        linear-gradient(#080706, #120d0a 62%, #090706);
+      border: 3px solid #070605;
+      box-shadow: inset 0 0 15px #000, 0 0 0 2px rgba(165,126,77,.45);
+    }
+    .display.off .led,
+    .display.off .guide,
+    .display.off .selected { opacity: 0 !important; filter: none !important; }
+    .display.off .readout, .display.off .frame-strip, .display.off .message { opacity: 0; }
+    .readout {
+      position: absolute;
+      z-index: 4;
+      top: 8px; left: 8px; right: 8px;
+      display: flex; justify-content: space-between;
+      color: var(--led);
+      font: 700 12px/1 "Courier New", monospace;
+      letter-spacing: 1px;
+      text-shadow: 0 0 6px rgba(255,48,28,.9);
+      transition: opacity .2s;
+    }
+    .lane-svg { position: absolute; inset: 28px 6px 74px; width: calc(100% - 12px); height: calc(100% - 102px); }
+    .led {
+      fill: var(--led-dim);
+      stroke: rgba(255,80,40,.18);
+      stroke-width: .6;
+    }
+    .led.lit {
+      fill: var(--led);
+      stroke: #ffb39f;
+      filter: drop-shadow(0 0 2px #ff210e) drop-shadow(0 0 5px rgba(255,45,22,.85));
+    }
+    .pin-led { transition: opacity .08s linear, fill .08s linear; }
+    .pin-led.down { fill: var(--led-dim); stroke: rgba(255,80,40,.12); filter: none; }
+    .guide { fill: #4c1712; }
+    .guide.lit { fill: #8e2118; filter: drop-shadow(0 0 2px rgba(255,40,20,.5)); }
+    #ball { opacity: 0; }
+    #ball.visible { opacity: 1; }
+    .foul-led.selected { fill: var(--led); stroke: var(--led-core); filter: drop-shadow(0 0 4px #ff351c); }
+    .frame-strip {
+      position: absolute;
+      z-index: 4;
+      left: 7px; right: 7px; bottom: 28px;
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0,1fr));
+      border-top: 1px solid #4a1711;
+      transition: opacity .2s;
+    }
+    .frame-cell {
+      min-width: 0;
+      height: 31px;
+      padding-top: 3px;
+      border-right: 1px solid #37110e;
+      color: #7c2118;
+      text-align: center;
+      font: 700 8px/1.15 "Courier New", monospace;
+    }
+    .frame-cell:last-child { border-right: 0; }
+    .frame-cell.current { color: var(--led); text-shadow: 0 0 4px #ff2615; }
+    .frame-cell b { display: block; font-size: 9px; white-space: nowrap; overflow: hidden; }
+    .message {
+      position: absolute;
+      z-index: 5;
+      bottom: 7px; left: 6px; right: 6px;
+      text-align: center;
+      color: var(--led);
+      font: 700 10px/1 "Courier New", monospace;
+      letter-spacing: .7px;
+      text-shadow: 0 0 5px #ff2d1a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: opacity .2s;
+    }
+    .celebration { position: absolute; z-index: 6; inset: 63px 20px 76px; pointer-events: none; opacity: 0; }
+    .celebration.show { opacity: 1; }
+    .strike-grid { position: absolute; inset: 30% 20%; }
+    .strike-grid i, .spare-sweep i {
+      position: absolute; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--led);
+      box-shadow: 0 0 2px var(--led-core), 0 0 7px var(--led);
+    }
+    .spare-sweep { position: absolute; inset: 42% 0 auto; height: 30px; }
+    .spare-sweep i { width: 9px; height: 9px; top: 8px; animation: sweep 1s linear infinite; }
+    .spare-sweep i:nth-child(2) { animation-delay: -.14s; }
+    .spare-sweep i:nth-child(3) { animation-delay: -.28s; }
+    @keyframes sweep { from { left: -8%; } to { left: 105%; } }
+    .launcher {
+      position: absolute;
+      left: 30px; right: 30px; bottom: 14px;
+      height: 38px;
+      border: 2px solid #70421f;
+      background: repeating-linear-gradient(135deg, #c25422 0 9px, #ef9a3b 9px 16px);
+      box-shadow: inset 0 0 7px rgba(0,0,0,.38);
+    }
+    .launcher::after {
+      content: "BALL LAUNCH";
+      position: absolute; inset: 0; display: grid; place-items: center;
+      color: #542314; font: 900 10px/1 Arial, sans-serif; letter-spacing: 1.5px;
+      text-shadow: 0 1px rgba(255,230,160,.35);
+    }
+    .side-button {
+      position: absolute;
+      z-index: 8;
+      top: 318px;
+      width: 34px; height: 92px;
+      padding: 0;
+      border: 2px solid #3b291c;
+      background: linear-gradient(90deg, #8d301f, #d24b2d 48%, #7e251a);
+      box-shadow: inset 0 0 0 2px rgba(255,179,120,.16), 0 5px 7px rgba(0,0,0,.45);
+      cursor: pointer;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .side-button.left { left: -25px; border-radius: 10px 2px 2px 10px; }
+    .side-button.right { right: -25px; border-radius: 2px 10px 10px 2px; }
+    .side-button::after {
+      content: "";
+      position: absolute; inset: 9px 8px;
+      border: 1px solid rgba(255,209,170,.25);
+      border-radius: 3px;
+    }
+    .side-button.pressed { transform: translateY(3px); filter: brightness(.8); box-shadow: inset 0 2px 7px #4b160e; }
+    .side-callout {
+      position: absolute;
+      top: 416px;
+      width: 54px;
+      color: #e8d2ae;
+      text-align: center;
+      font: 700 8px/1.2 Arial, sans-serif;
+      letter-spacing: .5px;
+      text-shadow: 0 1px 2px #000;
+    }
+    .side-callout.left { left: -36px; }
+    .side-callout.right { right: -36px; }
+    .bottom-brand {
+      position: relative;
+      z-index: 2;
+      height: 69px;
+      display: grid;
+      place-items: center;
+      color: #b11f1d;
+      font: 900 clamp(34px, 9vw, 49px)/1 Arial Black, Arial, sans-serif;
+      letter-spacing: -2px;
+      transform: scaleX(.92);
+      text-shadow: 0 2px rgba(255,213,161,.38), 0 3px 0 #671a17;
+    }
+    .control-hint {
+      width: min(440px, calc(100vw - 24px));
+      margin: 14px auto 0;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: center;
+      gap: 8px 18px;
+      flex-wrap: wrap;
+      color: #fff1d8;
+      background: rgba(19,14,11,.88);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.35;
+      letter-spacing: .25px;
+    }
+    .control-hint span { white-space: nowrap; }
+    .lane-svg { cursor: crosshair; }
+    .display.desktop-aiming .lane-svg { cursor: ew-resize; }
+    .phone-instruction { display: none; }
+    .meta-controls {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .meta-controls button {
+      min-height: 38px;
+      padding: 0 14px;
+      color: #2a1d14;
+      background: #d6c19f;
+      border: 1px solid #5e4732;
+      border-radius: 5px;
+      box-shadow: 0 2px 0 #4b3524;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .meta-controls button:active { transform: translateY(2px); box-shadow: none; }
+    .tablet-mode-toggle { display: none; }
+    .howto {
+      margin: 13px auto 0;
+      width: min(440px, calc(100vw - 24px));
+      color: #f4e9d3;
+      background: rgba(19,14,11,.78);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 7px;
+    }
+    .howto summary {
+      padding: 12px 14px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .howto ol { margin: 0; padding: 0 18px 16px 34px; }
+    .howto li { margin: 7px 0; font-size: 12px; line-height: 1.45; }
+    .kbd { border: 1px solid #9f8d74; border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; font-family: monospace; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 440px) {
+      .page { padding: 6px 0 20px; place-items: start center; }
+      .game-shell { width: 100%; }
+      .machine-wrap { width: min(350px, calc(100vw - 50px)); }
+      .machine {
+        min-height: 0;
+        height: 560px;
+        padding: 12px 18px 14px;
+        border-width: 2px;
+        border-radius: 24px 24px 32px 32px;
+        box-shadow:
+          inset 0 0 0 3px rgba(255,255,255,.10),
+          inset 7px 0 9px rgba(255,255,255,.12),
+          inset -8px 0 12px rgba(42,22,7,.28),
+          0 1px 0 rgba(255,255,255,.12);
+      }
+      .machine::after { inset: 6px; border-radius: 18px 18px 27px 27px; }
+      .top-panel { height: 76px; grid-template-columns: minmax(76px, 1fr) 118px; gap: 6px; }
+      .power-control { width: 118px; }
+      .brand { margin-top: 2px; }
+      .brand strong { font-size: 15px; }
+      .brand span { font-size: 8px; letter-spacing: 1.35px; }
+      .power-labels { font-size: 0; margin-bottom: 3px; }
+      .power-labels span::after { font: 800 7px/1 Arial, sans-serif; }
+      .power-labels span:nth-child(1)::after { content: "OFF"; }
+      .power-labels span:nth-child(2)::after { content: "2P"; }
+      .power-labels span:nth-child(3)::after { content: "1P"; }
+      .slider-wrap { height: 25px; }
+      .slider-knob { top: 2px; height: 18px; }
+      .slider-notch { top: 10px; }
+      .speed-control { height: 45px; margin-top: 2px; grid-template-columns: 40px 1fr; grid-template-rows: 9px 34px; column-gap: 6px; }
+      .speed-label { font-size: 7px; }
+      .indicator-window { width: 36px; height: 26px; font-size: 16px; }
+      .speed-help { font-size: 7px; line-height: 1.15; }
+      .face { height: 382px; grid-template-columns: 28px minmax(0, 1fr) 28px; }
+      .display-frame { padding: 6px 5px 7px; }
+      .display { border-width: 2px; box-shadow: inset 0 0 13px #000, 0 0 0 1px rgba(196,151,92,.58); }
+      .readout { top: 7px; left: 7px; right: 7px; font-size: 11px; }
+      .lane-svg { inset: 25px 4px 68px; width: calc(100% - 8px); height: calc(100% - 93px); }
+      .pin-led.lit { stroke-width: 1; filter: drop-shadow(0 0 1px #ffd1c3) drop-shadow(0 0 3px rgba(255,45,22,.9)); }
+      .frame-strip { left: 5px; right: 5px; bottom: 26px; }
+      .frame-cell { height: 29px; font-size: 7px; }
+      .message { bottom: 7px; font-size: 9px; }
+      .launcher { left: 18px; right: 18px; bottom: 11px; height: 32px; }
+      .bottom-brand { height: 48px; font-size: clamp(28px, 10vw, 38px); }
+      .side-button { top: 232px; width: 28px; height: 74px; }
+      .side-button.left { left: -22px; }
+      .side-button.right { right: -22px; }
+      .side-callout { top: 311px; font-size: 7px; width: 46px; color: #24170f; text-shadow: 0 1px rgba(255,255,255,.28); }
+      .side-callout.left { left: 2px; }
+      .side-callout.right { right: 2px; }
+      .meta-controls { margin-top: 10px; }
+      .meta-controls button { min-height: 34px; }
+    }
+    @media (pointer: coarse) {
+      .control-hint { display: none; }
+      .desktop-instruction { display: none; }
+      .phone-instruction { display: list-item; }
+      .tablet-mode-toggle { display: inline-block; }
+      .lane-svg { cursor: default; }
+      .meta-controls { margin-top: 10px; }
+    }
+    @media (max-height: 760px) and (min-width: 441px) {
+      .page { align-items: start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="game-shell" aria-label="1980 Mattel Electronics Bowling handheld game">
+      <div class="machine-wrap">
+        <button class="side-button left" id="leftButton" aria-label="Left side button"></button>
+        <button class="side-button right" id="rightButton" aria-label="Right side button"></button>
+        <span class="side-callout left">SIDE<br>BUTTON</span>
+        <span class="side-callout right">SIDE<br>BUTTON</span>
+
+        <div class="machine">
+          <div class="top-panel">
+            <div class="brand" aria-label="Mattel Electronics">
+              <strong>MATTEL</strong><span>ELECTRONICS</span>
+            </div>
+            <div class="power-control">
+              <div class="power-labels"><span>OFF</span><span>2 PLAYERS</span><span>1 PLAYER</span></div>
+              <div class="slider-wrap">
+                <span class="slider-notch"></span>
+                <span class="slider-knob" id="sliderKnob"></span>
+                <input id="modeSlider" type="range" min="0" max="2" value="0" step="1" aria-label="Game selector: off, two players, or one player" />
+              </div>
+              <div class="speed-control" aria-label="Bowling speed control">
+                <span class="speed-label">SPEED</span>
+                <button class="indicator-window" id="modeIndicator" type="button" aria-live="polite" aria-label="Speed 1 of 7. Click to adjust speed." title="Click to adjust speed">–</button>
+                <span class="speed-help">click to adjust speed</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="face">
+            <div class="rail left" aria-hidden="true"></div>
+            <div class="display-frame">
+              <div class="display off" id="display">
+                <div class="readout"><span id="playerReadout">P1</span><span id="frameReadout">F01</span><span id="scoreReadout">000</span></div>
+                <svg class="lane-svg" id="lane" viewBox="0 0 240 430" role="img" aria-label="Red LED bowling lane">
+                  <g id="guides" opacity=".78">
+                    <circle class="guide lit" cx="70" cy="150" r="2.2"/><circle class="guide lit" cx="120" cy="150" r="2.2"/><circle class="guide lit" cx="170" cy="150" r="2.2"/>
+                    <circle class="guide lit" cx="70" cy="210" r="2.2"/><circle class="guide lit" cx="120" cy="210" r="2.2"/><circle class="guide lit" cx="170" cy="210" r="2.2"/>
+                    <circle class="guide lit" cx="70" cy="270" r="2.2"/><circle class="guide lit" cx="120" cy="270" r="2.2"/><circle class="guide lit" cx="170" cy="270" r="2.2"/>
+                    <circle class="guide lit" cx="70" cy="330" r="2.2"/><circle class="guide lit" cx="120" cy="330" r="2.2"/><circle class="guide lit" cx="170" cy="330" r="2.2"/>
+                  </g>
+                  <g id="pins" aria-label="Ten pins">
+                    <circle class="led pin-led lit" data-pin="0" cx="120" cy="48" r="5"/>
+                    <circle class="led pin-led lit" data-pin="1" cx="103" cy="64" r="5"/><circle class="led pin-led lit" data-pin="2" cx="137" cy="64" r="5"/>
+                    <circle class="led pin-led lit" data-pin="3" cx="86" cy="80" r="5"/><circle class="led pin-led lit" data-pin="4" cx="120" cy="80" r="5"/><circle class="led pin-led lit" data-pin="5" cx="154" cy="80" r="5"/>
+                    <circle class="led pin-led lit" data-pin="6" cx="69" cy="96" r="5"/><circle class="led pin-led lit" data-pin="7" cx="103" cy="96" r="5"/><circle class="led pin-led lit" data-pin="8" cx="137" cy="96" r="5"/><circle class="led pin-led lit" data-pin="9" cx="171" cy="96" r="5"/>
+                  </g>
+                  <g id="foulLine" aria-label="Ball aiming positions">
+                    <circle class="led foul-led" data-pos="0" cx="40" cy="398" r="4"/><circle class="led foul-led" data-pos="1" cx="60" cy="398" r="4"/><circle class="led foul-led" data-pos="2" cx="80" cy="398" r="4"/><circle class="led foul-led" data-pos="3" cx="100" cy="398" r="4"/><circle class="led foul-led selected" data-pos="4" cx="120" cy="398" r="4"/><circle class="led foul-led" data-pos="5" cx="140" cy="398" r="4"/><circle class="led foul-led" data-pos="6" cx="160" cy="398" r="4"/><circle class="led foul-led" data-pos="7" cx="180" cy="398" r="4"/><circle class="led foul-led" data-pos="8" cx="200" cy="398" r="4"/>
+                  </g>
+                  <circle class="led lit" id="ball" cx="120" cy="398" r="4.8"/>
+                </svg>
+                <div class="celebration" id="celebration" aria-hidden="true">
+                  <div class="strike-grid" id="strikeGrid"></div>
+                  <div class="spare-sweep" id="spareSweep"><i></i><i></i><i></i></div>
+                </div>
+                <div class="frame-strip" id="frameStrip" aria-label="Ten frame scorecard"></div>
+                <div class="message" id="message" aria-live="polite">SELECT PLAYERS</div>
+              </div>
+            </div>
+            <div class="rail right" aria-hidden="true"></div>
+            <div class="launcher" aria-hidden="true"></div>
+          </div>
+          <div class="bottom-brand">BOWLING</div>
+        </div>
+      </div>
+
+      <div class="control-hint" aria-label="Desktop mouse and keyboard controls">
+        <span>MOUSE: HOLD + MOVE TO AIM · RELEASE TO THROW</span>
+        <span>KEYS: ← → AIM · SPACEBAR THROW</span>
+        <span>DURING ROLL: MOVE MOUSE OR ← → TO CURVE</span>
+      </div>
+      <div class="meta-controls">
+        <button class="tablet-mode-toggle" id="inputModeButton" type="button" aria-pressed="false">Input: Touch</button>
+        <button id="soundButton" type="button" aria-pressed="true">Sound: On</button>
+        <button id="resetButton" type="button">Reset game</button>
+      </div>
+      <details class="howto">
+        <summary>How to play</summary>
+        <ol>
+          <li>Move the top switch to <strong>1 PLAYER</strong> or <strong>2 PLAYERS</strong>.</li>
+          <li>Tap either red side button to light the display.</li>
+          <li>Click the <strong>SPEED</strong> display to cycle through speeds 1–7. Speed 7 is fastest.</li>
+          <li class="desktop-instruction"><strong>MOUSE:</strong> click and hold on the lane, move left or right to aim, then release to throw.</li>
+          <li class="desktop-instruction"><strong>KEYBOARD:</strong> use <span class="kbd">←</span> <span class="kbd">→</span> to aim and <span class="kbd">SPACEBAR</span> to throw.</li>
+          <li class="desktop-instruction"><strong>DURING ROLL:</strong> move the mouse or use <span class="kbd">←</span> <span class="kbd">→</span> to curve the ball.</li>
+          <li class="phone-instruction">In <strong>Touch</strong> mode, hold both side buttons and slide left or right to aim; release both to bowl.</li>
+          <li class="phone-instruction">For a Bluetooth mouse, switch to <strong>Input: Mouse</strong>. Click and hold to aim, move left or right, then release to bowl.</li>
+          <li class="phone-instruction">During the roll, drag or move across the lane to curve the ball.</li>
+        </ol>
+      </details>
+      <p class="sr-only" id="gameStatus" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+      var modeSlider = document.getElementById('modeSlider');
+      var sliderKnob = document.getElementById('sliderKnob');
+      var modeIndicator = document.getElementById('modeIndicator');
+      var display = document.getElementById('display');
+      var leftButton = document.getElementById('leftButton');
+      var rightButton = document.getElementById('rightButton');
+      var playerReadout = document.getElementById('playerReadout');
+      var frameReadout = document.getElementById('frameReadout');
+      var scoreReadout = document.getElementById('scoreReadout');
+      var frameStrip = document.getElementById('frameStrip');
+      var message = document.getElementById('message');
+      var gameStatus = document.getElementById('gameStatus');
+      var ball = document.getElementById('ball');
+      var lane = document.getElementById('lane');
+      var celebration = document.getElementById('celebration');
+      var strikeGrid = document.getElementById('strikeGrid');
+      var spareSweep = document.getElementById('spareSweep');
+      var inputModeButton = document.getElementById('inputModeButton');
+      var soundButton = document.getElementById('soundButton');
+      var resetButton = document.getElementById('resetButton');
+      var pinEls = Array.prototype.slice.call(document.querySelectorAll('.pin-led'));
+      var foulEls = Array.prototype.slice.call(document.querySelectorAll('.foul-led'));
+
+      var audio = null;
+      var soundOn = true;
+      var inputMode = 'touch';
+      var mode = 0;
+      var powered = false;
+      var phase = 'off';
+      var speed = 1;
+      var aimIndex = 4;
+      var aimDirection = 1;
+      var bothTimer = null;
+      var leftHeld = false;
+      var rightHeld = false;
+      var bothGestureActive = false;
+      var leftTouchX = 0;
+      var rightTouchX = 0;
+      var touchAimOriginX = 0;
+      var touchAimOriginIndex = 4;
+      var flight = null;
+      var dragLastX = null;
+      var desktopAimPointer = null;
+      var finePointer = window.matchMedia('(pointer: fine)');
+      var players = [];
+      var currentPlayer = 0;
+      var standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+      var lastAimTick = 0;
+      var inputLock = false;
+
+      var pinX = [0.50, 0.42, 0.58, 0.34, 0.50, 0.66, 0.26, 0.42, 0.58, 0.74];
+      // Smaller y values are farther up-lane. Chain reactions may travel
+      // sideways or away from the bowler, but never back toward the foul line.
+      var pinY = [48, 64, 64, 80, 80, 80, 96, 96, 96, 96];
+
+      function tabletMouseMode() { return !finePointer.matches && inputMode === 'mouse'; }
+
+      function ensureAudio() {
+        if (!soundOn) return null;
+        if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+        if (audio.state === 'suspended') audio.resume();
+        return audio;
+      }
+      function tone(freq, duration, delay, volume, type) {
+        var ctx = ensureAudio();
+        if (!ctx) return;
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        var start = ctx.currentTime + (delay || 0);
+        o.type = type || 'square';
+        o.frequency.setValueAtTime(freq, start);
+        g.gain.setValueAtTime(0.0001, start);
+        g.gain.exponentialRampToValueAtTime(volume || .045, start + .008);
+        g.gain.exponentialRampToValueAtTime(.0001, start + duration);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(start); o.stop(start + duration + .03);
+      }
+      function tick() { tone(780, .035, 0, .035); }
+      function powerTone() { tone(185, .08, 0, .05); tone(370, .1, .08, .045); }
+      function launchSound() {
+        var ctx = ensureAudio(); if (!ctx) return;
+        for (var i=0;i<7;i++) tone(110 + i*13, .045, i*.06, .025);
+      }
+      function pinCrash(count) {
+        if (!soundOn) return;
+        for (var i=0;i<Math.max(2,count);i++) tone(120 + ((i*73)%210), .08, i*.025, .035);
+      }
+      function applause() {
+        if (!soundOn) return;
+        for (var i=0;i<22;i++) tone(170 + ((i*97)%470), .025, i*.035, .018);
+      }
+      function strikeJingle() {
+        [392,523,659,784,1047].forEach(function(f,i){ tone(f,.13,i*.10,.05); });
+      }
+      function gutterSound() { tone(260,.14,0,.045); tone(196,.16,.13,.045); tone(131,.25,.28,.05); }
+
+      function makeStrikeGrid() {
+        var pts = [];
+        for (var i=0;i<7;i++) {
+          pts.push([i*12+5,i*12+2]);
+          pts.push([77-i*12,i*12+2]);
+        }
+        strikeGrid.innerHTML = pts.map(function(p){ return '<i style="left:'+p[0]+'%;top:'+p[1]+'%"></i>'; }).join('');
+      }
+      makeStrikeGrid();
+
+      function newPlayer() {
+        return { frames: [[],[],[],[],[],[],[],[],[],[]], frame: 0, done: false };
+      }
+      function resetState(keepPower) {
+        players = mode ? Array.from({length: mode === 1 ? 2 : 1}, newPlayer) : [];
+        currentPlayer = 0;
+        standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+        speed = 1;
+        aimIndex = 4;
+        aimDirection = 1;
+        inputLock = false;
+        leftHeld = false;
+        rightHeld = false;
+        bothGestureActive = false;
+        flight = null;
+        dragLastX = null;
+        desktopAimPointer = null;
+        display.classList.remove('desktop-aiming');
+        ball.classList.remove('visible');
+        celebration.classList.remove('show');
+        if (!keepPower) powered = false;
+        phase = powered ? 'ready' : (mode ? 'sleep' : 'off');
+        renderPins(); renderAim(); updateUI();
+      }
+      function renderSpeedControl() {
+        modeIndicator.setAttribute('aria-label', 'Speed ' + speed + ' of 7. Click to adjust speed.');
+        modeIndicator.textContent = powered && mode ? String(speed) : '–';
+      }
+      function setMode(value) {
+        mode = Number(value);
+        var travel = Math.max(0, sliderKnob.parentElement.clientWidth - 35);
+        sliderKnob.style.transform = 'translateX(' + (mode * travel / 2) + 'px)';
+        powered = false;
+        display.classList.add('off');
+        resetState(false);
+        renderSpeedControl();
+      }
+      function wake() {
+        if (!mode || powered) return;
+        powered = true;
+        phase = 'ready';
+        display.classList.remove('off');
+        powerTone();
+        renderSpeedControl();
+        updateUI('SPEED ' + speed + ' · ARROWS AIM');
+        gameStatus.textContent = 'Display on. Speed ' + speed + '. Click the speed display to adjust, use the arrow keys to aim, then press spacebar to throw.';
+      }
+      function current() { return players[currentPlayer]; }
+      function renderPins() {
+        pinEls.forEach(function(el, i) {
+          el.classList.toggle('down', !standing.has(i));
+        });
+      }
+      function renderAim() {
+        foulEls.forEach(function(el, i){ el.classList.toggle('selected', i === aimIndex); });
+        if (!flight) {
+          ball.setAttribute('cx', String(40 + aimIndex*20));
+          ball.setAttribute('cy', '398');
+        }
+      }
+      function rollMark(v) { return v === 10 ? 'X' : v === 0 ? '–' : String(v); }
+      function frameText(frame, idx) {
+        if (!frame.length) return '';
+        if (idx < 9) {
+          if (frame[0] === 10) return 'X';
+          if (frame.length > 1 && frame[0] + frame[1] === 10) return rollMark(frame[0]) + '/';
+          return frame.map(rollMark).join(' ');
+        }
+        return frame.map(function(v, i) {
+          if (v === 10) return 'X';
+          if (i > 0 && v + frame[i-1] === 10 && frame[i-1] !== 10) return '/';
+          return rollMark(v);
+        }).join(' ');
+      }
+      function flatRolls(p) {
+        var out = [];
+        p.frames.forEach(function(fr){ fr.forEach(function(v){ out.push(v); }); });
+        return out;
+      }
+      function scoreAt(p, target) {
+        var rolls = flatRolls(p), ri = 0, score = 0;
+        for (var f=0; f<=target && f<10; f++) {
+          if (ri >= rolls.length) break;
+          if (rolls[ri] === 10) {
+            if (ri+2 >= rolls.length) break;
+            score += 10 + rolls[ri+1] + rolls[ri+2]; ri += 1;
+          } else if (ri+1 < rolls.length && rolls[ri]+rolls[ri+1] === 10) {
+            if (ri+2 >= rolls.length) break;
+            score += 10 + rolls[ri+2]; ri += 2;
+          } else if (ri+1 < rolls.length) {
+            score += rolls[ri] + rolls[ri+1]; ri += 2;
+          } else break;
+        }
+        return score;
+      }
+      function runningScore(p) {
+        if (!p) return 0;
+        return scoreAt(p, 9);
+      }
+      function renderFrames() {
+        var p = current();
+        var html = '';
+        for (var i=0;i<10;i++) {
+          var cls = p && i === p.frame && !p.done ? ' current' : '';
+          var score = p && p.frames[i].length ? scoreAt(p,i) : 0;
+          html += '<div class="frame-cell'+cls+'"><span>'+(i+1)+'</span><b>'+(p ? frameText(p.frames[i],i) : '')+'</b>'+(score ? '<small>'+score+'</small>' : '')+'</div>';
+        }
+        frameStrip.innerHTML = html;
+      }
+      function updateUI(custom) {
+        if (!powered || !mode) {
+          display.classList.add('off');
+          message.textContent = mode ? 'PRESS ONE SIDE BUTTON' : 'SELECT PLAYERS';
+          playerReadout.textContent = 'P1'; frameReadout.textContent = 'F01'; scoreReadout.textContent = '000';
+          renderSpeedControl();
+          renderFrames();
+          return;
+        }
+        display.classList.remove('off');
+        renderSpeedControl();
+        var p = current();
+        playerReadout.textContent = 'P' + (currentPlayer+1);
+        frameReadout.textContent = 'F' + String(Math.min(10,p.frame+1)).padStart(2,'0');
+        scoreReadout.textContent = String(runningScore(p)).padStart(3,'0');
+        if (custom) message.textContent = custom;
+        else if (phase === 'aim') message.textContent = 'AIM · RELEASE TO BOWL';
+        else if (phase === 'ready') message.textContent = 'ARROWS AIM · SPACEBAR THROWS';
+        else if (phase === 'flight') message.textContent = 'CURVE ←  →';
+        else if (phase === 'gameover') message.textContent = 'GAME OVER';
+        renderFrames();
+      }
+
+      function chooseSpeed(value) {
+        if (!powered || inputLock || phase === 'aim' || phase === 'flight' || phase === 'result' || phase === 'gameover') return;
+        var nextSpeed = Math.max(1, Math.min(7, Number(value) || 1));
+        if (nextSpeed !== speed) tick();
+        speed = nextSpeed;
+        phase = 'ready';
+        renderSpeedControl();
+        updateUI('SPEED ' + speed + ' SET');
+        gameStatus.textContent = 'Speed ' + speed + ' selected. Use the left and right arrows to aim, then press spacebar to throw.';
+      }
+      function setAimFromClientX(clientX) {
+        var rect = lane.getBoundingClientRect();
+        var ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        var next = Math.max(0, Math.min(8, Math.round(ratio * 8)));
+        if (next !== aimIndex) {
+          aimIndex = next;
+          renderAim();
+          tick();
+        }
+      }
+      function beginDesktopAim(clientX, pointerId) {
+        if (!(finePointer.matches || tabletMouseMode()) || !powered || inputLock || phase === 'flight' || phase === 'result' || phase === 'gameover') return false;
+        if (phase === 'speed') phase = 'ready';
+        if (phase !== 'ready') return false;
+        phase = 'aim';
+        desktopAimPointer = pointerId;
+        display.classList.add('desktop-aiming');
+        setAimFromClientX(clientX);
+        updateUI('AIM · RELEASE TO BOWL');
+        return true;
+      }
+      function endDesktopAim() {
+        if (phase !== 'aim' || desktopAimPointer === null) return;
+        desktopAimPointer = null;
+        display.classList.remove('desktop-aiming');
+        throwBall();
+      }
+      function cancelDesktopAim() {
+        if (phase !== 'aim' || desktopAimPointer === null) return;
+        desktopAimPointer = null;
+        display.classList.remove('desktop-aiming');
+        phase = 'ready';
+        updateUI();
+      }
+      function beginBoth() {
+        if (!powered || inputLock || phase === 'flight' || phase === 'result' || phase === 'gameover') return;
+        clearInterval(bothTimer); bothTimer = null;
+        if (phase === 'ready') {
+          phase = 'aim';
+          bothGestureActive = true;
+          touchAimOriginX = (leftTouchX + rightTouchX) / 2;
+          touchAimOriginIndex = aimIndex;
+          message.textContent = 'AIM · RELEASE BOTH TO BOWL';
+        }
+      }
+      function moveBoth(which, clientX) {
+        if (which === 'left') leftTouchX = clientX; else rightTouchX = clientX;
+        if (!bothGestureActive || !leftHeld || !rightHeld || phase !== 'aim') return;
+        var averageX = (leftTouchX + rightTouchX) / 2;
+        var laneWidth = Math.max(1, lane.getBoundingClientRect().width);
+        var next = Math.max(0, Math.min(8, Math.round(touchAimOriginIndex + (averageX - touchAimOriginX) * 16 / laneWidth)));
+        if (next !== aimIndex) {
+          aimIndex = next;
+          renderAim();
+          tick();
+        }
+      }
+      function endBoth() {
+        clearInterval(bothTimer); bothTimer = null;
+        if (!bothGestureActive || leftHeld || rightHeld) return;
+        bothGestureActive = false;
+        if (phase === 'aim') throwBall();
+      }
+      function press(which, clientX) {
+        ensureAudio();
+        if (!mode) { message.textContent = 'MOVE TOP SWITCH'; return; }
+        if (!powered) wake();
+        if (!powered) return;
+        if (which === 'left') { leftHeld = true; leftTouchX = clientX; }
+        else { rightHeld = true; rightTouchX = clientX; }
+        (which === 'left' ? leftButton : rightButton).classList.add('pressed');
+        if (leftHeld && rightHeld) beginBoth();
+      }
+      function release(which) {
+        if (which === 'left') leftHeld = false; else rightHeld = false;
+        (which === 'left' ? leftButton : rightButton).classList.remove('pressed');
+        endBoth();
+      }
+      function bindButton(el, which) {
+        el.addEventListener('pointerdown', function(e){
+          if (finePointer.matches && e.pointerType === 'mouse') return;
+          e.preventDefault();
+          el.setPointerCapture(e.pointerId);
+          press(which, e.clientX);
+        });
+        el.addEventListener('pointermove', function(e){ moveBoth(which, e.clientX); });
+        el.addEventListener('pointerup', function(e){ e.preventDefault(); release(which); });
+        el.addEventListener('pointercancel', function(){ release(which); });
+        el.addEventListener('lostpointercapture', function(){ if ((which==='left'&&leftHeld)||(which==='right'&&rightHeld)) release(which); });
+      }
+      bindButton(leftButton,'left'); bindButton(rightButton,'right');
+
+      function throwBall() {
+        if (phase !== 'aim' || inputLock) return;
+        clearInterval(bothTimer); bothTimer = null;
+        desktopAimPointer = null;
+        display.classList.remove('desktop-aiming');
+        inputLock = true; phase = 'flight';
+        var startX = (40 + aimIndex*20) / 240;
+        flight = { start: performance.now(), startX: startX, curve: 0, duration: 1760 - speed*155 };
+        ball.classList.add('visible');
+        launchSound(); updateUI();
+        requestAnimationFrame(stepBall);
+      }
+      function stepBall(now) {
+        if (!flight) return;
+        var t = Math.min(1, (now-flight.start)/flight.duration);
+        var ease = t*t*(3-2*t);
+        var x = flight.startX + flight.curve * Math.pow(t,1.55);
+        x = Math.max(.05,Math.min(.95,x));
+        ball.setAttribute('cx', String(x*240));
+        ball.setAttribute('cy', String(398 - 338*ease));
+        if (t < 1) requestAnimationFrame(stepBall);
+        else finishThrow(x);
+      }
+      function addCurve(amount) {
+        if (!flight) return;
+        flight.curve = Math.max(-.38, Math.min(.38, flight.curve + amount));
+        var now = performance.now(); if (now-lastAimTick > 80) { tick(); lastAimTick = now; }
+      }
+
+      function knockPins(finalX) {
+        if (finalX < .105 || finalX > .895) return [];
+
+        var firstBall = standing.size === 10;
+        var pocketDistance = Math.min(Math.abs(finalX-.43), Math.abs(finalX-.57));
+
+        // A clean pocket ball begins at the front row, so every chained pin is
+        // level with or farther up-lane than the first impact.
+        if (firstBall && pocketDistance < .035 && speed >= 4) return Array.from(standing);
+        if (firstBall && pocketDistance < .06 && speed >= 3) {
+          var leave = finalX < .5 ? (speed >= 6 ? [] : [9]) : (speed >= 6 ? [] : [6]);
+          return Array.from(standing).filter(function(i){ return leave.indexOf(i) < 0; });
+        }
+
+        // Find the first standing pin the ball actually reaches. The frontmost
+        // matching row wins, so a pin behind another pin cannot be hit through it.
+        var contactRadius = .052 + speed * .002;
+        var contacts = Array.from(standing).filter(function(i){
+          return Math.abs(pinX[i] - finalX) <= contactRadius;
+        });
+        if (!contacts.length) return [];
+        var impactY = Math.max.apply(null, contacts.map(function(i){ return pinY[i]; }));
+        contacts = contacts.filter(function(i){ return pinY[i] === impactY; });
+
+        var knocked = new Set(contacts);
+        var startingEnergy = speed >= 6 ? 4 : speed >= 4 ? 3 : speed >= 2 ? 2 : 1;
+        var queue = contacts.map(function(i){ return { pin: i, energy: startingEnergy }; });
+
+        while (queue.length) {
+          var hit = queue.shift();
+          if (hit.energy <= 0) continue;
+          Array.from(standing).forEach(function(candidate){
+            if (knocked.has(candidate)) return;
+            var dy = pinY[hit.pin] - pinY[candidate];
+            var dx = Math.abs(pinX[hit.pin] - pinX[candidate]);
+
+            // Adjacent pins can fall sideways at higher energy, or into the
+            // next row up-lane. A lower pin (dy < 0) is never removed because
+            // the ball and the falling pin have already passed it.
+            var upwardNeighbor = dy > 0 && dy <= 16 && dx <= .091;
+            var sidewaysNeighbor = dy === 0 && hit.energy >= 3 && dx <= .165;
+            if (!upwardNeighbor && !sidewaysNeighbor) return;
+
+            knocked.add(candidate);
+            queue.push({ pin: candidate, energy: hit.energy - 1 });
+          });
+        }
+        return Array.from(knocked);
+      }
+      function finishThrow(finalX) {
+        var knocked = knockPins(finalX);
+        flight = null;
+        ball.classList.remove('visible');
+        knocked.forEach(function(i){ standing.delete(i); });
+        renderPins();
+        if (knocked.length) pinCrash(knocked.length); else gutterSound();
+        var p = current(), f = p.frame, fr = p.frames[f];
+        fr.push(knocked.length);
+        var strike = standing.size === 0 && fr.length === 1;
+        var spare = standing.size === 0 && fr.length === 2 && fr[0] !== 10;
+        updateUI(knocked.length ? knocked.length + ' PINS' : 'GUTTER');
+        if (strike) showCelebration('strike');
+        else if (spare) showCelebration('spare');
+        setTimeout(function(){ completeRoll(strike,spare); }, strike||spare ? 1350 : 850);
+      }
+      function showCelebration(kind) {
+        celebration.classList.add('show');
+        strikeGrid.style.display = kind === 'strike' ? 'block' : 'none';
+        spareSweep.style.display = kind === 'spare' ? 'block' : 'none';
+        message.textContent = kind === 'strike' ? 'STRIKE' : 'SPARE';
+        if (kind === 'strike') strikeJingle(); else applause();
+      }
+      function completeRoll(strike, spare) {
+        celebration.classList.remove('show');
+        var p = current(), f = p.frame, fr = p.frames[f];
+        if (f < 9) {
+          if (strike || fr.length >= 2) endTurn();
+          else { phase = 'ready'; inputLock = false; updateUI('SECOND BALL'); setTimeout(function(){ if(phase==='ready') updateUI(); },650); }
+          return;
+        }
+        // Tenth frame: strike/spare bonus balls follow official reset rules.
+        if (fr.length === 1) {
+          if (fr[0] === 10) standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+          phase='ready'; inputLock=false; renderPins(); updateUI('BONUS BALL'); return;
+        }
+        if (fr.length === 2) {
+          if (fr[0] === 10) {
+            if (fr[1] === 10) standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+            // else keep remaining from the fresh rack for ball three
+            phase='ready'; inputLock=false; renderPins(); updateUI('BONUS BALL'); return;
+          }
+          if (fr[0] + fr[1] === 10) {
+            standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+            phase='ready'; inputLock=false; renderPins(); updateUI('BONUS BALL'); return;
+          }
+          endTurn(); return;
+        }
+        endTurn();
+      }
+      function endTurn() {
+        var p = current();
+        p.frame += 1;
+        if (p.frame >= 10) p.done = true;
+        var next = -1;
+        if (players.length === 2) {
+          var other = currentPlayer === 0 ? 1 : 0;
+          if (!players[other].done) next = other;
+          else if (!p.done) next = currentPlayer;
+        } else if (!p.done) next = currentPlayer;
+        if (next < 0) {
+          phase = 'gameover'; inputLock = false;
+          var s1 = runningScore(players[0]);
+          var text = 'P1 ' + s1;
+          if (players.length === 2) {
+            var s2 = runningScore(players[1]);
+            text = s1 === s2 ? 'TIE ' + s1 : (s1 > s2 ? 'P1 WINS ' + s1 : 'P2 WINS ' + s2);
+          }
+          updateUI(text); gameStatus.textContent='Game over. '+text; return;
+        }
+        currentPlayer = next;
+        standing = new Set([0,1,2,3,4,5,6,7,8,9]);
+        aimIndex = 4; aimDirection = 1;
+        phase='ready'; inputLock=false; renderPins(); renderAim();
+        updateUI(players.length===2 ? 'PLAYER '+(currentPlayer+1) : 'NEXT FRAME');
+        setTimeout(function(){ if(phase==='ready') updateUI(); },700);
+      }
+
+      modeSlider.addEventListener('input', function(){ setMode(modeSlider.value); });
+      inputModeButton.addEventListener('click', function(){
+        inputMode = inputMode === 'touch' ? 'mouse' : 'touch';
+        inputModeButton.textContent = 'Input: ' + (inputMode === 'touch' ? 'Touch' : 'Mouse');
+        inputModeButton.setAttribute('aria-pressed', String(inputMode === 'mouse'));
+        gameStatus.textContent = inputMode === 'mouse' ? 'Mouse mode. Click and hold to aim, move to position, then release to bowl.' : 'Touch mode. Use both side buttons to aim and release to bowl.';
+      });
+      soundButton.addEventListener('click', function(){ soundOn=!soundOn; soundButton.textContent='Sound: '+(soundOn?'On':'Off'); soundButton.setAttribute('aria-pressed',String(soundOn)); if(soundOn) powerTone(); });
+      resetButton.addEventListener('click', function(){ resetState(powered); if(powered) powerTone(); });
+
+      modeIndicator.addEventListener('click', function(){
+        if (!mode) { message.textContent = 'MOVE TOP SWITCH'; return; }
+        if (!powered) wake();
+        chooseSpeed(speed % 7 + 1);
+        modeIndicator.blur();
+      });
+
+      document.addEventListener('keydown', function(e){
+        var interactive = e.target && /^(BUTTON|INPUT|SUMMARY)$/.test(e.target.tagName);
+        if (interactive) return;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (!powered && mode) wake();
+          if (!powered) return;
+          var direction = e.key === 'ArrowLeft' ? -1 : 1;
+          if (phase === 'ready') {
+            var nextAim = Math.max(0, Math.min(8, aimIndex + direction));
+            if (nextAim !== aimIndex) { aimIndex = nextAim; renderAim(); tick(); }
+            updateUI('AIM ' + (aimIndex + 1) + ' · SPACEBAR TO THROW');
+          } else if (phase === 'flight') {
+            addCurve(direction * .035);
+          }
+          return;
+        }
+        if ((e.key === ' ' || e.code === 'Space') && !e.repeat) {
+          e.preventDefault();
+          if (!powered && mode) wake();
+          if (powered && phase === 'ready') {
+            phase = 'aim';
+            throwBall();
+          }
+        }
+      });
+
+      lane.addEventListener('pointerdown', function(e){
+        var mouseControls = finePointer.matches || tabletMouseMode();
+        if (mouseControls) {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          e.preventDefault();
+          if (!powered && mode) wake();
+          if (beginDesktopAim(e.clientX, e.pointerId)) {
+            lane.setPointerCapture(e.pointerId);
+            dragLastX = e.clientX;
+          } else if (phase === 'flight') {
+            dragLastX = e.clientX;
+          }
+        } else if (phase === 'flight') {
+          dragLastX = e.clientX;
+          lane.setPointerCapture(e.pointerId);
+        }
+      });
+      lane.addEventListener('pointermove', function(e){
+        var mouseControls = finePointer.matches || tabletMouseMode();
+        if (mouseControls && phase === 'aim' && desktopAimPointer === e.pointerId) {
+          setAimFromClientX(e.clientX);
+          dragLastX = e.clientX;
+          return;
+        }
+        if (phase !== 'flight') { if (mouseControls) dragLastX = e.clientX; return; }
+        if (!mouseControls && dragLastX === null) return;
+        if (dragLastX === null) { dragLastX = e.clientX; return; }
+        var dx = e.clientX - dragLastX;
+        dragLastX = e.clientX;
+        addCurve(dx / 420);
+      });
+      lane.addEventListener('pointerup', function(e){
+        if ((finePointer.matches || tabletMouseMode()) && desktopAimPointer === e.pointerId) endDesktopAim();
+        if (!finePointer.matches && !tabletMouseMode()) dragLastX = null;
+      });
+      lane.addEventListener('pointercancel', function(e){
+        if (desktopAimPointer === e.pointerId) cancelDesktopAim();
+        dragLastX = null;
+      });
+      lane.addEventListener('lostpointercapture', function(e){
+        if (desktopAimPointer === e.pointerId) cancelDesktopAim();
+      });
+      lane.addEventListener('pointerleave', function(){ if ((finePointer.matches || tabletMouseMode()) && phase !== 'flight') dragLastX = null; });
+
+      setMode(0);
+    })();
+  </script>
+</body>
+</html>
