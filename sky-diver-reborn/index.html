@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Sky Diver Reborn</title>
+<style>
+  :root{
+    --ink:#17233b; --ink-soft:#3d4c6b; --paper:#fdf8ec; --panel:#ffffff;
+    --amber:#f5a623; --amber-deep:#d98a06; --teal:#0e7c86; --teal-deep:#095e66;
+    --red:#d64541; --line:#e3dcc8; --chip:#f3ecd9;
+    --shadow:0 10px 30px rgba(23,35,59,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#eef2fb; --ink-soft:#aebbd6; --paper:#101827; --panel:#1a2438;
+      --line:#2c3a58; --chip:#232f4c; --shadow:0 10px 30px rgba(0,0,0,.5);
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Trebuchet MS","Segoe UI",Verdana,system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    overscroll-behavior:none;
+  }
+  .wrap{width:min(1060px,100%); padding:10px 12px 18px; display:flex; flex-direction:column; gap:10px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .title-block{flex:1 1 auto; min-width:150px;}
+  h1{margin:0; font-size:clamp(22px,4.6vw,34px); letter-spacing:.5px; line-height:1;
+     font-weight:900; text-transform:uppercase;}
+  h1 .reborn{color:var(--amber-deep);}
+  .tagline{margin:3px 0 0; font-size:13px; color:var(--ink-soft);}
+  .icon-btn{
+    width:46px; height:46px; border-radius:50%; border:2px solid var(--line);
+    background:var(--panel); color:var(--ink); font-size:20px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+    box-shadow:0 2px 8px rgba(23,35,59,.12);
+  }
+  .icon-btn:active{transform:scale(.94);}
+  .lang-btn{width:auto; border-radius:23px; padding:0 14px; font-size:14px; font-weight:800; letter-spacing:.4px;}
+  #qrBtn{background:var(--amber); border-color:var(--amber-deep); font-size:22px;}
+  .icon-btn.off{opacity:.45;}
+
+  /* ---------- scoreboard ---------- */
+  .scoreboard{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:stretch;
+  }
+  .score-card{
+    flex:1 1 130px; background:var(--panel); border:2px solid var(--line); border-radius:14px;
+    padding:8px 12px; display:flex; align-items:center; gap:10px; min-width:0;
+  }
+  .score-card.active{border-color:var(--amber); box-shadow:0 0 0 3px rgba(245,166,35,.25);}
+  .score-card[hidden]{display:none;}
+  .score-card .pname{font-size:12px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .score-card .ptotal{font-size:30px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  .score-card .turn-dot{width:11px; height:11px; border-radius:50%; background:var(--line); flex:0 0 auto;}
+  .score-card.active .turn-dot{background:var(--amber); box-shadow:0 0 0 4px rgba(245,166,35,.3);}
+  .jump-card{
+    flex:0 1 auto; background:var(--chip); border:2px solid var(--line); border-radius:14px;
+    padding:8px 14px; display:flex; flex-direction:column; justify-content:center; align-items:center; min-width:104px;
+  }
+  .jump-card .jlabel{font-size:11px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-soft);}
+  .jump-dots{display:flex; gap:4px; margin-top:5px;}
+  .jump-dots i{width:9px; height:9px; border-radius:50%; background:var(--panel); border:1.5px solid var(--ink-soft); display:block;}
+  .jump-dots i.done{background:var(--teal); border-color:var(--teal);}
+  .jump-dots i.now{background:var(--amber); border-color:var(--amber-deep);}
+  .wind-card{
+    flex:0 1 auto; background:var(--chip); border:2px solid var(--line); border-radius:14px;
+    padding:8px 14px; display:flex; flex-direction:column; justify-content:center; align-items:center; min-width:104px;
+  }
+  .wind-card .wlabel{font-size:11px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-soft);}
+  .wind-card .wval{font-size:21px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1.15;}
+
+  /* ---------- stage ---------- */
+  .stage{
+    position:relative; border-radius:18px; overflow:hidden; box-shadow:var(--shadow);
+    border:3px solid #17233b; background:#87bfe8; touch-action:none; user-select:none;
+  }
+  canvas#game{display:block; width:100%; height:min(68vh,620px); min-height:420px; touch-action:none;}
+  @media (max-width:560px){
+    canvas#game{height:74vh; min-height:430px;}
+    .sheet{padding:14px 14px 12px;}
+    .sheet h2{font-size:21px;}
+    .sheet p.how{font-size:12.5px; margin:4px 0 8px;}
+    .opt{padding:8px 6px;}
+    .opt b{font-size:14px;} .opt span{font-size:11px;}
+    .opt-label{margin:8px 0 4px;}
+    .big-btn{margin-top:12px; padding:12px; font-size:16px;}
+    .tagline{display:none;}
+  }
+
+  .forecast{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    max-width:92%; background:rgba(16,24,40,.82); color:#fff; border-radius:999px;
+    padding:7px 16px; font-size:clamp(12px,2.6vw,15px); font-weight:700; text-align:center;
+    pointer-events:none; opacity:0; transition:opacity .35s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .forecast.show{opacity:1;}
+  .forecast .flabel{color:var(--amber); letter-spacing:1px; font-size:.78em; text-transform:uppercase; margin-right:6px;}
+
+  .result-pop{
+    position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) scale(.8);
+    background:rgba(16,24,40,.88); color:#fff; border-radius:16px; padding:14px 26px;
+    text-align:center; pointer-events:none; opacity:0; transition:opacity .25s, transform .25s; max-width:88%;
+  }
+  .result-pop.show{opacity:1; transform:translate(-50%,-50%) scale(1);}
+  .result-pop .rscore{font-size:44px; font-weight:900; line-height:1; color:var(--amber);}
+  .result-pop .rscore.neg{color:#ff8a80;}
+  .result-pop .rmsg{font-size:15px; font-weight:700; margin-top:4px;}
+
+  .hint{
+    position:absolute; left:50%; bottom:12px; transform:translateX(-50%);
+    background:rgba(16,24,40,.72); color:#fff; border-radius:999px; padding:6px 16px;
+    font-size:13px; font-weight:700; pointer-events:none; white-space:nowrap; max-width:94%;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .hint:empty{display:none;}
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(13,20,36,.55); padding:14px; z-index:5;
+  }
+  .overlay[hidden]{display:none;}
+  .sheet{
+    background:var(--panel); color:var(--ink); border-radius:20px; padding:20px 20px 16px;
+    width:min(480px,100%); max-height:100%; overflow:auto; box-shadow:var(--shadow);
+    text-align:center;
+  }
+  .sheet h2{margin:0 0 4px; font-size:26px; font-weight:900; text-transform:uppercase; letter-spacing:.5px;}
+  .sheet p.how{margin:6px 0 14px; font-size:14px; color:var(--ink-soft); line-height:1.45;}
+  .opt-label{font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--ink-soft); margin:12px 0 6px; text-align:left;}
+  .opt-row{display:flex; gap:8px;}
+  .opt{
+    flex:1; border:2px solid var(--line); background:var(--chip); color:var(--ink);
+    border-radius:12px; padding:10px 8px; cursor:pointer; font:inherit; text-align:center;
+  }
+  .opt b{display:block; font-size:16px;}
+  .opt span{display:block; font-size:12px; color:var(--ink-soft); margin-top:2px; line-height:1.3;}
+  .opt.sel{border-color:var(--amber); background:#fdf1d3; box-shadow:0 0 0 3px rgba(245,166,35,.25);}
+  @media (prefers-color-scheme: dark){ .opt.sel{background:#3a2f14;} }
+  .big-btn{
+    margin-top:18px; width:100%; border:none; border-radius:14px; padding:15px;
+    background:var(--teal); color:#fff; font:inherit; font-size:19px; font-weight:900;
+    letter-spacing:.6px; text-transform:uppercase; cursor:pointer; box-shadow:0 6px 0 var(--teal-deep);
+  }
+  .big-btn:active{transform:translateY(3px); box-shadow:0 3px 0 var(--teal-deep);}
+  .final-scores{display:flex; gap:10px; justify-content:center; margin:12px 0 4px; flex-wrap:wrap;}
+  .final-scores .fs{background:var(--chip); border:2px solid var(--line); border-radius:12px; padding:10px 18px;}
+  .final-scores .fs b{display:block; font-size:30px; line-height:1;}
+  .final-scores .fs span{font-size:11px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; color:var(--ink-soft);}
+  .winner-line{font-size:17px; font-weight:900; margin-top:8px;}
+
+  /* QR overlay */
+  #qrOverlay .sheet{width:min(340px,100%);}
+  #qrOverlay img{width:min(250px,70vw); height:auto; border-radius:10px; border:2px solid var(--line); background:#fff;}
+  #qrOverlay .qr-url{font-size:12px; color:var(--ink-soft); word-break:break-all; margin-top:8px;}
+  .close-btn{
+    margin-top:12px; border:2px solid var(--line); background:var(--chip); color:var(--ink);
+    border-radius:10px; padding:9px 22px; font:inherit; font-weight:800; cursor:pointer;
+  }
+
+  /* ---------- under-stage controls ---------- */
+  .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .action-btn{
+    flex:1 1 200px; border:none; border-radius:14px; padding:15px; cursor:pointer;
+    background:var(--amber); color:#241a02; font:inherit; font-size:18px; font-weight:900;
+    letter-spacing:.5px; text-transform:uppercase; box-shadow:0 5px 0 var(--amber-deep);
+  }
+  .action-btn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--amber-deep);}
+  .action-btn:disabled{opacity:.45; box-shadow:none; transform:none;}
+  .mini-btn{
+    border:2px solid var(--line); background:var(--panel); color:var(--ink); border-radius:12px;
+    padding:12px 16px; font:inherit; font-weight:800; font-size:14px; cursor:pointer;
+  }
+  .scoring-note{font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin:0;}
+  footer{display:flex; justify-content:center; padding:2px 0 0;}
+  .fr-mark{
+    font-size:11px; letter-spacing:3px; font-weight:800; color:var(--ink-soft);
+    text-decoration:none; opacity:.75;
+  }
+  .fr-mark:hover{opacity:1; text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="title-block">
+      <h1>Sky Diver <span class="reborn">Reborn</span></h1>
+      <p class="tagline" data-i18n="tagline">Jump. Wait… wait… pull low, score big.</p>
+    </div>
+    <button class="icon-btn lang-btn" id="langBtn" aria-label="Language / Idioma">ES</button>
+    <button class="icon-btn" id="soundBtn" aria-label="Sound on/off">🔊</button>
+    <button class="icon-btn" id="qrBtn" aria-label="Share with QR code">▦</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-card active" id="cardP1">
+      <span class="turn-dot"></span>
+      <span class="pname" data-i18n="player1">Player 1</span>
+      <span class="ptotal" id="scoreP1">0</span>
+    </div>
+    <div class="score-card" id="cardP2" hidden>
+      <span class="turn-dot"></span>
+      <span class="pname" data-i18n="player2">Player 2</span>
+      <span class="ptotal" id="scoreP2">0</span>
+    </div>
+    <div class="jump-card">
+      <span class="jlabel"><span data-i18n="jump">Jump</span> <span id="jumpNum">– / 9</span></span>
+      <span class="jump-dots" id="jumpDots"></span>
+    </div>
+    <div class="wind-card">
+      <span class="wlabel" data-i18n="wind">Wind</span>
+      <span class="wval" id="windVal">—</span>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="960" height="620"></canvas>
+    <div class="forecast" id="forecast"><span class="flabel" data-i18n="forecast">Forecast</span><span id="forecastText"></span></div>
+    <div class="result-pop" id="resultPop"><div class="rscore" id="resultScore">+0</div><div class="rmsg" id="resultMsg"></div></div>
+    <div class="hint" id="hint"></div>
+
+    <div class="overlay" id="introOverlay">
+      <div class="sheet">
+        <h2 data-i18n="introTitle">Sky Diver Reborn</h2>
+        <p class="how" data-i18n="introHow">Tap to leap from the plane. Fall… fall… then tap again to open your chute. The lower you open it and still land on the pad, the more you score — up to 11. No chute? That's a crash: −4. Nine jumps. Best total wins, capped at 99.</p>
+        <div class="opt-label" data-i18n="modeLabel">Mode</div>
+        <div class="opt-row" id="modeRow">
+          <button class="opt sel" data-mode="standard"><b data-i18n="modeStd">Standard</b><span data-i18n="modeStdSub">Live wind — watch the windsock</span></button>
+          <button class="opt" data-mode="moving"><b data-i18n="modeMov">Moving Pad</b><span data-i18n="modeMovSub">1979 classic — the pad moves, no wind</span></button>
+        </div>
+        <div class="opt-label" data-i18n="playersLabel" id="playersLabel">Players</div>
+        <div class="opt-row" id="playersRow">
+          <button class="opt sel" data-players="1"><b data-i18n="onePlayer">1 Player</b><span data-i18n="onePlayerSub">Just you vs. the sky</span></button>
+          <button class="opt" data-players="2" id="opt2p"><b data-i18n="twoPlayers">2 Players</b><span data-i18n="twoPlayersSub">Take turns, same device</span></button>
+        </div>
+        <p class="how" id="oneDeviceNote" hidden data-i18n="oneDeviceNote">On phones and tablets this game is 1 player — 2 players joins on desktop.</p>
+        <button class="big-btn" id="startBtn" data-i18n="start">Start jumping</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="overOverlay" hidden>
+      <div class="sheet">
+        <h2 data-i18n="gameOver">Game over</h2>
+        <div class="final-scores" id="finalScores"></div>
+        <div class="winner-line" id="winnerLine"></div>
+        <button class="big-btn" id="againBtn" data-i18n="playAgain">Play again</button>
+        <button class="close-btn" id="menuBtn" data-i18n="changeMode">Change mode</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="qrOverlay" hidden>
+      <div class="sheet">
+        <h2 data-i18n="shareTitle">Share the jump</h2>
+        <p class="how" data-i18n="shareHow">Point a phone camera here to open the game.</p>
+        <img id="qrImg" alt="QR code linking to Sky Diver Reborn" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASgAAAEoAQAAAADDfFG0AAAB/klEQVR4nO1a0W7kMBCCU/7/l+kDeDLa3kl9sqc6u2qarJEWjWzMkFL4wfjzE9BFXdS38QD0nUDgXW1Um5nK/ki9XCSCEEAof/HOjGV/pl61sAhAECkI1Dszlf1hlASBkAjUbhzAayZKYopEoUvZr2C/CfUArTQUIMrS34o2lf1+lMsCAPrLz4JMZb8fxeYgAFH1QZsZy/4IyrpOOzCK0TCQhC+T2W9GMZ6r3Cp9RNqNxWGMZX8IJYouHJfNj+hHw0az344SbL3iWW1W16Y8yGsi6kGUneK6AEAe0hlNZX9G7wXQp2F8RHw+AJC3f+yDqiRCrY0U4R3p6ansj6B8Qso3iSlcJwmk7vpq40FZiDgIEZV+8Z6PHyNaj+zMN5OQd6q92VT2h/rtyJc7bGr1QqyeaCr7c/2QRJDRMK8ryJp/9b6NlefQJnVdyn15vU1lfwblQzGWImasOiLePPoT5WXkX66+W6JdxvX3fZRfjc7XeVkn5V1ffaR/1CqVaO1/U9czvAajlNYR9c6WSGCRjGcy+82olt+7DVJdVoavm9+/o73fBpATcoX4aYquv/9AOaSHVgwdv0quxGI0+62op91TUS8lWBWhm0/8E6X1rwCEtR4rrvgN7Peg+vttiol1uJ4iZVPZn/Grvqt4tVpIIGI2lv2h/GvrN17U/4T6Apc6/DR5ghbCAAAAAElFTkSuQmCC" />
+        <div class="qr-url">geemondc.github.io/sky-diver-reborn</div>
+        <button class="close-btn" id="qrClose" data-i18n="close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="action-btn" id="actionBtn" data-i18n="tapJump">Tap to jump!</button>
+    <button class="mini-btn" id="restartBtn" data-i18n="restart">↻ Restart</button>
+  </div>
+  <p class="scoring-note" data-i18n="scoringNote">Scoring: land on the pad with your chute open — the lower you open it, the more points (0–11). Miss the pad: 0. Hit the ground with no chute: −4. Totals cap at 99.</p>
+
+  <footer>
+    <a class="fr-mark" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ================= i18n ================= */
+var I18N = {
+  en: {
+    tagline: "Jump. Wait… wait… pull low, score big.",
+    player1: "Player 1", player2: "Player 2",
+    jump: "Jump", wind: "Wind", windOff: "OFF", calm: "calm",
+    forecast: "Forecast",
+    introTitle: "Sky Diver Reborn",
+    introHow: "Tap to leap from the plane. Fall… fall… then tap again to open your chute. The lower you open it and still land on the pad, the more you score — up to 11. No chute? That's a crash: −4. Nine jumps. Best total wins, capped at 99.",
+    modeLabel: "Mode", modeStd: "Standard", modeStdSub: "Live wind — watch the windsock",
+    modeMov: "Moving Pad", modeMovSub: "1979 classic — the pad moves, no wind",
+    playersLabel: "Players", onePlayer: "1 Player", onePlayerSub: "Just you vs. the sky",
+    twoPlayers: "2 Players", twoPlayersSub: "Take turns, same device",
+    oneDeviceNote: "On phones and tablets this game is 1 player — 2 players joins on desktop.",
+    start: "Start jumping",
+    gameOver: "Game over", playAgain: "Play again", changeMode: "Change mode",
+    shareTitle: "Share the jump", shareHow: "Point a phone camera here to open the game.",
+    close: "Close",
+    tapJump: "Tap to jump!", tapChute: "Tap to open chute!", drifting: "Ride the wind…",
+    restart: "↻ Restart",
+    scoringNote: "Scoring: land on the pad with your chute open — the lower you open it, the more points (0–11). Miss the pad: 0. Hit the ground with no chute: −4. Totals cap at 99.",
+    hintJump: "Tap anywhere to jump!", hintFall: "TAP to open your chute!",
+    hintRide: "Steer with the wind — land on the pad!",
+    turnOf: function(n){ return n + " — your jump!"; },
+    bullseye: "Bullseye! Dead center!", onPad: "On the pad!", justMade: "Just made the pad!",
+    missed: "Missed the pad.", splashDown: "Down… off the pad.",
+    crash: "CRASH! No chute — minus 4.", tooLow: "Too low — the chute couldn't save that one.",
+    wins: function(n){ return "🏆 " + n + " wins!"; },
+    tie: "It's a tie! 🤝",
+    finalScore: "Final score",
+    windDirE: "→ E", windDirW: "← W",
+    weather: {
+      golden: "Golden Day — clear skies, happy clouds",
+      sunrise: "Sunrise — soft pink light, calm air",
+      sunset: "Sunset — orange glow, long shadows",
+      starry: "Starry Night — clear and quiet up high",
+      rain: "Rain — a light shower, still jumpable",
+      snow: "Snow — gentle flakes falling",
+      fog: "Fog — low mist over the field",
+      lightsout: "Lights Out — dark! Trust the glowing pad"
+    },
+    silly: [
+      "100% chance of a human falling from the sky",
+      "Clouds report a diver incoming, again",
+      "Windsock says: wheee (probably)",
+      "Gravity working perfectly today, as usual",
+      "A bird has filed a formal complaint about traffic",
+      "Chance of confetti: surprisingly high"
+    ]
+  },
+  es: {
+    tagline: "Salta. Espera… espera… ábrelo bajo, gana más.",
+    player1: "Jugador 1", player2: "Jugador 2",
+    jump: "Salto", wind: "Viento", windOff: "SIN VIENTO", calm: "calma",
+    forecast: "Pronóstico",
+    introTitle: "Sky Diver Reborn",
+    introHow: "Toca para saltar del avión. Cae… cae… y toca otra vez para abrir el paracaídas. Cuanto más bajo lo abras y aterrices en la plataforma, más puntos: hasta 11. ¿Sin paracaídas? Choque: −4. Nueve saltos. Gana el mejor total, con tope de 99.",
+    modeLabel: "Modo", modeStd: "Estándar", modeStdSub: "Viento real — mira la manga de viento",
+    modeMov: "Plataforma móvil", modeMovSub: "Clásico de 1979 — la plataforma se mueve, sin viento",
+    playersLabel: "Jugadores", onePlayer: "1 Jugador", onePlayerSub: "Solo tú contra el cielo",
+    twoPlayers: "2 Jugadores", twoPlayersSub: "Turnos en el mismo dispositivo",
+    oneDeviceNote: "En teléfonos y tabletas es para 1 jugador — 2 jugadores solo en computadora.",
+    start: "¡A saltar!",
+    gameOver: "Fin del juego", playAgain: "Jugar otra vez", changeMode: "Cambiar modo",
+    shareTitle: "Comparte el salto", shareHow: "Apunta la cámara de un teléfono aquí para abrir el juego.",
+    close: "Cerrar",
+    tapJump: "¡Toca para saltar!", tapChute: "¡Toca para abrir!", drifting: "Déjate llevar…",
+    restart: "↻ Reiniciar",
+    scoringNote: "Puntos: aterriza en la plataforma con el paracaídas abierto — cuanto más bajo lo abras, más puntos (0–11). Fuera de la plataforma: 0. Contra el suelo sin paracaídas: −4. El total tiene tope de 99.",
+    hintJump: "¡Toca en cualquier lugar para saltar!", hintFall: "¡TOCA para abrir el paracaídas!",
+    hintRide: "Aprovecha el viento — ¡aterriza en la plataforma!",
+    turnOf: function(n){ return n + " — ¡tu salto!"; },
+    bullseye: "¡Justo en el centro!", onPad: "¡En la plataforma!", justMade: "¡Por poco, pero entró!",
+    missed: "Fuera de la plataforma.", splashDown: "Abajo… fuera de la plataforma.",
+    crash: "¡CHOQUE! Sin paracaídas — menos 4.", tooLow: "Demasiado bajo — el paracaídas no alcanzó.",
+    wins: function(n){ return "🏆 ¡" + n + " gana!"; },
+    tie: "¡Empate! 🤝",
+    finalScore: "Puntuación final",
+    windDirE: "→ E", windDirW: "← O",
+    weather: {
+      golden: "Día dorado — cielo despejado, nubes felices",
+      sunrise: "Amanecer — luz rosada, aire tranquilo",
+      sunset: "Atardecer — brillo naranja, sombras largas",
+      starry: "Noche estrellada — despejado y silencioso",
+      rain: "Lluvia — una llovizna ligera, se puede saltar",
+      snow: "Nieve — copos suaves cayendo",
+      fog: "Niebla — bruma baja sobre el campo",
+      lightsout: "Apagón — ¡oscuro! Confía en la plataforma brillante"
+    },
+    silly: [
+      "100% de probabilidad de un humano cayendo del cielo",
+      "Las nubes reportan otro paracaidista en camino",
+      "La manga de viento dice: ¡uiii! (probablemente)",
+      "La gravedad funciona perfecto hoy, como siempre",
+      "Un pájaro presentó una queja formal por el tráfico",
+      "Probabilidad de confeti: sorprendentemente alta"
+    ]
+  }
+};
+var lang = "en";
+function T(){ return I18N[lang]; }
+function applyI18n(){
+  document.documentElement.lang = lang;
+  var dict = T();
+  var nodes = document.querySelectorAll("[data-i18n]");
+  for (var i = 0; i < nodes.length; i++){
+    var k = nodes[i].getAttribute("data-i18n");
+    if (typeof dict[k] === "string") nodes[i].textContent = dict[k];
+  }
+  document.getElementById("langBtn").textContent = (lang === "en") ? "ES" : "EN";
+  updateWindReadout(); updateHint(); updateActionBtn(); updateScoreboard();
+  if (state.phase !== "menu") showForecast(false);
+}
+
+/* ================= audio (SFX only — no music) ================= */
+var audioCtx = null, soundOn = true;
+function ac(){
+  if (!audioCtx){ try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type, vol, slideTo, delay){
+  if (!soundOn) return; var c = ac(); if (!c) return;
+  var t0 = c.currentTime + (delay || 0);
+  var o = c.createOscillator(), g = c.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+}
+function noiseBurst(dur, vol, freq, delay){
+  if (!soundOn) return; var c = ac(); if (!c) return;
+  var t0 = c.currentTime + (delay || 0);
+  var len = Math.max(1, (dur * c.sampleRate) | 0);
+  var buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  var src = c.createBufferSource(); src.buffer = buf;
+  var f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 900;
+  var g = c.createGain(); g.gain.value = vol || 0.2;
+  src.connect(f); f.connect(g); g.connect(c.destination); src.start(t0);
+}
+var SFX = {
+  jump:   function(){ tone(300, 0.18, "triangle", 0.12, 620); },
+  deploy: function(){ noiseBurst(0.28, 0.25, 1400); tone(180, 0.2, "sine", 0.1, 90); },
+  land:   function(){ noiseBurst(0.12, 0.18, 500); tone(520, 0.12, "sine", 0.12); tone(660, 0.14, "sine", 0.12, null, 0.09); tone(880, 0.22, "sine", 0.12, null, 0.18); },
+  miss:   function(){ tone(320, 0.25, "sine", 0.12, 190); },
+  crash:  function(){ noiseBurst(0.4, 0.32, 300); tone(140, 0.4, "sawtooth", 0.1, 45); },
+  click:  function(){ tone(700, 0.06, "square", 0.06); },
+  delight:function(){ tone(990, 0.09, "sine", 0.07); tone(1320, 0.12, "sine", 0.07, null, 0.07); }
+};
+
+/* ================= game state ================= */
+var JUMPS_PER_PLAYER = 9;
+var state = {
+  phase: "menu",           /* menu | plane | freefall | canopy | done | over */
+  mode: "standard",        /* standard | moving */
+  players: 1,
+  current: 0,              /* 0 or 1 */
+  jumpIndex: 0,            /* jumps completed by current player sequence position */
+  jumpsDone: [0, 0],
+  scores: [0, 0],
+  totalTurns: 9,
+  turnInRound: 0,
+  wind: 0,                 /* -14..14 mph (standard only) */
+  weather: "golden",
+  lightsOutUsed: 0,
+  resultTimer: 0
+};
+var W = 960, H = 620, GROUND_H = 74;
+function groundY(){ return H - GROUND_H; }
+function planeY(){ return 64; }
+
+var plane = { x: -140, speed: 215, dir: 1 };
+var diver = { x: 0, y: 0, vx: 0, vy: 0, chute: false, openFrac: 0, sway: 0, landed: false };
+var pad = { w: 118, x: 480, dir: 1, speed: 130 };
+var particles = [];   /* rain / snow */
+var delights = [];    /* sky-tap sparkles, birds */
+var clouds = [];
+var stars = [];
+var jumpTouchGuardUntil = 0;   /* the exiting touch never deploys */
+var lastTouchAt = 0;
+
+function rand(a, b){ return a + Math.random() * (b - a); }
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+function initSky(){
+  clouds = []; stars = []; particles = [];
+  var i;
+  for (i = 0; i < 7; i++) clouds.push({ x: rand(0, W), y: rand(18, 190), s: rand(0.6, 1.5), v: rand(4, 11) });
+  for (i = 0; i < 90; i++) stars.push({ x: rand(0, W), y: rand(0, H * 0.62), r: rand(0.6, 1.9), tw: rand(0, 6.28) });
+}
+function makeParticles(){
+  particles = [];
+  var n = state.weather === "rain" ? 130 : state.weather === "snow" ? 90 : 0, i;
+  for (i = 0; i < n; i++) particles.push({ x: rand(0, W), y: rand(0, H), v: rand(160, 330), drift: rand(-14, 14) });
+}
+
+var WEATHERS = ["golden", "sunrise", "sunset", "starry", "rain", "snow", "fog"];
+function pickWeather(){
+  /* Lights Out: rare (~9%) and at most twice per game. */
+  if (state.lightsOutUsed < 2 && Math.random() < 0.09){
+    state.lightsOutUsed++; return "lightsout";
+  }
+  return WEATHERS[(Math.random() * WEATHERS.length) | 0];
+}
+function pickForecastText(){
+  if (Math.random() < 0.1){
+    var s = T().silly; return s[(Math.random() * s.length) | 0];
+  }
+  return T().weather[state.weather];
+}
+</script>
+
+<script>
+"use strict";
+/* ================= flow ================= */
+var canvas = document.getElementById("game");
+var stageEl = document.getElementById("stage");
+
+function startGame(){
+  state.scores = [0, 0];
+  state.jumpsDone = [0, 0];
+  state.current = 0;
+  state.totalTurns = JUMPS_PER_PLAYER * state.players;
+  state.turnInRound = 0;
+  state.lightsOutUsed = 0;
+  document.getElementById("introOverlay").hidden = true;
+  document.getElementById("overOverlay").hidden = true;
+  document.getElementById("cardP2").hidden = state.players !== 2;
+  nextTurn();
+  updateScoreboard();
+}
+
+function nextTurn(){
+  if (state.turnInRound >= state.totalTurns){ gameOver(); return; }
+  /* whose jump: 2P alternates every jump */
+  state.current = state.players === 2 ? (state.turnInRound % 2) : 0;
+  state.weather = pickWeather();
+  makeParticles();
+  /* wind: standard mode only */
+  state.wind = state.mode === "standard" ? Math.round(rand(-14, 14)) : 0;
+  /* plane: random direction & start */
+  plane.dir = Math.random() < 0.5 ? 1 : -1;
+  plane.x = plane.dir === 1 ? -150 : W + 150;
+  plane.speed = rand(195, 245);
+  /* pad */
+  pad.w = 118;
+  pad.x = state.mode === "moving" ? rand(W * 0.3, W * 0.7) : clamp(rand(W * 0.18, W * 0.82), pad.w / 2 + 6, W - pad.w / 2 - 6);
+  pad.dir = Math.random() < 0.5 ? 1 : -1;
+  diver.chute = false; diver.landed = false;
+  state.phase = "plane";
+  delights = [];
+  updateWindReadout(); updateScoreboard(); updateHint(); updateActionBtn();
+  showForecast(true);
+  if (state.players === 2) flashHint(T().turnOf(T()["player" + (state.current + 1)]));
+}
+
+function deployChute(){
+  if (state.phase !== "freefall") return;
+  state.phase = "canopy";
+  diver.chute = true;
+  var total = groundY() - planeY();
+  diver.openFrac = clamp((groundY() - diver.y) / total, 0, 1);
+  diver.tooLow = diver.openFrac < 0.045; /* opened too low to slow down in time */
+  SFX.deploy();
+  updateHint(); updateActionBtn();
+}
+
+function doJump(){
+  if (state.phase !== "plane") return;
+  diver.x = plane.x; diver.y = planeY() + 26;
+  diver.vx = plane.dir * plane.speed * 0.55;
+  diver.vy = 26;
+  diver.chute = false;
+  diver.tooLow = false;
+  state.phase = "freefall";
+  /* The touch/click that caused this jump must never deploy the chute:
+     ignore any deploy attempt for this same gesture window. */
+  jumpTouchGuardUntil = performance.now() + 150;
+  SFX.jump();
+  hideForecast();
+  updateHint(); updateActionBtn();
+}
+
+function finishJump(){
+  state.phase = "done";
+  diver.y = groundY() - 26;
+  state.resultTimer = 1.9;
+  var gy = groundY();
+  var onPad = Math.abs(diver.x - pad.x) <= pad.w / 2;
+  var pts, msgKey;
+  if (!diver.chute){
+    pts = -4; msgKey = "crash"; SFX.crash();
+  } else if (diver.tooLow){
+    pts = -4; msgKey = "tooLow"; SFX.crash();
+  } else if (onPad){
+    pts = Math.round((1 - diver.openFrac) * 11);
+    pts = clamp(pts, 0, 11);
+    var distC = Math.abs(diver.x - pad.x);
+    msgKey = pts <= 2 ? "justMade" : (distC <= pad.w / 4 ? "bullseye" : "onPad");
+    SFX.land();
+    spawnDelight(diver.x, gy - 30, 10);
+  } else {
+    pts = 0; msgKey = "missed"; SFX.miss();
+  }
+  state.scores[state.current] = Math.min(99, state.scores[state.current] + pts);
+  state.jumpsDone[state.current]++;
+  state.turnInRound++;
+  showResult(pts, T()[msgKey]);
+  updateScoreboard(); updateHint(); updateActionBtn();
+}
+
+function gameOver(){
+  state.phase = "over";
+  var fs = document.getElementById("finalScores");
+  fs.innerHTML = "";
+  for (var i = 0; i < state.players; i++){
+    var d = document.createElement("div"); d.className = "fs";
+    var b = document.createElement("b"); b.textContent = state.scores[i];
+    var s = document.createElement("span"); s.textContent = T()["player" + (i + 1)];
+    d.appendChild(b); d.appendChild(s); fs.appendChild(d);
+  }
+  var wl = document.getElementById("winnerLine");
+  if (state.players === 2){
+    wl.textContent = state.scores[0] === state.scores[1] ? T().tie
+      : T().wins(T()["player" + (state.scores[0] > state.scores[1] ? 1 : 2)]);
+  } else {
+    wl.textContent = T().finalScore + ": " + state.scores[0] + " / 99";
+  }
+  document.getElementById("overOverlay").hidden = false;
+  updateHint(); updateActionBtn();
+}
+
+/* ================= update ================= */
+function update(dt, now){
+  var i, p;
+  for (i = 0; i < clouds.length; i++){ clouds[i].x += clouds[i].v * dt; if (clouds[i].x > W + 130) clouds[i].x = -130; }
+  for (i = 0; i < particles.length; i++){
+    p = particles[i]; p.y += p.v * dt; p.x += p.drift * dt;
+    if (p.y > groundY()){ p.y = rand(-30, -4); p.x = rand(0, W); }
+    if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
+  }
+  for (i = delights.length - 1; i >= 0; i--){
+    var d = delights[i]; d.life -= dt;
+    d.x += d.vx * dt; d.y += d.vy * dt; d.vy += (d.grav || 0) * dt;
+    if (d.life <= 0) delights.splice(i, 1);
+  }
+  if (state.phase === "menu" || state.phase === "over") return;
+
+  if (state.mode === "moving" && state.phase !== "done"){
+    pad.x += pad.dir * pad.speed * dt;
+    if (pad.x < pad.w / 2 + 8){ pad.x = pad.w / 2 + 8; pad.dir = 1; }
+    if (pad.x > W - pad.w / 2 - 8){ pad.x = W - pad.w / 2 - 8; pad.dir = -1; }
+  }
+
+  if (state.phase === "plane"){
+    plane.x += plane.dir * plane.speed * dt;
+    if (plane.dir === 1 && plane.x > W + 160) plane.x = -160;
+    if (plane.dir === -1 && plane.x < -160) plane.x = W + 160;
+  }
+  else if (state.phase === "freefall"){
+    diver.vy = Math.min(diver.vy + 640 * dt, 430);
+    diver.vx *= Math.pow(0.35, dt);
+    diver.x += diver.vx * dt;
+    diver.y += diver.vy * dt;
+    diver.x = clamp(diver.x, 14, W - 14);
+    if (diver.y >= groundY() - 26) finishJump();
+  }
+  else if (state.phase === "canopy"){
+    diver.vy += (52 - diver.vy) * Math.min(1, dt * 3.2);
+    var windPush = state.mode === "standard" ? state.wind * 4.4 : 0;
+    diver.vx += (windPush - diver.vx) * Math.min(1, dt * 1.6);
+    diver.x += diver.vx * dt;
+    diver.y += diver.vy * dt;
+    diver.sway = Math.sin(now / 480) * 0.08;
+    diver.x = clamp(diver.x, 26, W - 26);
+    if (diver.y >= groundY() - 26){
+      diver.y = groundY() - 26;
+      finishJump();
+    }
+  }
+  else if (state.phase === "done"){
+    state.resultTimer -= dt;
+    if (state.resultTimer <= 0){ hideResult(); nextTurn(); }
+  }
+}
+
+/* ================= delights (never during freefall) ================= */
+function spawnDelight(x, y, n){
+  for (var i = 0; i < (n || 6); i++){
+    delights.push({ kind: "spark", x: x, y: y, vx: rand(-60, 60), vy: rand(-90, -10), grav: 60, life: rand(0.5, 1.1), max: 1.1, r: rand(2, 4.5) });
+  }
+}
+function skyTap(x, y){
+  if (state.phase === "freefall") return; /* safety: no delights mid-freefall */
+  if (state.phase === "canopy"){
+    delights.push({ kind: "bird", x: x < W / 2 ? -30 : W + 30, y: y - 20, vx: (x < W / 2 ? 130 : -130), vy: -6, grav: 0, life: 4, max: 4, r: 5 });
+    SFX.delight(); return;
+  }
+  if (state.phase === "plane"){
+    delights.push({ kind: "ring", x: x, y: y, vx: 0, vy: 0, grav: 0, life: 0.7, max: 0.7, r: 6 });
+    spawnDelight(x, y, 4); SFX.delight();
+  }
+}
+
+/* ================= input ================= */
+function canvasPos(e){
+  var r = canvas.getBoundingClientRect();
+  var cx = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+  var cy = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+  return { x: (cx - r.left) * (W / r.width), y: (cy - r.top) * (H / r.height) };
+}
+function pressAt(e){
+  if (!document.getElementById("introOverlay").hidden) return;
+  if (!document.getElementById("overOverlay").hidden) return;
+  if (!document.getElementById("qrOverlay").hidden) return;
+  var pos = canvasPos(e);
+  if (state.phase === "plane"){ doJump(); return; }
+  if (state.phase === "freefall"){
+    if (performance.now() < jumpTouchGuardUntil) return; /* exiting gesture */
+    deployChute(); return;
+  }
+  skyTap(pos.x, pos.y);
+}
+canvas.addEventListener("touchstart", function(e){
+  e.preventDefault(); lastTouchAt = performance.now(); pressAt(e);
+}, { passive: false });
+canvas.addEventListener("mousedown", function(e){
+  if (performance.now() - lastTouchAt < 500) return; /* touch already handled */
+  pressAt(e);
+});
+stageEl.addEventListener("touchmove", function(e){ e.preventDefault(); }, { passive: false });
+document.addEventListener("keydown", function(e){
+  if (e.code === "Space" || e.code === "Enter"){
+    if (!document.getElementById("introOverlay").hidden || !document.getElementById("overOverlay").hidden) return;
+    e.preventDefault();
+    if (state.phase === "plane") doJump();
+    else if (state.phase === "freefall" && performance.now() >= jumpTouchGuardUntil) deployChute();
+  }
+});
+
+/* action button mirrors the same two actions. A button click is always a
+   fresh, deliberate press — never the exiting tap — so no guard applies. */
+document.getElementById("actionBtn").addEventListener("click", function(){
+  if (state.phase === "plane") doJump();
+  else if (state.phase === "freefall") deployChute();
+});
+</script>
+
+<script>
+"use strict";
+/* ================= drawing ================= */
+var ctx = canvas.getContext("2d");
+var SKIES = {
+  golden:   ["#5db2ec", "#a8dcff", "#fdf3d0"],
+  sunrise:  ["#7d7fd6", "#e98bb0", "#ffd9a0"],
+  sunset:   ["#4a4a8f", "#e2703a", "#ffc46b"],
+  starry:   ["#060d26", "#10224d", "#1d3560"],
+  rain:     ["#5b7086", "#8496a8", "#aebfca"],
+  snow:     ["#8fa9c4", "#c3d5e6", "#eef4fa"],
+  fog:      ["#9db3ba", "#c3d2d4", "#dde7e6"],
+  lightsout:["#02040a", "#040814", "#060c1c"]
+};
+function rr(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function draw(now){
+  var th = SKIES[state.weather] || SKIES.golden;
+  var g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, th[0]); g.addColorStop(0.62, th[1]); g.addColorStop(1, th[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  var dark = state.weather === "lightsout";
+  var night = state.weather === "starry" || dark;
+
+  /* stars */
+  if (night){
+    ctx.fillStyle = "#ffffff";
+    for (var i = 0; i < stars.length; i++){
+      var s = stars[i];
+      ctx.globalAlpha = dark ? 0.5 : (0.45 + 0.5 * Math.abs(Math.sin(now / 900 + s.tw)));
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.29); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  /* sun / moon */
+  if (state.weather === "golden"){ sun(W * 0.82, 84, 34, "#ffd94d", "#fff3b0"); }
+  if (state.weather === "sunrise"){ sun(W * 0.24, H * 0.52, 40, "#ffb3c1", "#ffe3ec"); }
+  if (state.weather === "sunset"){ sun(W * 0.76, H * 0.5, 44, "#ff8c42", "#ffd29d"); }
+  if (state.weather === "starry"){
+    ctx.fillStyle = "#f4f6d8"; ctx.beginPath(); ctx.arc(W * 0.82, 76, 24, 0, 6.29); ctx.fill();
+    ctx.fillStyle = th[0]; ctx.beginPath(); ctx.arc(W * 0.82 - 10, 68, 20, 0, 6.29); ctx.fill();
+  }
+  /* clouds (not in lights out / starry) */
+  if (!dark && state.weather !== "starry"){
+    ctx.fillStyle = state.weather === "rain" ? "rgba(90,105,122,.85)" : "rgba(255,255,255,.92)";
+    for (var c = 0; c < clouds.length; c++) cloud(clouds[c].x, clouds[c].y, clouds[c].s);
+  }
+  /* rain / snow */
+  var i2, p;
+  if (state.weather === "rain"){
+    ctx.strokeStyle = "rgba(220,235,245,.65)"; ctx.lineWidth = 2; ctx.beginPath();
+    for (i2 = 0; i2 < particles.length; i2++){ p = particles[i2]; ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 4, p.y + 15); }
+    ctx.stroke();
+  }
+  if (state.weather === "snow"){
+    ctx.fillStyle = "rgba(255,255,255,.95)";
+    for (i2 = 0; i2 < particles.length; i2++){ p = particles[i2]; ctx.beginPath(); ctx.arc(p.x, p.y, 2.6, 0, 6.29); ctx.fill(); }
+  }
+
+  drawGround(now, dark);
+  drawPad(now, dark);
+  drawWindsock(now, dark);
+  if (state.phase === "plane" || state.phase === "freefall" || state.phase === "canopy") drawPlane();
+  if (state.phase === "freefall" || state.phase === "canopy" || state.phase === "done") drawDiver(now, dark);
+  drawDelights(now);
+  if (state.weather === "fog"){
+    ctx.fillStyle = "rgba(225,233,232,.5)"; ctx.fillRect(0, H * 0.3, W, H * 0.7);
+    ctx.fillStyle = "rgba(225,233,232,.35)"; ctx.fillRect(0, H * 0.12, W, H * 0.3);
+  }
+  if (dark){
+    ctx.fillStyle = "rgba(0,0,5,.28)"; ctx.fillRect(0, 0, W, H);
+    drawPadGlow(now);
+  }
+}
+function sun(x, y, r, core, halo){
+  ctx.fillStyle = halo; ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, 6.29); ctx.fill();
+  ctx.globalAlpha = 1; ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 6.29); ctx.fill();
+}
+function cloud(x, y, s){
+  ctx.beginPath();
+  ctx.arc(x, y, 20 * s, 0, 6.29); ctx.arc(x + 24 * s, y + 4 * s, 16 * s, 0, 6.29);
+  ctx.arc(x - 24 * s, y + 5 * s, 15 * s, 0, 6.29); ctx.arc(x + 2 * s, y + 9 * s, 18 * s, 0, 6.29);
+  ctx.fill();
+}
+function drawGround(now, dark){
+  var gy = groundY();
+  ctx.fillStyle = dark ? "#0a1410" : (state.weather === "snow" ? "#e8eef2" : "#58a34a");
+  ctx.fillRect(0, gy, W, GROUND_H);
+  ctx.fillStyle = dark ? "#0e1d14" : (state.weather === "snow" ? "#ffffff" : "#6cb85c");
+  ctx.fillRect(0, gy, W, 8);
+  if (!dark){
+    ctx.strokeStyle = "rgba(30,80,25,.35)"; ctx.lineWidth = 2; ctx.beginPath();
+    for (var x = 14; x < W; x += 46){
+      var sway = Math.sin(now / 700 + x) * 2;
+      ctx.moveTo(x, gy + 22); ctx.quadraticCurveTo(x + sway, gy + 12, x + sway * 1.6, gy + 6);
+    }
+    ctx.stroke();
+  }
+}
+function drawPad(now, dark){
+  var gy = groundY(), x = pad.x - pad.w / 2;
+  if (dark){
+    ctx.save(); ctx.shadowColor = "#37e0ff"; ctx.shadowBlur = 26;
+    ctx.fillStyle = "#0e5f73"; rr(x, gy - 10, pad.w, 13, 6); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#aef4ff"; rr(x + 6, gy - 8, pad.w - 12, 4, 2); ctx.fill();
+    return;
+  }
+  ctx.fillStyle = "#d64541"; rr(x, gy - 10, pad.w, 13, 6); ctx.fill();
+  ctx.fillStyle = "#ffffff"; rr(x + 8, gy - 8, pad.w - 16, 4, 2); ctx.fill();
+  ctx.fillStyle = "#d64541";
+  ctx.font = "900 11px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+  ctx.fillText("▼ PAD ▼", pad.x, gy + 20);
+}
+function drawPadGlow(now){
+  var gy = groundY();
+  ctx.save();
+  ctx.globalAlpha = 0.25 + 0.1 * Math.sin(now / 300);
+  ctx.fillStyle = "#37e0ff";
+  ctx.beginPath(); ctx.ellipse(pad.x, gy - 4, pad.w * 0.85, 20, 0, 0, 6.29); ctx.fill();
+  ctx.restore();
+}
+function drawWindsock(now, dark){
+  var gy = groundY(), px = 54, top = gy - 118;
+  ctx.strokeStyle = dark ? "#5a6a72" : "#5b4632"; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(px, gy); ctx.lineTo(px, top); ctx.stroke();
+  var hasWind = state.mode === "standard";
+  var mag = hasWind ? Math.abs(state.wind) / 14 : 0;
+  ctx.save(); ctx.translate(px, top + 4);
+  if (!hasWind || state.wind === 0){
+    /* limp: hangs straight down */
+    ctx.fillStyle = "#9aa3ab";
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(13, 3); ctx.lineTo(9, 34); ctx.lineTo(3, 38); ctx.closePath(); ctx.fill();
+  } else {
+    var dirS = Math.sign(state.wind);
+    var droop = (1 - mag) * 0.85 + Math.sin(now / 160) * 0.05 * mag;
+    var len = 26 + mag * 30;
+    ctx.rotate(dirS > 0 ? droop * 0.5 : Math.PI - droop * 0.5);
+    ctx.fillStyle = "#ff7f2a";
+    ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(len, -3.5); ctx.lineTo(len, 3.5); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(len * 0.38, -5.4, len * 0.22, 10.8);
+    ctx.fillStyle = "#ffe9d6"; ctx.fillRect(len * 0.72, -4.2, len * 0.14, 8.4);
+  }
+  ctx.restore();
+}
+function drawPlane(){
+  ctx.save(); ctx.translate(plane.x, planeY()); ctx.scale(plane.dir, 1);
+  ctx.fillStyle = "#e8ecf2";
+  rr(-58, -13, 108, 24, 12); ctx.fill();
+  ctx.fillStyle = "#c22f2f"; rr(30, -13, 24, 24, 10); ctx.fill();
+  ctx.fillStyle = "#2b6cb0";
+  ctx.beginPath(); ctx.moveTo(-52, -10); ctx.lineTo(-76, -30); ctx.lineTo(-62, -32); ctx.lineTo(-36, -12); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-8, 10); ctx.lineTo(14, 30); ctx.lineTo(28, 30); ctx.lineTo(16, 10); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#bde3ff";
+  for (var i = 0; i < 4; i++){ ctx.beginPath(); ctx.arc(-30 + i * 18, -2, 5, 0, 6.29); ctx.fill(); }
+  ctx.strokeStyle = "#8a93a3"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(64, 0, 4, 0, 6.29); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(58, -11); ctx.lineTo(70, 0); ctx.lineTo(58, 11); ctx.stroke();
+  ctx.restore();
+}
+function drawDiver(now, dark){
+  var x = diver.x, y = diver.y + 14;
+  ctx.save(); ctx.translate(x, y);
+  if (diver.chute){
+    ctx.save(); ctx.rotate(diver.sway || 0);
+    /* canopy */
+    if (dark){
+      ctx.strokeStyle = "rgba(190,235,255,.85)"; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, -52, 36, Math.PI, 0); ctx.closePath(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-36, -52); ctx.lineTo(-9, -16); ctx.moveTo(0, -56); ctx.lineTo(0, -16); ctx.moveTo(36, -52); ctx.lineTo(9, -16);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = state.current === 0 ? "#ff7f2a" : "#0e7c86";
+      ctx.beginPath(); ctx.arc(0, -52, 36, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(0, -52, 36, Math.PI * 1.22, Math.PI * 1.44); ctx.lineTo(0, -52); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(20,30,50,.55)"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-36, -52); ctx.lineTo(-9, -14); ctx.moveTo(0, -54); ctx.lineTo(0, -14); ctx.moveTo(36, -52); ctx.lineTo(9, -14);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (dark){
+    /* Lights Out: body invisible — just two big cartoon eyes */
+    var blink = (now % 3400) < 110;
+    ctx.fillStyle = "#ffffff";
+    if (blink){
+      ctx.fillRect(-17, -3, 13, 3); ctx.fillRect(5, -3, 13, 3);
+    } else {
+      ctx.beginPath(); ctx.ellipse(-11, 0, 8.5, 11, 0, 0, 6.29); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(11, 0, 8.5, 11, 0, 0, 6.29); ctx.fill();
+      ctx.fillStyle = "#101828";
+      var look = clamp((pad.x - diver.x) / 60, -2.6, 2.6);
+      ctx.beginPath(); ctx.arc(-11 + look, 1.5, 4, 0, 6.29); ctx.fill();
+      ctx.beginPath(); ctx.arc(11 + look, 1.5, 4, 0, 6.29); ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-12.5 + look, -0.5, 1.4, 0, 6.29); ctx.fill();
+      ctx.beginPath(); ctx.arc(9.5 + look, -0.5, 1.4, 0, 6.29); ctx.fill();
+    }
+    ctx.restore(); return;
+  }
+  /* body */
+  var suit = state.current === 0 ? "#2456c8" : "#c22f6d";
+  ctx.fillStyle = suit;
+  if (state.phase === "freefall"){
+    ctx.save(); ctx.rotate(Math.sin(now / 90) * 0.14);
+    rr(-7, -12, 14, 24, 6); ctx.fill();
+    ctx.strokeStyle = suit; ctx.lineWidth = 6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-20, -16); ctx.moveTo(6, -6); ctx.lineTo(20, -16);
+    ctx.moveTo(-4, 11); ctx.lineTo(-13, 24); ctx.moveTo(4, 11); ctx.lineTo(13, 24); ctx.stroke();
+    ctx.restore();
+  } else {
+    rr(-7, -14, 14, 24, 6); ctx.fill();
+    ctx.strokeStyle = suit; ctx.lineWidth = 6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-5, 9); ctx.lineTo(-8, 24); ctx.moveTo(5, 9); ctx.lineTo(8, 24); ctx.stroke();
+    ctx.strokeStyle = "#f2c094"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-6, -10); ctx.lineTo(-11, -18); ctx.moveTo(6, -10); ctx.lineTo(11, -18); ctx.stroke();
+  }
+  /* head + helmet */
+  ctx.fillStyle = "#f2c094"; ctx.beginPath(); ctx.arc(0, -22, 9, 0, 6.29); ctx.fill();
+  ctx.fillStyle = state.current === 0 ? "#ffb020" : "#37c8d9";
+  ctx.beginPath(); ctx.arc(0, -24, 9.5, Math.PI, 0); ctx.fill();
+  ctx.fillRect(-9.5, -25, 19, 3.5);
+  ctx.restore();
+}
+function drawDelights(now){
+  for (var i = 0; i < delights.length; i++){
+    var d = delights[i], a = clamp(d.life / d.max, 0, 1);
+    ctx.save(); ctx.globalAlpha = a;
+    if (d.kind === "spark"){
+      ctx.fillStyle = "#ffd94d"; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.29); ctx.fill();
+    } else if (d.kind === "ring"){
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r + (1 - a) * 34, 0, 6.29); ctx.stroke();
+    } else if (d.kind === "bird"){
+      ctx.strokeStyle = "#20304a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+      var f = Math.sin(now / 90) * 6;
+      ctx.beginPath();
+      ctx.moveTo(d.x - 11, d.y + f * 0.4); ctx.quadraticCurveTo(d.x - 4, d.y - 5 - f, d.x, d.y);
+      ctx.quadraticCurveTo(d.x + 4, d.y - 5 - f, d.x + 11, d.y + f * 0.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/* ================= UI helpers ================= */
+function $(id){ return document.getElementById(id); }
+function updateScoreboard(){
+  $("scoreP1").textContent = state.scores[0];
+  $("scoreP2").textContent = state.scores[1];
+  $("cardP1").classList.toggle("active", state.current === 0 && state.phase !== "over");
+  $("cardP2").classList.toggle("active", state.current === 1 && state.phase !== "over");
+  var doneForPlayer = state.jumpsDone[state.current];
+  $("jumpNum").textContent = (state.phase === "menu" ? "–" : Math.min(doneForPlayer + 1, JUMPS_PER_PLAYER)) + " / " + JUMPS_PER_PLAYER;
+  var dots = $("jumpDots"); dots.innerHTML = "";
+  for (var i = 0; i < JUMPS_PER_PLAYER; i++){
+    var el = document.createElement("i");
+    if (i < doneForPlayer) el.className = "done"; else if (i === doneForPlayer && state.phase !== "menu" && state.phase !== "over") el.className = "now";
+    dots.appendChild(el);
+  }
+}
+function updateWindReadout(){
+  var el = $("windVal");
+  if (state.phase === "menu"){ el.textContent = "—"; return; }
+  if (state.mode === "moving"){ el.textContent = T().windOff; return; }
+  if (state.wind === 0){ el.textContent = "0 · " + T().calm; return; }
+  el.textContent = Math.abs(state.wind) + (state.wind > 0 ? " " + T().windDirE : " " + T().windDirW);
+}
+var forecastTimer = 0;
+function showForecast(autoHide){
+  $("forecastText").textContent = pickForecastText();
+  $("forecast").classList.add("show");
+  if (forecastTimer) clearTimeout(forecastTimer);
+  if (autoHide) forecastTimer = setTimeout(hideForecast, 3400);
+}
+function hideForecast(){ $("forecast").classList.remove("show"); }
+var hintFlashTimer = 0;
+function flashHint(text){
+  var h = $("hint"); h.textContent = text;
+  if (hintFlashTimer) clearTimeout(hintFlashTimer);
+  hintFlashTimer = setTimeout(updateHint, 1600);
+}
+function updateHint(){
+  var h = $("hint");
+  if (hintFlashTimer && state.phase === "plane") { /* keep flash until it expires */ }
+  if (state.phase === "plane") h.textContent = T().hintJump;
+  else if (state.phase === "freefall") h.textContent = T().hintFall;
+  else if (state.phase === "canopy") h.textContent = T().hintRide;
+  else h.textContent = "";
+}
+function updateActionBtn(){
+  var b = $("actionBtn");
+  if (state.phase === "plane"){ b.disabled = false; b.textContent = T().tapJump; }
+  else if (state.phase === "freefall"){ b.disabled = false; b.textContent = T().tapChute; }
+  else if (state.phase === "canopy"){ b.disabled = true; b.textContent = T().drifting; }
+  else { b.disabled = true; b.textContent = T().tapJump; }
+}
+function showResult(pts, msg){
+  var r = $("resultPop");
+  $("resultScore").textContent = (pts > 0 ? "+" : "") + pts;
+  $("resultScore").className = "rscore" + (pts < 0 ? " neg" : "");
+  $("resultMsg").textContent = msg;
+  r.classList.add("show");
+}
+function hideResult(){ $("resultPop").classList.remove("show"); }
+
+/* ================= wiring ================= */
+function selectInRow(rowId, btn){
+  var row = $(rowId), kids = row.querySelectorAll(".opt");
+  for (var i = 0; i < kids.length; i++) kids[i].classList.toggle("sel", kids[i] === btn);
+}
+$("modeRow").addEventListener("click", function(e){
+  var b = e.target.closest(".opt"); if (!b) return;
+  state.mode = b.getAttribute("data-mode"); selectInRow("modeRow", b); SFX.click();
+});
+$("playersRow").addEventListener("click", function(e){
+  var b = e.target.closest(".opt"); if (!b) return;
+  if (b.id === "opt2p" && b.disabled) return;
+  state.players = parseInt(b.getAttribute("data-players"), 10); selectInRow("playersRow", b); SFX.click();
+});
+function refreshPlayerAvailability(){
+  var desktop = window.matchMedia("(min-width: 1024px) and (pointer: fine)").matches;
+  var opt2 = $("opt2p");
+  opt2.disabled = !desktop;
+  opt2.style.opacity = desktop ? "1" : ".45";
+  $("oneDeviceNote").hidden = desktop;
+  if (!desktop && state.players === 2){
+    state.players = 1;
+    var ones = $("playersRow").querySelectorAll(".opt");
+    selectInRow("playersRow", ones[0]);
+  }
+}
+window.addEventListener("resize", function(){ fitCanvas(); refreshPlayerAvailability(); });
+$("startBtn").addEventListener("click", function(){ ac(); SFX.click(); startGame(); });
+$("againBtn").addEventListener("click", function(){ SFX.click(); startGame(); });
+$("menuBtn").addEventListener("click", function(){
+  SFX.click(); state.phase = "menu";
+  $("overOverlay").hidden = true; $("introOverlay").hidden = false;
+  updateScoreboard(); updateWindReadout(); updateHint(); updateActionBtn();
+});
+$("restartBtn").addEventListener("click", function(){
+  if (state.phase === "menu") return;
+  SFX.click(); startGame();
+});
+$("langBtn").addEventListener("click", function(){
+  lang = lang === "en" ? "es" : "en"; SFX.click(); applyI18n();
+});
+$("soundBtn").addEventListener("click", function(){
+  soundOn = !soundOn;
+  this.textContent = soundOn ? "🔊" : "🔇";
+  this.classList.toggle("off", !soundOn);
+  if (soundOn) SFX.click();
+});
+$("qrBtn").addEventListener("click", function(){ SFX.click(); $("qrOverlay").hidden = false; });
+$("qrClose").addEventListener("click", function(){ SFX.click(); $("qrOverlay").hidden = true; });
+$("qrOverlay").addEventListener("click", function(e){ if (e.target === this) this.hidden = true; });
+
+/* ================= canvas fit + loop ================= */
+function fitCanvas(){
+  var r = canvas.getBoundingClientRect();
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+}
+var lastTs = 0;
+function loop(ts){
+  var dt = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0.016);
+  lastTs = ts;
+  update(dt, ts);
+  draw(ts);
+  requestAnimationFrame(loop);
+}
+initSky();
+fitCanvas();
+refreshPlayerAvailability();
+applyI18n();
+updateScoreboard();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
