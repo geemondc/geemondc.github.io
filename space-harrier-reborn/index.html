@@ -181,6 +181,9 @@ var sfx = {
 // ---------- input ----------
 var keys = {};
 var pointer = { active: false, x: 0, y: 0, id: null };
+var mousePos = { x: 0, y: 0, seen: false };  // free mouse steering: hero follows the cursor, no button needed
+var mouseMoved = false;                      // set by real mouse motion, consumed each frame by updatePlayer
+var lastTouchT = 0;                          // guards against synthetic mouse events fired after a touch
 var touchDrag = { active: false, id: null, lastX: 0, lastY: 0 };
 var firing = false;     // pointer/key fire intent
 var anyPress = false;   // edge-trigger for menus (consumed by loop)
@@ -205,11 +208,15 @@ canvas.addEventListener('mousedown', function (e) {
   audioInit(); anyPress = true; firing = true;
   pointer.active = true; pointer.x = e.clientX; pointer.y = e.clientY;
 });
-window.addEventListener('mousemove', function (e) { if (pointer.active) { pointer.x = e.clientX; pointer.y = e.clientY; } });
+window.addEventListener('mousemove', function (e) {
+  if (performance.now() - lastTouchT < 1000) return; // ignore synthetic mouse events trailing a touch
+  mousePos.x = e.clientX; mousePos.y = e.clientY; mousePos.seen = true; mouseMoved = true;
+  if (pointer.active) { pointer.x = e.clientX; pointer.y = e.clientY; }
+});
 window.addEventListener('mouseup', function () { pointer.active = false; if (!touchDrag.active) firing = false; });
 
 canvas.addEventListener('touchstart', function (e) {
-  e.preventDefault(); audioInit(); anyPress = true;
+  e.preventDefault(); audioInit(); anyPress = true; lastTouchT = performance.now();
   var t = e.changedTouches[0];
   touchDrag.active = true; touchDrag.id = t.identifier; touchDrag.lastX = t.clientX; touchDrag.lastY = t.clientY;
   firing = true;
@@ -228,6 +235,7 @@ canvas.addEventListener('touchmove', function (e) {
   }
 }, { passive: false });
 function endTouch(e) {
+  lastTouchT = performance.now();
   for (var i = 0; i < e.changedTouches.length; i++) {
     if (e.changedTouches[i].identifier === touchDrag.id) { touchDrag.active = false; firing = false; }
   }
@@ -805,6 +813,8 @@ function updatePlayer(dt) {
   if (keys['arrowdown'] || keys['s']) kb.y -= 1;
   if (kb.x || kb.y) { player.tx = clamp(player.x + kb.x * 26 * dt, -8.6, 8.6); player.ty = clamp(player.y + kb.y * 17 * dt, 0, 5.4); }
   if (pointer.active) { var tp = targetFromPointer(pointer.x, pointer.y); player.tx = tp.x; player.ty = tp.y; }
+  else if (mousePos.seen && mouseMoved && !touchDrag.active) { var mp = targetFromPointer(mousePos.x, mousePos.y); player.tx = mp.x; player.ty = mp.y; }
+  mouseMoved = false;
   var sm = 1 - Math.exp(-16 * dt);
   player.x = lerp(player.x, player.tx, sm);
   player.y = lerp(player.y, player.ty, sm);
@@ -1346,18 +1356,51 @@ function drawBanner() {
   if (banner.sub) text(banner.sub, CX, H * 0.34 + size + 12, clamp(size * 0.52, 11, 20), '#ffffff', 'center', a);
   ctx.restore();
 }
+function roundRectPath(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 function drawTitle() {
   ctx.fillStyle = 'rgba(4,6,24,0.62)'; ctx.fillRect(0, 0, W, H);
   var t1 = clamp(W * 0.075, 30, 64);
-  text('SPACE HARRIER', CX, H * 0.16, t1, '#ffd94d', 'center');
-  text('REBORN', CX, H * 0.16 + t1 + 10, t1 * 0.62, '#52c8ff', 'center');
-  text('WELCOME TO THE FANTASY ZONE!', CX, H * 0.44, clamp(W * 0.02, 12, 19), '#ffffff', 'center');
-  if (Math.floor(timeSec * 1.6) % 2 === 0) text('— TAP OR PRESS ANY KEY TO START —', CX, H * 0.56, clamp(W * 0.018, 11, 16), '#52ff7a', 'center');
-  var cf = clamp(W * 0.015, 10, 13);
-  text('MOVE: MOUSE · WASD / ARROWS · DRAG', CX, H * 0.70, cf, '#cfe8ff', 'center');
-  text('FIRE: HOLD CLICK · SPACE · TOUCH', CX, H * 0.70 + cf + 9, cf, '#cfe8ff', 'center');
-  text('DODGE THE TREES — TRIP ON THE ROCKS — SLAY THE BOSS', CX, H * 0.70 + (cf + 9) * 2, cf, '#cfe8ff', 'center');
-  if (hiScore > 0) text('HI-SCORE  ' + fmt(hiScore), CX, H * 0.86, cf, '#aef4ff', 'center');
+  text('SPACE HARRIER', CX, H * 0.13, t1, '#ffd94d', 'center');
+  text('REBORN', CX, H * 0.13 + t1 + 10, t1 * 0.62, '#52c8ff', 'center');
+  text('WELCOME TO THE FANTASY ZONE!', CX, H * 0.35, clamp(W * 0.02, 12, 19), '#ffffff', 'center');
+  if (Math.floor(timeSec * 1.6) % 2 === 0) text('— CLICK, TAP OR PRESS ANY KEY TO START —', CX, H * 0.415, clamp(W * 0.017, 10, 15), '#52ff7a', 'center');
+  // ---- HOW TO PLAY + CONTROLS panel ----
+  var rows = [
+    { t: 'HOW TO PLAY', col: '#ffd94d', head: true },
+    { t: 'BLAST EVERYTHING IN YOUR PATH', col: '#ffffff' },
+    { t: 'DODGE TREES & STATUES — SMALL ROCKS ONLY TRIP YOU', col: '#ffffff' },
+    { t: 'SLAY THE BOSS TO CLEAR THE STAGE', col: '#ffffff' },
+    { t: 'EVERY 3RD STAGE: RIDE THE DRAGON — SMASH FOR BONUS!', col: '#ffffff' },
+    { t: 'CONTROLS', col: '#52c8ff', head: true },
+    { t: 'KEYBOARD   ARROWS / WASD — MOVE · SPACE — FIRE', col: '#cfe8ff' },
+    { t: 'MOUSE      MOVE TO STEER · HOLD CLICK — FIRE', col: '#cfe8ff' },
+    { t: 'TOUCH      DRAG TO MOVE · CANNON FIRES AS YOU DRAG', col: '#cfe8ff' }
+  ];
+  var pw = Math.min(W * 0.94, 620);
+  var fs = clamp(Math.round(pw * 0.021), 9, 13);
+  var lh = fs + 9;
+  var ph = rows.length * lh + 22;
+  var py = H * 0.50;
+  if (py + ph > H - 10) py = Math.max(10, H - 10 - ph);
+  ctx.fillStyle = 'rgba(3,5,20,0.74)';
+  roundRectPath(CX - pw / 2, py, pw, ph, 10); ctx.fill();
+  ctx.strokeStyle = 'rgba(140,220,255,0.45)'; ctx.lineWidth = 1.5;
+  roundRectPath(CX - pw / 2, py, pw, ph, 10); ctx.stroke();
+  var y = py + 12;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].head && i > 0) y += 7;
+    text(rows[i].t, CX, y, rows[i].head ? fs + 2 : fs, rows[i].col, 'center');
+    y += lh;
+  }
+  if (hiScore > 0 && py + ph + 26 < H) text('HI-SCORE  ' + fmt(hiScore), CX, py + ph + 10, fs, '#aef4ff', 'center');
 }
 function drawGameOver() {
   ctx.fillStyle = 'rgba(4,2,10,0.55)'; ctx.fillRect(0, 0, W, H);
@@ -1421,7 +1464,8 @@ window.__SH = {
     return { mode: mode, stage: stage, world: world().name, score: score, lives: lives, fps: Math.round(fpsEMA),
       enemies: enemies.length, obstacles: obstacles.length, shots: shots.length, eshots: eshots.length,
       boss: boss ? { kind: boss.kind, hp: boss.hp, maxHp: boss.maxHp, z: Math.round(boss.z), dead: boss.dead } : null,
-      player: { x: +player.x.toFixed(2), y: +player.y.toFixed(2), state: player.state },
+      player: { x: +player.x.toFixed(2), y: +player.y.toFixed(2), tx: +player.tx.toFixed(2), ty: +player.ty.toFixed(2), state: player.state },
+      mouse: { seen: mousePos.seen, x: Math.round(mousePos.x), y: Math.round(mousePos.y) },
       bonusTime: Math.round(bonusTime), banner: banner.text };
   },
   start: function () { startGame(); },
