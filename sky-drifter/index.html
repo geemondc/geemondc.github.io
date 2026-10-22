@@ -263,7 +263,7 @@
         <ul>
           <li><b>👆 Touch:</b> drag to steer — the PUSH is the gas: push further from where your finger landed to fly faster, ease back or lift to settle into a gentle cruise.</li>
           <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Keep the gas pinned and the flight melts into warp — pure streaming light.</li>
-          <li><b>🖱 Mouse:</b> move to steer — you bend toward your cursor, no click needed. Hold the <b>left mouse button</b> down for gas.</li>
+          <li><b>🖱 Mouse:</b> move to steer — you bend toward your cursor, no click needed. <b>Hold the left button</b> for gas and just <b>point where you want to go</b>: up climbs — all the way into space — down dives, left and right turn. Eased and gentle, even with the cursor resting at the screen's edge. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
           <li><b>The little dot</b> in the corner is your paint box: tap it for worlds and time of day. Weather and trails just happen on their own. Tap the sky to put it away.</li>
           <li><b>Climb high</b> through the clouds to change worlds. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
@@ -379,7 +379,7 @@ const S={
   lookYaw:0, lookPitch:0, lookActive:false, lookBack:0, peekT:0,
   diveF:0, wash:0, gate:0, gatePhase:'', pendingBiome:null,
   highT:0, tourT:0, rainbowT:0, reentryT:0, prevAlt:0.42, altVel:0,
-  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, flyT:0,
+  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, warpRot:0, flyT:0,
   windOn:true, panelIdle:0
 };
 /* trails are automatic: each destination flies its own signature trail */
@@ -1396,7 +1396,7 @@ function render(){
       ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x1+ca*len,y1+sa*len*0.8); ctx.stroke();
       if(wChr>0.25){ /* soft chromatic fringes as the light smears past */
         const ox=-sa*2.4*wChr, oy=ca*2.4*wChr*0.8;
-        ctx.globalAlpha=a1*0.45; ctx.strokeStyle='rgba(255,90,90,1)';
+        ctx.globalAlpha=a1*0.30; ctx.strokeStyle='rgba(255,90,90,1)';
         ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x1+ox+ca*len,y1+oy+sa*len*0.8); ctx.stroke();
         ctx.strokeStyle='rgba(90,210,255,1)';
         ctx.beginPath(); ctx.moveTo(x1-ox,y1-oy); ctx.lineTo(x1-ox+ca*len,y1-oy+sa*len*0.8); ctx.stroke();
@@ -1459,9 +1459,28 @@ function render(){
     for(let i=0;i<6;i++){ const ry=H*(0.10+0.145*i)+Math.sin(t*0.32+i*1.7)*H*0.028, rh=H*(0.085+0.02*Math.sin(t*0.21+i));
       const rg2=ctx.createLinearGradient(0,ry-rh,0,ry+rh);
       rg2.addColorStop(0,'rgba(0,0,0,0)');
-      rg2.addColorStop(0.5,mixCa(ribCols[i%ribCols.length],'#ffffff',0.12,0.17*S.warpF));
+      rg2.addColorStop(0.5,mixCa(ribCols[i%ribCols.length],'#ffffff',0.12,0.10*S.warpF));
       rg2.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=rg2; ctx.fillRect(0,ry-rh,W,rh*2); }
+    ctx.restore(); }
+
+  /* ---- WARP signature: the Tempest tunnel — a soft vortex of rainbow
+         light rotating around the direction of travel, like the bonus
+         tunnel between levels. Present, never extreme: hues drift slowly,
+         alpha stays gentle, nothing strobes. Steering rotates inside it:
+         banking spins the field with you (warpRot follows the bank) and
+         climbing or diving tilts its axis (the squash follows pitch). ---- */
+  if(S.warpF>0.02){
+    const wcx=cx-S.lookYaw*W*0.10, wcy=H*0.44-S.lookPitch*H*0.05-S.pitchD*H*0.10;
+    const squash=clamp(0.86-S.pitchD*0.16,0.60,1.02);
+    const hue0=((S.flyT*16)%360+360)%360;
+    ctx.save(); ctx.globalCompositeOperation='screen';
+    ctx.translate(wcx,wcy); ctx.rotate(S.warpRot);
+    for(let i=0;i<7;i++){ const r=H*(0.07+i*0.085)*(1+S.warpF*0.12);
+      const hue=(hue0+i*36)%360;
+      ctx.strokeStyle='hsla('+hue+',92%,66%,'+(0.13*S.warpF)+')';
+      ctx.lineWidth=H*0.016; ctx.lineCap='round';
+      ctx.beginPath(); ctx.ellipse(0,0,r,Math.max(4,r*squash),S.warpRot*0.4,i*0.55,i*0.55+4.15); ctx.stroke(); }
     ctx.restore(); }
 
   /* ---- screen-space weather & washes ---- */
@@ -1566,7 +1585,7 @@ function update(dt){
 
   const flying=S.mode==='fly';
   /* ---- idle -> spectator drift ---- */
-  if(flying){ S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
+  if(flying){ if(S.mouseGas||keys.gas)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
   S.panelIdle+=dt; dotEl.classList.toggle('faint',S.panelIdle>4);
   if(S.panelAuto&&S.flyT>S.panelAutoAt){ if(!S.panelPinned)closePanel(); S.panelAuto=false; }
 
@@ -1577,7 +1596,16 @@ function update(dt){
       S.bank=lerp(S.bank,Math.sin(t*0.13)*0.55,dt*0.8);
       S.pitch=lerp(S.pitch,Math.sin(t*0.09+1.3)*0.34,dt*0.8);
     } else if(!steerHeld){
-      if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,mouseTX,dt*2.4); S.pitch=lerp(S.pitch,mouseTY,dt*2.4); }
+      if(S.mouseGas){ /* PRESS AND POINT: while the button is held, the last
+         known cursor position flies the view EVERY frame — eased, clamped,
+         never twitchy. A cursor pinned at an edge fires no fresh move
+         events, so event-freshness steering used to drop the command after
+         2.5s and the flight stalled mid-hold (the reported freeze); the
+         held state itself is the command now: top edge keeps climbing into
+         space, side edges keep turning, until the button is released. */
+        const mr=dt*(2.6-1.1*S.warpF);
+        S.bank=lerp(S.bank,clamp(mouseTX,-1,1),mr); S.pitch=lerp(S.pitch,clamp(mouseTY,-1,1),mr); }
+      else if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,mouseTX,dt*2.4); S.pitch=lerp(S.pitch,mouseTY,dt*2.4); }
       else { S.pitch=lerp(S.pitch,0,dt*0.55); S.bank=lerp(S.bank,0,dt*1.5); }
     }
     if(keys.look){
@@ -1760,6 +1788,21 @@ function update(dt){
   /* UP from the ground is takeoff */
   if(S.mode==='landed'&&keys.up){ S.mode='takeoff'; landT=0; takeoffBtn.classList.remove('show'); }
 
+  /* the warp's rainbow field slowly rotates on its own — and spins WITH
+     the pilot: banking in warp turns the whole tunnel around you */
+  S.warpRot+=dt*S.warpF*(0.14+S.bankD*0.6);
+
+  /* hard guards: no steering/throttle/altitude value may ever reach the
+     renderer non-finite or out of range — one bad number must never be
+     able to stall or kill the flight */
+  if(!Number.isFinite(S.bank))S.bank=0; if(!Number.isFinite(S.pitch))S.pitch=0;
+  if(!Number.isFinite(S.alt))S.alt=0.42; if(!Number.isFinite(S.throttle))S.throttle=0;
+  if(!Number.isFinite(S.effSpeed))S.effSpeed=0.62; if(!Number.isFinite(S.pan))S.pan=0;
+  if(!Number.isFinite(S.warpF))S.warpF=0; if(!Number.isFinite(S.spaceF))S.spaceF=0;
+  if(!Number.isFinite(S.warpRot))S.warpRot=0;
+  S.bank=clamp(S.bank,-1,1); S.pitch=clamp(S.pitch,-1,1);
+  S.alt=clamp(S.alt,0,1.32); S.throttle=clamp(S.throttle,0,1);
+
   audioUpdate(dt);
 }
 
@@ -1774,15 +1817,22 @@ window.addEventListener('pointerdown',e=>{
   if(panel.classList.contains('open')){ closePanel(); suppressed.add(e.pointerId);
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType}); return; }
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
-  /* desktop: the left mouse button is pure GAS — steering is the cursor's
-     position, so the button never has to steer or look */
-  if(e.pointerType==='mouse'){ if(e.button===0)S.mouseGas=true; }
+  /* desktop: the left mouse button is GAS, and while it is held the cursor
+     position IS the stick (press and point). Record the position at the
+     press itself, and capture the pointer to the canvas so moves and the
+     release keep arriving even if the cursor slips outside the window
+     mid-hold — no stuck gas, no lost release, clean recovery. */
+  if(e.pointerType==='mouse'){ if(e.button===0)S.mouseGas=true;
+    mouseTX=clamp((e.clientX/Math.max(1,W)-0.5)*1.9,-1,1);
+    mouseTY=clamp((0.5-e.clientY/Math.max(1,H))*1.9,-1,1); mouseFreshT=S.flyT;
+    try{ cv.setPointerCapture(e.pointerId); }catch(err){} }
   else if(steerId===null)steerId=e.pointerId;
 },{passive:true});
 window.addEventListener('pointermove',e=>{
   if(e.pointerType==='mouse'){
-    mouseTX=clamp((e.clientX/Math.max(1,W)-0.5)*1.9,-1,1);
-    mouseTY=clamp((0.5-e.clientY/Math.max(1,H))*1.9,-1,1);
+    const mx=Number.isFinite(e.clientX)?e.clientX:W/2, my=Number.isFinite(e.clientY)?e.clientY:H/2;
+    mouseTX=clamp((mx/Math.max(1,W)-0.5)*1.9,-1,1);
+    mouseTY=clamp((0.5-my/Math.max(1,H))*1.9,-1,1);
     mouseFreshT=S.flyT; wake(); return; }
   const p=pointers.get(e.pointerId); if(!p)return;
   if(suppressed.has(e.pointerId)){ p.x=e.clientX; p.y=e.clientY; return; }
@@ -1805,6 +1855,9 @@ function endPointer(e){ pointers.delete(e.pointerId); suppressed.delete(e.pointe
       if(rp&&rp.type==='mouse')continue;   /* the mouse never becomes the steer finger */
       steerId=id; break; } } }
 window.addEventListener('pointerup',endPointer); window.addEventListener('pointercancel',endPointer);
+/* if the pointer slips out of the window mid-hold without a release ever
+   reaching us, never leave the gas stuck on */
+document.addEventListener('mouseleave',()=>{ S.mouseGas=false; });
 window.addEventListener('keydown',e=>{
   const k=e.key;
   if(k==='Tab'){ e.preventDefault(); if(!e.repeat)togglePanel(); wake(); return; }
@@ -1865,11 +1918,13 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 window.addEventListener('resize',()=>{ resize(); });
 let lastNow=performance.now(), lastDprAdj=0;
 function frame(now){
-  const dt=clamp((now-lastNow)/1000,0.001,0.05); lastNow=now;
+  requestAnimationFrame(frame); /* the next frame is booked BEFORE any work:
+     one bad frame can never freeze the flight again */
+  let dt=(now-lastNow)/1000; lastNow=now;
+  if(!Number.isFinite(dt)||dt<=0)dt=0.016; dt=clamp(dt,0.001,0.05);
   frameAvg=frameAvg*0.95+((now-(frame._p||now))*0.05); frame._p=now;
   if(frameAvg>27&&now-lastDprAdj>3500&&DPR>1.2){ dprLock=Math.max(1.2,DPR-0.25); lastDprAdj=now; resize(); }
-  update(dt); render();
-  requestAnimationFrame(frame);
+  try{ update(dt); render(); }catch(err){ /* a single bad frame is swallowed — the sky keeps moving */ }
 }
 requestAnimationFrame(frame);
 </script>
