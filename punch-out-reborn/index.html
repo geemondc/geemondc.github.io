@@ -1,0 +1,1913 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Punch-Out Reborn</title>
+    <style>
+      :root{
+        --ink:#f5efe4; --gold:#ffc832; --red:#e83a30; --teal:#19c2a6;
+        --panel:#17130f; --btn:rgba(16,14,12,.72); --btnline:rgba(255,200,50,.55);
+      }
+      * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+      html,body{ height:100%; }
+      body{
+        margin:0; background:#0b0908; color:var(--ink);
+        font-family:ui-rounded,"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+        overflow:hidden; touch-action:none; overscroll-behavior:none;
+        -webkit-user-select:none; user-select:none;
+      }
+      #app{ height:100dvh; display:flex; flex-direction:column; }
+      #topbar{
+        display:flex; align-items:center; justify-content:space-between;
+        padding:6px 10px; gap:6px; flex:0 0 auto; flex-wrap:wrap;
+      }
+      #topbar .brand{
+        font-family:Impact,"Arial Black",sans-serif; letter-spacing:.06em;
+        font-size:15px; color:var(--gold); text-shadow:0 2px 0 #7a2c00;
+      }
+      .tbtn{
+        background:var(--btn); color:var(--ink); border:1.5px solid var(--btnline);
+        border-radius:10px; padding:6px 12px; font-weight:800; font-size:13px;
+        letter-spacing:.04em; cursor:pointer; font-family:inherit;
+      }
+      .tbtn:active{ transform:scale(.95); }
+      #stage{ position:relative; flex:1 1 auto; min-height:0; }
+      canvas#game{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+      /* ---- touch controls ---- */
+      #controls{
+        position:absolute; left:0; right:0; bottom:0; z-index:5;
+        display:flex; justify-content:space-between; align-items:flex-end;
+        padding:0 10px calc(8px + env(safe-area-inset-bottom)); pointer-events:none;
+      }
+      .cluster{ display:flex; gap:8px; align-items:flex-end; pointer-events:none; }
+      .cluster.col{ flex-direction:column; align-items:center; gap:8px; }
+      .cbtn{
+        pointer-events:auto; border:2px solid rgba(255,255,255,.35);
+        background:rgba(12,10,9,.66); color:#fff; border-radius:50%;
+        width:60px; height:60px; font-size:22px; font-weight:900;
+        display:flex; align-items:center; justify-content:center; flex-direction:column;
+        font-family:inherit; cursor:pointer; line-height:1; backdrop-filter: blur(2px);
+      }
+      .cbtn small{ font-size:9px; letter-spacing:.08em; margin-top:2px; font-weight:800; }
+      .cbtn:active,.cbtn.held{ background:rgba(255,200,50,.85); color:#201405; transform:scale(.93); }
+      .cbtn.wide{ width:72px; height:72px; }
+      #btnStar{ border-color:var(--gold); color:#ffe9a8; }
+      #btnStar.lit{ background:var(--gold); color:#241500; box-shadow:0 0 22px 4px rgba(255,200,50,.75); animation:pulse .5s infinite alternate; }
+      @keyframes pulse{ from{ transform:scale(1);} to{ transform:scale(1.07);} }
+      /* ---- bottom-left QR + bottom-right link ---- */
+      #qrBtn{
+        position:absolute; left:10px; bottom:calc(96px + env(safe-area-inset-bottom)); z-index:6;
+        width:46px; height:46px; padding:3px; background:#fff; border-radius:8px;
+        border:2px solid rgba(0,0,0,.4); cursor:pointer;
+      }
+      #qrBtn img{ width:100%; height:100%; display:block; }
+      #frLink{
+        color:rgba(245,239,228,.55); font-size:11px; letter-spacing:.22em; font-weight:700;
+        text-decoration:none; margin-right:10px; white-space:nowrap;
+      }
+      #frLink:hover{ color:var(--gold); }
+      /* ---- QR overlay ---- */
+      #qrModal{
+        position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+        background:rgba(5,4,3,.88); flex-direction:column; gap:14px; padding:20px; text-align:center;
+      }
+      #qrModal.open{ display:flex; }
+      #qrModal .card{ background:#fff; padding:14px; border-radius:14px; }
+      #qrModal img{ width:min(72vw,340px); height:auto; display:block; }
+      #qrModal p{ margin:0; font-weight:700; }
+      #qrModal .url{ color:var(--gold); font-size:14px; word-break:break-all; }
+      @media (max-width:620px){
+        #topbar{ padding:5px 7px; gap:4px; }
+        #topbar .brand{ font-size:12px; }
+        #frLink{ font-size:10px; letter-spacing:.06em; margin-right:6px; }
+        #fpsTag{ font-size:10px; margin-right:6px !important; }
+        .tbtn{ padding:5px 7px; font-size:11.5px; }
+      }
+      @media (max-height:520px){
+        .cbtn{ width:50px; height:50px; font-size:19px; }
+        .cbtn.wide{ width:60px; height:60px; }
+        #qrBtn{ bottom:calc(80px + env(safe-area-inset-bottom)); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="topbar">
+        <div class="brand">PUNCH-OUT REBORN</div>
+        <div style="display:flex; align-items:center;">
+          <a id="frLink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+          <span id="fpsTag" style="font-size:11px; color:rgba(245,239,228,.45); font-weight:700; margin-right:10px; white-space:nowrap;">-- FPS</span>
+          <button class="tbtn" id="muteBtn" type="button">SOUND: ON</button>
+          <button class="tbtn" id="restartBtn" type="button">RESTART</button>
+        </div>
+      </div>
+      <div id="stage">
+        <canvas id="game"></canvas>
+        <div id="controls">
+          <div class="cluster">
+            <button class="cbtn" id="btnDL" type="button" aria-label="Dodge left">&#9664;<small>DODGE</small></button>
+            <div class="cluster col">
+              <button class="cbtn" id="btnDuck" type="button" aria-label="Duck">&#9660;<small>DUCK</small></button>
+              <button class="cbtn" id="btnBlock" type="button" aria-label="Block">&#9679;<small>BLOCK</small></button>
+            </div>
+            <button class="cbtn" id="btnDR" type="button" aria-label="Dodge right">&#9654;<small>DODGE</small></button>
+          </div>
+          <div class="cluster">
+            <div class="cluster col">
+              <button class="cbtn" id="btnBody" type="button" aria-label="Body blow">&#9679;<small>BODY</small></button>
+              <button class="cbtn" id="btnStar" type="button" aria-label="Star uppercut">&#9733;<small>STAR</small></button>
+            </div>
+            <button class="cbtn wide" id="btnJab" type="button" aria-label="Jab">&#9994;<small>JAB</small></button>
+          </div>
+        </div>
+        <button id="qrBtn" type="button" aria-label="Show QR code"><img src="data:image/png;base64,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" alt="QR code linking to this game on GitHub Pages" /></button>
+      </div>
+    </div>
+    <div id="qrModal" role="dialog" aria-label="QR code">
+      <div class="card"><img src="data:image/png;base64,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" alt="QR code for Punch-Out Reborn" /></div>
+      <p>Play on any phone — scan me!</p>
+      <p class="url">https://geemondc.github.io/punch-out-reborn/</p>
+      <button class="tbtn" id="qrClose" type="button">CLOSE</button>
+    </div>
+<script>
+"use strict";
+/* ============================================================
+   PUNCH-OUT REBORN — faithful Punch-Out!! mechanics, original cast.
+   Canvas cartoon boxing. WebAudio SFX only. No music.
+   ============================================================ */
+const W = 720, H = 900;
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+let DPR = 1, SCALE = 1, OX = 0, OY = 0;
+function resize(){
+  const r = cv.getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.max(1, Math.round(r.width * DPR));
+  cv.height = Math.max(1, Math.round(r.height * DPR));
+  SCALE = Math.min(cv.width / W, cv.height / H);
+  OX = (cv.width - W * SCALE) / 2;
+  OY = (cv.height - H * SCALE) / 2;
+}
+window.addEventListener('resize', resize);
+
+/* ---------------- utils ---------------- */
+const clamp = (v,a,b)=> v<a?a : v>b?b : v;
+const lerp = (a,b,t)=> a+(b-a)*t;
+const rnd = (a,b)=> a + Math.random()*(b-a);
+const TAU = Math.PI*2;
+function rr(x,y,w,h,r){ // rounded rect path
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function circle(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,TAU); }
+function ellipse(x,y,rx,ry){ ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,TAU); }
+
+/* ---------------- audio (WebAudio SFX only, NO music) ---------------- */
+let AC = null, MUTED = false, noiseBuf = null;
+function audio(){
+  if(!AC){
+    try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC = null; }
+    if(AC){
+      noiseBuf = AC.createBuffer(1, AC.sampleRate*0.5, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    }
+  }
+  if(AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, dur, type, vol, slideTo, delay){
+  if(MUTED || !audio()) return;
+  const t0 = AC.currentTime + (delay||0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type||'square'; o.frequency.setValueAtTime(freq, t0);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo), t0+dur);
+  g.gain.setValueAtTime(vol||0.2, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  o.connect(g); g.connect(AC.destination);
+  o.start(t0); o.stop(t0+dur+0.02);
+}
+function noise(dur, vol, fFrom, fTo, type, delay){
+  if(MUTED || !audio()) return;
+  const t0 = AC.currentTime + (delay||0);
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const f = AC.createBiquadFilter(); f.type = type||'bandpass';
+  f.frequency.setValueAtTime(fFrom, t0);
+  if(fTo) f.frequency.exponentialRampToValueAtTime(Math.max(30,fTo), t0+dur);
+  f.Q.value = 1.1;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(vol||0.25, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  src.connect(f); f.connect(g); g.connect(AC.destination);
+  src.start(t0); src.stop(t0+dur+0.02);
+}
+const SFX = {
+  bell(n){ for(let i=0;i<(n||1);i++){ tone(1560,0.5,'triangle',0.25,null,i*0.35); tone(2093,0.4,'sine',0.12,null,i*0.35); noise(0.08,0.05,4000,3000,'highpass',i*0.35);} },
+  thunk(big){ noise(big?0.16:0.09, big?0.5:0.32, 300, 90, 'lowpass'); tone(big?130:160, big?0.18:0.1, 'sine', big?0.5:0.3, 45); },
+  bodyThud(){ noise(0.11,0.36,220,80,'lowpass'); tone(105,0.12,'sine',0.36,50); },
+  block(){ tone(2200,0.05,'square',0.12); noise(0.05,0.14,1800,900,'bandpass'); },
+  whoosh(){ noise(0.16,0.16,500,2400,'bandpass'); },
+  dodge(){ noise(0.12,0.10,900,300,'bandpass'); },
+  hurt(){ tone(300,0.22,'sawtooth',0.22,70); noise(0.15,0.2,400,120,'lowpass'); },
+  gasp(){ noise(0.35,0.16,700,1500,'bandpass'); tone(500,0.3,'sine',0.05,900); },
+  cheer(big){ noise(big?1.0:0.55, big?0.20:0.12, 800, 1400, 'bandpass'); noise(big?0.9:0.5,0.08,1200,2000,'bandpass',0.08); },
+  beep(n){ tone(660+ (n%3)*40, 0.12, 'square', 0.16); },
+  countFinal(){ tone(440,0.4,'square',0.2,220); },
+  crash(){ noise(0.5,0.5,900,60,'lowpass'); tone(90,0.5,'sine',0.5,35); },
+  star(){ [880,1174,1568].forEach((f,i)=> tone(f,0.12,'square',0.14,null,i*0.06)); },
+  upper(){ noise(0.25,0.55,500,60,'lowpass'); tone(160,0.3,'sine',0.55,40); tone(1200,0.1,'square',0.1,2400); },
+  step(){ noise(0.04,0.05,300,200,'lowpass'); }
+};
+
+/* ============================================================
+   ROSTER — all-original cartoon fighters. Archetypes & tells
+   echo the classics; names, faces and lines are our own.
+   Attack def: { name, tell (sec of visible tell before strike),
+   dmg, kind: 'high'|'low'|'rush', star:true = punching him in the
+   face DURING the tell earns a star and stops the attack }
+   ============================================================ */
+const FIGHTERS = [
+{
+  name:"THE STEPS KID", sub:"\"Philadelphia's Favorite Underdog\"", circuit:"MINOR CIRCUIT · BOUT 1",
+  age:24, from:"South Philly, USA", weight:"181 lbs", record:"0 wins · 31 losses · 1 tie (with a statue)", rank:"Pre-bell ritual: runs the arena steps, raises both fists",
+  quote:"\"I ain't here to win pretty. I'm here to go the distance. Also — have you seen my turtle? He believes in me.\"",
+  winQuote:"\"YO, TURTLE! WE DID IT! ...He's asleep. He misses everything.\"", loseQuote:"\"It's okay. It's okay. The steps will still be there tomorrow. So will I.\"",
+  skin:"#e8a87c", hair:"#4a3220", hairStyle:"flat", trunk:"#8f979e", glove:"#b03a2e", accent:"#e8e4da",
+  body:"medium", size:1.0, hp:70, tempo:1.55, stunTime:2.6, comboMax:7, riseFrac:[0.45,0.3],
+  outfit:"hoodie", prop:"egg", turtle:true, tauntEvery: 9,
+  tauntLines:["\"You're the best, little guy.\" (to the turtle)","\"One more round of steps after this!\"","\"I can do this all day. Nap later.\""],
+  tips:["When he gulps his RAW-EGG SHAKE, that's the tell — pop him mid-gulp for a STAR!","His haymaker comes from three zip codes away. Dodge it, then unload!","Save your STAR UPPERCUT for when he's stunned. It does huge damage!"],
+  attacks:[
+    { name:"haymaker", tell:0.95, dmg:10, kind:"high", star:true, wind:1.25 },
+    { name:"haymaker", tell:0.85, dmg:10, kind:"high", star:true, wind:1.25 },
+    { name:"turtledash", tell:0.7, dmg:8, kind:"low", star:false, wind:0.8 }
+  ]
+},
+{
+  name:"CAPTAIN SPINACH", sub:"The Salty Sailor", circuit:"MINOR CIRCUIT · BOUT 2",
+  age:63, from:"The Seven Seas (and a nice dock)", weight:"204 lbs of forearm", record:"22 wins · 6 losses · 1 mutiny", rank:"Forearms insured for one million doubloons",
+  quote:"\"I yam what I yam, and what I yam is about to hit ya. Hand me me spinach, Olive— er, Coach!\"",
+  winQuote:"\"Strong to the finish! Somebody write that down, it's catchy.\"", loseQuote:"\"Blow me down... the can opener... was in me other pants...\"",
+  skin:"#f2b98a", hair:"#d8d8d8", hairStyle:"bald", trunk:"#274b6e", glove:"#c22f24", accent:"#f5efe4",
+  body:"medium", size:1.0, hp:90, tempo:1.22, stunTime:2.3, comboMax:7, riseFrac:[0.4,0.28], mustache:true,
+  outfit:"sailor", hat:"sailor", prop:"spinach", tauntEvery: 8,
+  tauntLines:["\"Hold on, lad — SPINACH BREAK!\"","\"I fights to the finish 'cause I eats me— you know the rest!\"","\"This can's been with me since '62.\""],
+  tips:["His corner feeds him SPINACH between knockdowns — he comes back faster every time!","Punch the CAN mid-gulp — during his spinach break or when it flashes — for a STAR!","After a gulp he's squeaky-fast. Dodge first, brag later."],
+  attacks:[
+    { name:"forearmjab", tell:0.55, dmg:7, kind:"high", star:true, wind:0.7 },
+    { name:"forearmjab", tell:0.5, dmg:7, kind:"high", star:true, wind:0.7 },
+    { name:"doublejab", tell:0.6, dmg:7, kind:"high", star:false, wind:0.7, hits:2 },
+    { name:"anchorsaway", tell:0.7, dmg:11, kind:"rush", star:false, wind:1.0 }
+  ]
+},
+{
+  name:"THE BUTTERFLY", sub:"The Rhyming Wonder", circuit:"MAJOR CIRCUIT · BOUT 1",
+  age:27, from:"Louisville (by way of everywhere)", weight:"215 lbs (96 of it confidence)", record:"30 wins · 1 loss · 4 poetry slams", rank:"Floats. Stings. Rhymes about both.",
+  quote:"\"I float like a butterfly, I sting like a bee — the hands can't hit what the eyes can't see. That one's free. The rest cost extra.\"",
+  winQuote:"\"I told you in verse! Nobody listens to the verse!\"", loseQuote:"\"Count it in iambic pentameter... I insist...\"",
+  skin:"#6e4525", hair:"#0e0c0a", hairStyle:"fade", trunk:"#e8e4da", glove:"#e83a30", accent:"#ffc832",
+  body:"lean", size:1.02, hp:105, tempo:1.08, stunTime:2.1, comboMax:8, riseFrac:[0.4,0.26], floatAmp:2.2,
+  outfit:"trunks", prop:"butterfly", tauntEvery: 6,
+  tauntLines:["\"Your punches are slow and your footwork's a crime—\"","\"I'm so pretty, the mirror filed a claim—\"","\"You can't hit what you can't— hey! I wasn't finished!\""],
+  tips:["He recites POETRY mid-fight — interrupt him mid-rhyme with a jab to steal a STAR!","He floats all over the ring. Wait for the spin, dodge late, then answer.","Don't chase him. Champions let the dance come to them, kid."],
+  attacks:[
+    { name:"spin", tell:0.8, dmg:12, kind:"rush", star:true, wind:1.1 },
+    { name:"spin", tell:0.7, dmg:12, kind:"rush", star:true, wind:1.1 },
+    { name:"hook", tell:0.55, dmg:9, kind:"high", star:false, wind:0.85 },
+    { name:"stinglow", tell:0.5, dmg:9, kind:"low", star:false, wind:0.85 }
+  ]
+},
+{
+  name:"WAX-ON WALTER", sub:"The Ancient Master", circuit:"MAJOR CIRCUIT · BOUT 2",
+  age:91, from:"A quiet garden, Okinawa", weight:"112 lbs (mostly wisdom)", record:"Undefeated since before you were born", rank:"His dojo chores are done. All of them. Forever.",
+  quote:"\"First, learn stand. Then, learn fly. Also — when fight over, you wax my car. Both coat.\"",
+  winQuote:"\"Good fight. Now — sand the floor. Long strokes.\"", loseQuote:"\"Ahh. Student has become... the one who does not have to wax the car.\"",
+  skin:"#eec39a", hair:"#e8e8e8", hairStyle:"bald", trunk:"#f0ede6", glove:"#8a6d3b", accent:"#2b2b33",
+  body:"lean", size:0.94, hp:128, tempo:1.28, stunTime:2.2, comboMax:8, riseFrac:[0.38,0.25],
+  blocksFace:true, guardHp:6, outfit:"gi", hat:"headband", beard:true, mustache:true,
+  blockLines:["WAX ON!","WAX OFF!","PAINT THE FENCE!","SAND THE FLOOR!","BREATHE IN... BREATHE OUT!"],
+  tauntEvery: 13,
+  tauntLines:["\"Show me... paint the fence.\"","\"Man who catch fly with chopstick, accomplish anything. You, I worry about.\"","\"Focus. Feel the floor. The floor says hi.\""],
+  tips:["His blocks are CHORES — wax on, wax off — face punches just clean his guard!","Only BODY blows get under the wax. Crack his guard, then he's wide open!","His crane kick flashes first. Face-punch the flash for a STAR!"],
+  attacks:[
+    { name:"cranekick", tell:0.8, dmg:14, kind:"high", star:true, wind:1.3 },
+    { name:"cranekick", tell:0.75, dmg:14, kind:"high", star:true, wind:1.3 },
+    { name:"sweeptheleg", tell:0.6, dmg:10, kind:"low", star:false, wind:0.9 },
+    { name:"hook", tell:0.6, dmg:11, kind:"high", star:false, wind:0.9 }
+  ]
+},
+{
+  name:"COUNT PUNCHULA", sub:"The Night Shift", circuit:"MAJOR CIRCUIT · BOUT 3",
+  age:412, from:"Transylvania (night flights only)", weight:"199 lbs ( cape included )", record:"38 wins · 0 losses · 412 years undefeated at dusk", rank:"Weaknesses: sunlight, stakes, garlic breath",
+  quote:"\"I do not drink... wine. I drink... victory. Also your stars. Your stars look delicious.\"",
+  winQuote:"\"Another one joins my eternal win column. Forever. And ever.\"", loseQuote:"\"Blah! The lights... who turned on the lights?! I vant to go home...\"",
+  skin:"#e9e2d5", hair:"#14100e", hairStyle:"peak", trunk:"#3a0d12", glove:"#5c1a24", accent:"#c9a227",
+  body:"lean", size:1.04, hp:118, tempo:1.0, stunTime:2.0, comboMax:8, riseFrac:[0.38,0.25], starThief:true, fangs:true,
+  outfit:"cape", prop:"stare", tauntEvery: 7,
+  tauntLines:["\"Look into my eyes... your stars are getting sleepy...\"","\"I fight only at night. It is always night somewhere. Convenient!\"","\"Your corner brought garlic bread? RUDE.\""],
+  tips:["His HYPNOTIC STARE is the tell — when his eyes swirl, punch him out of it for a STAR!","When he hits you, he drinks a star too. Protect the stars, kid!","He hates the spotlight. Keep him stunned and center-ring."],
+  attacks:[
+    { name:"fangflurry", tell:0.55, dmg:6, kind:"high", star:false, wind:0.8, hits:3 },
+    { name:"starebite", tell:0.85, dmg:11, kind:"high", star:true, wind:1.0 },
+    { name:"capeswirl", tell:0.6, dmg:11, kind:"rush", star:true, wind:1.0 },
+    { name:"sneak", tell:0.4, dmg:9, kind:"low", star:false, wind:0.75 }
+  ]
+},
+{
+  name:"EL RELAMPAGO", sub:"The Lightning Luchador", circuit:"WORLD CIRCUIT · BOUT 1",
+  age:33, from:"Mexico City, by way of the top rope", weight:"228 lbs (mask: priceless)", record:"33 wins · 2 losses · 1 tag partner (also him?)", rank:"Has never been seen in the same room as his tag partner",
+  quote:"\"You face not one luchador, but TWO! ...The other one is also me. But with a different mask. It is a whole thing.\"",
+  winQuote:"\"¡AND STILL! The mask stays ON, hermano.\"", loseQuote:"\"He... he almost took the mask... tell my partner... he is also me...\"",
+  skin:"#a0663a", hair:"#0e0c0a", hairStyle:"fade", trunk:"#0f7a5c", glove:"#e8b71e", accent:"#e83a30",
+  body:"medium", size:1.05, hp:128, tempo:0.95, stunTime:2.0, comboMax:8, riseFrac:[0.37,0.24], tagTeam:true,
+  outfit:"mask", hat:"mask", prop:null, tauntEvery: 8,
+  tauntLines:["\"¡TAG! ...¡I'M BACK! Did you miss me? I missed me!\"","\"My partner is undefeated! (It is me.) (Twice.)\"","\"¡LUCHA! ¡LUCHA! ¡LUCHA!\""],
+  tips:["He TAGS OUT mid-fight and tags back IN with a flying rush — dodge the re-entry!","His mask glints before the tornado dive. That's your STAR, kid!","Two of him, one of you. Math was never his strong suit either."],
+  attacks:[
+    { name:"tornado", tell:0.65, dmg:13, kind:"rush", star:true, wind:1.05 },
+    { name:"crossbody", tell:0.6, dmg:10, kind:"high", star:false, wind:0.9, hits:2 },
+    { name:"maskjab", tell:0.45, dmg:8, kind:"high", star:true, wind:0.7 },
+    { name:"lowdrop", tell:0.5, dmg:10, kind:"low", star:false, wind:0.85 }
+  ]
+},
+{
+  name:"THE GRANDMASTER", sub:"Four-Dimensional Fisticuffs", circuit:"WORLD CIRCUIT · BOUT 2",
+  age:58, from:"Everywhere the light touches (and chess is played)", weight:"196 lbs (Elo: 2,900)", record:"41 wins · 3 losses · 0 blunders (this week)", rank:"Announces his punches three moves ahead. He is not bluffing.",
+  quote:"\"Knight to F4. Bishop takes jaw. Queen... is my right hook. I have already won this fight. We are merely playing it out.\"",
+  winQuote:"\"Checkmate was declared in the parking lot. You were late.\"", loseQuote:"\"A blunder... my first in thirty years. I shall annotate this loss... at length.\"",
+  skin:"#d99a5f", hair:"#2b2b33", hairStyle:"swoop", trunk:"#23272e", glove:"#e8e4da", accent:"#c9a227",
+  body:"medium", size:1.03, hp:145, tempo:0.85, stunTime:1.9, comboMax:9, riseFrac:[0.36,0.24], glasses:true,
+  outfit:"suit", prop:"chess", tauntEvery: 12,
+  tauntLines:["\"I am not taunting. I am offering you a draw. Decline at your peril.\"","\"Your next three punches? Already answered.\"","\"Touch-move, young man. You touched my guard. It moves now.\""],
+  tips:["He ANNOUNCES every punch — his tells are honest! Believe the callout, dodge, counter.","The announced star punches really are star punches. Take the gift, kid.","His combos are endgames: two, three hits deep. Dodge them ALL."],
+  attacks:[
+    { name:"knightjab", tell:0.5, dmg:8, kind:"high", star:true, wind:0.65, callout:"KNIGHT TO F4!" },
+    { name:"bishophook", tell:0.5, dmg:10, kind:"high", star:true, wind:0.8, callout:"BISHOP TAKES JAW!" },
+    { name:"castlerush", tell:0.6, dmg:12, kind:"rush", star:false, wind:0.95, callout:"CASTLING... INTO YOUR FACE!" },
+    { name:"queenupper", tell:0.62, dmg:14, kind:"low", star:false, wind:1.0, callout:"QUEEN TO YOUR CHIN!" },
+    { name:"endgame", tell:0.55, dmg:8, kind:"high", star:false, wind:0.7, hits:3, callout:"CHECK IN THREE..." }
+  ]
+},
+{
+  name:"THE MAIN EVENT", sub:"\"The Amalgam\" — Every Legend at Once", circuit:"WORLD CIRCUIT · CHAMPIONSHIP",
+  age:35, from:"Parts Unknown (all of them)", weight:"Every weight class simultaneously", record:"Undefeated in every genre", rank:"Champion. He cycles everyone's moves — including, somehow, yours.",
+  quote:"\"I ran the steps. I ate the spinach. I waxed the car, I rhymed the rhyme, I am the night. I am ALL of them, kid. Beat THAT.\"",
+  winQuote:"\"The amalgam remains. Every legend. One belt.\"", loseQuote:"\"Every legend... beaten by one kid... tell them... tell them the view from the top was worth it.\"",
+  skin:"#8a5632", hair:"#0a0908", hairStyle:"bald", trunk:"#20242c", glove:"#14161a", accent:"#ffc832",
+  body:"huge", size:1.16, hp:190, tempo:0.95, stunTime:1.8, comboMax:9, riseFrac:[0.34,0.22], champion:true, beard:true,
+  outfit:"cape", hat:"crown", prop:"stare", tauntEvery: 15,
+  tauntLines:["\"I am the steps AND the statue at the top.\"","\"Float like me, sting like me — I do both shifts.\"","\"Checkmate, kid. (He also does the chess thing.)\""],
+  tips:["He CYCLES everyone's moves — egg haymakers, spinach flurries, tornado dives. Stay ready for anything!","Every time he gets up he adds another legend's move. Finish him fast, kid!","This is it. Everything you learned. Dance, dodge, and DON'T get tired!"],
+  attacks:[
+    { name:"haymaker", tell:0.7, dmg:14, kind:"high", star:true, wind:1.2 },
+    { name:"quake", tell:0.75, dmg:16, kind:"low", star:true, wind:1.15 },
+    { name:"doublehook", tell:0.6, dmg:11, kind:"high", star:false, wind:0.9, hits:2 },
+    { name:"rush", tell:0.65, dmg:13, kind:"rush", star:false, wind:1.05 }
+  ],
+  phaseAttacks:[
+    null,
+    [ { name:"spin", tell:0.6, dmg:14, kind:"rush", star:true, wind:1.0 }, { name:"fangflurry", tell:0.55, dmg:8, kind:"high", star:false, wind:0.8, hits:3 }, { name:"quake", tell:0.7, dmg:16, kind:"low", star:true, wind:1.15 } ],
+    [ { name:"tornado", tell:0.55, dmg:17, kind:"rush", star:true, wind:1.1 }, { name:"endgame", tell:0.5, dmg:8, kind:"high", star:false, wind:0.7, hits:3, callout:"CHECK IN THREE..." }, { name:"cranekick", tell:0.6, dmg:15, kind:"high", star:true, wind:1.1 }, { name:"quake", tell:0.6, dmg:16, kind:"low", star:true, wind:1.1 } ]
+  ]
+}
+];
+/* ---------------- game state ---------------- */
+const PMAXHP = 100, PMAXHEARTS = 20;
+const DMG = { jab:3, body:4, counter:2, upper:20, chipGuard:2 };
+const G = {
+  screen:'title',        // title | tale | fight | over
+  t:0,                   // global clock (sec)
+  top:0,                 // session top score
+  fighterIdx:0, score:0, boutScore:0, careerDowns:0,
+  msg:null,              // big center splash {text, sub, t, dur, color}
+  coach:null,            // coach line {text, t, dur}
+  shake:0, hitstop:0, flashRed:0,
+  timeLeft:180, timeRun:false,
+  countSeq:null,         // knockdown count state
+  intro:0,               // fight intro timer
+  endInfo:null,
+  fps:60
+};
+const player = {
+  hp:PMAXHP, hearts:PMAXHEARTS, stars:0, downs:0,
+  state:'idle', t:0, x:0, duckT:0, blockT:0, punchT:0, punchKind:null, punchSide:1,
+  hurtT:0, dodgeT:0, dodgeDir:0, tired:false, mash:0, downT:0, comboAlt:1
+};
+let opp = null;
+const particles = [];
+function burst(x,y,n,cols,speed,life,size){
+  for(let i=0;i<n;i++){
+    const a = Math.random()*TAU, s = (speed||160)*(0.3+Math.random()*0.7);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-60,t:0,life:(life||0.5)*(0.6+Math.random()*0.7),
+      col:cols[(Math.random()*cols.length)|0], r:(size||5)*(0.6+Math.random()*0.8), grav:340});
+  }
+}
+function floatText(x,y,text,col,size){
+  particles.push({x,y,vx:0,vy:-70,t:0,life:0.9,col:col||"#fff",r:size||26,text:text,grav:-40});
+}
+function splash(text, sub, dur, color){ G.msg = {text:text, sub:sub||"", t:0, dur:dur||1.4, color:color||"#ffc832"}; }
+function coachSay(text, dur){ G.coach = {text:text, t:0, dur:dur||3.4}; }
+
+function makeOpp(idx){
+  const def = FIGHTERS[idx];
+  return {
+    def, hp:def.hp, maxhp:def.hp, downs:0, phase:0,
+    state:'enter', t:0, x:0, lean:0, wob:Math.random()*10,
+    atk:null, atkT:0, atkHitDone:false, hitsLeft:0, feintUsed:false,
+    stunLeft:0, comboLanded:0, guard:def.guardHp||0, guardBroken:false,
+    idleT:1.2, tauntT:def.tauntEvery*rnd(0.8,1.2), hurtT:0, flashT:0, spinT:0,
+    downT:0, riseAt:6, dmgDealt:0, blockedHintShown:false
+  };
+}
+function startCareer(){
+  G.fighterIdx = 0; G.score = 0; G.careerDowns = 0;
+  showTale();
+}
+function showTale(){
+  G.screen = 'tale'; G.timeRun = false; G.countSeq = null;
+  opp = makeOpp(G.fighterIdx);
+}
+function startFight(){
+  const def = FIGHTERS[G.fighterIdx];
+  player.hp = PMAXHP; player.hearts = PMAXHEARTS; player.stars = 0; player.downs = 0;
+  player.state = 'idle'; player.t = 0; player.tired = false; player.mash = 0; player.x = 0;
+  opp = makeOpp(G.fighterIdx);
+  opp.state = 'idle'; opp.idleT = 1.6;
+  G.boutScore = 0; G.timeLeft = 180; G.timeRun = false; G.intro = 2.2; G.countSeq = null;
+  G.screen = 'fight';
+  splash(def.circuit, def.name + "  " + def.sub, 1.6, "#fff");
+  coachSay("Coach: " + def.tips[0], 4.2);
+}
+function awardScore(n){ G.boutScore += n; G.score += n; if(G.score > G.top) G.top = G.score; }
+
+/* ============================================================
+   COMBAT
+   ============================================================ */
+function oppFacePos(){ const d = opp.def; return { x: W/2 + opp.x, y: 795 - 336*d.size + Math.sin(opp.wob)*4 }; }
+function oppBodyPos(){ const d = opp.def; return { x: W/2 + opp.x, y: 795 - 205*d.size }; }
+
+function playerCanAct(){
+  return G.screen==='fight' && !G.countSeq && G.intro<=0 &&
+    player.state!=='down' && player.state!=='getup' && player.state!=='win' && player.state!=='ko';
+}
+function doDodge(dir){
+  if(!playerCanAct()) return;
+  if(player.state==='punch' && player.punchT<0.1) return;
+  player.state='dodge'; player.dodgeT=0.34; player.dodgeDir=dir; player.t=0;
+  SFX.dodge();
+  checkTiredDodge();
+}
+function doDuck(){
+  if(!playerCanAct()) return;
+  if(player.state==='dodge') return;
+  player.duckT = Math.max(player.duckT, 0.30);
+  SFX.dodge();
+}
+function doBlock(){
+  if(!playerCanAct()) return;
+  player.blockT = Math.max(player.blockT, 0.30);
+}
+function checkTiredDodge(){
+  // evaluated again when the opponent's attack actually whiffs (see oppStrike)
+}
+function loseHearts(n){
+  player.hearts = Math.max(0, player.hearts - n);
+  if(player.hearts<=0 && !player.tired){
+    player.tired = true;
+    coachSay("Coach: You're out of hearts, kid! DODGE his punches to get them back!", 3.6);
+    floatText(W/2, 640, "TIRED!", "#ff9db0", 30);
+  }
+}
+function gainHearts(n){
+  player.hearts = Math.min(PMAXHEARTS, player.hearts + n);
+  if(player.tired && player.hearts>=6){
+    player.tired = false;
+    coachSay("Coach: There you go — back in the fight!", 2.2);
+  }
+}
+function earnStar(fromTaunt){
+  if(player.stars >= 3){ floatText(W/2, 480, "MAX STARS!", "#ffd94d", 24); return; }
+  player.stars++;
+  SFX.star();
+  const f = oppFacePos();
+  burst(f.x, f.y-40, 12, ["#ffd94d","#fff6c9","#ffc832"], 240, 0.6, 6);
+  floatText(f.x, f.y-90, "STAR!", "#ffd94d", 34);
+  awardScore(100);
+  if(fromTaunt) coachSay("Coach: Caught him bragging! That's a STAR, kid!", 2.6);
+}
+
+/* ---- player punches ---- */
+function doPunch(kind){ // kind: 'jab' | 'body' | 'upper'
+  if(!playerCanAct()) return;
+  if(player.tired){
+    if(kind!=='upper'){ floatText(W/2, 660, "TOO TIRED — DODGE!", "#ff9db0", 22); tone(180,0.1,'square',0.1,120); }
+    return;
+  }
+  if(player.state==='punch' && player.punchT>0.03) return;
+  if(player.state==='dodge' && player.dodgeT>0.12) return;
+  if(kind==='upper'){
+    if(player.stars<=0){ floatText(W/2, 660, "NO STARS!", "#ffd94d", 22); tone(180,0.1,'square',0.1,120); return; }
+    player.stars--;
+    player.state='punch'; player.punchKind='upper'; player.punchT=0.34; player.punchSide=1; player.t=0;
+    resolveUpper();
+    return;
+  }
+  player.state='punch'; player.punchKind=kind; player.punchT=0.17; player.t=0;
+  player.punchSide = player.comboAlt; player.comboAlt = -player.comboAlt;
+  resolveJab(kind);
+}
+function blockText(tx, ty){
+  const lines = opp.def.blockLines;
+  if(lines && lines.length){
+    opp.blockIdx = ((opp.blockIdx||0) + 1);
+    floatText(tx, ty-30, lines[(opp.blockIdx-1) % lines.length], "#ffe9a8", 23);
+  } else {
+    floatText(tx, ty-30, "BLOCKED!", "#cfe3ff", 22);
+  }
+}
+function resolveJab(kind){
+  const d = opp.def, face = oppFacePos(), body = oppBodyPos();
+  const tx = kind==='jab' ? face.x + player.punchSide*14 : body.x;
+  const ty = kind==='jab' ? face.y + 16 : body.y;
+  // --- stunned: free combo ---
+  if(opp.state==='stunned'){
+    if(opp.comboLanded >= d.comboMax){ // he recovers mid-swing: your punch gets stuffed
+      SFX.block(); loseHearts(1); floatText(tx, ty-30, "BLOCKED!", "#cfe3ff", 22);
+      oppRecover(true);
+      return;
+    }
+    opp.comboLanded++;
+    const dmg = kind==='jab' ? DMG.jab : DMG.body;
+    oppHurt(dmg, kind, tx, ty);
+    if(kind==='body' && opp.hp>0){
+      // "BODY BLOW! BODY BLOW!" — the arcade chant energy
+      if(opp.comboLanded % 2 === 0) floatText(tx, ty-46, "BODY BLOW!", "#ffd94d", 25);
+      if(opp.comboLanded % 3 === 0){ SFX.cheer(false); burst(tx, ty, 10, ["#ffffff","#ffe9a8"], 240, 0.4, 6); }
+    }
+    if(opp.state==='stunned') opp.stunLeft = Math.max(opp.stunLeft, 0.55); // keep him wobbling while you work
+    return;
+  }
+  // --- taunt: pop him for a star ---
+  if(opp.state==='taunt' && kind==='jab'){
+    earnStar(true);
+    oppHurt(1, kind, tx, ty);
+    if(opp.hp>0){ opp.state='idle'; opp.idleT = Math.max(0.5, d.tempo*0.5); }
+    return;
+  }
+  // --- during tell: star window on flagged attacks ---
+  if(opp.state==='tell' && opp.atk){
+    if(opp.atk.star && kind==='jab' && !opp.feintUsed){
+      earnStar(false);
+      coachSay("Coach: THAT'S the moment! Now dodge what's coming!", 2.4);
+      oppHurt(DMG.counter, kind, tx, ty);
+      if(opp.hp>0){ opp.state='idle'; opp.idleT = Math.max(0.45, d.tempo*0.45); opp.atk=null; }
+      return;
+    }
+    // punching into a non-star tell (or a feint): stuffed
+    SFX.block(); loseHearts(1); floatText(tx, ty-30, "BLOCKED!", "#cfe3ff", 22);
+    return;
+  }
+  // --- guard / idle ---
+  if(opp.state==='idle' || opp.state==='recover'){
+    if(d.blocksFace && kind==='jab' && !opp.guardBroken){
+      SFX.block(); loseHearts(1);
+      blockText(tx, ty);
+      if(!opp.blockedHintShown){ opp.blockedHintShown = true; coachSay("Coach: His face is a vault — BODY blows, kid, body blows!", 3.2); }
+      return;
+    }
+    if(d.blocksFace && kind==='body' && !opp.guardBroken){
+      opp.guard--;
+      SFX.bodyThud(); burst(tx, ty, 6, ["#ffffff","#9fb4c7"], 140, 0.35, 4);
+      oppHurt(DMG.chipGuard, 'body', tx, ty);
+      floatText(tx, ty-34, "GUARD " + Math.max(0,opp.guard), "#9fb4c7", 22);
+      if(opp.guard<=0 && opp.hp>0){
+        opp.guardBroken = true; opp.state='stunned'; opp.stunLeft = 2.4; opp.comboLanded = 0;
+        SFX.crash(); splash("GUARD BROKEN!", "Unload on him!", 1.1, "#9fe8ff");
+        coachSay("Coach: The wall is CRACKED! Everything you got!", 2.6);
+      }
+      return;
+    }
+    // anyone else's guard eats it
+    SFX.block(); loseHearts(1);
+    blockText(tx, ty);
+    if(!opp.blockedHintShown){ opp.blockedHintShown = true; coachSay("Coach: Don't punch his guard — dodge his move first, THEN counter!", 3.4); }
+    return;
+  }
+  // punching while he strikes/rushes: too late, resolved by his strike
+}
+function resolveUpper(){
+  const face = oppFacePos();
+  if(opp.state==='stunned' || opp.state==='taunt' || (opp.state==='tell' && opp.atk)){
+    SFX.upper();
+    G.shake = Math.max(G.shake, 12); G.hitstop = Math.max(G.hitstop, 0.09);
+    burst(face.x, face.y+10, 22, ["#ffd94d","#ffffff","#ff9d3c"], 380, 0.7, 7);
+    floatText(face.x, face.y-80, "STAR UPPERCUT!", "#ffd94d", 32);
+    awardScore(300);
+    opp.comboLanded = 0;
+    oppHurt(DMG.upper, 'upper', face.x, face.y);
+    if(opp.hp>0 && opp.state==='stunned'){ opp.state='idle'; opp.idleT = opp.def.tempo*0.7; }
+  } else {
+    // he slips it — star wasted
+    SFX.whoosh();
+    floatText(W/2 + opp.x, 500, "HE SLIPPED IT!", "#ff9db0", 24);
+    coachSay("Coach: Save the uppercut for when he's STUNNED, kid!", 2.8);
+    if(opp.state==='idle') opp.idleT = Math.min(opp.idleT, 0.4);
+  }
+}
+function oppHurt(dmg, kind, tx, ty){
+  opp.hp -= dmg; opp.dmgDealt += dmg; opp.hurtT = 0.22;
+  if(kind==='body') SFX.bodyThud(); else if(kind!=='upper') SFX.thunk(false);
+  burst(tx, ty, kind==='upper'?16:8, ["#ffffff","#ffd94d","#ffb3a0"], kind==='upper'?320:200, 0.4, 5);
+  awardScore(kind==='upper' ? 0 : 30);
+  if(opp.hp<=0){ opp.hp = 0; oppKnockdown(); }
+}
+function oppRecover(angry){
+  if(opp.state==='down' || opp.state==='ko') return;
+  opp.state='idle'; opp.comboLanded=0;
+  opp.idleT = opp.def.tempo * (angry? 0.35 : rnd(0.6,1.0)) / (1 + opp.downs*0.15 + opp.phase*0.2);
+}
+
+/* ---- opponent knockdown / count ---- */
+function oppKnockdown(){
+  opp.downs++; G.shake = 14; SFX.crash(); SFX.gasp();
+  opp.state='down'; opp.downT = 0; opp.atk = null;
+  awardScore(500);
+  splash("DOWN HE GOES!", "", 1.2, "#fff");
+  const riseFrac = opp.def.riseFrac[opp.downs-1];
+  opp.riseAt = opp.downs>=3 ? 99 : (opp.downs===1 ? 5 : 6);
+  G.countSeq = { who:'opp', n:0, t:0.6, riseAt:opp.riseAt, riseHp: riseFrac ? Math.ceil(opp.maxhp*riseFrac) : 0, done:false };
+  G.timeRun = false;
+  const tip = opp.def.tips[Math.min(opp.downs, opp.def.tips.length-1)];
+  coachSay("Coach: " + tip, 3.6);
+}
+function playerKnockdown(){
+  player.downs++; G.careerDowns++;
+  player.hp = 0; player.state='down'; player.downT = 0; player.mash = 0;
+  G.shake = 14; SFX.crash(); SFX.gasp();
+  splash("YOU'RE DOWN!", player.downs>=3 ? "" : "Tap like crazy to get up!", 1.2, "#ff9db0");
+  if(player.downs>=3){
+    G.countSeq = { who:'player', n:0, t:0.6, tko:true, done:false };
+  } else {
+    G.countSeq = { who:'player', n:0, t:0.6, done:false };
+  }
+  G.timeRun = false;
+}
+// multi-hit attacks keep coming if the first swing connected or was blocked
+function oppFollowUp(){
+  if(opp.hitsLeft>1 && player.state!=='down'){
+    opp.hitsLeft--;
+    opp.atk = Object.assign({}, opp.atk, { star:false });
+    opp.state='tell'; opp.atkT = 0.32;
+    return true;
+  }
+  return false;
+}
+function oppStrike(){
+  // the attack lands NOW: judge the player's evasion
+  const atk = opp.atk; if(!atk) return;
+  const dodging = player.state==='dodge' && player.dodgeT>0.03;
+  const ducking = player.duckT>0;
+  const blocking = player.blockT>0;
+  let evaded = false;
+  if(dodging) evaded = true;
+  else if(ducking && atk.kind==='high') evaded = true;
+  if(evaded){
+    SFX.whoosh();
+    floatText(W/2, 560, "WHIFF!", "#9fe8ff", 26);
+    if(player.tired){ gainHearts(4); floatText(W/2, 610, "+4 HEARTS", "#ff9db0", 20); }
+    opp.state='stunned'; opp.stunLeft = opp.def.stunTime; opp.comboLanded = 0; opp.atk=null;
+    coachSay("Coach: He's STUNNED! Unload — jab, jab, body!", 1.8);
+    return;
+  }
+  if(blocking){
+    const chip = Math.max(1, Math.round(atk.dmg*0.25));
+    player.hp -= chip; loseHearts(1);
+    SFX.block(); G.shake = Math.max(G.shake, 5);
+    floatText(W/2, 600, "BLOCKED · -" + chip, "#cfe3ff", 22);
+    if(player.hp<=0){ playerKnockdown(); return; }
+    if(oppFollowUp()) return;
+    opp.atk = null; opp.state='recover'; opp.idleT = opp.def.tempo*0.5;
+    return;
+  }
+  // clean hit on the player
+  player.hp -= atk.dmg;
+  SFX.hurt(); G.shake = Math.max(G.shake, 9); G.flashRed = 0.35;
+  player.hurtT = 0.45; player.state='hurt'; player.t=0;
+  if(player.stars>0){
+    player.stars--;
+    floatText(W/2, 540, "STAR LOST!", "#ffd94d", 26);
+    if(opp.def.starThief && player.stars>0){ player.stars--; floatText(W/2, 585, "SHAY STOLE ANOTHER!", "#ff8ad4", 20); }
+  }
+  loseHearts(2);
+  floatText(W/2, 620, "-" + atk.dmg, "#ff9db0", 28);
+  if(player.hp<=0){ playerKnockdown(); return; }
+  if(oppFollowUp()) return;
+  opp.atk = null; opp.state='recover'; opp.idleT = opp.def.tempo*rnd(0.55,0.85);
+}
+function updateCount(dt){
+  const cs = G.countSeq; if(!cs) return;
+  cs.t -= dt;
+  if(cs.t>0) return;
+  cs.n++;
+  if(cs.who==='opp' && cs.n>=cs.riseAt && cs.riseAt<90){
+    // he rises
+    G.countSeq = null;
+    opp.hp = cs.riseHp; opp.state='getup'; opp.downT = 0; opp.phase = opp.downs;
+    opp.guard = opp.def.guardHp||0; opp.guardBroken = false;
+    SFX.cheer(false); splash("HE'S UP!", "Angrier. Faster. Careful, kid!", 1.1, "#fff");
+    G.timeRun = true;
+    return;
+  }
+  if(cs.n>=10){
+    cs.done = true; G.countSeq = null;
+    if(cs.who==='opp'){ endBout(true, 'KO'); }
+    else { endBout(false, cs.tko ? 'TKO' : 'KO'); }
+    return;
+  }
+  SFX.beep(cs.n);
+  cs.t = 0.85;
+  // player rising check
+  if(cs.who==='player' && !cs.tko && player.mash>=100){
+    G.countSeq = null;
+    player.hp = 34; player.hearts = Math.max(player.hearts, 10); player.tired = false;
+    player.state='getup'; player.downT = 0;
+    opp.state='idle'; opp.idleT = 1.2;
+    SFX.cheer(true); splash("YOU'RE UP!", "Heart of a champion!", 1.2, "#9fe8ff");
+    G.timeRun = true;
+    return;
+  }
+  if(cs.who==='player' && cs.tko && cs.n>=3){
+    G.countSeq = null; endBout(false, 'TKO');
+  }
+}
+function mashInput(){
+  if(G.countSeq && G.countSeq.who==='player' && player.state==='down'){
+    player.mash = Math.min(100, player.mash + 9);
+    tone(300 + player.mash*4, 0.05, 'square', 0.07);
+  }
+}
+function endBout(won, how){
+  G.timeRun = false; G.screen='over';
+  let bonus = 0;
+  if(won && (how==='KO' || how==='TKO')){ bonus = Math.round(G.timeLeft)*10; awardScore(bonus); }
+  G.endInfo = { won, how, bonus, def: opp.def, score: G.boutScore + bonus, downs: opp.downs, pdowns: player.downs, champ: !!opp.def.champion && won };
+  if(won){ SFX.bell(3); SFX.cheer(true); player.state='win'; }
+  else { SFX.bell(2); }
+  if(won) coachSay("Coach: " + opp.def.loseQuote, 5);
+}
+
+/* ============================================================
+   OPPONENT AI + FIGHT UPDATE
+   ============================================================ */
+function currentAttacks(){
+  const d = opp.def;
+  if(d.champion && d.phaseAttacks && d.phaseAttacks[opp.phase]) return d.phaseAttacks[opp.phase];
+  return d.attacks;
+}
+function startTaunt(dur){
+  opp.state = 'taunt'; opp.atk = null; opp.atkT = dur; opp.tauntDur = dur;
+  const lines = opp.def.tauntLines;
+  if(lines && lines.length){
+    const line = lines[(Math.random()*lines.length)|0];
+    const f = oppFacePos();
+    floatText(f.x, f.y - 96, line, '#ffffff', line.length > 42 ? 16.5 : 19);
+  }
+}
+function oppChoose(){
+  const d = opp.def;
+  // taunt sometimes (star thief taunts a lot)
+  if(Math.random() < (d.starThief ? 0.34 : 0.14)){
+    startTaunt(rnd(0.9, 1.3));
+    return;
+  }
+  const list = currentAttacks();
+  let atk = list[(Math.random()*list.length)|0];
+  // feint: Lou & champion phase 2+ sometimes fake the tell
+  opp.feintUsed = false;
+  opp.atk = atk; opp.hitsLeft = atk.hits||1;
+  opp.state='tell'; opp.atkT = atk.tell / (1 + opp.downs*0.08 + opp.phase*0.1);
+  if(atk.callout) floatText(W/2 + opp.x, oppFacePos().y - 104, atk.callout, '#ffd94d', 23);
+  if(d.feints || (d.champion && opp.phase>=2)){
+    if(Math.random()<0.4){ opp.feintUsed = true; opp.atkT = atk.tell*0.55; }
+  }
+}
+function updateOpp(dt){
+  const d = opp.def;
+  opp.wob += dt*3.2;
+  opp.hurtT = Math.max(0, opp.hurtT - dt);
+  opp.flashT = Math.max(0, opp.flashT - dt);
+  // drift toward/away subtly
+  opp.x = lerp(opp.x, Math.sin(G.t*0.6)*10, dt*2);
+  switch(opp.state){
+    case 'idle': {
+      opp.idleT -= dt;
+      opp.tauntT -= dt;
+      if(opp.tauntT<=0){ opp.tauntT = d.tauntEvery*rnd(0.85,1.25); startTaunt(rnd(1.0,1.4)); break; }
+      if(opp.idleT<=0) oppChoose();
+      break;
+    }
+    case 'taunt': {
+      opp.atkT -= dt;
+      if(opp.atkT<=0){
+        if(d.tagTeam){
+          // he tags back IN — straight into his flying rush!
+          const rush = d.attacks[0];
+          opp.atk = rush; opp.hitsLeft = rush.hits||1; opp.feintUsed = false;
+          opp.state = 'tell'; opp.atkT = 0.38;
+          floatText(W/2, 520, "¡TAG! — HE'S BACK IN!", "#ffd94d", 24);
+        } else { opp.state='idle'; opp.idleT = d.tempo*rnd(0.4,0.7); }
+      }
+      break;
+    }
+    case 'tell': {
+      opp.atkT -= dt;
+      if(opp.atkT<=0){
+        if(opp.feintUsed){
+          // the fake ends: real tell begins
+          opp.feintUsed = false;
+          opp.atkT = opp.atk.tell*0.6;
+          coachSay("Coach: That was the FAKE — here it comes!", 1.6);
+        } else {
+          opp.state='strike'; opp.atkT = 0.14; opp.atkHitDone = false;
+          if(opp.atk.name==='spin' || opp.atk.name==='spinback') opp.spinT = 0.3;
+          SFX.whoosh();
+        }
+      }
+      break;
+    }
+    case 'strike': {
+      opp.atkT -= dt;
+      if(!opp.atkHitDone && opp.atkT<=0.05){
+        opp.atkHitDone = true;
+        oppStrike();
+        if(opp.state==='strike'){ // strike consumed without ending (multi-hit continues)
+          opp.hitsLeft--;
+          if(opp.hitsLeft>0 && player.state!=='down'){
+            opp.state='tell'; opp.atkT = 0.34; // follow-up swing's shorter tell
+            opp.atk = Object.assign({}, opp.atk, { star:false });
+          }
+        }
+      }
+      if(opp.atkT<=0 && opp.state==='strike'){ opp.state='recover'; opp.idleT = d.tempo*0.45; }
+      break;
+    }
+    case 'recover': {
+      opp.idleT -= dt;
+      if(opp.idleT<=0){ opp.state='idle'; opp.idleT = d.tempo*rnd(0.55,1.0)/(1+opp.downs*0.12+opp.phase*0.15); }
+      break;
+    }
+    case 'stunned': {
+      opp.stunLeft -= dt;
+      if(opp.stunLeft<=0){ oppRecover(false); coachSay("Coach: He's back — hands up, kid!", 1.6); }
+      break;
+    }
+    case 'down': { opp.downT += dt; break; }
+    case 'getup': {
+      opp.downT += dt;
+      if(opp.downT>0.7){ opp.state='idle'; opp.idleT = d.tempo*0.8; }
+      break;
+    }
+  }
+}
+function updatePlayer(dt){
+  player.t += dt;
+  player.hurtT = Math.max(0, player.hurtT-dt);
+  player.duckT = Math.max(0, player.duckT-dt);
+  player.blockT = Math.max(0, player.blockT-dt);
+  if(player.state==='dodge'){
+    player.dodgeT -= dt;
+    if(player.dodgeT<=0) player.state='idle';
+  } else if(player.state==='punch'){
+    player.punchT -= dt;
+    if(player.punchT<=0) player.state='idle';
+  } else if(player.state==='hurt'){
+    if(player.t>0.45) player.state='idle';
+  } else if(player.state==='getup'){
+    player.downT += dt;
+    if(player.downT>0.6){ player.state='idle'; }
+  } else if(player.state==='down'){
+    player.downT += dt;
+    player.mash = Math.max(0, player.mash - dt*6); // slow decay — keep tapping!
+  }
+  // lateral position easing
+  let tx = 0;
+  if(player.state==='dodge') tx = player.dodgeDir * -105 * Math.sin(Math.PI * (1 - Math.max(0,player.dodgeT)/0.34));
+  player.x = lerp(player.x, tx, dt*22);
+}
+function updateFight(dt){
+  if(G.hitstop>0){ G.hitstop -= dt; return; }
+  if(G.intro>0){
+    G.intro -= dt;
+    if(G.intro<=0.9 && G.intro+dt>0.9){ splash("FIGHT!", "", 0.7, "#ffc832"); SFX.bell(1); }
+    if(G.intro<=0){ G.timeRun = true; }
+    updatePlayer(dt);
+    return;
+  }
+  if(G.timeRun){
+    G.timeLeft -= dt;
+    if(G.timeLeft<=0){
+      G.timeLeft = 0;
+      // decision: win only if you're clearly ahead — a knockdown scored, or you out-damaged him badly
+      const dealtFrac = opp.dmgDealt / opp.maxhp;
+      const won = opp.downs>0 || dealtFrac>=0.75;
+      endBout(won, 'DECISION');
+      return;
+    }
+  }
+  if(G.countSeq){ updateCount(dt); if(player.state==='down') updatePlayer(dt); return; }
+  updatePlayer(dt);
+  if(player.state!=='down' && player.state!=='ko') updateOpp(dt);
+  // particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i]; p.t += dt;
+    if(p.t>=p.life){ particles.splice(i,1); continue; }
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vy += (p.grav||0)*dt;
+  }
+}
+function update(dt){
+  G.t += dt;
+  if(G.msg){ G.msg.t += dt; if(G.msg.t>=G.msg.dur) G.msg = null; }
+  if(G.coach){ G.coach.t += dt; if(G.coach.t>=G.coach.dur) G.coach = null; }
+  G.shake = Math.max(0, G.shake - dt*30);
+  G.flashRed = Math.max(0, G.flashRed - dt);
+  if(G.screen==='fight') updateFight(dt);
+  else {
+    for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.t+=dt; if(p.t>=p.life) particles.splice(i,1); else { p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=(p.grav||0)*dt; } }
+  }
+  // star button glow
+  document.getElementById('btnStar').classList.toggle('lit', player.stars>0 && G.screen==='fight');
+}
+
+/* ============================================================
+   INPUT
+   ============================================================ */
+function pressAction(a){
+  audio();
+  if(G.screen==='title'){ startCareer(); return; }
+  if(G.screen==='tale'){ startFight(); return; }
+  if(G.screen==='over'){ advanceAfterBout(); return; }
+  // fight screen
+  mashInput();
+  switch(a){
+    case 'dl': doDodge(-1); break;
+    case 'dr': doDodge(1); break;
+    case 'duck': doDuck(); break;
+    case 'block': doBlock(); break;
+    case 'jab': doPunch('jab'); break;
+    case 'body': doPunch('body'); break;
+    case 'star': doPunch('upper'); break;
+  }
+}
+function advanceAfterBout(){
+  if(!G.endInfo) return;
+  if(G.endInfo.won){
+    if(G.endInfo.champ){ G.screen='title'; G.endInfo=null; return; }
+    G.fighterIdx++;
+    showTale();
+  } else {
+    showTale(); // rematch the same fighter
+  }
+  G.endInfo = null;
+}
+const KEYMAP = {
+  ArrowLeft:'dl', ArrowRight:'dr', ArrowDown:'duck',
+  KeyZ:'jab', KeyX:'jab', KeyS:'body', KeyA:'star', ShiftLeft:'star', ShiftRight:'star', ArrowUp:'star',
+  Space:'jab', Enter:'confirm'
+};
+const heldKeys = {};
+window.addEventListener('keydown', e=>{
+  if(e.repeat){ if(G.screen==='fight') mashInput(); return; }
+  audio();
+  if(G.screen==='fight'){ mashInput(); }
+  let a = KEYMAP[e.code];
+  if((e.code==='KeyZ'||e.code==='KeyX') && heldKeys['ArrowDown']) a = 'body'; // ↓+punch = body blow
+  if(a==='confirm'){ pressAction('confirm'); e.preventDefault(); return; }
+  if(a){ pressAction(a); e.preventDefault(); }
+  else if(G.screen!=='fight' && (e.code==='Space'||e.code==='Enter')) pressAction('confirm');
+});
+window.addEventListener('keyup', e=>{ delete heldKeys[e.code]; });
+// touch buttons
+function bindBtn(id, action){
+  const el = document.getElementById(id);
+  const on = e=>{ e.preventDefault(); el.classList.add('held'); pressAction(action); };
+  const off = e=>{ el.classList.remove('held'); };
+  el.addEventListener('pointerdown', on);
+  el.addEventListener('pointerup', off);
+  el.addEventListener('pointerleave', off);
+  el.addEventListener('pointercancel', off);
+  el.addEventListener('contextmenu', e=> e.preventDefault());
+}
+bindBtn('btnDL','dl'); bindBtn('btnDR','dr'); bindBtn('btnDuck','duck'); bindBtn('btnBlock','block');
+bindBtn('btnJab','jab'); bindBtn('btnBody','body'); bindBtn('btnStar','star');
+cv.addEventListener('pointerdown', e=>{
+  audio();
+  if(G.screen==='title') startCareer();
+  else if(G.screen==='tale') startFight();
+  else if(G.screen==='over') advanceAfterBout();
+  else mashInput();
+});
+window.addEventListener('keydown', e=>{ heldKeys[e.code]=true; }, true);
+document.getElementById('muteBtn').addEventListener('click', function(){
+  MUTED = !MUTED;
+  this.textContent = MUTED ? 'SOUND: OFF' : 'SOUND: ON';
+  if(!MUTED) audio();
+});
+document.getElementById('restartBtn').addEventListener('click', ()=>{ G.endInfo=null; G.screen='title'; });
+document.getElementById('qrBtn').addEventListener('click', e=>{ e.stopPropagation(); document.getElementById('qrModal').classList.add('open'); });
+document.getElementById('qrClose').addEventListener('click', ()=> document.getElementById('qrModal').classList.remove('open'));
+document.getElementById('qrModal').addEventListener('click', e=>{ if(e.target.id==='qrModal') e.currentTarget.classList.remove('open'); });
+
+/* ============================================================
+   DRAWING
+   ============================================================ */
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = W; bgCanvas.height = H;
+(function paintBG(){
+  const b = bgCanvas.getContext('2d');
+  b.fillStyle = '#050508'; b.fillRect(0,0,W,H);
+  /* ---- ring view region (below the top panel + status strip) ---- */
+  const RT = 372; // ring top
+  const g = b.createLinearGradient(0,RT,0,H);
+  g.addColorStop(0,'#1b1430'); g.addColorStop(0.25,'#2c2144'); g.addColorStop(1,'#191008');
+  b.fillStyle = g; b.fillRect(0,RT,W,H-RT);
+  // crowd: dense rows of heads in the ring band
+  const cols = ['#c96f4a','#7a9fc9','#c9b458','#8a5fb0','#58a05c','#c95a7a','#d9d3c3','#5a7a8c'];
+  for(let row=0; row<4; row++){
+    const y = RT + 22 + row*24, n = 27;
+    for(let i=0;i<n;i++){
+      const x = 13 + i*26.5 + ((row%2)*13);
+      b.fillStyle = cols[(Math.random()*cols.length)|0];
+      b.beginPath(); b.arc(x + (Math.random()*4-2), y + (Math.random()*3), 8, 0, TAU); b.fill();
+      b.fillStyle = 'rgba(0,0,0,0.20)';
+      b.beginPath(); b.arc(x, y+8, 8.5, 0.15*Math.PI, 0.85*Math.PI); b.fill();
+    }
+  }
+  // spotlight cone
+  const sg = b.createRadialGradient(W/2,RT+180,60, W/2,RT+180,430);
+  sg.addColorStop(0,'rgba(255,240,200,0.20)'); sg.addColorStop(1,'rgba(255,240,200,0)');
+  b.fillStyle = sg; b.fillRect(0,RT,W,H-RT);
+  // ring floor (perspective)
+  b.fillStyle = '#2e6da8';
+  b.beginPath(); b.moveTo(28,RT+168); b.lineTo(W-28,RT+168); b.lineTo(W+60,H); b.lineTo(-60,H); b.closePath(); b.fill();
+  b.fillStyle = '#3579ba';
+  b.beginPath(); b.moveTo(28,RT+168); b.lineTo(W-28,RT+168); b.lineTo(W-40,RT+248); b.lineTo(40,RT+248); b.closePath(); b.fill();
+  b.strokeStyle = 'rgba(255,255,255,0.10)'; b.lineWidth = 3;
+  b.beginPath(); b.moveTo(70,RT+300); b.lineTo(W-70,RT+300); b.stroke();
+  b.beginPath(); b.moveTo(100,RT+400); b.lineTo(W-100,RT+400); b.stroke();
+  b.fillStyle = 'rgba(255,255,255,0.16)'; b.font = '900 40px Impact, "Arial Black", sans-serif'; b.textAlign='center';
+  b.fillText('REBORN', W/2, RT+330);
+  // ropes + posts
+  const post = x=>{ b.fillStyle='#c22f24'; b.fillRect(x-9,RT+96,18,150); b.fillStyle='#8c1f18'; b.fillRect(x-9,RT+96,6,150); };
+  post(36); post(W-36);
+  const ropeCols = ['#e83a30','#f5efe4','#2e6da8'];
+  for(let i=0;i<3;i++){
+    b.strokeStyle = ropeCols[i]; b.lineWidth = 7;
+    b.beginPath(); b.moveTo(36, RT+112+i*42); b.quadraticCurveTo(W/2, RT+126+i*42, W-36, RT+112+i*42); b.stroke();
+  }
+  // vignette
+  const vg = b.createRadialGradient(W/2,H*0.68,H*0.3, W/2,H*0.68,H*0.72);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.40)');
+  b.fillStyle = vg; b.fillRect(0,RT,W,H-RT);
+})();
+
+function drawGlove(x, y, r, col, cuff){
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle = cuff||'#f5efe4'; rr(-r*0.62, r*0.42, r*1.24, r*0.5, r*0.2); ctx.fill();
+  const g = ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.2, 0,0,r*1.15);
+  g.addColorStop(0,'#ffffff'); g.addColorStop(0.25,col); g.addColorStop(1,'rgba(0,0,0,0.35)');
+  ctx.fillStyle = col; circle(0,0,r); ctx.fill();
+  ctx.fillStyle = g; circle(0,0,r); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2; circle(0,0,r); ctx.stroke();
+  ctx.restore();
+}
+function drawSparkle(x,y,r,col){
+  ctx.save(); ctx.translate(x,y); ctx.fillStyle = col||'#fff6c9';
+  ctx.beginPath();
+  ctx.moveTo(0,-r); ctx.quadraticCurveTo(r*0.18,-r*0.18, r,0); ctx.quadraticCurveTo(r*0.18,r*0.18, 0,r);
+  ctx.quadraticCurveTo(-r*0.18,r*0.18, -r,0); ctx.quadraticCurveTo(-r*0.18,-r*0.18, 0,-r);
+  ctx.fill(); ctx.restore();
+}
+
+/* ---- opponent ---- */
+function drawOpponent(){
+  if(!opp || G.screen==='title') { if(opp) {} else return; }
+  const d = opp.def, s = d.size;
+  const cx = W/2 + opp.x, feet = 795;
+  const bob = (opp.state==='idle'||opp.state==='tell'||opp.state==='taunt') ? Math.sin(opp.wob)*5*(d.floatAmp||1) : 0;
+  let fall = 0, fallRot = 0;
+  if(opp.state==='down'){ fall = Math.min(1, opp.downT/0.45); }
+  if(opp.state==='getup'){ fall = 1 - Math.min(1, opp.downT/0.7); }
+  if(opp.state==='ko'){ fall = 1; }
+  ctx.save();
+  ctx.translate(cx, feet);
+  if(d.tagTeam && opp.state==='taunt'){
+    // tagged OUT: he slides down and out of frame, then tags back in
+    const prog = 1 - Math.max(0, opp.atkT) / Math.max(0.01, opp.tauntDur || 1.2);
+    const slide = Math.sin(Math.PI * clamp(prog, 0, 1));
+    ctx.translate(slide * 150, slide * 60);
+    if(slide > 0.5){ // his "partner" (also him) waves from the apron
+      ctx.fillStyle = d.skin; circle(-slide*150 - 120, -120, 17); ctx.fill();
+      ctx.fillStyle = d.trunk; ctx.beginPath(); ctx.arc(-slide*150 - 120, -124, 17.5, Math.PI*0.95, Math.PI*2.05); ctx.quadraticCurveTo(-slide*150 - 120, -104, -slide*150 - 137, -120); ctx.fill();
+    }
+  }
+  if(fall>0){ ctx.translate(0, fall*6); ctx.rotate(fallRot = fall*0.0); }
+  ctx.scale(s, s);
+  ctx.translate(0, fall * 120);
+  ctx.rotate(fall * 1.35 * (opp.downs%2? 1 : -1) * 0.9);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(0, 6, 130, 16); ctx.fill();
+  const hipY = -96 + bob*0.4, shoY = -262 + bob, headY = -336 + bob;
+  const huge = d.body==='huge', belly = d.body==='belly', leanB = d.body==='lean';
+  const torsoW = huge? 118 : belly? 104 : leanB? 78 : 92;
+  // legs + trunks
+  ctx.fillStyle = d.skin;
+  rr(-torsoW*0.62, hipY+18, 34, 78, 10); ctx.fill();
+  rr(torsoW*0.62-34, hipY+18, 34, 78, 10); ctx.fill();
+  ctx.fillStyle = d.trunk; rr(-torsoW*0.72, hipY-16, torsoW*1.44, 52, 12); ctx.fill();
+  ctx.fillStyle = d.accent; ctx.fillRect(-torsoW*0.72, hipY-16, torsoW*1.44, 9);
+  // boots
+  ctx.fillStyle = '#1c1c22'; rr(-torsoW*0.62-4, hipY+88, 42, 16, 6); ctx.fill(); rr(torsoW*0.62-38, hipY+88, 42, 16, 6); ctx.fill();
+  // cape (Punchula / Main Event) flows behind the torso
+  if(d.outfit==='cape'){
+    ctx.fillStyle = '#4a121c';
+    ctx.beginPath();
+    ctx.moveTo(-torsoW*0.9, shoY+4); ctx.quadraticCurveTo(-torsoW-38, hipY-40, -torsoW-16, hipY+26);
+    ctx.lineTo(torsoW+16, hipY+26); ctx.quadraticCurveTo(torsoW+38, hipY-40, torsoW*0.9, shoY+4);
+    ctx.quadraticCurveTo(0, shoY-22, -torsoW*0.9, shoY+4); ctx.fill();
+    ctx.fillStyle = '#2a0d12'; rr(-torsoW*0.5, shoY-16, torsoW, 22, 8); ctx.fill(); // high collar base
+  }
+  // torso
+  const tg = ctx.createLinearGradient(0, shoY, 0, hipY);
+  tg.addColorStop(0, d.skin); tg.addColorStop(1, d.skin);
+  ctx.fillStyle = d.outfit==='hoodie' ? '#8f979e' : d.outfit==='sailor' ? '#274b6e' : d.outfit==='gi' ? '#f0ede6' : d.outfit==='suit' ? '#23272e' : d.skin;
+  ctx.beginPath();
+  ctx.moveTo(-torsoW, shoY+16);
+  ctx.quadraticCurveTo(-torsoW-8, hipY-30, -torsoW*0.7, hipY-8);
+  ctx.lineTo(torsoW*0.7, hipY-8);
+  ctx.quadraticCurveTo(torsoW+8, hipY-30, torsoW, shoY+16);
+  ctx.quadraticCurveTo(0, shoY-16, -torsoW, shoY+16);
+  ctx.fill();
+  if(belly){ ctx.fillStyle = 'rgba(255,255,255,0.13)'; ellipse(0, hipY-52, torsoW*0.52, 40); ctx.fill(); }
+  if(huge){ ctx.fillStyle = 'rgba(0,0,0,0.10)'; ellipse(-torsoW*0.4, shoY+52, 26, 16); ctx.fill(); ellipse(torsoW*0.4, shoY+52, 26, 16); ctx.fill(); }
+  // chest shading
+  ctx.fillStyle = 'rgba(0,0,0,0.08)'; ellipse(0, shoY+66, torsoW*0.55, 12); ctx.fill();
+  // outfit details
+  if(d.outfit==='hoodie'){ // gray sweats: hood bump + pocket
+    ctx.fillStyle = '#7d838a'; ellipse(0, shoY-6, torsoW*0.5, 16); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'; rr(-torsoW*0.4, hipY-58, torsoW*0.8, 34, 8); ctx.fill();
+  }
+  if(d.outfit==='sailor'){ // collar flap + neckerchief
+    ctx.fillStyle = '#f5efe4'; ctx.beginPath(); ctx.moveTo(-torsoW*0.52, shoY+12); ctx.lineTo(0, shoY+52); ctx.lineTo(torsoW*0.52, shoY+12); ctx.lineTo(torsoW*0.3, shoY+2); ctx.lineTo(-torsoW*0.3, shoY+2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c22f24'; ctx.beginPath(); ctx.moveTo(-13, shoY+34); ctx.lineTo(13, shoY+34); ctx.lineTo(0, shoY+66); ctx.closePath(); ctx.fill();
+  }
+  if(d.outfit==='gi'){ // gi V + black belt
+    ctx.strokeStyle = '#d8d4c8'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-torsoW*0.34, shoY+14); ctx.lineTo(0, shoY+78); ctx.lineTo(torsoW*0.34, shoY+14); ctx.stroke();
+    ctx.fillStyle = '#1c1c22'; ctx.fillRect(-torsoW*0.72, hipY-34, torsoW*1.44, 13);
+  }
+  if(d.outfit==='suit'){ // shirt V + bowtie
+    ctx.fillStyle = '#f0ede6'; ctx.beginPath(); ctx.moveTo(-torsoW*0.3, shoY+12); ctx.lineTo(0, shoY+74); ctx.lineTo(torsoW*0.3, shoY+12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c22f24'; ellipse(-13, shoY+26, 11, 7); ctx.fill(); ellipse(13, shoY+26, 11, 7); ctx.fill(); circle(0, shoY+26, 5); ctx.fill();
+  }
+
+  // ---- arms / gloves by state ----
+  const st = opp.state;
+  let lg = {x:-torsoW-16, y:shoY+64}, rg = {x:torsoW+16, y:shoY+64}, lr = 30, rgr = 30;
+  let lunge = 0;
+  if(st==='idle'){ lg.y += Math.sin(opp.wob)*4; rg.y -= Math.sin(opp.wob)*4; }
+  if(st==='taunt'){ lg = {x:-torsoW-26, y:shoY-6}; rg = {x:torsoW+26, y:shoY-40 + Math.sin(G.t*10)*10}; }
+  if(st==='stunned'){ lg = {x:-torsoW-30, y:shoY+120}; rg = {x:torsoW+30, y:shoY+126}; }
+  if(st==='down'||st==='ko'){ lg = {x:-torsoW-44, y:hipY+30}; rg = {x:torsoW+44, y:hipY+24}; }
+  if(st==='tell' && opp.atk){
+    const wind = opp.atk.wind||1;
+    const atkSide = (opp.atk.name.charCodeAt(0)%2===0) ? 1 : -1;
+    const back = {x: atkSide*(torsoW+34), y: shoY-6};
+    const guard = {x: -atkSide*(torsoW+6), y: shoY+72};
+    if(atkSide>0){ rg = back; lg = guard; } else { lg = back; rg = guard; }
+    if(opp.atk.name==='spin'||opp.atk.name==='spinback'){ lg = {x:-torsoW-40, y:shoY+30}; rg = {x:torsoW+40, y:shoY+30}; }
+    if(opp.atk.kind==='low'){ if(atkSide>0) rg = {x:torsoW+20, y:hipY-30}; else lg = {x:-torsoW-20, y:hipY-30}; }
+    var tellSide = atkSide, tellWind = wind;
+  }
+  if(st==='strike' && opp.atk){
+    lunge = 1;
+    const atkSide = (opp.atk.name.charCodeAt(0)%2===0) ? 1 : -1;
+    const fist = {x: atkSide*26, y: hipY+108};
+    if(atkSide>0){ rg = fist; rgr = 64; lg = {x:-torsoW-8, y:shoY+52}; }
+    else { lg = fist; lr = 64; rg = {x:torsoW+8, y:shoY+52}; }
+    if(opp.atk.kind==='rush'){ rg = {x:30,y:hipY+118}; lg = {x:-30,y:hipY+118}; rgr = 58; lr = 58; }
+  }
+  // arms (thick lines shoulder->glove)
+  ctx.strokeStyle = d.skin; ctx.lineCap = 'round';
+  ctx.lineWidth = 27; ctx.beginPath(); ctx.moveTo(-torsoW*0.82, shoY+22); ctx.lineTo(lg.x, lg.y); ctx.stroke();
+  ctx.lineWidth = 27; ctx.beginPath(); ctx.moveTo(torsoW*0.82, shoY+22); ctx.lineTo(rg.x, rg.y); ctx.stroke();
+  // spin blur
+  if((st==='strike' && opp.spinT>0) || (st==='tell' && opp.atk && opp.atk.name==='spin')){
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(0, shoY+40, torsoW+52, G.t*22, G.t*22+4.2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, shoY+40, torsoW+52, G.t*22+Math.PI, G.t*22+Math.PI+4.2); ctx.stroke();
+  }
+  // tell flash: the star glove strobes
+  let flashCol = null;
+  if(st==='tell' && opp.atk && opp.atk.star && !opp.feintUsed){
+    flashCol = (Math.sin(G.t*26)>0) ? '#ffffff' : '#ffd94d';
+  }
+  const drawG = (p, r, side)=>{
+    let col = d.glove;
+    if(flashCol && ((side>0) === ((opp.atk.name.charCodeAt(0)%2===0)))) col = flashCol;
+    drawGlove(p.x, p.y, r, col, d.accent);
+    if(flashCol && col===flashCol) drawSparkle(p.x + side*r, p.y - r, 20, '#fff6c9');
+  };
+  drawG(lg, lr, -1); drawG(rg, rgr, 1);
+  if(lunge) { /* fist drawn bigger already */ }
+
+  // signature props
+  if(d.turtle){ // the Kid's pet turtle rides his shoulder, believing in him
+    ctx.fillStyle = '#58a05c'; ellipse(-torsoW-2, shoY+16, 15, 9.5); ctx.fill();
+    ctx.fillStyle = '#7ab86f'; circle(-torsoW-17, shoY+11, 6); ctx.fill();
+    ctx.fillStyle = '#3d7a42'; ellipse(-torsoW-2, shoY+13, 9.5, 6); ctx.fill();
+  }
+  if(d.prop==='egg' && st==='tell' && opp.atk && opp.atk.star){
+    // the raw-egg shake, mid-gulp — punch it for a star!
+    ctx.save(); ctx.translate(torsoW+56, shoY+44 + Math.sin(G.t*7)*3); ctx.rotate(0.5);
+    ctx.fillStyle = 'rgba(220,240,255,0.5)'; rr(-11,-20,22,40,4); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; rr(-11,-20,22,40,4); ctx.stroke();
+    ctx.fillStyle = '#ffb03a'; circle(0, 6, 8.5); ctx.fill();
+    ctx.fillStyle = '#fff3b0'; circle(-3, -6, 5); ctx.fill();
+    ctx.restore();
+    drawSparkle(torsoW+56, shoY+8, 15, '#fff6c9');
+  }
+  if(d.prop==='spinach' && (st==='taunt' || (st==='tell' && opp.atk && opp.atk.star))){
+    // the spinach can — mid-gulp during taunts, flashing before the surge
+    const lift = st==='taunt' ? Math.sin(Math.min(1,(opp.tauntDur-opp.atkT)/Math.max(0.01,opp.tauntDur)) * Math.PI) * -34 : 0;
+    ctx.save(); ctx.translate(torsoW+52, shoY+96 + lift); ctx.rotate(-0.15);
+    ctx.fillStyle = '#2e7d32'; rr(-13,-19,26,38,4); ctx.fill();
+    ctx.fillStyle = '#f5efe4'; rr(-13,-7,26,13,2); ctx.fill();
+    ctx.fillStyle = '#2e7d32'; ctx.font = '900 10px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('SPINACH', 0, 3.5);
+    ctx.fillStyle = '#58a05c'; ellipse(0, -24, 10, 6); ctx.fill();
+    ctx.restore();
+    if(st==='tell') drawSparkle(torsoW+52, shoY+62, 15, '#c9ffd9');
+  }
+
+  // ---- head ----
+  let hx = 0, hy = headY;
+  let hTilt = 0;
+  if(st==='stunned'){ hTilt = Math.sin(G.t*9)*0.16; hx = Math.sin(G.t*9)*7; }
+  if(opp.hurtT>0){ hy -= 12; hTilt = -0.12; }
+  if(st==='taunt'){ hTilt = Math.sin(G.t*6)*0.06; }
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(hTilt);
+  const hr = 54;
+  ctx.fillStyle = d.skin; circle(0,0,hr); ctx.fill();
+  ctx.fillStyle = d.skin; circle(-hr-3, 4, 10); ctx.fill(); circle(hr+3, 4, 10); ctx.fill(); // ears
+  if(d.earring){ ctx.fillStyle = '#ffd94d'; circle(hr+4, 16, 4.5); ctx.fill(); }
+  // luchador mask covers the head (drawn before face features)
+  if(d.hat==='mask' || d.outfit==='mask'){
+    ctx.fillStyle = d.trunk; ctx.beginPath(); ctx.arc(0,-4,hr+1.5,Math.PI*0.92,Math.PI*2.08); ctx.quadraticCurveTo(hr*0.9,hr*0.5, 0,hr*0.52); ctx.quadraticCurveTo(-hr*0.9,hr*0.5, -hr,-4); ctx.fill();
+    ctx.fillStyle = d.accent; ctx.beginPath(); ctx.arc(0,-hr*0.4,hr*0.52,Math.PI,TAU); ctx.quadraticCurveTo(0,-hr*0.66,-hr*0.52,-hr*0.4); ctx.fill();
+    ctx.fillStyle = '#fff'; ellipse(-21,-4,11,9); ctx.fill(); ellipse(21,-4,11,9); ctx.fill();
+  }
+  // hair
+  ctx.fillStyle = d.hair;
+  if(d.hairStyle==='swoop'){ ctx.beginPath(); ctx.arc(0,-8,hr,Math.PI*1.02,Math.PI*1.98); ctx.quadraticCurveTo(hr*0.9,-hr*1.25, 0,-hr*0.72); ctx.quadraticCurveTo(-hr*0.9,-hr*1.15, -hr,-8); ctx.fill(); }
+  else if(d.hairStyle==='mohawk'){ rr(-9,-hr-16,18,44,8); ctx.fill(); }
+  else if(d.hairStyle==='flat'){ ctx.beginPath(); ctx.arc(0,-4,hr,Math.PI,TAU); ctx.lineTo(-hr,-4); ctx.fill(); rr(-hr,-hr-2,hr*2,14,6); ctx.fill(); }
+  else if(d.hairStyle==='fade'){ ctx.beginPath(); ctx.arc(0,-6,hr,Math.PI*1.05,Math.PI*1.95); ctx.quadraticCurveTo(0,-hr*0.55, -hr*Math.cos(0.05),-6); ctx.fill(); }
+  else if(d.hairStyle==='peak'){ ctx.beginPath(); ctx.arc(0,-3,hr,Math.PI*1.03,Math.PI*1.97); ctx.lineTo(0,-16); ctx.closePath(); ctx.fill(); }
+  else if(d.hairStyle==='bald'){ ctx.fillStyle='rgba(255,255,255,0.35)'; ellipse(-14,-hr*0.5,13,7); ctx.fill(); }
+  if(d.hat==='sailor'){ ctx.fillStyle = '#f5efe4'; ctx.beginPath(); ctx.arc(0,-hr*0.8,hr*0.6,Math.PI,TAU); ctx.quadraticCurveTo(0,-hr*1.02,-hr*0.6,-hr*0.8); ctx.fill(); rr(-hr*0.64,-hr*0.88,hr*1.28,hr*0.15,hr*0.06); ctx.fill(); }
+  if(d.hat==='headband'){ ctx.fillStyle = '#c22f24'; rr(-hr-2,-hr*0.68,hr*2+4,hr*0.28,hr*0.09); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hr*0.9,-hr*0.55); ctx.quadraticCurveTo(hr*1.3,-hr*0.25, hr*1.1,hr*0.28); ctx.lineTo(hr*0.8,-hr*0.18); ctx.closePath(); ctx.fill(); }
+  // face by state
+  const eyeY = -6, eyeDX = 21;
+  ctx.lineWidth = 4; ctx.strokeStyle = '#201812'; ctx.lineCap='round';
+  if(st==='down'||st==='ko'||opp.state==='down'){
+    // X eyes
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*eyeDX-8, eyeY-8); ctx.lineTo(sx*eyeDX+8, eyeY+8); ctx.moveTo(sx*eyeDX+8, eyeY-8); ctx.lineTo(sx*eyeDX-8, eyeY+8); ctx.stroke(); }
+  } else if(st==='stunned'){
+    for(const sx of [-1,1]){ // spirals
+      ctx.beginPath();
+      for(let a=0;a<Math.PI*5;a+=0.4){ const r2 = a*1.5, px = sx*eyeDX + Math.cos(a+G.t*6)*r2, py = eyeY + Math.sin(a+G.t*6)*r2; if(a===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+      ctx.stroke();
+    }
+    // orbiting stars
+    for(let i=0;i<3;i++){ const a = G.t*4 + i*TAU/3; drawSparkle(Math.cos(a)*hr*1.05, -hr*0.85 + Math.sin(a)*9, 11, '#ffd94d'); }
+  } else if(st==='tell' && opp.atk && opp.atk.star && d.prop==='stare'){
+    // HYPNOTIC STARE — swirling eyes (punch him out of it for a star!)
+    ctx.strokeStyle = '#a01824';
+    for(const sx of [-1,1]){
+      ctx.beginPath();
+      for(let a=0;a<Math.PI*5;a+=0.4){ const r2 = a*1.6, px = sx*eyeDX + Math.cos(a+G.t*9)*r2, py = eyeY + Math.sin(a+G.t*9)*r2; if(a===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+      ctx.stroke();
+    }
+    drawSparkle(-eyeDX-10, eyeY-14, 13, '#ff8a7a'); drawSparkle(eyeDX+10, eyeY-14, 13, '#ff8a7a');
+  } else if(st==='taunt'){
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.arc(sx*eyeDX, eyeY+2, 8, Math.PI*1.1, Math.PI*1.9); ctx.stroke(); } // happy closed
+  } else {
+    // eyes
+    for(const sx of [-1,1]){
+      ctx.fillStyle = '#fff'; ellipse(sx*eyeDX, eyeY, 10, 11); ctx.fill();
+      ctx.fillStyle = '#201812'; circle(sx*eyeDX + (st==='tell'? sx*1 : opp.x*0.03), eyeY+2, 4.6); ctx.fill();
+    }
+    // brows
+    ctx.lineWidth = 6;
+    for(const sx of [-1,1]){
+      ctx.beginPath();
+      if(st==='tell'||st==='strike'){ ctx.moveTo(sx*eyeDX-11, eyeY-19); ctx.lineTo(sx*eyeDX+9, eyeY-12); }
+      else { ctx.moveTo(sx*eyeDX-10, eyeY-17); ctx.lineTo(sx*eyeDX+10, eyeY-17); }
+      ctx.stroke();
+    }
+    if(st==='tell' && opp.atk && opp.atk.star && !opp.feintUsed && Math.sin(G.t*26)>0.4){
+      drawSparkle(eyeDX+8, eyeY-10, 15, '#fff6c9'); // the glint
+    }
+  }
+  if(d.glasses && st!=='down' && st!=='ko'){
+    ctx.strokeStyle = '#2b2b33'; ctx.lineWidth = 3;
+    circle(-eyeDX, eyeY, 15); ctx.stroke(); circle(eyeDX, eyeY, 15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-eyeDX+15, eyeY); ctx.lineTo(eyeDX-15, eyeY); ctx.stroke();
+  }
+  // nose
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 3.5;
+  ctx.beginPath(); ctx.moveTo(2, 2); ctx.quadraticCurveTo(8, 12, 1, 16); ctx.stroke();
+  // mouth
+  ctx.strokeStyle = '#5a2418'; ctx.lineWidth = 4.5;
+  if(st==='stunned'){ ctx.fillStyle='#7a2c1e'; ellipse(6, 32, 8, 12); ctx.fill(); } // tongue-ish open
+  else if(st==='taunt'){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0, 20, 17, 0.15*Math.PI, 0.85*Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  else if(st==='tell'||st==='strike'){ ctx.fillStyle='#571f14'; ellipse(0, 26, 11, 8); ctx.fill(); } // shout
+  else if(opp.hurtT>0){ ctx.beginPath(); ctx.arc(0, 30, 9, Math.PI*1.15, Math.PI*1.85); ctx.stroke(); } // grimace frown
+  else { ctx.beginPath(); ctx.moveTo(-11, 27); ctx.lineTo(11, 27); ctx.stroke(); }
+  if(d.fangs && (st==='tell'||st==='strike'||st==='taunt'||st==='stunned')){
+    ctx.fillStyle = '#fff';
+    for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*10-4, 20); ctx.lineTo(sx*10+5, 20); ctx.lineTo(sx*10, 33); ctx.closePath(); ctx.fill(); }
+  }
+  // mustache / beard
+  if(d.mustache){ ctx.fillStyle = d.hair; ellipse(0, 19, 20, 6.5); ctx.fill(); }
+  if(d.beard){ ctx.fillStyle = d.hair; ctx.beginPath(); ctx.arc(0, 12, hr*0.92, 0.25*Math.PI, 0.75*Math.PI); ctx.quadraticCurveTo(0, hr*1.02, -hr*0.65, 12); ctx.fill(); }
+  // monocle
+  if(d.monocle){
+    ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 3; circle(eyeDX, eyeY, 15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(eyeDX+10, eyeY+12); ctx.quadraticCurveTo(eyeDX+18, 34, eyeDX+6, 52); ctx.stroke();
+  }
+  // champion crown glint
+  if(d.hat==='crown' || d.champion){
+    ctx.fillStyle = '#ffc832';
+    ctx.beginPath(); ctx.moveTo(-30,-hr-2); ctx.lineTo(-30,-hr-20); ctx.lineTo(-15,-hr-8); ctx.lineTo(0,-hr-24); ctx.lineTo(15,-hr-8); ctx.lineTo(30,-hr-20); ctx.lineTo(30,-hr-2); ctx.closePath(); ctx.fill();
+  }
+  // hurt flash
+  if(opp.hurtT>0){ ctx.fillStyle = 'rgba(255,255,255,'+(opp.hurtT*1.4)+')'; circle(0,0,hr); ctx.fill(); }
+  ctx.restore(); // head
+  if(d.prop==='butterfly'){
+    // a literal butterfly floats with him
+    const bx = Math.cos(G.t*2.2)*96, by = headY - 96 + Math.sin(G.t*3.3)*15, flap = Math.abs(Math.sin(G.t*16))*0.9 + 0.15;
+    ctx.save(); ctx.translate(bx, by);
+    ctx.fillStyle = '#ffd94d';
+    ctx.save(); ctx.rotate(-0.5*flap - 0.2); ellipse(-7, 0, 9, 5.5); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.rotate(0.5*flap + 0.2); ellipse(7, 0, 9, 5.5); ctx.fill(); ctx.restore();
+    ctx.fillStyle = '#2b2b33'; ellipse(0, 0, 2.4, 5.5); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore(); // body
+}
+
+/* ---- the challenger (you), seen from behind ---- */
+function drawPlayer(){
+  if(player.state==='ko') return;
+  const tiredPal = player.tired;
+  // arcade wireframe: bright green mesh; tired = pink, hurt = red flash
+  const line = player.hurtT>0 ? '#ff5f6e' : tiredPal ? '#ff9db0' : '#2eff8f';
+  const fill = player.hurtT>0 ? 'rgba(255,60,80,0.13)' : tiredPal ? 'rgba(255,120,150,0.10)' : 'rgba(30,255,140,0.10)';
+  let cx = W/2 + player.x;
+  let baseY = 902;
+  let duckDip = player.duckT>0 ? 46 : 0;
+  let slump = player.tired ? 10 : 0;
+  let downSlide = 0;
+  if(player.state==='down') downSlide = Math.min(1, player.downT/0.5) * 150;
+  if(player.state==='getup') downSlide = (1 - Math.min(1, player.downT/0.6)) * 150;
+  const bob = (player.state==='idle') ? Math.sin(G.t*4.4)*3 : 0;
+  const y = baseY + duckDip + slump + downSlide + bob;
+  ctx.save(); ctx.translate(cx, y);
+  if(player.state==='dodge') ctx.rotate(player.dodgeDir * -0.08);
+  if(player.hurtT>0) ctx.translate(rnd(-4,4), rnd(-2,2));
+  ctx.strokeStyle = line; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  // shoulders / back: outline + mesh
+  const torsoPath = ()=>{
+    ctx.beginPath();
+    ctx.moveTo(-128, 6); ctx.quadraticCurveTo(-132, -86, -62, -102);
+    ctx.quadraticCurveTo(0, -116, 62, -102); ctx.quadraticCurveTo(132, -86, 128, 6);
+    ctx.closePath();
+  };
+  torsoPath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke();
+  // mesh lines
+  ctx.save(); torsoPath(); ctx.clip();
+  ctx.globalAlpha = 0.55; ctx.lineWidth = 1.3;
+  for(let i=1;i<=4;i++){ const yy = -96 + i*22; ctx.beginPath(); ctx.moveTo(-132, yy); ctx.quadraticCurveTo(0, yy+12, 132, yy); ctx.stroke(); }
+  for(let i=-2;i<=2;i++){ ctx.beginPath(); ctx.moveTo(i*44, -114); ctx.quadraticCurveTo(i*50, -55, i*46, 8); ctx.stroke(); }
+  ctx.restore();
+  // gloves positions (same choreography as before)
+  let lg = {x:-112, y:-128}, rg = {x:112, y:-128}, lr = 34, rgr = 34;
+  if(player.state==='win'){ lg = {x:-96, y:-218}; rg = {x:96, y:-218}; }
+  else if(player.blockT>0){ lg = {x:-30, y:-150}; rg = {x:30, y:-150}; }
+  else if(player.hurtT>0){ lg = {x:-120, y:-84}; rg = {x:120, y:-84}; }
+  else if(player.tired){ lg = {x:-116, y:-96}; rg = {x:116, y:-96}; }
+  let punchGlove = null;
+  if(player.state==='punch' && opp){
+    const total = player.punchKind==='upper' ? 0.34 : 0.17;
+    const half = total*0.45;
+    const tt = total - player.punchT;
+    const ext = tt<half ? (tt/half) : 1 - (tt-half)/(total-half);
+    const ex = ext*ext*(3-2*ext);
+    let target;
+    if(player.punchKind==='jab'){ const f = oppFacePos(); target = {x: f.x - cx + player.punchSide*14, y: f.y + 16 - y, r: 40}; }
+    else if(player.punchKind==='body'){ const bp = oppBodyPos(); target = {x: bp.x - cx, y: bp.y - y, r: 42}; }
+    else { const f = oppFacePos(); target = {x: f.x - cx, y: f.y + 26 - y, r: 56}; }
+    const side = player.punchKind==='body' ? player.punchSide : (player.punchKind==='upper' ? 1 : player.punchSide);
+    const from = side<0 ? lg : rg;
+    punchGlove = { side, x: lerp(from.x, target.x, ex), y: lerp(from.y, target.y, ex), r: lerp(34, target.r, ex) };
+    if(player.punchKind==='upper' && ex>0.6) drawSparkle(punchGlove.x, punchGlove.y-20, 22, '#ffd94d');
+  }
+  // wireframe arms: double lines
+  ctx.lineWidth = 2.2;
+  for(const sgn of [-1,1]){
+    const gp = sgn<0 ? lg : rg;
+    ctx.beginPath(); ctx.moveTo(sgn*100, -80); ctx.lineTo(gp.x - 6, gp.y + 10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sgn*108, -66); ctx.lineTo(gp.x + 6, gp.y + 12); ctx.stroke();
+  }
+  // head (back view): outline + hair arcs + ears
+  circle(-40, -128, 9); ctx.fillStyle = fill; ctx.fill(); ctx.stroke();
+  circle(40, -128, 9); ctx.fill(); ctx.stroke();
+  circle(0, -124, 41); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -130, 41, Math.PI*0.95, Math.PI*2.05); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -134, 33, Math.PI*1.05, Math.PI*1.95); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -136, 24, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+  // wireframe glove renderer
+  const wfGlove = (gx, gy, r)=>{
+    ctx.save(); ctx.translate(gx, gy);
+    ctx.fillStyle = fill; circle(0,0,r); ctx.fill(); ctx.lineWidth = 2.4; ctx.stroke();
+    ctx.lineWidth = 1.3; ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+    circle(0,0,r*0.55); ctx.stroke();
+    ctx.globalAlpha = 1;
+    rr(-r*0.62, r*0.42, r*1.24, r*0.5, r*0.2); ctx.stroke();
+    ctx.restore();
+  };
+  if(!punchGlove || punchGlove.side>0) wfGlove(lg.x, lg.y, lr);
+  if(!punchGlove || punchGlove.side<0) wfGlove(rg.x, rg.y, rgr);
+  if(punchGlove) wfGlove(punchGlove.x, punchGlove.y, punchGlove.r);
+  ctx.restore();
+  if(G.flashRed>0){ ctx.fillStyle = 'rgba(232,58,48,'+(G.flashRed*0.55)+')'; ctx.fillRect(0,372,W,H-372); }
+}
+
+/* ---- referee (counts only) ---- */
+function drawRef(side){
+  const x = side<0 ? 84 : W-84, y = 712;
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(0, 4, 40, 8); ctx.fill();
+  ctx.fillStyle = '#2b2b33'; rr(-16, -34, 13, 36, 5); ctx.fill(); rr(4, -34, 13, 36, 5); ctx.fill(); // legs
+  ctx.fillStyle = '#f0ede6'; rr(-22, -86, 44, 56, 8); ctx.fill(); // shirt
+  ctx.fillStyle = '#2b2b33'; for(let i=0;i<3;i++) ctx.fillRect(-22, -80+i*18, 44, 6); // stripes
+  ctx.fillStyle = '#e8a06a'; circle(0, -102, 15); ctx.fill(); // head
+  ctx.fillStyle = '#2b2b33'; ctx.beginPath(); ctx.arc(0,-106,15,Math.PI,TAU); ctx.fill();
+  ctx.strokeStyle = '#e8a06a'; ctx.lineWidth = 8; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-20,-76); ctx.lineTo(-34,-52); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(20,-76); ctx.lineTo(32,-58); ctx.stroke();
+  // counting arm pumps
+  if(G.countSeq){ ctx.beginPath(); ctx.moveTo(20,-76); ctx.lineTo(38,-92 - Math.sin(G.t*7)*6); ctx.stroke(); }
+  ctx.restore();
+}
+
+/* ---- HUD ---- */
+function bar(x,y,w,h,frac,col,bg){
+  ctx.fillStyle = bg||'rgba(0,0,0,0.55)'; rr(x-3,y-3,w+6,h+6,8); ctx.fill();
+  ctx.fillStyle = '#3a3f45'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle = col; ctx.fillRect(x, y, w*clamp(frac,0,1), h);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, w*clamp(frac,0,1), h*0.4);
+}
+/* ---- portrait cards (arcade top panel) ---- */
+function drawPortraitFace(d, cx, cy, hr){
+  // big expressive front-facing bust portrait of fighter d, head center (cx,cy), head radius hr
+  ctx.save(); ctx.translate(cx, cy);
+  // shoulders / outfit hint
+  ctx.fillStyle = d.outfit==='gi' ? '#f0ede6' : d.outfit==='suit' ? '#23272e' : d.outfit==='hoodie' ? '#8f979e' : d.outfit==='cape' ? '#2a0d12' : d.skin;
+  ctx.beginPath(); ctx.moveTo(-hr*1.25, hr*2.05); ctx.quadraticCurveTo(-hr*1.2, hr*0.95, -hr*0.55, hr*0.86);
+  ctx.quadraticCurveTo(0, hr*0.72, hr*0.55, hr*0.86); ctx.quadraticCurveTo(hr*1.2, hr*0.95, hr*1.25, hr*2.05); ctx.closePath(); ctx.fill();
+  if(d.outfit==='suit'){ ctx.fillStyle = '#f0ede6'; ctx.beginPath(); ctx.moveTo(-hr*0.3, hr*0.8); ctx.lineTo(0, hr*1.3); ctx.lineTo(hr*0.3, hr*0.8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c22f24'; circle(-hr*0.12, hr*0.92, hr*0.09); ctx.fill(); circle(hr*0.12, hr*0.92, hr*0.09); ctx.fill(); }
+  if(d.outfit==='gi'){ ctx.strokeStyle = '#2b2b33'; ctx.lineWidth = hr*0.07; ctx.beginPath(); ctx.moveTo(-hr*0.34, hr*0.82); ctx.lineTo(0, hr*1.25); ctx.lineTo(hr*0.34, hr*0.82); ctx.stroke(); }
+  if(d.outfit==='cape'){ ctx.fillStyle = '#5c1a24'; ctx.beginPath(); ctx.moveTo(-hr*0.62, hr*0.4); ctx.lineTo(-hr*0.95, hr*1.4); ctx.lineTo(-hr*0.3, hr*1.0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hr*0.62, hr*0.4); ctx.lineTo(hr*0.95, hr*1.4); ctx.lineTo(hr*0.3, hr*1.0); ctx.closePath(); ctx.fill(); }
+  // gloves up at the corners
+  drawGlove(-hr*1.02, hr*1.35, hr*0.42, d.glove, d.accent);
+  drawGlove(hr*1.02, hr*1.35, hr*0.42, d.glove, d.accent);
+  // head
+  ctx.fillStyle = d.skin; circle(0,0,hr); ctx.fill();
+  ctx.fillStyle = d.skin; circle(-hr-3, hr*0.08, hr*0.19); ctx.fill(); circle(hr+3, hr*0.08, hr*0.19); ctx.fill();
+  if(d.earring){ ctx.fillStyle = '#ffd94d'; circle(hr+4, hr*0.3, hr*0.08); ctx.fill(); }
+  // hair / hats / mask
+  ctx.fillStyle = d.hair;
+  if(d.hat==='mask' || d.outfit==='mask'){
+    ctx.fillStyle = d.trunk; ctx.beginPath(); ctx.arc(0,-hr*0.08,hr*1.01,Math.PI*0.95,Math.PI*2.05); ctx.quadraticCurveTo(0,hr*0.42,-hr*0.98,-hr*0.08); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = d.accent; ctx.beginPath(); ctx.arc(0,-hr*0.34,hr*0.5,Math.PI,TAU); ctx.quadraticCurveTo(0,-hr*0.62,-hr*0.5,-hr*0.34); ctx.fill();
+    ctx.fillStyle = '#fff'; ellipse(-hr*0.39, -hr*0.1, hr*0.2, hr*0.16); ctx.fill(); ellipse(hr*0.39, -hr*0.1, hr*0.2, hr*0.16); ctx.fill();
+  } else if(d.hairStyle==='swoop'){ ctx.beginPath(); ctx.arc(0,-hr*0.14,hr,Math.PI*1.02,Math.PI*1.98); ctx.quadraticCurveTo(hr*0.9,-hr*1.3, 0,-hr*0.75); ctx.quadraticCurveTo(-hr*0.9,-hr*1.2, -hr,-hr*0.14); ctx.fill(); }
+  else if(d.hairStyle==='mohawk'){ rr(-hr*0.16,-hr*1.3,hr*0.32,hr*0.75,hr*0.14); ctx.fill(); }
+  else if(d.hairStyle==='flat'){ ctx.beginPath(); ctx.arc(0,-hr*0.07,hr,Math.PI,TAU); ctx.lineTo(-hr,-hr*0.07); ctx.fill(); }
+  else if(d.hairStyle==='fade'){ ctx.beginPath(); ctx.arc(0,-hr*0.1,hr,Math.PI*1.05,Math.PI*1.95); ctx.quadraticCurveTo(0,-hr*0.58, -hr*0.99,-hr*0.1); ctx.fill(); }
+  else if(d.hairStyle==='peak'){ ctx.beginPath(); ctx.arc(0,-hr*0.05,hr,Math.PI*1.03,Math.PI*1.97); ctx.lineTo(0,-hr*0.28); ctx.closePath(); ctx.fill(); }
+  else if(d.hairStyle==='bald'){ ctx.fillStyle='rgba(255,255,255,0.35)'; ellipse(-hr*0.26,-hr*0.52,hr*0.24,hr*0.13); ctx.fill(); }
+  if(d.hat==='sailor'){ ctx.fillStyle = '#f5efe4'; ctx.beginPath(); ctx.arc(0,-hr*0.78,hr*0.62,Math.PI,TAU); ctx.quadraticCurveTo(0,-hr*1.05,-hr*0.62,-hr*0.78); ctx.fill(); rr(-hr*0.66,-hr*0.86,hr*1.32,hr*0.16,hr*0.07); ctx.fill(); }
+  if(d.hat==='headband'){ ctx.fillStyle = '#c22f24'; rr(-hr*1.0,-hr*0.72,hr*2.0,hr*0.3,hr*0.1); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hr*0.9,-hr*0.6); ctx.quadraticCurveTo(hr*1.35,-hr*0.3, hr*1.15,hr*0.25); ctx.lineTo(hr*0.82,-hr*0.2); ctx.closePath(); ctx.fill(); }
+  if(d.hat==='crown'){ ctx.fillStyle = '#ffc832'; ctx.beginPath(); ctx.moveTo(-hr*0.55,-hr*0.9); ctx.lineTo(-hr*0.55,-hr*1.3); ctx.lineTo(-hr*0.27,-hr*1.02); ctx.lineTo(0,-hr*1.4); ctx.lineTo(hr*0.27,-hr*1.02); ctx.lineTo(hr*0.55,-hr*1.3); ctx.lineTo(hr*0.55,-hr*0.9); ctx.closePath(); ctx.fill(); }
+  // face: game-face — angled brows, grin or snarl
+  const eyeY = -hr*0.08, eyeDX = hr*0.39;
+  for(const sx of [-1,1]){
+    ctx.fillStyle = '#fff'; ellipse(sx*eyeDX, eyeY, hr*0.19, hr*0.21); ctx.fill();
+    ctx.fillStyle = '#201812'; circle(sx*eyeDX, eyeY+hr*0.03, hr*0.09); ctx.fill();
+    ctx.strokeStyle = '#201812'; ctx.lineWidth = hr*0.09; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx*eyeDX-hr*0.2, eyeY-hr*0.36); ctx.lineTo(sx*eyeDX+hr*0.17, eyeY-hr*0.22); ctx.stroke();
+  }
+  if(d.glasses){ ctx.strokeStyle = '#2b2b33'; ctx.lineWidth = hr*0.06; circle(-eyeDX, eyeY, hr*0.3); ctx.stroke(); circle(eyeDX, eyeY, hr*0.3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-eyeDX+hr*0.3, eyeY); ctx.lineTo(eyeDX-hr*0.3, eyeY); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = hr*0.06;
+  ctx.beginPath(); ctx.moveTo(hr*0.04, hr*0.04); ctx.quadraticCurveTo(hr*0.15, hr*0.22, hr*0.02, hr*0.3); ctx.stroke();
+  // mouth: cocky grin (champ: snarl)
+  if(d.champion){
+    ctx.fillStyle = '#fff'; rr(-hr*0.34, hr*0.42, hr*0.68, hr*0.24, hr*0.05); ctx.fill();
+    ctx.strokeStyle = '#5a2418'; ctx.lineWidth = hr*0.06; rr(-hr*0.34, hr*0.42, hr*0.68, hr*0.24, hr*0.05); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, hr*0.42); ctx.lineTo(0, hr*0.66); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, hr*0.3, hr*0.34, 0.12*Math.PI, 0.88*Math.PI); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#5a2418'; ctx.lineWidth = hr*0.06; ctx.beginPath(); ctx.arc(0, hr*0.3, hr*0.34, 0.12*Math.PI, 0.88*Math.PI); ctx.stroke();
+  }
+  if(d.fangs){ ctx.fillStyle = '#fff'; for(const sx of [-1,1]){ ctx.beginPath(); ctx.moveTo(sx*hr*0.2, hr*0.52); ctx.lineTo(sx*hr*0.3, hr*0.52); ctx.lineTo(sx*hr*0.25, hr*0.72); ctx.closePath(); ctx.fill(); } }
+  if(d.mustache){ ctx.fillStyle = d.hair; ellipse(0, hr*0.36, hr*0.37, hr*0.12); ctx.fill(); }
+  if(d.beard){ ctx.fillStyle = d.hair; ctx.beginPath(); ctx.arc(0, hr*0.22, hr*0.92, 0.3*Math.PI, 0.7*Math.PI); ctx.quadraticCurveTo(0, hr*1.05, -hr*0.6, hr*0.22); ctx.fill();
+    ctx.fillStyle = d.skin; ellipse(0, hr*0.42, hr*0.3, hr*0.16); ctx.fill(); }
+  // signature props
+  if(d.turtle){ // tiny turtle riding the shoulder
+    ctx.fillStyle = '#58a05c'; ellipse(-hr*1.06, hr*0.78, hr*0.2, hr*0.13); ctx.fill();
+    ctx.fillStyle = '#7ab86f'; circle(-hr*1.28, hr*0.72, hr*0.08); ctx.fill();
+    ctx.fillStyle = '#3d7a42'; ellipse(-hr*1.06, hr*0.74, hr*0.13, hr*0.08); ctx.fill();
+  }
+  if(d.prop==='spinach'){ // the famous can, clutched in glove
+    ctx.fillStyle = '#2e7d32'; rr(hr*0.78, hr*1.02, hr*0.42, hr*0.52, hr*0.05); ctx.fill();
+    ctx.fillStyle = '#f5efe4'; rr(hr*0.78, hr*1.2, hr*0.42, hr*0.17, hr*0.03); ctx.fill();
+    ctx.fillStyle = '#2e7d32'; ellipse(hr*0.99, hr*0.98, hr*0.13, hr*0.09); ctx.fill();
+  }
+  if(d.prop==='chess'){ ctx.fillStyle = '#c9a227'; ctx.font = '900 ' + (hr*0.85) + 'px serif'; ctx.textAlign='center'; ctx.fillText('♞', hr*1.02, hr*1.5); }
+  ctx.restore();
+}
+function drawChallengerPortrait(cx, cy, hr){
+  const d = { skin:'#e8a06a', hair:'#3a2415', glove:'#d7263d', accent:'#f5efe4' };
+  ctx.save(); ctx.translate(cx, cy);
+  ctx.fillStyle = '#19c2a6';
+  ctx.beginPath(); ctx.moveTo(-hr*1.25, hr*2.05); ctx.quadraticCurveTo(-hr*1.2, hr*0.95, -hr*0.55, hr*0.86);
+  ctx.quadraticCurveTo(0, hr*0.72, hr*0.55, hr*0.86); ctx.quadraticCurveTo(hr*1.2, hr*0.95, hr*1.25, hr*2.05); ctx.closePath(); ctx.fill();
+  drawGlove(-hr*1.02, hr*1.35, hr*0.42, d.glove, d.accent);
+  drawGlove(hr*1.02, hr*1.35, hr*0.42, d.glove, d.accent);
+  ctx.fillStyle = d.skin; circle(0,0,hr); ctx.fill();
+  circle(-hr-3, hr*0.08, hr*0.19); ctx.fill(); circle(hr+3, hr*0.08, hr*0.19); ctx.fill();
+  ctx.fillStyle = d.hair; ctx.beginPath(); ctx.arc(0,-hr*0.16,hr,Math.PI*1.03,Math.PI*1.97); ctx.quadraticCurveTo(hr*0.85,-hr*1.2, 0,-hr*0.8); ctx.quadraticCurveTo(-hr*0.85,-hr*1.15, -hr,-hr*0.16); ctx.fill();
+  ctx.fillStyle = '#19c2a6'; rr(-hr*1.01, -hr*0.62, hr*2.02, hr*0.26, hr*0.08); ctx.fill(); // headband
+  const eyeY = -hr*0.05, eyeDX = hr*0.39;
+  for(const sx of [-1,1]){
+    ctx.fillStyle = '#fff'; ellipse(sx*eyeDX, eyeY, hr*0.19, hr*0.21); ctx.fill();
+    ctx.fillStyle = '#201812'; circle(sx*eyeDX, eyeY+hr*0.03, hr*0.09); ctx.fill();
+    ctx.strokeStyle = '#201812'; ctx.lineWidth = hr*0.09; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx*eyeDX-hr*0.19, eyeY-hr*0.33); ctx.lineTo(sx*eyeDX+hr*0.18, eyeY-hr*0.26); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = hr*0.06;
+  ctx.beginPath(); ctx.moveTo(hr*0.04, hr*0.06); ctx.quadraticCurveTo(hr*0.15, hr*0.24, hr*0.02, hr*0.32); ctx.stroke();
+  // big determined grin with teeth
+  ctx.fillStyle = '#fff'; rr(-hr*0.36, hr*0.4, hr*0.72, hr*0.27, hr*0.06); ctx.fill();
+  ctx.strokeStyle = '#5a2418'; ctx.lineWidth = hr*0.06; rr(-hr*0.36, hr*0.4, hr*0.72, hr*0.27, hr*0.06); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-hr*0.12, hr*0.4); ctx.lineTo(-hr*0.12, hr*0.67); ctx.moveTo(hr*0.12, hr*0.4); ctx.lineTo(hr*0.12, hr*0.67); ctx.stroke();
+  ctx.restore();
+}
+function led(text, x, y, size, col, align){
+  ctx.font = '900 ' + size + 'px "Courier New", monospace'; ctx.textAlign = align||'right';
+  ctx.fillStyle = col; ctx.fillText(text, x, y);
+}
+function drawTopPanel(){
+  const d = FIGHTERS[G.fighterIdx];
+  const rank = FIGHTERS.length - G.fighterIdx;
+  ctx.fillStyle = '#050508'; ctx.fillRect(0,0,W,330);
+  // --- left card: opponent ---
+  ctx.fillStyle = '#ccd2ea'; rr(10, 8, 196, 314, 6); ctx.fill();
+  ctx.fillStyle = '#6a7086'; ctx.font = '900 12.5px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('FUTURE READY', 108, 28); ctx.fillText('BOXING ASSOC.', 108, 43);
+  ctx.fillStyle = '#e83a30'; ctx.font = '900 19px "Trebuchet MS", sans-serif';
+  ctx.fillText('RANKED', 108, 68);
+  ctx.font = '900 26px "Trebuchet MS", sans-serif';
+  ctx.fillText('# ' + rank, 108, 96);
+  drawPortraitFace(d, 108, 152, 47);
+  ctx.fillStyle = '#1b34c8'; ctx.font = '900 ' + (d.name.length>14 ? 15 : 17.5) + 'px "Trebuchet MS", sans-serif';
+  wrapTextCenter(d.name, 108, 292, 184);
+  // --- right card: challenger ---
+  ctx.fillStyle = '#ccd2ea'; rr(514, 8, 196, 314, 6); ctx.fill();
+  ctx.fillStyle = '#6a7086'; ctx.font = '900 12.5px "Trebuchet MS", sans-serif';
+  ctx.fillText('FUTURE READY', 612, 28); ctx.fillText('BOXING ASSOC.', 612, 43);
+  ctx.fillStyle = '#e83a30'; ctx.font = '900 19px "Trebuchet MS", sans-serif';
+  ctx.fillText('CHALLENGER', 612, 75);
+  drawChallengerPortrait(612, 152, 47);
+  ctx.fillStyle = '#e83a30'; ctx.font = '900 24px "Trebuchet MS", sans-serif';
+  ctx.fillText('G E E', 612, 292);
+  // --- center column ---
+  ctx.fillStyle = '#12309e'; rr(214, 8, 292, 40, 6); ctx.fill();
+  ctx.strokeStyle = '#e8871e'; ctx.lineWidth = 2.5; rr(214, 8, 292, 40, 6); ctx.stroke();
+  led('TOP', 232, 36, 21, '#7ad0ff', 'left');
+  led(String(Math.max(G.top, G.score)).padStart(6,'0'), 492, 37, 23, '#7ad0ff');
+  ctx.fillStyle = '#000'; rr(214, 54, 140, 66, 6); ctx.fill(); rr(366, 54, 140, 66, 6); ctx.fill();
+  ctx.strokeStyle = '#e8871e'; rr(214, 54, 140, 66, 6); ctx.stroke(); rr(366, 54, 140, 66, 6); ctx.stroke();
+  led('BONUS', 284, 76, 15, '#7ad0ff', 'center');
+  led('SCORE', 436, 76, 15, '#7ad0ff', 'center');
+  led(String(Math.round(G.timeLeft)*10), 342, 108, 25, '#ff7a3c');
+  led(String(G.score), 494, 108, 25, '#ff7a3c');
+  ctx.fillStyle = '#000'; rr(214, 126, 292, 76, 6); ctx.fill();
+  ctx.strokeStyle = '#8a4fe8'; ctx.lineWidth = 2.5; rr(214, 126, 292, 76, 6); ctx.stroke();
+  ctx.fillStyle = '#e83a30'; rr(282, 134, 156, 30, 4); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = '900 21px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('FIGHT', 360, 157);
+  led('# ' + (G.fighterIdx+1), 360, 192, 26, '#ffb03a', 'center');
+  ctx.fillStyle = '#39d353'; ctx.font = '900 54px "Courier New", monospace'; ctx.textAlign = 'center';
+  ctx.fillText('VS.', 360, 256);
+  ctx.fillStyle = '#000'; rr(214, 268, 292, 54, 6); ctx.fill();
+  ctx.strokeStyle = '#8a4fe8'; ctx.lineWidth = 2.5; rr(214, 268, 292, 54, 6); ctx.stroke();
+  const mm = Math.floor(G.timeLeft/60), ss = Math.floor(G.timeLeft%60);
+  led('TIME·', 232, 305, 25, '#ffb03a', 'left');
+  led(mm + ':' + (ss<10?'0':'') + ss, 492, 306, 30, G.timeLeft<20 ? '#ff5f4a' : '#ffb03a');
+  // --- status strip ---
+  ctx.fillStyle = '#101c3f'; ctx.fillRect(0, 330, W, 42);
+  ctx.fillStyle = '#2e6da8'; ctx.fillRect(0, 330, W, 3); ctx.fillRect(0, 369, W, 3);
+  ctx.fillStyle = '#ff5f4a'; ctx.font = '900 15px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('STATUS', W/2, 356);
+  segBar(16, 342, 252, opp.hp/opp.maxhp, '#e83a30', true);
+  segBar(W-16-252, 342, 252, player.hp/PMAXHP, '#19c2a6', false);
+  ctx.font = '900 12.5px "Trebuchet MS", sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#ffb3a0';
+  ctx.fillText('DOWN ×' + opp.downs, 16, 366);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#a8ecdd';
+  ctx.fillText('DOWN ×' + player.downs, W-16, 366);
+}
+function segBar(x, y, w, frac, col, flip){
+  const n = 18, sw = w/n;
+  for(let i=0;i<n;i++){
+    const on = frac > (i+0.5)/n;
+    ctx.fillStyle = on ? col : 'rgba(255,255,255,0.13)';
+    const bx = flip ? x + w - (i+1)*sw + 1 : x + i*sw + 1;
+    ctx.fillRect(bx, y, sw-2, 13);
+  }
+}
+function wrapTextCenter(text, x, y, maxW){
+  if(ctx.measureText(text).width <= maxW){ ctx.fillText(text, x, y); return; }
+  const words = text.split(' '); let line = '', ly = y - 10;
+  for(const w of words){
+    const t = line ? line + ' ' + w : w;
+    if(ctx.measureText(t).width > maxW && line){ ctx.fillText(line, x, ly); ly += 19; line = w; }
+    else line = t;
+  }
+  if(line) ctx.fillText(line, x, ly);
+}
+/* ---- in-ring stars & hearts (ring corners) ---- */
+function drawHUD(){
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(5,5,10,0.55)'; rr(12, 380, 128, 40, 9); ctx.fill();
+  for(let i=0;i<3;i++){
+    ctx.font = '27px sans-serif';
+    ctx.fillStyle = i<player.stars ? '#ffd94d' : 'rgba(255,255,255,0.22)';
+    ctx.fillText('★', 22 + i*36, 410);
+  }
+  // hearts: two rows of 10, right-aligned
+  ctx.fillStyle = 'rgba(5,5,10,0.55)'; rr(W-236, 380, 224, 40, 9); ctx.fill();
+  for(let i=0;i<PMAXHEARTS;i++){
+    const x = W - 224 + (i%10)*21.5, y = 398 + Math.floor(i/10)*19;
+    ctx.font = '15.5px sans-serif';
+    ctx.fillStyle = i<player.hearts ? '#ff5f7a' : 'rgba(255,255,255,0.16)';
+    ctx.fillText('♥', x, y);
+  }
+  ctx.font = '700 11px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.textAlign = 'right'; ctx.fillText('HEARTS', W-16, 434);
+  if(player.tired){
+    ctx.textAlign = 'center'; ctx.fillStyle = '#ff9db0'; ctx.font = '900 20px "Trebuchet MS", sans-serif';
+    ctx.fillText('TIRED! DODGE TO RECOVER HEARTS', W/2, 448);
+  }
+}
+
+/* ---- particles / splash / coach ---- */
+function drawParticles(){
+  for(const p of particles){
+    const a = 1 - p.t/p.life;
+    if(p.text){
+      ctx.globalAlpha = a; ctx.textAlign='center';
+      ctx.font = '900 ' + p.r + 'px "Trebuchet MS", sans-serif';
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.strokeText(p.text, p.x, p.y); ctx.fillStyle = p.col; ctx.fillText(p.text, p.x, p.y);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = a; ctx.fillStyle = p.col; circle(p.x, p.y, p.r); ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+}
+function drawSplash(){
+  if(!G.msg) return;
+  const m = G.msg, pop = m.t<0.16 ? (m.t/0.16) : 1;
+  const fade = m.t > m.dur-0.3 ? Math.max(0,(m.dur-m.t)/0.3) : 1;
+  ctx.save(); ctx.globalAlpha = fade; ctx.translate(W/2, 600); ctx.scale(pop, pop);
+  ctx.textAlign = 'center';
+  ctx.font = '900 58px Impact, "Arial Black", sans-serif';
+  ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+  ctx.strokeText(m.text, 0, 0); ctx.fillStyle = m.color; ctx.fillText(m.text, 0, 0);
+  if(m.sub){ ctx.font = '800 21px "Trebuchet MS", sans-serif'; ctx.lineWidth = 5; ctx.strokeText(m.sub, 0, 36); ctx.fillStyle = '#fff'; ctx.fillText(m.sub, 0, 36); }
+  ctx.restore();
+}
+function drawCount(){
+  if(!G.countSeq) return;
+  const cs = G.countSeq;
+  drawRef(cs.who==='opp' ? -1 : 1);
+  const n = Math.max(1, cs.n);
+  ctx.save(); ctx.textAlign = 'center';
+  ctx.font = '900 120px Impact, "Arial Black", sans-serif';
+  ctx.lineWidth = 14; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  const label = cs.tko && cs.who==='player' ? 'TKO?' : String(n);
+  ctx.strokeText(n>=1?String(n):'·', W/2, 520);
+  ctx.fillStyle = '#fff'; ctx.fillText(n>=1?String(n):'·', W/2, 520);
+  ctx.restore();
+  if(cs.who==='player' && player.state==='down'){
+    // mash-o-meter
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '900 26px "Trebuchet MS", sans-serif';
+    ctx.fillText('GET UP! TAP TAP TAP!', W/2, 648);
+    bar(W/2-130, 664, 260, 20, player.mash/100, '#ffc832');
+    ctx.font = '700 15px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillText('Down ' + player.downs + ' of 3 — the third one ends it!', W/2, 706);
+  }
+}
+function wrapText(text, x, y, maxW, lh, maxLines){
+  const words = text.split(' '); let line = '', lines = 0;
+  for(const w of words){
+    const test = line ? line+' '+w : w;
+    if(ctx.measureText(test).width > maxW && line){ ctx.fillText(line, x, y + lines*lh); lines++; line = w; if(lines>=maxLines) return; }
+    else line = test;
+  }
+  if(line && lines<maxLines) ctx.fillText(line, x, y + lines*lh);
+}
+function drawCoach(){
+  if(!G.coach || G.screen!=='fight') return;
+  const c = G.coach, fade = c.t>c.dur-0.4 ? Math.max(0,(c.dur-c.t)/0.4) : 1;
+  ctx.save(); ctx.globalAlpha = fade;
+  ctx.fillStyle = 'rgba(10,8,6,0.82)'; rr(46, H-216, W-92, 58, 12); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,200,50,0.5)'; ctx.lineWidth = 1.5; rr(46, H-216, W-92, 58, 12); ctx.stroke();
+  ctx.fillStyle = '#ffe9a8'; ctx.font = '700 16.5px "Trebuchet MS", sans-serif'; ctx.textAlign = 'left';
+  wrapText(c.text, 62, H-188, W-124, 21, 2);
+  ctx.restore();
+}
+
+/* ---- screens ---- */
+function drawTitle(){
+  ctx.fillStyle = 'rgba(5,3,10,0.45)'; ctx.fillRect(0,0,W,H);
+  // demo opponent (Ben) idles in the ring
+  const keep = opp; opp = G.titleOpp || (G.titleOpp = makeOpp(0)); opp.state='idle'; opp.wob += 0.016*3.2;
+  drawOpponent(); drawPlayer(); opp = keep;
+  ctx.textAlign = 'center';
+  ctx.font = '900 92px Impact, "Arial Black", sans-serif';
+  ctx.lineWidth = 14; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.strokeText('PUNCH-OUT', W/2, 236);
+  const g = ctx.createLinearGradient(0,160,0,240); g.addColorStop(0,'#fff3b0'); g.addColorStop(0.55,'#ffc832'); g.addColorStop(1,'#e8871e');
+  ctx.fillStyle = g; ctx.fillText('PUNCH-OUT', W/2, 236);
+  ctx.font = '900 74px Impact, "Arial Black", sans-serif';
+  ctx.strokeText('REBORN', W/2, 310);
+  ctx.fillStyle = '#e83a30'; ctx.fillText('REBORN', W/2, 310);
+  ctx.font = 'italic 800 19px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#ffe9a8';
+  ctx.fillText('"IN THIS RING, ANYONE CAN BE ANYTHING."', W/2, 348);
+  ctx.font = '800 16px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillText('8 ORIGINAL FIGHTERS · 3 CIRCUITS · 1 BELT', W/2, 374);
+  if(Math.sin(G.t*4)>-0.2){
+    ctx.font = '900 26px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#9fe8ff';
+    ctx.fillText('TAP OR PRESS ENTER TO STEP IN', W/2, 560);
+  }
+  ctx.font = '700 16.5px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.fillText('Dodge his move → he gets STUNNED → unload your combo!', W/2, 606);
+  ctx.fillText('Punch the FLASHING glove (or a taunt) to earn a ★ STAR.', W/2, 630);
+  ctx.fillText('Spend a star on a STAR UPPERCUT while he is stunned.', W/2, 654);
+  ctx.fillText('Out of hearts? You are TIRED — dodge to win hearts back.', W/2, 678);
+  ctx.font = '700 15px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText('KEYS: ←/→ dodge · ↓ duck · Z/X jab · S body · A / ↑ star · mash to rise', W/2, 716);
+}
+function drawTale(){
+  const d = FIGHTERS[G.fighterIdx];
+  ctx.fillStyle = 'rgba(5,3,10,0.55)'; ctx.fillRect(0,0,W,H);
+  // portrait: temporarily draw the fighter bust big
+  const keepState = opp.state, keepDowns = opp.downs;
+  opp.state = 'idle'; opp.wob += 0.05;
+  ctx.save(); ctx.translate(0,-58); ctx.scale(1.06,1.06); ctx.translate(-20,0);
+  drawOpponent(); ctx.restore();
+  opp.state = keepState;
+  // card
+  ctx.fillStyle = 'rgba(12,9,7,0.92)'; rr(56, 470, W-112, 322, 16); ctx.fill();
+  ctx.strokeStyle = '#ffc832'; ctx.lineWidth = 2.5; rr(56, 470, W-112, 322, 16); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#ffc832';
+  ctx.font = '800 15px "Trebuchet MS", sans-serif';
+  ctx.fillText(d.circuit, W/2, 500);
+  ctx.fillStyle = '#fff'; ctx.font = '900 37px Impact, "Arial Black", sans-serif';
+  ctx.fillText(d.name, W/2, 540);
+  ctx.font = '800 18px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#9fe8ff';
+  ctx.fillText(d.sub, W/2, 566);
+  ctx.font = '700 16.5px "Trebuchet MS", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillText('Age ' + d.age + '   ·   From: ' + d.from, W/2, 596);
+  ctx.fillText('Weight: ' + d.weight + '   ·   Record: ' + d.record, W/2, 622);
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = 'italic 700 15px "Trebuchet MS", sans-serif';
+  ctx.fillText(d.rank, W/2, 648);
+  ctx.fillStyle = '#ffe9a8'; ctx.font = 'italic 700 16.5px "Trebuchet MS", sans-serif';
+  wrapText(d.quote, W/2, 682, W-170, 22, 2);
+  if(Math.sin(G.t*4)>-0.2){
+    ctx.fillStyle = '#19c2a6'; ctx.font = '900 22px "Trebuchet MS", sans-serif';
+    ctx.fillText('TAP TO FIGHT', W/2, 762);
+  }
+  ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '700 15px "Trebuchet MS", sans-serif';
+  ctx.fillText('Career score: ' + G.score.toLocaleString(), 22, 44);
+}
+function drawOver(){
+  const e = G.endInfo; if(!e) return;
+  ctx.fillStyle = e.won ? 'rgba(8,20,10,0.62)' : 'rgba(24,6,6,0.66)'; ctx.fillRect(0,0,W,H);
+  const d = e.def;
+  if(e.won && opp) drawOpponent(); else if(opp) drawOpponent();
+  drawPlayer();
+  ctx.textAlign = 'center';
+  const big = e.champ ? 'CHAMPION!' : e.won ? (e.how==='KO' ? 'KNOCKOUT!' : e.how==='DECISION' ? 'DECISION — YOU WIN!' : 'WINNER!') : (e.how==='TKO' ? 'TKO...' : e.how==='KO' ? 'COUNTED OUT...' : 'DECISION — YOU LOSE');
+  ctx.font = '900 66px Impact, "Arial Black", sans-serif';
+  ctx.lineWidth = 12; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText(big, W/2, 268);
+  ctx.fillStyle = e.won ? '#ffc832' : '#ff7a70'; ctx.fillText(big, W/2, 268);
+  if(e.champ){
+    ctx.font = '900 26px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#fff';
+    ctx.fillText(d.name + ' IS DOWN! THE BELT IS YOURS!', W/2, 312);
+    // belt
+    ctx.fillStyle = '#7a4a12'; rr(W/2-150, 336, 300, 54, 14); ctx.fill();
+    ctx.fillStyle = '#ffc832'; circle(W/2, 363, 30); ctx.fill();
+    ctx.fillStyle = '#e8871e'; circle(W/2, 363, 20); ctx.fill();
+    ctx.fillStyle = '#fff3b0'; ctx.font = '900 19px Impact, sans-serif'; ctx.fillText('FR', W/2, 370);
+  }
+  ctx.font = 'italic 700 18px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#ffe9a8';
+  wrapText(e.won ? d.loseQuote : d.winQuote, W/2, 448, W-140, 25, 3);
+  ctx.font = '800 19px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#fff';
+  ctx.fillText('Bout score: ' + e.score.toLocaleString() + '    Career: ' + G.score.toLocaleString(), W/2, 540);
+  ctx.fillText('He went down ×' + e.downs + ' · You went down ×' + e.pdowns, W/2, 570);
+  if(Math.sin(G.t*4)>-0.2){
+    ctx.font = '900 24px "Trebuchet MS", sans-serif'; ctx.fillStyle = '#9fe8ff';
+    ctx.fillText(e.champ ? 'TAP — BACK TO THE TITLE SCREEN' : e.won ? 'TAP — NEXT CHALLENGER' : 'TAP — REMATCH', W/2, 640);
+  }
+}
+
+/* ---- render root ---- */
+function render(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#07050a'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.setTransform(SCALE,0,0,SCALE,OX,OY);
+  if(G.shake>0) ctx.translate(rnd(-G.shake,G.shake)*0.5, rnd(-G.shake,G.shake)*0.5);
+  ctx.drawImage(bgCanvas, 0, 0);
+  if(G.screen==='title'){ drawTitle(); }
+  else if(G.screen==='tale'){ drawTale(); }
+  else if(G.screen==='fight'){
+    drawTopPanel(); drawOpponent(); drawPlayer(); drawHUD(); drawCount(); drawSplash(); drawCoach(); drawParticles();
+  }
+  else if(G.screen==='over'){ drawOver(); drawParticles(); }
+}
+
+/* ---- main loop ---- */
+let lastTs = 0, fpsEMA = 60, fpsTagT = 0;
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(!lastTs) lastTs = ts;
+  let dt = (ts - lastTs)/1000; lastTs = ts;
+  if(dt>0.05) dt = 0.05;
+  if(dt>0) fpsEMA = fpsEMA*0.95 + (1/Math.max(dt,0.0001))*0.05;
+  G.fps = fpsEMA;
+  fpsTagT += dt;
+  if(fpsTagT>0.5){ fpsTagT = 0; const el = document.getElementById('fpsTag'); if(el) el.textContent = Math.round(fpsEMA) + ' FPS'; }
+  update(dt);
+  render();
+}
+resize();
+requestAnimationFrame(frame);
+setTimeout(resize, 60);
+
+/* ---- debug / verification hooks (used by the builder's play-test) ---- */
+window.PO = {
+  G, player, FIGHTERS, DMG,
+  get opp(){ return opp; },
+  fps(){ return Math.round(G.fps); },
+  start: startCareer,
+  fight: startFight,
+  press: pressAction,
+  giveStar(){ player.stars = Math.min(3, player.stars+1); },
+  hurtPlayer(n){ player.hp -= n; if(player.hp<=0) playerKnockdown(); },
+  downPlayer(){ playerKnockdown(); },
+  setHearts(n){ player.hearts = n; if(n<=0){ player.tired = true; } },
+  stunOpp(){ if(opp){ opp.state='stunned'; opp.stunLeft = 3; opp.comboLanded = 0; } },
+  tellOpp(){ if(opp){ oppChoose(); } }
+};
+</script>
+</body>
+</html>
