@@ -18,7 +18,7 @@
         touch-action: none; overscroll-behavior: none;
         -webkit-user-select: none; user-select: none;
       }
-      #sky { position: fixed; inset: 0; display: block; }
+      #sky { position: fixed; inset: 0; display: block; touch-action: none; }
       #vignette {
         position: fixed; inset: 0; pointer-events: none; z-index: 3;
         background: radial-gradient(ellipse at center, transparent 58%, rgba(10,4,30,.28) 100%);
@@ -96,6 +96,12 @@
         -webkit-overflow-scrolling: touch;
       }
       #rail::-webkit-scrollbar { display: none; }
+      #soundLine {
+        display: block; width: 100%; margin-top: 10px; padding: 9px 2px 1px;
+        background: none; border: none; border-top: 1px solid rgba(255,255,255,.14);
+        color: rgba(255,255,255,.88); font-family: inherit; font-size: 14px; font-weight: 700;
+        text-align: left; cursor: pointer;
+      }
       .grp { display: flex; align-items: center; gap: 9px; }
       .grp .glabel { flex: 0 0 52px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.6px; opacity: .65; margin: 0; }
       .chips { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; padding: 2px 1px; touch-action: pan-x; }
@@ -227,6 +233,7 @@
             <button class="chip" data-time="night">🌙 Night</button>
           </div></div>
         </div>
+        <button id="soundLine">Sound: On</button>
     </div>
 
     <div id="intro">
@@ -379,41 +386,49 @@ const S={
   lookYaw:0, lookPitch:0, lookActive:false, lookBack:0, peekT:0,
   diveF:0, wash:0, gate:0, gatePhase:'', pendingBiome:null,
   highT:0, tourT:0, rainbowT:0, reentryT:0, prevAlt:0.42, altVel:0,
-  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, warpRot:0, flyT:0,
+  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, warpHue:0, flyT:0,
   windOn:true, panelIdle:0
 };
 /* trails are automatic: each destination flies its own signature trail */
 const TRAIL_FOR={beach:'gold', city:'neon', jungle:'rainbow', desert:'gold', north:'neon', south:'smoke', paris:'gold', aurora:'neon', sanjose:'rainbow'};
 
-/* ============================== wind audio (ambience only) ============================== */
+/* ============================== ambient bed (relaxing texture only) ==============================
+   The old wind is DELETED — its hiss lived in a lowpass that opened past
+   1kHz with speed plus a jittery 900Hz bandpass whistle. This bed is soft
+   on measurable terms: brown air through a FIXED low cutoff (200→280Hz,
+   it never opens into hiss), one slow swell breathing every ~10 seconds,
+   whisper gains (cruise ≈0.014, full speed ≈0.030). Speed lifts it a
+   touch; warp adds only a quiet shimmering hush; on the ground it fades
+   to near-silence. No buzz, no chirps, no melody — texture only. */
 const AU={ctx:null};
 function audioInit(){
   if(AU.ctx)return;
   try{
     const C=new (window.AudioContext||window.webkitAudioContext)(); AU.ctx=C;
-    const len=2*C.sampleRate, buf=C.createBuffer(1,len,C.sampleRate), d=buf.getChannelData(0);
-    let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=last*3.2; }
-    const src=C.createBufferSource(); src.buffer=buf; src.loop=true;
-    AU.filter=C.createBiquadFilter(); AU.filter.type='lowpass'; AU.filter.frequency.value=420; AU.filter.Q.value=0.6;
-    AU.gain=C.createGain(); AU.gain.gain.value=0;
-    src.connect(AU.filter); AU.filter.connect(AU.gain); AU.gain.connect(C.destination); src.start();
-    const src2=C.createBufferSource(); src2.buffer=buf; src2.loop=true; src2.playbackRate.value=1.31;
-    AU.bp=C.createBiquadFilter(); AU.bp.type='bandpass'; AU.bp.frequency.value=900; AU.bp.Q.value=1.1;
-    AU.whoosh=C.createGain(); AU.whoosh.gain.value=0;
-    src2.connect(AU.bp); AU.bp.connect(AU.whoosh); AU.whoosh.connect(C.destination); src2.start();
+    const len=4*C.sampleRate, buf=C.createBuffer(1,len,C.sampleRate), d=buf.getChannelData(0);
+    let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+0.012*w)/1.012; d[i]=last*2.6; }
+    const mk=(rate,cut)=>{ const src=C.createBufferSource(); src.buffer=buf; src.loop=true; src.playbackRate.value=rate;
+      const f=C.createBiquadFilter(); f.type='lowpass'; f.frequency.value=cut; f.Q.value=0.3;
+      const g=C.createGain(); g.gain.value=0; src.connect(f); f.connect(g); src.start(); return {f,g}; };
+    /* the swell: an LFO breathing on the bed's level, 0.1Hz = a 10s breath */
+    AU.swell=C.createGain(); AU.swell.gain.value=0.85; AU.swell.connect(C.destination);
+    const lfo=C.createOscillator(); lfo.frequency.value=0.1;
+    const lg=C.createGain(); lg.gain.value=0.15; lfo.connect(lg); lg.connect(AU.swell.gain); lfo.start();
+    const bed=mk(1,220); AU.bedF=bed.f; AU.bedG=bed.g; AU.bedG.connect(AU.swell);
+    const hush=mk(0.62,420); AU.hushG=hush.g; AU.hushG.connect(C.destination);
   }catch(e){ AU.ctx=null; }
 }
 function audioUpdate(dt){
   if(!AU.ctx)return;
   const C=AU.ctx; if(C.state==='suspended')C.resume();
   const flying=(S.mode==='fly'||S.mode==='takeoff');
-  const target=S.windOn&&flying ? (0.025+S.effSpeed*0.14+S.diveF*0.05)*(1-S.spaceF*0.92)*(S.mode==='takeoff'?0.6:1) : 0;
-  AU.gain.gain.setTargetAtTime(target,C.currentTime,0.12);
-  AU.filter.frequency.setTargetAtTime(280+S.effSpeed*760+S.diveF*380,C.currentTime,0.15);
-  if(S.whooshT>0){ AU.whoosh.gain.setTargetAtTime(0.20,C.currentTime,0.03); AU.bp.frequency.setTargetAtTime(700+Math.random()*500,C.currentTime,0.05); }
-  else AU.whoosh.gain.setTargetAtTime(0,C.currentTime,0.09);
+  const on=S.windOn&&flying;
+  const target=on ? (0.014+S.effSpeed*0.016)*(1-S.spaceF*0.85)*(S.mode==='takeoff'?0.6:1) : 0;
+  AU.bedG.gain.setTargetAtTime(target,C.currentTime,0.45);
+  AU.bedF.frequency.setTargetAtTime(200+S.effSpeed*80,C.currentTime,0.5);
+  AU.hushG.gain.setTargetAtTime(on? S.warpF*0.010 : 0,C.currentTime,0.6);
 }
-function whoosh(){ S.whooshT=0.45; }
+function whoosh(){ /* passing the rooftops no longer whistles — the bed just breathes */ }
 </script>
 
 <script>
@@ -429,6 +444,24 @@ function resize(){
   cv.style.width=W+'px'; cv.style.height=H+'px';
 }
 window.addEventListener('resize',resize); resize();
+
+/* rotate a color's hue by deg degrees (HSL space), keeping its light —
+   the mechanism of the warp's rainbow: the world's own colors cycling */
+function hueRot(col,deg){
+  if(!deg)return col;
+  const c=hexRgb(col); const r=c[0]/255, g=c[1]/255, b=c[2]/255;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2;
+  if(mx===mn)return col;
+  const d=mx-mn; let h;
+  if(mx===r)h=(g-b)/d+(g<b?6:0); else if(mx===g)h=(b-r)/d+2; else h=(r-g)/d+4;
+  h=((h*60+deg)%360+360)%360;
+  const s=l>0.5? d/(2-mx-mn) : d/(mx+mn);
+  const cc=(1-Math.abs(2*l-1))*s, x=cc*(1-Math.abs(((h/60)%2)-1)), m=l-cc/2;
+  let R=0,G=0,B=0;
+  if(h<60){R=cc;G=x;} else if(h<120){R=x;G=cc;} else if(h<180){G=cc;B=x;}
+  else if(h<240){G=x;B=cc;} else if(h<300){R=x;B=cc;} else {R=cc;B=x;}
+  return 'rgb('+Math.round((R+m)*255)+','+Math.round((G+m)*255)+','+Math.round((B+m)*255)+')';
+}
 
 /* ============================== palette resolution ============================== */
 function resolveRP(){
@@ -455,6 +488,16 @@ function resolveRP(){
   RP.farHaze=mixC(RP.far,RP.hazeC,0.55+spaceF*0.2); RP.midHaze=mixC(RP.mid,RP.hazeC,0.30);
   RP.cloudC=grade('#ffffff',RP,1.02); RP.cloudShade=mixC(grade('#e6ddf0',RP),'#5a5470',RP.nightF*0.3);
   RP.sil=mixC(RP.mid,'#0c0618',0.45);
+  /* WARP — the Tempest rainbow, told on the world itself: like the
+     Superzapper's full-screen rainbow flash slowed to a relaxing tempo,
+     sky, sea, terrain, clouds and haze all hue-rotate TOGETHER through
+     the rainbow. Nothing is drawn over the world; the world turns. */
+  if(S.warpF>0.02){ const hd=S.warpHue*S.warpF;
+    RP.sky=RP.sky.map(c=>hueRot(c,hd)); RP.hazeC=hueRot(RP.hazeC,hd); RP.sunC=hueRot(RP.sunC,hd);
+    RP.far=hueRot(RP.far,hd); RP.mid=hueRot(RP.mid,hd); RP.g1=hueRot(RP.g1,hd); RP.g2=hueRot(RP.g2,hd);
+    RP.accent=hueRot(RP.accent,hd); RP.veg=hueRot(RP.veg,hd); RP.vegD=hueRot(RP.vegD,hd); RP.rock=hueRot(RP.rock,hd);
+    RP.farHaze=hueRot(RP.farHaze,hd); RP.midHaze=hueRot(RP.midHaze,hd);
+    RP.cloudC=hueRot(RP.cloudC,hd); RP.cloudShade=hueRot(RP.cloudShade,hd); RP.sil=hueRot(RP.sil,hd); }
   return RP;
 }
 
@@ -487,7 +530,7 @@ const shadows=[]; for(let i=0;i<4;i++)shadows.push({x:rng()*2-1,z:rng(),s:0.5+rn
 const LANDMARKS={
   beach:[{type:'guitar',x:0.38}],
   city:[{type:'statue',x:0.62},{type:'empire',x:-0.34},{type:'chrysler',x:0.16},{type:'bridge',x:-0.04}],
-  jungle:[{type:'tepui',x:0.12}],
+  jungle:[],   /* Paradise Falls is NOT a landmark anymore — it is an unreachable far vista (drawFallsVista); the 'tepui' painter stays in drawSprite but nothing may ever spawn it */
   desert:[{type:'pyramid',x:-0.30}],
   paris:[{type:'eiffel',x:-0.22}],
   aurora:[{type:'cabin',x:0.30}],
@@ -1093,6 +1136,71 @@ function paintGround(RP,hy,gb,cx){
   ctx.restore();
 }
 
+/* ================= PARADISE FALLS: the unreachable vista =================
+   The falls are not a place you can go. The whole complex — sheer tepui
+   wall, one thin full-height fall, the detached finger spire, the tiny
+   house on the rim — lives on the FAR scenic layer, hazy at horizon
+   distance, anchored the way the moon is anchored: turning shifts it by
+   a whisper of parallax (pan × 0.012), and flying at it changes nothing,
+   ever. It can never fill the screen, never be reached, never collide,
+   never be landed on. The flyable jungle stays below it: canopy, river,
+   turquoise pools, tiered cascades. Painted from the UP frames — a misty
+   blue wall at golden day, magenta stone at dusk — seen from afar, always. */
+function drawFallsVista(RP,hy,cx){
+  const wallW=Math.min(W*0.46,H*0.85), wallH=H*0.215;
+  let vx=cx+W*0.15-S.pan*W*0.012;                    /* moon-damped parallax */
+  vx=clamp(vx,cx-W*0.30,cx+W*0.30);
+  const left=vx-wallW/2, top=hy+H*0.012-wallH, base=hy+H*0.012;
+  const haz=0.55;                                    /* distance haze */
+  const faceA=mixC(mixC(RP.rock,'#c07a38',0.45),RP.hazeC,haz), faceB=mixC(mixC(RP.rock,'#2e1608',0.4),RP.hazeC,haz);
+  const duskF=clamp(RP.warmF*(1.15-RP.dayF),0,1);
+  ctx.save();
+  /* ---- the detached finger spire, standing off the wall's right side ---- */
+  const spX=left+wallW*1.13, spW=wallW*0.085, spTop=top+wallH*0.06, spH=wallH*0.94;
+  const sg=ctx.createLinearGradient(spX-spW,0,spX+spW,0);
+  sg.addColorStop(0,mixC(faceA,'#ffd9a0',0.15)); sg.addColorStop(1,faceB);
+  ctx.fillStyle=sg;
+  ctx.beginPath();
+  ctx.moveTo(spX-spW*0.55,base); ctx.lineTo(spX-spW*0.38,spTop+spH*0.22);
+  ctx.lineTo(spX-spW*1.02,spTop+spH*0.14); ctx.lineTo(spX-spW*1.08,spTop); ctx.lineTo(spX+spW*1.08,spTop);
+  ctx.lineTo(spX+spW*1.02,spTop+spH*0.14); ctx.lineTo(spX+spW*0.38,spTop+spH*0.22); ctx.lineTo(spX+spW*0.55,base);
+  ctx.closePath(); ctx.fill();
+  /* ---- the great wall: sheer and flat-topped; strata only as a whisper
+         under the haze — the close-range plaid can never exist here ---- */
+  const wg=ctx.createLinearGradient(left,0,left+wallW,0);
+  wg.addColorStop(0,mixC(faceA,'#ffd9a0',0.20)); wg.addColorStop(0.55,faceA); wg.addColorStop(1,faceB);
+  ctx.fillStyle=wg;
+  const wallPath=()=>{ ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left+wallW,top); ctx.lineTo(left+wallW*0.97,base); ctx.lineTo(left+wallW*0.02,base); ctx.closePath(); };
+  wallPath(); ctx.fill();
+  ctx.save(); wallPath(); ctx.clip();
+  ctx.fillStyle='rgba(30,12,6,0.055)';
+  for(let i=0;i<6;i++){ const yy=top+wallH*(0.14+i*0.15); ctx.fillRect(left,yy,wallW,wallH*0.045); }
+  ctx.fillStyle='rgba(255,220,170,0.05)';
+  for(let i=0;i<5;i++){ const yy=top+wallH*(0.22+i*0.16); ctx.fillRect(left,yy,wallW,wallH*0.03); }
+  if(RP.warmF>0.05){ ctx.fillStyle='rgba(255,150,60,'+(0.13*RP.warmF)+')'; ctx.fillRect(left,top,wallW,wallH); }
+  if(duskF>0.05){ ctx.fillStyle='rgba(198,58,124,'+(0.16*duskF)+')'; ctx.fillRect(left,top,wallW,wallH); }
+  ctx.restore();
+  /* ---- the fall: one thin bright ribbon, the full height of the wall ---- */
+  const wfX=left+wallW*0.46, wfW=Math.max(2.6,wallW*0.02), shimmer=0.72+0.28*Math.sin(S.flyT*2.6);
+  const fg=ctx.createLinearGradient(0,top,0,base);
+  fg.addColorStop(0,'rgba(240,252,255,'+(0.92*shimmer)+')'); fg.addColorStop(0.8,'rgba(206,240,255,'+(0.60*shimmer)+')'); fg.addColorStop(1,'rgba(206,240,255,0.08)');
+  ctx.fillStyle=fg; ctx.fillRect(wfX-wfW/2,top+wallH*0.02,wfW,wallH*0.98);
+  /* ---- the green rim — and the tiny house at its edge, beside the falls ---- */
+  ctx.fillStyle=mixC(RP.veg,RP.hazeC,haz*0.8);
+  ctx.fillRect(left-wallW*0.01,top-wallH*0.012,wallW*1.02,wallH*0.016);
+  const hw=Math.max(3,wallW*0.016), hx=wfX-wallW*0.30, hyy=top-wallH*0.012;
+  ctx.fillStyle=mixC(RP.rock,'#120802',0.55);
+  ctx.fillRect(hx-hw/2,hyy-hw*0.8,hw,hw*0.8);
+  ctx.beginPath(); ctx.moveTo(hx-hw*0.7,hyy-hw*0.8); ctx.lineTo(hx,hyy-hw*1.25); ctx.lineTo(hx+hw*0.7,hyy-hw*0.8); ctx.closePath(); ctx.fill();
+  /* ---- mist at the base: the falls dissolve into the valley haze ---- */
+  ctx.globalAlpha=0.42;
+  const mw=wallW*0.5;
+  ctx.drawImage(softBlobW,wfX-mw/2,base-mw*0.16,mw,mw*0.30);
+  ctx.drawImage(softBlobW,left+wallW*0.1,base-mw*0.10,mw*0.8,mw*0.22);
+  ctx.drawImage(softBlobW,spX-mw*0.3,base-mw*0.09,mw*0.6,mw*0.18);
+  ctx.restore();
+}
+
 function drawProfile(prof,RP,hy,baseOff,par,color){
   const tile=W*1.5, off=((S.pan*par)%1+1)%1;
   const top=hy+baseOff-H*0.17, bot=hy+baseOff+H*0.2;
@@ -1299,6 +1407,9 @@ function render(){
   /* ---- distant + mid silhouette layers ---- */
   drawProfile(PROFILES[S.biomeFrom].far,RP,hy,H*0.015,0.10,RP.farHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].far,RP,hy,H*0.015,0.10,mixCa(RP.far,RP.hazeC,0.55,S.biomeBlend));
+  /* Paradise Falls: the unreachable vista sits between the far and mid
+     ridges — the valley layers overlap its base, the haze keeps it far */
+  if(S.biome==='jungle'&&inSpace<0.5)drawFallsVista(RP,hy,cx);
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].mid,RP,hy,H*0.045,0.22,mixCa(RP.mid,RP.hazeC,0.3,S.biomeBlend));
 
@@ -1381,8 +1492,12 @@ function render(){
     ctx.beginPath(); ctx.ellipse(px,py,10,2.8,0,0,TAU); ctx.fill();
     ctx.beginPath(); ctx.moveTo(px-2,py); ctx.lineTo(px-9*plane.dir,py-6); ctx.lineTo(px-5*plane.dir,py); ctx.closePath(); ctx.fill(); }
 
-  /* ---- wind streaks: the air itself moving ---- */
-  const vpx=cx-S.lookYaw*W*0.1, vpy=H*0.44-S.lookPitch*H*0.05;
+  /* ---- wind streaks: the air itself moving. The vanishing point
+         FOLLOWS THE STEERING — bank and it slides sideways, climb or dive
+         and it rides up or down: you always stream out of where you're
+         pointed. In warp these become the Tempest web: thin NEON lines
+         in cycling vector colors rushing past toward you. ---- */
+  const vpx=cx-S.lookYaw*W*0.1+S.bankD*W*0.12, vpy=H*0.44-S.lookPitch*H*0.05-S.pitchD*H*0.11;
   const stA=((0.07+S.effSpeed*0.36+S.skimF*0.10)*(1-inSpace*0.92)+S.warpF*0.30)*(S.mode==='fly'||S.mode==='takeoff'?1:0.25);
   if(stA>0.02){ ctx.strokeStyle='rgba(255,255,255,1)'; ctx.lineCap='round';
     const wLen=1+S.warpF*3.4, wChr=S.warpF;
@@ -1393,14 +1508,9 @@ function render(){
       const a1=stA*clamp(p.r*1.6,0,1);
       ctx.globalAlpha=a1;
       ctx.lineWidth=0.8+p.r*1.6+S.warpF*0.7;
+      if(wChr>0.25)ctx.strokeStyle='hsla('+(((S.warpHue*2+p.a*82+p.r*160)%360+360)%360)+',95%,70%,1)';
       ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x1+ca*len,y1+sa*len*0.8); ctx.stroke();
-      if(wChr>0.25){ /* soft chromatic fringes as the light smears past */
-        const ox=-sa*2.4*wChr, oy=ca*2.4*wChr*0.8;
-        ctx.globalAlpha=a1*0.30; ctx.strokeStyle='rgba(255,90,90,1)';
-        ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x1+ox+ca*len,y1+oy+sa*len*0.8); ctx.stroke();
-        ctx.strokeStyle='rgba(90,210,255,1)';
-        ctx.beginPath(); ctx.moveTo(x1-ox,y1-oy); ctx.lineTo(x1-ox+ca*len,y1-oy+sa*len*0.8); ctx.stroke();
-        ctx.strokeStyle='rgba(255,255,255,1)'; } }
+      if(wChr>0.25)ctx.strokeStyle='rgba(255,255,255,1)'; }
     ctx.globalAlpha=1; }
 
   /* ---- trails ---- */
@@ -1464,24 +1574,10 @@ function render(){
       ctx.fillStyle=rg2; ctx.fillRect(0,ry-rh,W,rh*2); }
     ctx.restore(); }
 
-  /* ---- WARP signature: the Tempest tunnel — a soft vortex of rainbow
-         light rotating around the direction of travel, like the bonus
-         tunnel between levels. Present, never extreme: hues drift slowly,
-         alpha stays gentle, nothing strobes. Steering rotates inside it:
-         banking spins the field with you (warpRot follows the bank) and
-         climbing or diving tilts its axis (the squash follows pitch). ---- */
-  if(S.warpF>0.02){
-    const wcx=cx-S.lookYaw*W*0.10, wcy=H*0.44-S.lookPitch*H*0.05-S.pitchD*H*0.10;
-    const squash=clamp(0.86-S.pitchD*0.16,0.60,1.02);
-    const hue0=((S.flyT*16)%360+360)%360;
-    ctx.save(); ctx.globalCompositeOperation='screen';
-    ctx.translate(wcx,wcy); ctx.rotate(S.warpRot);
-    for(let i=0;i<7;i++){ const r=H*(0.07+i*0.085)*(1+S.warpF*0.12);
-      const hue=(hue0+i*36)%360;
-      ctx.strokeStyle='hsla('+hue+',92%,66%,'+(0.13*S.warpF)+')';
-      ctx.lineWidth=H*0.016; ctx.lineCap='round';
-      ctx.beginPath(); ctx.ellipse(0,0,r,Math.max(4,r*squash),S.warpRot*0.4,i*0.55,i*0.55+4.15); ctx.stroke(); }
-    ctx.restore(); }
+  /* (There is deliberately NO warp overlay: no rings, no vortex, no
+     circles. The warp lives in the world's own hue-cycled colors and in
+     the neon streaks streaming out of the vanishing point — see
+     resolveRP and the wind-streak pass. Owner's ruling.) */
 
   /* ---- screen-space weather & washes ---- */
   if(S.wx.rain>0.03&&inSpace<0.4){ ctx.strokeStyle='rgba(200,220,245,'+(0.4*S.wx.rain)+')'; ctx.lineWidth=1.1;
@@ -1585,16 +1681,37 @@ function update(dt){
 
   const flying=S.mode==='fly';
   /* ---- idle -> spectator drift ---- */
-  if(flying){ if(S.mouseGas||keys.gas)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
+  /* a HELD touch is activity, even when the finger rests perfectly still:
+     a still finger fires no move events, so event-driven wakefulness used
+     to let the spectator drift seize the flight 15s into a held push */
+  let touchHeld=false; pointers.forEach(p=>{ if(p.type!=='mouse')touchHeld=true; });
+  if(flying){ if(S.mouseGas||keys.gas||touchHeld)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
   S.panelIdle+=dt; dotEl.classList.toggle('faint',S.panelIdle>4);
   if(S.panelAuto&&S.flyT>S.panelAutoAt){ if(!S.panelPinned)closePanel(); S.panelAuto=false; }
 
   /* ---- steering: the finger IS the flight ---- */
   const steerHeld=pointers.size>0&&steerId!==null;
+  const spT=steerId!==null?pointers.get(steerId):null;
+  const steerTouch=!!(spT&&spT.type!=='mouse');
   if(flying){
     if(S.drift){
       S.bank=lerp(S.bank,Math.sin(t*0.13)*0.55,dt*0.8);
       S.pitch=lerp(S.pitch,Math.sin(t*0.09+1.3)*0.34,dt*0.8);
+    } else if(steerTouch){
+      /* THE HELD FINGER IS THE STICK — the touch twin of press-and-point.
+         Steering used to be integrated from pointermove DELTAS, so the
+         command lived in the event stream: a finger resting still (or a
+         long push held at one distance) fires no move events, and nothing
+         re-applied the held push — the flight coasted on stale deltas and
+         then the idle drift took it. Now the finger's last known OFFSET
+         from where it landed is the command, re-applied EVERY frame from
+         stored state: push up and hold = keep climbing, push right and
+         hold = keep banking, ease back toward the landing spot = settle.
+         The same offset distance is the throttle (see GAS below). */
+      const R=Math.max(1,Math.min(W,H)*0.42);
+      const tx=clamp((spT.x-spT.sx)/R,-1,1), ty=clamp((spT.sy-spT.y)/R,-1,1);
+      const mr=dt*(2.6-1.1*S.warpF)*(1-S.warpF*0.45);
+      S.bank=lerp(S.bank,tx,mr); S.pitch=lerp(S.pitch,ty,mr);
     } else if(!steerHeld){
       if(S.mouseGas){ /* PRESS AND POINT: while the button is held, the last
          known cursor position flies the view EVERY frame — eased, clamped,
@@ -1630,7 +1747,7 @@ function update(dt){
   if(steerId!==null){ const sp=pointers.get(steerId);
     if(sp&&sp.type!=='mouse')
       gasTarget=clamp(Math.hypot(sp.x-sp.sx,sp.y-sp.sy)/(Math.min(W,H)*0.42),0,1); }
-  pointers.forEach((p,id)=>{ if(id!==steerId&&p.type!=='mouse')gasTarget=1; });
+  pointers.forEach((p,id)=>{ if(id!==steerId&&p.type!=='mouse'&&!suppressed.has(id))gasTarget=1; });
   if(keys.gas||S.mouseGas)gasTarget=1;
   const gasRate=(gasTarget>S.throttle?0.8:0.45)*dt;
   S.throttle=clamp(S.throttle+clamp(gasTarget-S.throttle,-gasRate,gasRate),0,1);
@@ -1788,9 +1905,10 @@ function update(dt){
   /* UP from the ground is takeoff */
   if(S.mode==='landed'&&keys.up){ S.mode='takeoff'; landT=0; takeoffBtn.classList.remove('show'); }
 
-  /* the warp's rainbow field slowly rotates on its own — and spins WITH
-     the pilot: banking in warp turns the whole tunnel around you */
-  S.warpRot+=dt*S.warpF*(0.14+S.bankD*0.6);
+  /* the warp's rainbow: a slow hue cycle the whole WORLD breathes through
+     (resolveRP rotates the palette by this angle while warpF is up) —
+     one full trip around the rainbow takes ~24 unhurried seconds */
+  S.warpHue=(S.warpHue+dt*15*S.warpF)%360;
 
   /* hard guards: no steering/throttle/altitude value may ever reach the
      renderer non-finite or out of range — one bad number must never be
@@ -1799,7 +1917,7 @@ function update(dt){
   if(!Number.isFinite(S.alt))S.alt=0.42; if(!Number.isFinite(S.throttle))S.throttle=0;
   if(!Number.isFinite(S.effSpeed))S.effSpeed=0.62; if(!Number.isFinite(S.pan))S.pan=0;
   if(!Number.isFinite(S.warpF))S.warpF=0; if(!Number.isFinite(S.spaceF))S.spaceF=0;
-  if(!Number.isFinite(S.warpRot))S.warpRot=0;
+  if(!Number.isFinite(S.warpHue))S.warpHue=0;
   S.bank=clamp(S.bank,-1,1); S.pitch=clamp(S.pitch,-1,1);
   S.alt=clamp(S.alt,0,1.32); S.throttle=clamp(S.throttle,0,1);
 
@@ -1824,9 +1942,13 @@ window.addEventListener('pointerdown',e=>{
      mid-hold — no stuck gas, no lost release, clean recovery. */
   if(e.pointerType==='mouse'){ if(e.button===0)S.mouseGas=true;
     mouseTX=clamp((e.clientX/Math.max(1,W)-0.5)*1.9,-1,1);
-    mouseTY=clamp((0.5-e.clientY/Math.max(1,H))*1.9,-1,1); mouseFreshT=S.flyT;
-    try{ cv.setPointerCapture(e.pointerId); }catch(err){} }
+    mouseTY=clamp((0.5-e.clientY/Math.max(1,H))*1.9,-1,1); mouseFreshT=S.flyT; }
   else if(steerId===null)steerId=e.pointerId;
+  /* capture EVERY pointer — touch included — to the canvas: on iOS a held
+     finger that wanders (or a gesture Safari tries to reinterpret) must
+     keep delivering its moves and, above all, its release to us, never a
+     silent pointercancel that drops the flight mid-hold */
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
 },{passive:true});
 window.addEventListener('pointermove',e=>{
   if(e.pointerType==='mouse'){
@@ -1842,19 +1964,27 @@ window.addEventListener('pointermove',e=>{
   const soft=1-S.warpF*0.45;   /* inside warp, steering turns soft and dreamy */
   const isLook=(e.pointerId!==steerId)||lookHeld;
   if(isLook){ S.lookYaw=clamp(S.lookYaw+dx*0.0062*soft,-3.05,3.05); S.lookPitch=clamp(S.lookPitch+dy*0.005*soft,-1.1,1.1); }
-  else{
-    S.bank=clamp(S.bank+dx*0.0042*soft,-1,1);
-    S.pitch=clamp(S.pitch-dy*0.0042*soft,-1,1);
-    S.pan+=dx*0.0016*soft;
-  }
+  /* the STEER finger no longer steers here: its position is stored above
+     and update() flies that held offset every frame, so a finger resting
+     perfectly still keeps its command — no move events required */
 },{passive:true});
 function endPointer(e){ pointers.delete(e.pointerId); suppressed.delete(e.pointerId);
   if(e.pointerType==='mouse')S.mouseGas=false;
   if(e.pointerId===steerId){ steerId=null;
     for(const id of pointers.keys()){ const rp=pointers.get(id);
-      if(rp&&rp.type==='mouse')continue;   /* the mouse never becomes the steer finger */
-      steerId=id; break; } } }
+      if(!rp||rp.type==='mouse'||suppressed.has(id))continue;   /* the mouse never becomes the steer finger */
+      steerId=id; rp.sx=rp.x; rp.sy=rp.y;   /* re-anchor: the new steer finger's push starts from where it rests — no jump in stick or gas */
+      break; } } }
 window.addEventListener('pointerup',endPointer); window.addEventListener('pointercancel',endPointer);
+/* iOS insurance, on top of touch-action:none and pointer capture: while
+   flying, a touch-drag on the sky must never be reinterpreted by Safari
+   as a page scroll or pinch gesture — that takeover is what fires
+   pointercancel and drops a held finger without a release. Panel touches
+   keep their native scrolling. */
+document.addEventListener('touchmove',e=>{
+  if(document.body.classList.contains('flying')&&!e.target.closest('#panel,.win'))e.preventDefault();
+},{passive:false});
+document.addEventListener('gesturestart',e=>{ e.preventDefault(); },{passive:false});
 /* if the pointer slips out of the window mid-hold without a release ever
    reaching us, never leave the gas stuck on */
 document.addEventListener('mouseleave',()=>{ S.mouseGas=false; });
@@ -1892,7 +2022,8 @@ wireChips('timeChips',ch=>{ const v=ch.dataset.time;
 wireChips('worldChips',ch=>{ const v=ch.dataset.world;
   if(v==='auto'){ S.worldMode='auto'; S.tourT=0; }
   else { S.worldMode='lock'; jumpTo(v); } });
-function syncWindUI(){ $('soundBtn').classList.toggle('on',S.windOn); $('soundBtn').firstChild.textContent=S.windOn?'🔊':'🔇'; }
+function syncWindUI(){ $('soundBtn').classList.toggle('on',S.windOn); $('soundBtn').firstChild.textContent=S.windOn?'🔊':'🔇'; $('soundLine').textContent='Sound: '+(S.windOn?'On':'Off'); }
+$('soundLine').addEventListener('click',()=>{ wake(); audioInit(); S.windOn=!S.windOn; syncWindUI(); });
 dotEl.addEventListener('click',()=>{ wake(); audioInit(); togglePanel(); });
 $('panelClose').addEventListener('click',()=>{ wake(); closePanel(); });
 panel.addEventListener('pointerdown',()=>{ S.panelPinned=true; wake(); });
