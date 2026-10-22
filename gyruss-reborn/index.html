@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Gyruss Reborn</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #eaf6ff;
+        --dim: #9db8d6;
+        --cyan: #37e6ff;
+        --mag: #ff4fd8;
+        --yel: #ffd94a;
+        --panel: rgba(6, 12, 32, 0.88);
+        --line: rgba(55, 230, 255, 0.45);
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: #01020a;
+        color: var(--ink);
+        font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      #stage {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+      }
+      canvas#game {
+        display: block;
+        background: radial-gradient(circle at 50% 46%, #0a1030 0%, #04061a 55%, #01020a 100%);
+        touch-action: none;
+      }
+      /* ---------- intro / title overlay ---------- */
+      #intro {
+        position: fixed; inset: 0; z-index: 20;
+        display: flex; align-items: center; justify-content: center;
+        padding: 14px;
+        background: rgba(1, 2, 10, 0.45);
+        overflow-y: auto;
+      }
+      #intro.hidden { display: none; }
+      .card {
+        width: min(620px, 96vw);
+        max-height: 96dvh; overflow-y: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 20px 22px 18px;
+        box-shadow: 0 0 44px rgba(55, 230, 255, 0.22), inset 0 0 60px rgba(20, 40, 120, 0.25);
+        text-align: center;
+      }
+      .title {
+        font-family: "Arial Black", "Trebuchet MS", sans-serif;
+        font-size: clamp(44px, 11vw, 84px);
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        line-height: 0.95;
+        margin: 2px 0 0;
+        color: var(--yel);
+        text-shadow:
+          3px 3px 0 #ff7b1c,
+          6px 6px 0 #e6263c,
+          9px 9px 0 #7a1fd0,
+          12px 12px 0 rgba(30, 60, 220, 0.85),
+          0 0 26px rgba(255, 217, 74, 0.35);
+        transform: skewX(-6deg);
+      }
+      .subtitle {
+        margin: 10px 0 2px;
+        font-size: clamp(13px, 3.4vw, 17px);
+        letter-spacing: 0.34em;
+        color: var(--cyan);
+        font-weight: 700;
+      }
+      .tagline { color: var(--dim); font-size: 14px; margin: 6px 0 14px; }
+      .card h2 {
+        font-size: 13px; letter-spacing: 0.28em; color: var(--mag);
+        margin: 16px 0 8px; text-transform: uppercase;
+      }
+      .card p.howto { font-size: 14.5px; line-height: 1.5; color: var(--ink); margin: 4px auto 2px; max-width: 52ch; text-align: left; }
+      .card p.howto b { color: var(--yel); }
+      .controls {
+        margin: 4px auto; border-collapse: collapse; text-align: left;
+        font-size: 14px;
+      }
+      .controls td { padding: 3px 10px 3px 0; vertical-align: top; }
+      .controls td.k { color: var(--cyan); font-weight: 700; white-space: nowrap; }
+      #scores { margin: 6px auto 2px; border-collapse: collapse; font-size: 14px; min-width: 240px; }
+      #scores td, #scores th { padding: 2px 12px; text-align: left; }
+      #scores th { color: var(--cyan); letter-spacing: 0.12em; font-size: 12px; }
+      #scores td.pts { text-align: right; font-variant-numeric: tabular-nums; }
+      .empty-scores { color: var(--dim); font-size: 13px; }
+      #startBtn {
+        margin-top: 16px;
+        font-family: inherit; font-weight: 900; letter-spacing: 0.14em;
+        font-size: 19px; color: #081020;
+        background: linear-gradient(180deg, #ffe97a, #ffb52e);
+        border: 0; border-radius: 10px;
+        padding: 13px 38px; cursor: pointer;
+        box-shadow: 0 4px 0 #a86a00, 0 0 24px rgba(255, 200, 60, 0.45);
+      }
+      #startBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a86a00; }
+      .fine { color: var(--dim); font-size: 12px; margin-top: 12px; line-height: 1.5; }
+      /* ---------- initials entry ---------- */
+      #entry {
+        position: fixed; inset: 0; z-index: 30;
+        display: none; align-items: center; justify-content: center;
+        background: rgba(1, 2, 10, 0.72); padding: 14px;
+      }
+      #entry.show { display: flex; }
+      #entry .card { width: min(380px, 94vw); }
+      #entry h2 { color: var(--yel); margin-top: 4px; }
+      #initials {
+        font-family: "Courier New", monospace; font-weight: 700;
+        font-size: 30px; letter-spacing: 0.5em; text-align: center;
+        width: 170px; padding: 8px 4px 8px 14px; text-transform: uppercase;
+        background: #050a22; color: var(--yel);
+        border: 1px solid var(--line); border-radius: 8px;
+      }
+      #saveScoreBtn {
+        margin-top: 14px; font-family: inherit; font-weight: 800; letter-spacing: 0.1em;
+        font-size: 16px; color: #081020; background: linear-gradient(180deg, #8ff3ff, #2ec5e8);
+        border: 0; border-radius: 9px; padding: 11px 30px; cursor: pointer;
+        box-shadow: 0 4px 0 #146a86;
+      }
+      /* ---------- corner chrome ---------- */
+      .cornerBtn {
+        position: fixed; z-index: 40;
+        font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+        color: var(--cyan); background: rgba(5, 12, 34, 0.78);
+        border: 1px solid var(--line); border-radius: 9px;
+        padding: 8px 12px; cursor: pointer;
+      }
+      #qrBtn { left: calc(10px + env(safe-area-inset-left)); bottom: calc(10px + env(safe-area-inset-bottom)); }
+      #muteBtn { right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); }
+      #hubLink {
+        position: fixed; z-index: 40;
+        right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+        color: rgba(157, 184, 214, 0.66); text-decoration: none;
+        font-size: 11px; letter-spacing: 0.22em; font-weight: 700;
+      }
+      #qrOverlay {
+        position: fixed; inset: 0; z-index: 50; display: none;
+        align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+        background: rgba(1, 2, 10, 0.92); padding: 20px; text-align: center;
+      }
+      #qrOverlay.show { display: flex; }
+      #qrBox { background: #fff; padding: 14px; border-radius: 12px; line-height: 0; }
+      #qrOverlay .url { color: var(--cyan); font-size: 14px; word-break: break-all; }
+      #qrOverlay .hint { color: var(--dim); font-size: 13px; }
+      /* ---------- touch controls ---------- */
+      #touchUI { position: fixed; inset: auto 0 0 0; z-index: 15; display: none; pointer-events: none; }
+      body.touch #touchUI.on { display: block; }
+      .tbtn {
+        pointer-events: auto; position: absolute; bottom: calc(64px + env(safe-area-inset-bottom));
+        width: 74px; height: 74px; border-radius: 50%;
+        border: 1.5px solid var(--line); background: rgba(10, 22, 54, 0.55);
+        color: var(--cyan); font-size: 30px; font-weight: 900;
+        display: flex; align-items: center; justify-content: center;
+        touch-action: none;
+      }
+      .tbtn:active { background: rgba(55, 230, 255, 0.3); }
+      #rotL { left: 14px; }
+      #rotR { left: 102px; }
+      #fireBtn {
+        right: 14px; width: 88px; height: 88px; font-size: 15px; letter-spacing: 0.08em;
+        color: #ffd94a; border-color: rgba(255, 217, 74, 0.6);
+        bottom: calc(56px + env(safe-area-inset-bottom));
+      }
+      #fireBtn:active { background: rgba(255, 180, 40, 0.35); }
+      @media (max-width: 560px) {
+        .card { padding: 16px 14px 14px; }
+        .controls td.k { white-space: normal; }
+        #intro { padding: 58px 10px 64px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="game"></canvas></div>
+
+    <!-- touch controls -->
+    <div id="touchUI">
+      <div class="tbtn" id="rotL" aria-label="Rotate left">&#9664;</div>
+      <div class="tbtn" id="rotR" aria-label="Rotate right">&#9654;</div>
+      <div class="tbtn" id="fireBtn" aria-label="Fire">FIRE</div>
+    </div>
+
+    <!-- intro / title -->
+    <div id="intro">
+      <div class="card">
+        <div class="title">GYRUSS</div>
+        <div class="subtitle">REBORN</div>
+        <p class="tagline">Konami&rsquo;s 1983 tube warp shooter. Warp from Neptune to Earth &mdash; clear every wave, or the rim is your grave.</p>
+
+        <h2>How to play</h2>
+        <p class="howto">Your ship rides the <b>rim of the warp tube</b> and rotates a full 360&deg;. Enemy fighters burst from the center vortex, spiral out into formation around the core, then dive at the rim &mdash; shoot them down before they reach you. Fight through the warps <b>Neptune &rarr; Uranus &rarr; Saturn &rarr; Jupiter &rarr; Mars &rarr; Earth</b>, then the whole run repeats, harder.</p>
+        <p class="howto">Watch for the <b>satellite pod</b> drifting mid-field: destroy the pod&rsquo;s core to win <b>DOUBLE FIRE</b> &mdash; twin parallel shots that last until you die &mdash; and big points with it. Its two orbiting satellites can be picked off for bonus points. <b>Meteors are indestructible</b> &mdash; dodge them. On <b>CHANCE STAGES</b> the formations stream past for target practice: no enemy fire, no deaths, pure bonus points &mdash; destroy them all for the perfect bonus.</p>
+
+        <h2>Controls</h2>
+        <table class="controls">
+          <tr><td class="k">&#8592; / &#8594; or A / D</td><td>Rotate around the rim (hold for continuous rotation)</td></tr>
+          <tr><td class="k">Mouse</td><td>Move to steer the ship around the rim; click or hold to fire</td></tr>
+          <tr><td class="k">SPACE</td><td>Fire</td></tr>
+          <tr><td class="k">Touch</td><td>Drag around the tube to rotate, hold &#9664; &#9654; to spin, tap &amp; hold FIRE</td></tr>
+          <tr><td class="k">ENTER</td><td>Start game</td></tr>
+          <tr><td class="k">M</td><td>Sound on / off</td></tr>
+        </table>
+
+        <h2>High scores</h2>
+        <div id="scoreWrap"><p class="empty-scores">No scores yet this session &mdash; be the first.</p></div>
+
+        <button id="startBtn">&#9654; START GAME</button>
+        <p class="fine">Extra ship at 60,000 points. Sound is effects only.<br />A faithful tribute to the 1983 Konami original.</p>
+      </div>
+    </div>
+
+    <!-- initials entry -->
+    <div id="entry">
+      <div class="card">
+        <h2>New high score!</h2>
+        <p class="howto" style="text-align:center">Enter your initials, pilot:</p>
+        <input id="initials" maxlength="3" autocomplete="off" autocapitalize="characters" spellcheck="false" value="AAA" />
+        <br />
+        <button id="saveScoreBtn">SAVE</button>
+      </div>
+    </div>
+
+    <button class="cornerBtn" id="qrBtn" aria-label="Show QR code">QR</button>
+    <button class="cornerBtn" id="muteBtn" aria-label="Toggle sound">SOUND ON</button>
+    <a id="hubLink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+
+    <div id="qrOverlay">
+      <div id="qrBox"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAABoUlEQVR42u1bS67EIAyLHgfgSFy9R+oBKjGEfICu5knvSV44C9pFVrUcO2ZG+rd1CVvZytZftd7i1fqjj9JFao/DqozWH/m62Po/rYpWMeSk6dsl+zEQ1LqJFhBaxqgWjJtvfijzGtFCROsRw0iHoHOLaKGiNZAZGGlVVbBKbiHr1uCWvS2XQd1CQys94V36+6AnBEPrqBCvwbKrnmafHwtFt4xMYQLHU9FSRtkQrEQLSrcClM1WzBFpWkbdQtKtSSanlWHU0yK6YyRaOGi5Rk21esLGS4l8g5MQi1tvRiXfUsGIFoYnTDzWgmVbFnUL1BMewaAh6DAKuYXmCU23LNVwoCx+WpsX0cKZhHUFuk/edAl1CxGtCN2P9St1i6kumG4Zo45J6DCuy0l+LCxu5RBsa1mmbgF6whnEp3i5b/cVmakuErf2BWs7MtVl8oSVZYT/67kiuxNcYSHRArw7nuPQcsIM4jkJ0TyhnNfG1C18tHK32tSKNybA3Frb8XtjJlqAutWWgsmRIhItwN885ca82Xh6QsR9i3/xYCtb/6z1Ay0iMUi277kcAAAAAElFTkSuQmCC" alt="QR code linking to https://geemondc.github.io/gyruss-reborn/" width="232" height="232" /></div>
+      <div class="url">https://geemondc.github.io/gyruss-reborn/</div>
+      <div class="hint">Scan to play on another device &mdash; tap anywhere to close</div>
+    </div>
+
+    <script>
+    "use strict";
+    /* ================================================================
+       GYRUSS REBORN — a faithful recreation of Konami's 1983 arcade
+       tube shooter. Polar-space engine: the ship rides the rim, the
+       enemy bursts from the vortex at the center.
+       Scoring (arcade): fighter 100 · full formation bonus 1,000 ·
+       satellite pod core 1,500 · chance-stage ship 100 · perfect
+       chance bonus 10,000 · extra ship at 60,000 · 3 ships to start.
+       ================================================================ */
+
+    var TAU = Math.PI * 2;
+    function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function angDiff(a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+    function rand(a, b) { return a + Math.random() * (b - a); }
+    function easeOut(t) { return 1 - (1 - t) * (1 - t); }
+
+    /* ---------------- canvas ---------------- */
+    var canvas = document.getElementById("game");
+    var ctx = canvas.getContext("2d");
+    var VW = 0, VH = 0, CX = 0, CY = 0, RIM = 0, DPR = 1;
+
+    function resize() {
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      VW = window.innerWidth; VH = window.innerHeight;
+      canvas.style.width = VW + "px";
+      canvas.style.height = VH + "px";
+      canvas.width = Math.round(VW * DPR);
+      canvas.height = Math.round(VH * DPR);
+      CX = VW / 2; CY = VH / 2 + VH * 0.02;
+      RIM = Math.min(VW, VH) * 0.415;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    /* ---------------- pre-rendered sprites (<=256px) ---------------- */
+    function makeSprite(size, draw) {
+      var c = document.createElement("canvas");
+      c.width = size; c.height = size;
+      draw(c.getContext("2d"), size);
+      return c;
+    }
+    function poly(g, pts, fill, stroke, lw) {
+      g.beginPath();
+      g.moveTo(pts[0], pts[1]);
+      for (var i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+      g.closePath();
+      if (fill) { g.fillStyle = fill; g.fill(); }
+      if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw || 2; g.stroke(); }
+    }
+    /* player ship — nose points UP (-y); drawn in Gyruss yellow/red */
+    var sprShip = makeSprite(128, function (g, s) {
+      var c = s / 2;
+      poly(g, [c, 6, c + 15, 44, c + 34, 96, c + 14, 84, c, 100, c - 14, 84, c - 34, 96, c - 15, 44], "#ffd94a", "#ff7b1c", 3);
+      poly(g, [c, 22, c + 7, 52, c, 66, c - 7, 52], "#37e6ff", null);
+      g.fillStyle = "#e6263c";
+      g.fillRect(c - 30, 88, 10, 22); g.fillRect(c + 20, 88, 10, 22);
+    });
+    var sprShipGhost = makeSprite(128, function (g, s) {
+      var c = s / 2;
+      g.globalAlpha = 0.4;
+      poly(g, [c, 6, c + 15, 44, c + 34, 96, c + 14, 84, c, 100, c - 14, 84, c - 34, 96, c - 15, 44], "#9db8d6", "#eaf6ff", 3);
+    });
+    /* enemy fighter — nose points +x (direction of travel) */
+    function fighterSprite(body, trim) {
+      return makeSprite(128, function (g, s) {
+        var c = s / 2;
+        poly(g, [c + 46, c, c + 6, c - 13, c - 26, c - 40, c - 16, c - 6, c - 40, c, c - 16, c + 6, c - 26, c + 40, c + 6, c + 13], body, trim, 3);
+        poly(g, [c + 22, c, c + 2, c - 6, c + 2, c + 6], "#ffffff", null);
+        g.fillStyle = trim;
+        g.beginPath(); g.arc(c - 8, c, 6, 0, TAU); g.fill();
+      });
+    }
+    var sprFighters = [
+      fighterSprite("#3fd2ff", "#0b5f8a"),  /* Neptune — cyan */
+      fighterSprite("#5dff8f", "#0d7a3d"),  /* Uranus — green */
+      fighterSprite("#ffe14d", "#a86a00"),  /* Saturn — yellow */
+      fighterSprite("#ff9a3d", "#a83c00"),  /* Jupiter — orange */
+      fighterSprite("#ff4d5e", "#8a0d1e"),  /* Mars — red */
+      fighterSprite("#ff4fd8", "#8a0d6e")   /* Earth — magenta */
+    ];
+    var sprSun = makeSprite(128, function (g, s) {
+      var c = s / 2;
+      var gr = g.createRadialGradient(c, c, 4, c, c, c - 4);
+      gr.addColorStop(0, "#fff6c8"); gr.addColorStop(0.45, "#ffd94a");
+      gr.addColorStop(0.8, "#ff7b1c"); gr.addColorStop(1, "rgba(255,90,20,0)");
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(c, c, c - 4, 0, TAU); g.fill();
+      g.fillStyle = "#fffbe8";
+      g.beginPath(); g.arc(c, c, 13, 0, TAU); g.fill();
+    });
+    var sprSat = makeSprite(64, function (g, s) {
+      var c = s / 2;
+      var gr = g.createRadialGradient(c - 4, c - 4, 2, c, c, c - 3);
+      gr.addColorStop(0, "#eaffff"); gr.addColorStop(0.55, "#37e6ff"); gr.addColorStop(1, "#0b5f8a");
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(c, c, c - 4, 0, TAU); g.fill();
+    });
+    var sprMeteor = makeSprite(128, function (g, s) {
+      var c = s / 2;
+      g.fillStyle = "#8d8fa3"; g.strokeStyle = "#565869"; g.lineWidth = 3;
+      g.beginPath();
+      var n = 9;
+      for (var i = 0; i < n; i++) {
+        var a = (i / n) * TAU, rr = c - 8 - ((i * 37) % 14);
+        var x = c + Math.cos(a) * rr, y = c + Math.sin(a) * rr;
+        if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = "rgba(40,42,58,0.55)";
+      g.beginPath(); g.arc(c - 14, c - 8, 11, 0, TAU); g.fill();
+      g.beginPath(); g.arc(c + 16, c + 12, 8, 0, TAU); g.fill();
+      g.beginPath(); g.arc(c + 4, c - 20, 6, 0, TAU); g.fill();
+    });
+    function planetSprite(kind) {
+      return makeSprite(256, function (g, s) {
+        var c = s / 2, r = c - 34;
+        var cols = {
+          neptune: ["#7db8ff", "#2b5fe3", "#123a9e"],
+          uranus: ["#c8fff2", "#5fd8c8", "#1f8a7d"],
+          saturn: ["#ffe9b0", "#d8a94e", "#8a5f14"],
+          jupiter: ["#ffd9a8", "#d87f3d", "#8a3d14"],
+          mars: ["#ffb08a", "#e3541e", "#7d2408"],
+          earth: ["#a8e6ff", "#2b7fe3", "#0d4d8a"]
+        }[kind];
+        var gr = g.createRadialGradient(c - r * 0.4, c - r * 0.4, r * 0.15, c, c, r);
+        gr.addColorStop(0, cols[0]); gr.addColorStop(0.6, cols[1]); gr.addColorStop(1, cols[2]);
+        g.fillStyle = gr;
+        g.beginPath(); g.arc(c, c, r, 0, TAU); g.fill();
+        g.save();
+        g.beginPath(); g.arc(c, c, r, 0, TAU); g.clip();
+        if (kind === "jupiter") {
+          g.fillStyle = "rgba(255,255,255,0.20)";
+          [-0.55, -0.15, 0.3].forEach(function (o) { g.fillRect(c - r, c + o * r - 5, r * 2, 10); });
+          g.fillStyle = "rgba(230,60,40,0.85)";
+          g.beginPath(); g.ellipse(c + r * 0.32, c + r * 0.28, r * 0.22, r * 0.13, 0, 0, TAU); g.fill();
+        } else if (kind === "earth") {
+          g.fillStyle = "rgba(60,220,120,0.75)";
+          g.beginPath(); g.ellipse(c - r * 0.3, c - r * 0.15, r * 0.34, r * 0.22, 0.6, 0, TAU); g.fill();
+          g.beginPath(); g.ellipse(c + r * 0.35, c + r * 0.35, r * 0.26, r * 0.16, -0.4, 0, TAU); g.fill();
+          g.fillStyle = "rgba(255,255,255,0.5)";
+          g.beginPath(); g.ellipse(c + r * 0.05, c - r * 0.45, r * 0.4, r * 0.1, 0.2, 0, TAU); g.fill();
+        } else if (kind === "mars") {
+          g.fillStyle = "rgba(255,255,255,0.75)";
+          g.beginPath(); g.ellipse(c, c - r * 0.88, r * 0.3, r * 0.1, 0, 0, TAU); g.fill();
+          g.fillStyle = "rgba(90,20,0,0.35)";
+          g.beginPath(); g.ellipse(c - r * 0.2, c + r * 0.3, r * 0.4, r * 0.18, 0.3, 0, TAU); g.fill();
+        } else if (kind === "saturn") {
+          g.fillStyle = "rgba(120,70,10,0.25)";
+          [-0.4, 0.05, 0.45].forEach(function (o) { g.fillRect(c - r, c + o * r - 4, r * 2, 8); });
+        }
+        g.restore();
+        if (kind === "saturn") {
+          g.strokeStyle = "rgba(255,225,160,0.9)"; g.lineWidth = 10;
+          g.beginPath(); g.ellipse(c, c, r * 1.42, r * 0.36, -0.18, 0, TAU); g.stroke();
+          g.strokeStyle = "rgba(216,169,78,0.55)"; g.lineWidth = 5;
+          g.beginPath(); g.ellipse(c, c, r * 1.62, r * 0.42, -0.18, 0, TAU); g.stroke();
+        }
+      });
+    }
+    var sprPlanets = {
+      neptune: planetSprite("neptune"), uranus: planetSprite("uranus"),
+      saturn: planetSprite("saturn"), jupiter: planetSprite("jupiter"),
+      mars: planetSprite("mars"), earth: planetSprite("earth")
+    };
+
+    /* ---------------- audio: WebAudio SFX only (no music) ---------------- */
+    var AC = null, masterGain = null, muted = false;
+    function audioInit() {
+      if (AC) { if (AC.state === "suspended") AC.resume(); return; }
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = AC.createGain();
+        masterGain.gain.value = 0.5;
+        masterGain.connect(AC.destination);
+      } catch (e) { AC = null; }
+    }
+    function tone(freqA, freqB, dur, type, vol, when) {
+      if (!AC || muted) return;
+      var t0 = AC.currentTime + (when || 0);
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "square";
+      o.frequency.setValueAtTime(freqA, t0);
+      o.frequency.exponentialRampToValueAtTime(Math.max(30, freqB), t0 + dur);
+      g.gain.setValueAtTime(vol || 0.16, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(g); g.connect(masterGain);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function noiseBurst(dur, vol, freqA, freqB, when) {
+      if (!AC || muted) return;
+      var t0 = AC.currentTime + (when || 0);
+      var len = Math.max(1, Math.floor(AC.sampleRate * dur));
+      var buf = AC.createBuffer(1, len, AC.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = AC.createBufferSource(); src.buffer = buf;
+      var f = AC.createBiquadFilter(); f.type = "lowpass";
+      f.frequency.setValueAtTime(freqA, t0);
+      f.frequency.exponentialRampToValueAtTime(Math.max(40, freqB), t0 + dur);
+      var g = AC.createGain(); g.gain.value = vol;
+      src.connect(f); f.connect(g); g.connect(masterGain);
+      src.start(t0);
+    }
+    var sfx = {
+      shot: function () { tone(920, 240, 0.09, "square", 0.07); },
+      boom: function () { noiseBurst(0.28, 0.30, 2600, 120); tone(160, 40, 0.25, "triangle", 0.2); },
+      bigBoom: function () { noiseBurst(0.55, 0.42, 3200, 60); tone(120, 30, 0.5, "triangle", 0.3); },
+      playerDie: function () { noiseBurst(0.7, 0.4, 3000, 50); tone(700, 60, 0.65, "sawtooth", 0.18); },
+      power: function () { tone(520, 520, 0.07, "square", 0.14); tone(780, 780, 0.07, "square", 0.14, 0.07); tone(1180, 1180, 0.12, "square", 0.14, 0.14); },
+      warp: function () { noiseBurst(1.1, 0.20, 300, 5000); tone(80, 900, 1.0, "sine", 0.06); },
+      extra: function () { tone(660, 660, 0.09, "square", 0.13); tone(880, 880, 0.09, "square", 0.13, 0.09); tone(990, 990, 0.16, "square", 0.13, 0.18); },
+      tally: function () { tone(1320, 1320, 0.05, "square", 0.08); }
+    };
+    var muteBtn = document.getElementById("muteBtn");
+    function setMuted(m) {
+      muted = m;
+      muteBtn.textContent = muted ? "SOUND OFF" : "SOUND ON";
+    }
+    muteBtn.addEventListener("click", function () { audioInit(); setMuted(!muted); });
+
+    /* ---------------- journey / stage structure ----------------
+       Each planet leg = 3 warp stages + 1 planet (arrival) stage.
+       Chance stages run as dedicated bonus stages between legs. */
+    var PLANETS = [
+      { name: "NEPTUNE", key: "neptune" },
+      { name: "URANUS", key: "uranus" },
+      { name: "SATURN", key: "saturn" },
+      { name: "JUPITER", key: "jupiter" },
+      { name: "MARS", key: "mars" },
+      { name: "EARTH", key: "earth" }
+    ];
+    var LEG_STAGES = 4;              /* 3 warps + 1 planet stage */
+    var LOOP_STAGES = PLANETS.length * LEG_STAGES; /* 24 */
+    function stageInfo(globalStage) {
+      var idx = (globalStage - 1) % LOOP_STAGES;
+      var leg = Math.floor(idx / LEG_STAGES);
+      var within = (idx % LEG_STAGES) + 1;      /* 1..4 */
+      return {
+        leg: leg, within: within,
+        planet: PLANETS[leg],
+        isPlanetStage: within === LEG_STAGES,
+        loop: Math.floor((globalStage - 1) / LOOP_STAGES) + 1
+      };
+    }
+
+    /* ---------------- game state ---------------- */
+    var G = null;
+    function newGame() {
+      return {
+        mode: "play",            /* play | over */
+        phase: "warp",           /* warp | play | clear | dying | chanceEnd */
+        phaseT: 0,
+        score: 0, hi: sessionHi,
+        ships: 3,                /* includes the ship in play */
+        extraGiven: false,
+        stage: 1,
+        chance: false, chancePending: false,
+        player: { a: -Math.PI / 2, alive: true, respawnT: 0, invulnT: 0, fireCd: 0 },
+        doubleFire: false,
+        bullets: [], ebullets: [], enemies: [], parts: [], meteors: [], floats: [],
+        queue: [], spawnT: 0, formedCount: 0, formedAlive: 0,
+        pod: null, podSpawned: false, podTimer: 0,
+        meteorT: 5,
+        chanceTotal: 0, chanceKills: 0, chanceQueueDone: false,
+        shake: 0, flash: 0, time: 0,
+        killsThisStage: 0
+      };
+    }
+    var sessionHi = 0;
+    var hiTable = [];            /* session-only: {name, score} */
+
+    /* stars: fixed polar field, twinkling */
+    var stars = [];
+    (function () {
+      for (var i = 0; i < 170; i++) {
+        stars.push({ a: Math.random() * TAU, r: Math.pow(Math.random(), 0.6) * 1.25, s: rand(0.6, 2.1), p: Math.random() * TAU });
+      }
+    })();
+
+    /* ---------------- input ---------------- */
+    var keys = {};
+    var mouse = { x: 0, y: 0, seen: false, down: false };
+    var touchSteer = null;       /* target angle while dragging */
+    var touchFire = false, rotHeld = 0;
+    window.addEventListener("keydown", function (e) {
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
+      keys[e.code] = true;
+      if (e.code === "Enter") {
+        if (introVisible) startGame();
+      }
+      if (e.code === "KeyM") { audioInit(); setMuted(!muted); }
+    });
+    window.addEventListener("keyup", function (e) { keys[e.code] = false; });
+    canvas.addEventListener("mousemove", function (e) {
+      var r = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.seen = true;
+    });
+    canvas.addEventListener("mousedown", function (e) { audioInit(); mouse.down = true; });
+    window.addEventListener("mouseup", function () { mouse.down = false; });
+    function ptrAngle(cx, cy) { return Math.atan2(cy - CY, cx - CX); }
+    function canvasPos(t) {
+      var r = canvas.getBoundingClientRect();
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+    canvas.addEventListener("touchstart", function (e) {
+      e.preventDefault(); audioInit();
+      document.body.classList.add("touch");
+      var p = canvasPos(e.changedTouches[0]);
+      if (Math.hypot(p.x - CX, p.y - CY) > RIM * 0.25) touchSteer = ptrAngle(p.x, p.y);
+    }, { passive: false });
+    canvas.addEventListener("touchmove", function (e) {
+      e.preventDefault();
+      var p = canvasPos(e.changedTouches[0]);
+      if (Math.hypot(p.x - CX, p.y - CY) > RIM * 0.25) touchSteer = ptrAngle(p.x, p.y);
+    }, { passive: false });
+    canvas.addEventListener("touchend", function (e) { e.preventDefault(); touchSteer = null; }, { passive: false });
+    function bindHold(id, on, off) {
+      var el = document.getElementById(id);
+      el.addEventListener("touchstart", function (e) { e.preventDefault(); e.stopPropagation(); audioInit(); document.body.classList.add("touch"); on(); }, { passive: false });
+      el.addEventListener("touchend", function (e) { e.preventDefault(); off(); }, { passive: false });
+      el.addEventListener("mousedown", function (e) { e.preventDefault(); on(); });
+      el.addEventListener("mouseup", function () { off(); });
+      el.addEventListener("mouseleave", function () { off(); });
+    }
+    bindHold("rotL", function () { rotHeld = -1; }, function () { if (rotHeld === -1) rotHeld = 0; });
+    bindHold("rotR", function () { rotHeld = 1; }, function () { if (rotHeld === 1) rotHeld = 0; });
+    bindHold("fireBtn", function () { touchFire = true; }, function () { touchFire = false; });
+
+    function firing() {
+      return !!(keys["Space"] || mouse.down || touchFire);
+    }
+    function rotInput(dt) {
+      var p = G.player;
+      var dir = 0;
+      if (keys["ArrowLeft"] || keys["KeyA"]) dir -= 1;
+      if (keys["ArrowRight"] || keys["KeyD"]) dir += 1;
+      if (rotHeld) dir += rotHeld;
+      if (dir !== 0) {
+        p.a += dir * 3.9 * dt;
+      } else {
+        var target = null;
+        if (touchSteer !== null) target = touchSteer;
+        else if (mouse.seen) {
+          var dx = mouse.x - CX, dy = mouse.y - CY;
+          if (Math.hypot(dx, dy) > RIM * 0.3) target = Math.atan2(dy, dx);
+        }
+        if (target !== null) {
+          var d = angDiff(target, p.a);
+          var step = 8.5 * dt;
+          p.a += clamp(d, -step, step);
+        }
+      }
+      p.a = ((p.a % TAU) + TAU) % TAU;
+    }
+
+    /* ---------------- formations ----------------
+       An entering formation is a parametric path in polar space.
+       Each ship follows the same path with a time offset, then
+       parks in the rotating ring around the vortex. */
+    function makeFormation(kind, info, count) {
+      var dir = Math.random() < 0.5 ? 1 : -1;
+      var f = {
+        kind: kind, count: count, spawned: 0, killed: 0, left: 0,
+        delay: 0, timer: 0, dir: dir,
+        canShoot: info.leg >= 2 || info.loop > 1,
+        speedMul: (1 + 0.10 * (info.loop - 1)) * (1 + 0.05 * info.leg),
+        a0: Math.random() * TAU
+      };
+      if (kind === "spiral") { f.sweep = dir * rand(3.6, 4.6); f.rMax = rand(0.62, 0.78); f.dur = 2.5; }
+      if (kind === "sweep") { f.sweep = dir * rand(2.2, 3.0); f.rMax = rand(0.9, 1.02); f.dur = 2.9; }
+      if (kind === "stream") { f.sweep = dir * rand(1.2, 2.0); f.rMax = 1.25; f.dur = 3.4; }
+      if (kind === "burst") { f.sweep = dir * rand(0.8, 1.4); f.rMax = rand(0.8, 0.95); f.dur = 2.2; }
+      return f;
+    }
+    function pathPoint(f, t, slot) {
+      /* t: 0..1 along entry path; returns {a, r} with r as fraction of RIM */
+      var r;
+      if (f.kind === "stream") {
+        r = t * f.rMax;
+      } else if (f.kind === "burst") {
+        r = easeOut(t) * f.rMax - Math.sin(t * Math.PI) * 0.12;
+        if (t > 0.75) r = lerp(r, 0.34, (t - 0.75) / 0.25);
+      } else {
+        var peak = f.rMax;
+        if (t < 0.62) r = easeOut(t / 0.62) * peak;
+        else r = lerp(peak, 0.34, easeOut((t - 0.62) / 0.38));
+      }
+      var a = f.a0 + slot + f.sweep * (1 - t) * (f.kind === "stream" ? 0.55 : 1);
+      if (t >= 1 && f.kind !== "stream") { a = f.a0 + slot; r = 0.34; }
+      return { a: a, r: r };
+    }
+    var parkAngle = 0;   /* global rotation of the parking ring */
+    function spawnShip(f) {
+      var idx = f.spawned++;
+      var e = {
+        f: f, idx: idx,
+        state: "enter", t: -idx * 0.16,   /* staggered entry */
+        a: f.a0, r: 0, x: CX, y: CY, px: CX, py: CY,
+        slot: (idx / Math.max(1, f.count)) * TAU * rand(0.8, 0.95) + rand(-0.1, 0.1),
+        diveT: 0, rimT: 0, fireT: rand(1.2, 3.4),
+        spin: rand(0, TAU), dead: false, counted: false
+      };
+      if (f.kind === "burst") e.slot = idx * 0.32 * f.dir;
+      G.enemies.push(e);
+    }
+    function formationResolved(f) { return f.killed + f.left >= f.count; }
+
+    /* ---------------- stage setup ---------------- */
+    function buildQueue(info, chance) {
+      var q = [];
+      var i, kinds, n;
+      if (chance) {
+        for (i = 0; i < 6; i++) q.push(makeFormation("stream", info, 5));
+        return q;
+      }
+      kinds = ["spiral", "sweep", "burst", "spiral", "sweep", "burst", "spiral", "sweep"];
+      n = 4 + Math.min(3, Math.floor((info.leg + (info.loop - 1) * 2) / 1.5)) + (info.isPlanetStage ? 1 : 0);
+      for (i = 0; i < n; i++) {
+        q.push(makeFormation(kinds[(i + info.leg) % kinds.length], info, 4 + (i % 3)));
+      }
+      return q;
+    }
+    function startStage(globalStage, isChance) {
+      var info = stageInfo(globalStage);
+      G.stage = globalStage;
+      G.chance = !!isChance;
+      G.info = info;
+      G.queue = buildQueue(info, G.chance);
+      G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0;
+      G.meteors.length = 0; G.pod = null; G.podSpawned = false;
+      G.podTimer = rand(4.5, 7);
+      G.meteorT = rand(3, 6);
+      G.spawnT = 0.6; G.formedCount = 0; G.formedAlive = 0;
+      G.chanceTotal = 0; G.chanceKills = 0; G.chanceQueueDone = false;
+      G.killsThisStage = 0;
+      G.phase = "warp"; G.phaseT = 0;
+      G.warpLabel = G.chance ? "CHANCE STAGE"
+        : (info.within === 1 ? "WARP TO " + info.planet.name
+        : (info.isPlanetStage ? info.planet.name : info.planet.name + " — WARP " + info.within));
+      sfx.warp();
+    }
+    function stageCleared() {
+      G.phase = "clear"; G.phaseT = 0;
+      if (G.chance) {
+        var perfect = G.chanceTotal > 0 && G.chanceKills >= G.chanceTotal;
+        if (perfect) { addScore(10000); addFloat(CX, CY - RIM * 0.3, "PERFECT  10000", "#ffd94a", 26); sfx.extra(); }
+        else addFloat(CX, CY - RIM * 0.3, "CHANCE BONUS  " + (G.chanceKills * 100), "#37e6ff", 22);
+      }
+    }
+    function advanceStage() {
+      if (G.chance) { startStage(G.stage, false); return; }
+      var info = stageInfo(G.stage);
+      var next = G.stage + 1;
+      /* chance stage after finishing a planet stage on legs 1,3,5 (URANUS, JUPITER, EARTH) */
+      if (info.isPlanetStage && (info.leg === 1 || info.leg === 3 || info.leg === 5)) {
+        G.chancePending = true;
+        /* run the chance stage against the NEXT leg's palette, then continue */
+        G.stage = next; startStage(next, false);
+        startChanceNow();
+        return;
+      }
+      startStage(next, false);
+    }
+    function startChanceNow() {
+      var info = stageInfo(G.stage);
+      G.chance = true;
+      G.info = info;
+      G.queue = buildQueue(info, true);
+      G.enemies.length = 0; G.ebullets.length = 0;
+      G.pod = null; G.spawnT = 0.6; G.formedAlive = 0;
+      G.chanceTotal = 0; G.chanceKills = 0; G.chanceQueueDone = false;
+      G.phase = "warp"; G.phaseT = 0;
+      G.warpLabel = "CHANCE STAGE";
+      sfx.warp();
+    }
+
+    /* ---------------- scoring / fx helpers ---------------- */
+    function addScore(n) {
+      var before = G.score;
+      G.score += n;
+      if (G.score > G.hi) { G.hi = G.score; sessionHi = G.score; }
+      if (!G.extraGiven && before < 60000 && G.score >= 60000) {
+        G.extraGiven = true;
+        G.ships += 1;
+        addFloat(CX, CY - RIM * 1.06, "EXTRA SHIP", "#5dff8f", 22);
+        sfx.extra();
+      }
+    }
+    function addFloat(x, y, text, color, size) {
+      G.floats.push({ x: x, y: y, text: text, color: color, size: size || 16, t: 0, life: 1.4 });
+    }
+    function explode(x, y, color, n, big) {
+      for (var i = 0; i < (n || 14); i++) {
+        var a = Math.random() * TAU, sp = rand(30, big ? 260 : 170);
+        G.parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: rand(0.3, big ? 0.9 : 0.6), color: color, size: rand(1.5, big ? 4 : 3) });
+      }
+      G.shake = Math.min(10, G.shake + (big ? 7 : 3));
+    }
+    function polar(a, rf) { return { x: CX + Math.cos(a) * rf * RIM, y: CY + Math.sin(a) * rf * RIM }; }
+    function enemySize(rf) { return lerp(13, 46, clamp(rf, 0, 1.15)); }
+
+    /* ---------------- pod (double-fire satellite) ---------------- */
+    function spawnPod() {
+      G.podSpawned = true;
+      var a = Math.random() * TAU;
+      G.pod = {
+        a: a, rf: 0.06, targetRf: rand(0.5, 0.62),
+        drift: (Math.random() < 0.5 ? 1 : -1) * 0.12,
+        t: 0, life: 11, satA: 0,
+        sats: [true, true], state: "in"
+      };
+    }
+    function podPos() {
+      var p = polar(G.pod.a, G.pod.rf);
+      return p;
+    }
+    function satPos(i) {
+      var c = podPos();
+      var a = G.pod.satA + i * Math.PI;
+      var rr = clamp(G.pod.rf, 0.2, 1) * RIM * 0.30 + 16;
+      return { x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr };
+    }
+
+    /* ---------------- update ---------------- */
+    function playerPos() { return polar(G.player.a, 1); }
+    function killPlayer() {
+      if (G.mode !== "play" || !G.player.alive || G.chance) return;
+      var p = playerPos();
+      explode(p.x, p.y, "#ffd94a", 26, true);
+      sfx.playerDie();
+      G.player.alive = false;
+      G.player.respawnT = 1.5;
+      G.doubleFire = false;         /* double fire is lost on death — as the original */
+      G.ships -= 1;
+      G.phase = "dying"; G.phaseT = 0;
+    }
+    function updateAttract(dt) {
+      if (G.queue.length) {
+        var f = G.queue[0];
+        f.timer += dt;
+        if (f.spawned < f.count && f.timer >= f.spawned * 0.16) spawnShip(f);
+        if (f.spawned >= f.count && f.timer > 7) G.queue.shift();
+      } else {
+        G.queue.push(makeFormation(["spiral", "sweep", "burst"][Math.floor(Math.random() * 3)], G.info, 5));
+      }
+      while (G.enemies.length > 30) {
+        var idx = G.enemies.findIndex(function (e) { return e.state === "park"; });
+        if (idx < 0) break;
+        G.enemies.splice(idx, 1);
+      }
+      updateEnemies(dt, true);
+    }
+    function update(dt) {
+      G.time += dt;
+      parkAngle += dt * 0.14;
+      if (G.mode === "attract") { updateAttract(dt); return; }
+      if (G.phase === "over") return;
+      var info = G.info || stageInfo(G.stage);
+
+      /* particles & floats always tick */
+      for (var i = G.parts.length - 1; i >= 0; i--) {
+        var pt = G.parts[i]; pt.t += dt;
+        pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+        pt.vx *= 0.96; pt.vy *= 0.96;
+        if (pt.t >= pt.life) G.parts.splice(i, 1);
+      }
+      for (i = G.floats.length - 1; i >= 0; i--) {
+        var fl = G.floats[i]; fl.t += dt; fl.y -= 22 * dt;
+        if (fl.t >= fl.life) G.floats.splice(i, 1);
+      }
+      G.shake = Math.max(0, G.shake - dt * 26);
+      G.flash = Math.max(0, G.flash - dt * 2.2);
+
+      if (G.phase === "warp") {
+        G.phaseT += dt;
+        if (G.phaseT >= 1.7) { G.phase = "play"; G.phaseT = 0; }
+        return;
+      }
+      if (G.phase === "clear") {
+        G.phaseT += dt;
+        updateEnemies(dt, true);  /* stragglers drift during the lull */
+        if (G.phaseT >= 1.6) advanceStage();
+        return;
+      }
+      if (G.phase === "dying") {
+        G.phaseT += dt;
+        updateEnemies(dt, true);
+        if (G.phaseT >= 1.5) {
+          if (G.ships <= 0) { gameOver(); return; }
+          G.player.alive = true; G.player.invulnT = 2.2;
+          G.phase = "play"; G.phaseT = 0;
+        }
+        return;
+      }
+
+      /* ----- play phase ----- */
+      var p = G.player;
+      if (p.alive) {
+        rotInput(dt);
+        p.invulnT = Math.max(0, p.invulnT - dt);
+        p.fireCd -= dt;
+        if (firing() && p.fireCd <= 0) {
+          p.fireCd = 0.13;
+          fireBullet();
+        }
+      }
+
+      /* formation spawner */
+      if (G.queue.length) {
+        G.spawnT -= dt;
+        var f = G.queue[0];
+        if (G.spawnT <= 0) {
+          f.timer += dt;
+          if (f.spawned < f.count && f.timer >= f.spawned * 0.16) {
+            spawnShip(f);
+            if (G.chance) G.chanceTotal++;
+          }
+          if (f.spawned >= f.count && (formationResolved(f) || f.timer > 6.5)) { G.queue.shift(); G.spawnT = 0.7; }
+        }
+      } else if (G.chance && !G.chanceQueueDone) {
+        G.chanceQueueDone = true;
+      }
+
+      updateEnemies(dt, false);
+      updateBullets(dt);
+      updatePod(dt);
+      updateMeteors(dt, info);
+
+      /* stage clear check */
+      var activeFormations = G.queue.length > 0;
+      if (!activeFormations && G.enemies.length === 0 && G.mode === "play" && G.phase === "play") {
+        stageCleared();
+      }
+    }
+
+    function fireBullet() {
+      if (G.bullets.length > 14) return;
+      var a = G.player.a;
+      if (G.doubleFire) {
+        G.bullets.push({ a: a, rf: 0.97, off: -9 });
+        G.bullets.push({ a: a, rf: 0.97, off: 9 });
+      } else {
+        G.bullets.push({ a: a, rf: 0.97, off: 0 });
+      }
+      sfx.shot();
+    }
+    function bulletPos(b) {
+      /* twin shots fly parallel: lateral offset perpendicular to travel */
+      var base = polar(b.a, b.rf);
+      return { x: base.x + Math.cos(b.a + Math.PI / 2) * b.off * b.rf, y: base.y + Math.sin(b.a + Math.PI / 2) * b.off * b.rf };
+    }
+    function updateBullets(dt) {
+      var i, j, b, bp;
+      for (i = G.bullets.length - 1; i >= 0; i--) {
+        b = G.bullets[i];
+        b.rf -= dt * 2.35;
+        if (b.rf < 0.02) { G.bullets.splice(i, 1); continue; }
+        bp = bulletPos(b);
+        var hit = false;
+        /* pod satellite / core */
+        if (G.pod && G.pod.state !== "out") {
+          var pp = podPos();
+          for (j = 0; j < 2; j++) {
+            if (G.pod.sats[j]) {
+              var sp = satPos(j);
+              if (Math.hypot(bp.x - sp.x, bp.y - sp.y) < 15) {
+                G.pod.sats[j] = false;
+                explode(sp.x, sp.y, "#37e6ff", 12, false);
+                addScore(100);
+                addFloat(sp.x, sp.y - 18, "100", "#37e6ff", 14);
+                sfx.boom();
+                hit = true; break;
+              }
+            }
+          }
+          if (!hit && Math.hypot(bp.x - pp.x, bp.y - pp.y) < 20 + G.pod.rf * 14) {
+            explode(pp.x, pp.y, "#ffb52e", 30, true);
+            addScore(1500);
+            addFloat(pp.x, pp.y - 26, "1500", "#ffd94a", 20);
+            if (!G.doubleFire) {
+              G.doubleFire = true;
+              addFloat(pp.x, pp.y - 52, "DOUBLE FIRE!", "#ffd94a", 20);
+            }
+            sfx.bigBoom();
+            sfx.power();
+            G.pod = null;
+            hit = true;
+          }
+        }
+        if (hit) { G.bullets.splice(i, 1); continue; }
+        /* enemies */
+        for (j = G.enemies.length - 1; j >= 0; j--) {
+          var e = G.enemies[j];
+          if (e.t < 0 || e.state === "gone") continue;
+          var es = enemySize(e.r);
+          if (Math.hypot(bp.x - e.x, bp.y - e.y) < es * 0.52) {
+            killEnemy(e, j);
+            hit = true; break;
+          }
+        }
+        if (hit) G.bullets.splice(i, 1);
+      }
+      /* enemy bullets fly outward toward the rim */
+      for (i = G.ebullets.length - 1; i >= 0; i--) {
+        var eb = G.ebullets[i];
+        eb.rf += dt * 1.05;
+        if (eb.rf > 1.04) { G.ebullets.splice(i, 1); continue; }
+        if (G.player.alive && G.player.invulnT <= 0 && !G.chance && eb.rf > 0.93) {
+          if (Math.abs(angDiff(eb.a, G.player.a)) < 0.085) {
+            G.ebullets.splice(i, 1);
+            killPlayer();
+          }
+        }
+      }
+    }
+    function killEnemy(e, idx) {
+      explode(e.x, e.y, "#aef3ff", 13, false);
+      sfx.boom();
+      G.enemies.splice(idx, 1);
+      e.f.killed++;
+      addScore(100);
+      G.killsThisStage++;
+      if (G.chance) G.chanceKills++;
+      if (formationResolved(e.f)) {
+        /* whole formation destroyed — formation bonus */
+        var anyLeft = false;
+        for (var k = 0; k < G.enemies.length; k++) if (G.enemies[k].f === e.f) { anyLeft = true; break; }
+        if (!anyLeft && !G.chance && e.f.spawned >= e.f.count) {
+          var pp = polar(e.a, Math.max(0.3, e.r));
+          addScore(1000);
+          addFloat(pp.x, pp.y, "FORMATION BONUS 1000", "#5dff8f", 15);
+        }
+      }
+    }
+
+    function updateEnemies(dt, passive) {
+      var info = G.info || stageInfo(G.stage);
+      for (var i = G.enemies.length - 1; i >= 0; i--) {
+        var e = G.enemies[i];
+        e.px = e.x; e.py = e.y;
+        if (e.t < 0) { e.t += dt * e.f.speedMul; continue; }
+        var f = e.f;
+        if (e.state === "enter") {
+          e.t += dt * f.speedMul / f.dur;
+          var pos = pathPoint(f, Math.min(1, e.t), e.slot);
+          e.a = pos.a; e.r = pos.r;
+          if (e.t >= 1) {
+            if (f.kind === "stream") { e.state = "gone"; f.left++; G.enemies.splice(i, 1); continue; }
+            e.state = "park";
+            e.diveT = rand(1.2, 5.5) / (1 + 0.15 * (info.loop - 1));
+          }
+        } else if (e.state === "park") {
+          e.a = f.a0 + e.slot + parkAngle * f.dir * 0.6;
+          e.r = 0.34;
+          e.spin += dt * 2;
+          if (!passive) {
+            e.diveT -= dt;
+            maybeShoot(e, dt, info);
+            if (e.diveT <= 0 && G.enemies.length > 1) {
+              e.state = "dive";
+              e.diveDir = (Math.random() < 0.5 ? 1 : -1);
+              e.diveDur = rand(0.85, 1.25) / f.speedMul;
+              e.diveT = 0; e.aFrom = e.a;
+            }
+          }
+        } else if (e.state === "dive") {
+          e.t += dt / e.diveDur;
+          var t = Math.min(1, e.t);
+          e.r = lerp(0.34, 1.0, easeOut(t));
+          e.a = e.aFrom + e.diveDir * Math.sin(t * Math.PI) * 0.55;
+          maybeShoot(e, dt, info);
+          if (t >= 1) { e.state = "rim"; e.rimT = rand(1.4, 3.2); e.t = 0; }
+        } else if (e.state === "rim") {
+          e.r = 1.0;
+          e.a += e.diveDir * dt * 0.9;
+          e.rimT -= dt;
+          if (!passive && e.rimT <= 0) { e.state = "return"; e.t = 0; e.aFrom = e.a; }
+        } else if (e.state === "return") {
+          e.t += dt / 0.8;
+          var t2 = Math.min(1, e.t);
+          e.r = lerp(1.0, 0.34, easeOut(t2));
+          var target = f.a0 + e.slot + parkAngle * f.dir * 0.6;
+          e.a = e.aFrom + angDiff(target, e.aFrom) * easeOut(t2);
+          if (t2 >= 1) { e.state = "park"; e.diveT = rand(1.5, 6); }
+        }
+        var pp = polar(e.a, e.r);
+        e.x = pp.x; e.y = pp.y;
+        /* rim contact kills (never during chance stages) */
+        if (!passive && !G.chance && G.player.alive && G.player.invulnT <= 0 &&
+            (e.state === "rim" || e.state === "dive") && e.r > 0.92) {
+          if (Math.abs(angDiff(e.a, G.player.a)) < 0.085) {
+            killPlayer();
+          }
+        }
+      }
+    }
+    function maybeShoot(e, dt, info) {
+      if (G.chance || !e.f.canShoot || G.phase !== "play") return;
+      e.fireT -= dt;
+      if (e.fireT <= 0) {
+        e.fireT = rand(1.6, 4.2) / (1 + 0.2 * (info.loop - 1));
+        if (G.ebullets.length < 14 && Math.random() < 0.75) {
+          G.ebullets.push({ a: e.a + rand(-0.05, 0.05), rf: e.r });
+        }
+      }
+    }
+    function updatePod(dt) {
+      if (!G.pod) {
+        if (!G.chance && !G.podSpawned && G.phase === "play") {
+          G.podTimer -= dt;
+          if (G.podTimer <= 0) spawnPod();
+        }
+        return;
+      }
+      var pod = G.pod;
+      pod.t += dt;
+      pod.satA += dt * 2.6;
+      if (pod.state === "in") {
+        pod.rf = lerp(pod.rf, pod.targetRf, dt * 1.6);
+        if (Math.abs(pod.rf - pod.targetRf) < 0.02) pod.state = "hover";
+      } else if (pod.state === "hover") {
+        pod.a += pod.drift * dt;
+        pod.life -= dt;
+        if (pod.life <= 0) pod.state = "out";
+      } else if (pod.state === "out") {
+        pod.rf -= dt * 0.55;
+        if (pod.rf <= 0.03) G.pod = null;
+      }
+    }
+    function updateMeteors(dt, info) {
+      if (!G.chance && info.leg >= 2 && G.phase === "play") {
+        G.meteorT -= dt;
+        if (G.meteorT <= 0 && G.meteors.length < 2) {
+          G.meteorT = rand(6, 10);
+          var a = Math.random() * TAU;
+          var sp = polar(a, 1.3);
+          var tx = CX + rand(-40, 40), ty = CY + rand(-40, 40);
+          var dx = tx - sp.x, dy = ty - sp.y, len = Math.hypot(dx, dy) || 1;
+          var speed = rand(60, 95);
+          G.meteors.push({ x: sp.x, y: sp.y, vx: dx / len * speed, vy: dy / len * speed, rot: rand(0, TAU), vr: rand(-1.4, 1.4), size: rand(20, 32) });
+        }
+      }
+      for (var i = G.meteors.length - 1; i >= 0; i--) {
+        var m = G.meteors[i];
+        m.x += m.vx * dt; m.y += m.vy * dt; m.rot += m.vr * dt;
+        if (Math.hypot(m.x - CX, m.y - CY) > RIM * 1.5) { G.meteors.splice(i, 1); continue; }
+        if (!G.chance && G.player.alive && G.player.invulnT <= 0) {
+          var pl = playerPos();
+          if (Math.hypot(m.x - pl.x, m.y - pl.y) < m.size * 0.72 + 13) killPlayer();
+        }
+      }
+    }
+
+    /* ---------------- game over / flow ---------------- */
+    var introEl = document.getElementById("intro");
+    var entryEl = document.getElementById("entry");
+    var introVisible = true;
+    var attract = null;
+    function gameOver() {
+      G.mode = "over"; G.phase = "over";
+      sessionHi = Math.max(sessionHi, G.score);
+      var qualifies = G.score > 0 && (hiTable.length < 5 || G.score > hiTable[hiTable.length - 1].score);
+      setTimeout(function () {
+        if (qualifies) {
+          entryEl.classList.add("show");
+          var inp = document.getElementById("initials");
+          inp.value = "AAA";
+          setTimeout(function () { inp.focus(); inp.select(); }, 60);
+        } else {
+          showIntro();
+        }
+      }, 900);
+    }
+    document.getElementById("saveScoreBtn").addEventListener("click", function () {
+      var inp = document.getElementById("initials");
+      var name = (inp.value || "AAA").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || "AAA";
+      hiTable.push({ name: name, score: G ? G.score : 0 });
+      hiTable.sort(function (x, y) { return y.score - x.score; });
+      hiTable = hiTable.slice(0, 5);
+      entryEl.classList.remove("show");
+      showIntro();
+    });
+    function renderScores() {
+      var wrap = document.getElementById("scoreWrap");
+      if (!hiTable.length) {
+        wrap.innerHTML = '<p class="empty-scores">No scores yet this session — be the first.</p>';
+        return;
+      }
+      var html = '<table id="scores"><tr><th>PILOT</th><th style="text-align:right">SCORE</th></tr>';
+      for (var i = 0; i < hiTable.length; i++) {
+        html += "<tr><td>" + hiTable[i].name + '</td><td class="pts">' + hiTable[i].score + "</td></tr>";
+      }
+      wrap.innerHTML = html + "</table>";
+    }
+    function showIntro() {
+      introVisible = true;
+      introEl.classList.remove("hidden");
+      renderScores();
+      startAttract();
+      document.getElementById("touchUI").classList.remove("on");
+    }
+    function startAttract() {
+      attract = newGame();
+      attract.mode = "attract";
+      attract.phase = "play";
+      attract.info = stageInfo(1 + Math.floor(Math.random() * 18));
+      attract.queue = [makeFormation("spiral", attract.info, 6), makeFormation("sweep", attract.info, 5), makeFormation("burst", attract.info, 6), makeFormation("spiral", attract.info, 5)];
+      attract.spawnT = 0.2;
+      G = attract;
+    }
+    function startGame() {
+      audioInit();
+      introVisible = false;
+      introEl.classList.add("hidden");
+      entryEl.classList.remove("show");
+      G = newGame();
+      G.hi = sessionHi;
+      document.getElementById("touchUI").classList.add("on");
+      startStage(1, false);
+    }
+    document.getElementById("startBtn").addEventListener("click", startGame);
+
+    /* ---------------- render ---------------- */
+    function drawSprite(img, x, y, size, rot, alpha) {
+      ctx.save();
+      ctx.translate(x, y);
+      if (rot) ctx.rotate(rot);
+      if (alpha !== undefined) ctx.globalAlpha = alpha;
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+    }
+    function render() {
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.clearRect(0, 0, VW, VH);
+      var t = G.time;
+      var warp = G.phase === "warp";
+      var sx = (Math.random() - 0.5) * G.shake, sy = (Math.random() - 0.5) * G.shake;
+      ctx.save();
+      ctx.translate(sx, sy);
+
+      /* starfield */
+      for (var i = 0; i < stars.length; i++) {
+        var st = stars[i];
+        var rr = st.r;
+        if (warp) rr = ((st.r + G.phaseT * 0.55) % 1.3);
+        var sp = polar(st.a, rr * 0.98);
+        var tw = 0.55 + 0.45 * Math.sin(t * 2.2 + st.p);
+        if (warp && rr > 0.08) {
+          var sp2 = polar(st.a, Math.max(0.02, rr - 0.06 - G.phaseT * 0.1));
+          ctx.strokeStyle = "rgba(160,220,255," + (0.5 * tw) + ")";
+          ctx.lineWidth = st.s;
+          ctx.beginPath(); ctx.moveTo(sp2.x, sp2.y); ctx.lineTo(sp.x, sp.y); ctx.stroke();
+        } else {
+          ctx.fillStyle = "rgba(210,235,255," + (0.85 * tw) + ")";
+          ctx.fillRect(sp.x - st.s / 2, sp.y - st.s / 2, st.s, st.s);
+        }
+      }
+
+      /* tube: spokes + rim rings */
+      var info = G.info || stageInfo(G.stage || 1);
+      ctx.strokeStyle = "rgba(70,110,255,0.30)";
+      ctx.lineWidth = 1.4;
+      for (i = 0; i < 16; i++) {
+        var a = (i / 16) * TAU;
+        var p1 = polar(a, 0.10), p2 = polar(a, 1.0);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      }
+      [1.0, 0.66, 0.34].forEach(function (rf, k) {
+        ctx.strokeStyle = k === 0 ? "rgba(90,160,255,0.85)" : "rgba(70,110,255,0.35)";
+        ctx.lineWidth = k === 0 ? 2.4 : 1.4;
+        ctx.beginPath(); ctx.arc(CX, CY, rf * RIM, 0, TAU); ctx.stroke();
+      });
+
+      /* planet at center on arrival stages */
+      if (info.isPlanetStage && !G.chance && G.mode !== "attract") {
+        var pl = sprPlanets[info.planet.key];
+        var psz = RIM * 0.52 * (G.phase === "warp" ? clamp(G.phaseT / 1.7, 0.2, 1) : 1);
+        drawSprite(pl, CX, CY, psz, 0, 0.95);
+      }
+      /* central vortex */
+      var vPulse = 1 + 0.1 * Math.sin(t * 3.1);
+      drawSprite(sprSun, CX, CY, RIM * 0.17 * vPulse, t * 0.4, 0.85);
+
+      /* pod + satellites */
+      if (G.pod) {
+        var pp = podPos();
+        drawSprite(sprSun, pp.x, pp.y, 30 + G.pod.rf * 26, -t * 0.8, 1);
+        for (i = 0; i < 2; i++) {
+          if (G.pod.sats[i]) {
+            var sp3 = satPos(i);
+            drawSprite(sprSat, sp3.x, sp3.y, 26, 0, 1);
+          }
+        }
+      }
+
+      /* meteors (indestructible) */
+      for (i = 0; i < G.meteors.length; i++) {
+        var m = G.meteors[i];
+        drawSprite(sprMeteor, m.x, m.y, m.size * 2, m.rot, 1);
+      }
+
+      /* enemies */
+      var spr = sprFighters[info.leg % sprFighters.length];
+      for (i = 0; i < G.enemies.length; i++) {
+        var e = G.enemies[i];
+        if (e.t < 0) continue;
+        var heading = Math.atan2(e.y - e.py, e.x - e.px);
+        if (!isFinite(heading) || (e.x === e.px && e.y === e.py)) heading = e.a + Math.PI;
+        drawSprite(spr, e.x, e.y, enemySize(e.r), heading, 1);
+      }
+
+      /* bullets */
+      ctx.fillStyle = "#ffe97a";
+      for (i = 0; i < G.bullets.length; i++) {
+        var bp = bulletPos(G.bullets[i]);
+        ctx.beginPath(); ctx.arc(bp.x, bp.y, 3.4, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = "#ff5d7a";
+      for (i = 0; i < G.ebullets.length; i++) {
+        var eb = G.ebullets[i];
+        var ep = polar(eb.a, eb.rf);
+        ctx.beginPath(); ctx.arc(ep.x, ep.y, 3.6, 0, TAU); ctx.fill();
+      }
+
+      /* player ship */
+      if (G.mode === "play" && G.player.alive) {
+        var pl2 = playerPos();
+        var blink = G.player.invulnT > 0 && Math.floor(t * 12) % 2 === 0;
+        drawSprite(blink ? sprShipGhost : sprShip, pl2.x, pl2.y, 46, G.player.a + Math.PI / 2, blink ? 0.7 : 1);
+        if (G.doubleFire) {
+          ctx.fillStyle = "#ffd94a";
+          ctx.font = "700 11px 'Courier New', monospace";
+          ctx.textAlign = "center";
+          ctx.fillText("DOUBLE", pl2.x, pl2.y + Math.sin(G.player.a) * 0 + (Math.sin(G.player.a) > 0 ? -34 : 40));
+        }
+      }
+
+      /* particles */
+      for (i = 0; i < G.parts.length; i++) {
+        var pt = G.parts[i];
+        ctx.globalAlpha = 1 - pt.t / pt.life;
+        ctx.fillStyle = pt.color;
+        ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+      }
+      ctx.globalAlpha = 1;
+
+      /* floating score text */
+      ctx.textAlign = "center";
+      for (i = 0; i < G.floats.length; i++) {
+        var fl = G.floats[i];
+        ctx.globalAlpha = 1 - (fl.t / fl.life) * 0.7;
+        ctx.fillStyle = fl.color;
+        ctx.font = "700 " + fl.size + "px 'Courier New', monospace";
+        ctx.fillText(fl.text, fl.x, fl.y);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      if (G.flash > 0) {
+        ctx.fillStyle = "rgba(255,240,200," + (G.flash * 0.35) + ")";
+        ctx.fillRect(0, 0, VW, VH);
+      }
+      if (G.mode === "play") drawHUD(info, t);
+      if (G.phase === "warp" && G.mode === "play") {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffd94a";
+        ctx.font = "900 " + Math.round(RIM * 0.11) + "px 'Arial Black', sans-serif";
+        ctx.shadowColor = "rgba(255,120,20,0.8)"; ctx.shadowBlur = 18;
+        ctx.fillText(G.warpLabel || "", CX, CY - RIM * 0.12);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#37e6ff";
+        ctx.font = "700 " + Math.round(RIM * 0.055) + "px 'Courier New', monospace";
+        ctx.fillText(G.chance ? "TARGET PRACTICE — NO DANGER" : "GET READY", CX, CY + RIM * 0.02);
+      }
+      if (G.phase === "over") {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ff4d5e";
+        ctx.font = "900 " + Math.round(RIM * 0.14) + "px 'Arial Black', sans-serif";
+        ctx.shadowColor = "rgba(255,40,60,0.8)"; ctx.shadowBlur = 22;
+        ctx.fillText("GAME OVER", CX, CY - RIM * 0.05);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#eaf6ff";
+        ctx.font = "700 " + Math.round(RIM * 0.06) + "px 'Courier New', monospace";
+        ctx.fillText("SCORE  " + G.score, CX, CY + RIM * 0.1);
+      }
+    }
+    function drawHUD(info, t) {
+      var y = Math.max(20, CY - RIM - 26);
+      ctx.textAlign = "left";
+      ctx.font = "700 15px 'Courier New', monospace";
+      ctx.fillStyle = "#37e6ff";
+      ctx.fillText("SCORE", CX - RIM, y);
+      ctx.fillStyle = "#eaf6ff";
+      ctx.font = "700 21px 'Courier New', monospace";
+      ctx.fillText(String(G.score), CX - RIM, y + 22);
+      ctx.textAlign = "right";
+      ctx.font = "700 15px 'Courier New', monospace";
+      ctx.fillStyle = "#ff4fd8";
+      ctx.fillText("HI-SCORE", CX + RIM, y);
+      ctx.fillStyle = "#eaf6ff";
+      ctx.font = "700 21px 'Courier New', monospace";
+      ctx.fillText(String(Math.max(G.hi, G.score)), CX + RIM, y + 22);
+      /* bottom: reserve ships + stage indicator */
+      var by = Math.min(VH - 14, CY + RIM + 34);
+      for (var i = 0; i < Math.max(0, G.ships - 1); i++) {
+        drawSprite(sprShip, CX - RIM + 14 + i * 26, by - 8, 22, 0, 0.95);
+      }
+      ctx.textAlign = "right";
+      ctx.font = "700 15px 'Courier New', monospace";
+      ctx.fillStyle = G.chance ? "#ffd94a" : "#9db8d6";
+      var label = G.chance ? "CHANCE STAGE" :
+        (info.planet.name + (info.isPlanetStage ? "" : " · WARP " + info.within) + " · STAGE " + ((G.stage - 1) % LOOP_STAGES + 1) + (info.loop > 1 ? " · LOOP " + info.loop : ""));
+      ctx.fillText(label, CX + RIM, by);
+      if (G.doubleFire) {
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffd94a";
+        ctx.font = "700 13px 'Courier New', monospace";
+        ctx.fillText("— DOUBLE FIRE —", CX, by);
+      }
+    }
+
+    /* ---------------- main loop ---------------- */
+    var lastTs = 0, fpsSamples = [];
+    function frame(ts) {
+      requestAnimationFrame(frame);
+      if (!G) return;
+      var dt = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+      lastTs = ts;
+      if (dt > 0) { fpsSamples.push(1 / dt); if (fpsSamples.length > 240) fpsSamples.shift(); }
+      update(dt);
+      render();
+    }
+    requestAnimationFrame(frame);
+    showIntro();
+
+    /* ---------------- QR (tap to enlarge) ---------------- */
+    (function () {
+      var overlay = document.getElementById("qrOverlay");
+      document.getElementById("qrBtn").addEventListener("click", function () {
+        overlay.classList.add("show");
+      });
+      overlay.addEventListener("click", function () { overlay.classList.remove("show"); });
+    })();
+
+    /* test hooks — used by the build audit to verify game flows */
+    window.__gyruss = {
+      state: function () {
+        var targetA = null, bestR = -1, i, e;
+        for (i = 0; i < G.enemies.length; i++) {
+          e = G.enemies[i];
+          if (e.t >= 0 && e.r > bestR) { bestR = e.r; targetA = e.a; }
+        }
+        return {
+          mode: G.mode, phase: G.phase, score: G.score, hi: G.hi, ships: G.ships,
+          stage: G.stage, chance: G.chance, doubleFire: G.doubleFire,
+          enemies: G.enemies.length, bullets: G.bullets.length,
+          chanceKills: G.chanceKills, chanceTotal: G.chanceTotal,
+          alive: G.player.alive, extraGiven: G.extraGiven,
+          pod: !!G.pod, queue: G.queue.length,
+          playerA: G.player.a,
+          podA: G.pod ? G.pod.a : null,
+          targetA: targetA,
+          fps: fpsSamples.length ? Math.round(fpsSamples.reduce(function (a, b) { return a + b; }, 0) / fpsSamples.length) : 0
+        };
+      },
+      start: function () { startGame(); },
+      skipWarp: function () { if (G.phase === "warp") { G.phase = "play"; G.phaseT = 0; } },
+      forcePod: function () { if (!G.pod) spawnPod(); if (G.pod) { G.pod.state = "hover"; G.pod.rf = G.pod.targetRf; } },
+      forceChance: function () { startChanceNow(); },
+      kill: function () { killPlayer(); },
+      clearStage: function () { G.queue.length = 0; G.enemies.length = 0; },
+      setScore: function (n) { G.score = n; }
+    };
+    </script>
+  </body>
+</html>

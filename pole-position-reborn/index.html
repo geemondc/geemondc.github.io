@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:,">
+<title>Pole Position Reborn</title>
+<style>
+:root{color-scheme:dark;--bg:#05060a;--panel:#0d1020;--ink:#f4f6ff;--dim:#aab3d6;--red:#e33;--yel:#ffd23f;--grn:#37e08b;--blu:#3fa9ff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Verdana,Arial,sans-serif}
+#wrap{max-width:1020px;margin:0 auto;padding:10px 12px 90px}
+h1.logo{font-family:"Arial Black",Arial,sans-serif;font-style:italic;letter-spacing:0;text-align:center;margin:8px 0 2px;font-size:clamp(22px,5vw,50px);color:#fff;text-shadow:3px 3px 0 #d21f2c,-2px -2px 0 #2456d6,0 0 22px rgba(63,169,255,.5)}
+.sub{text-align:center;color:var(--dim);font-size:13px;margin:0 0 10px;letter-spacing:2px}
+#stage{position:relative;width:100%;aspect-ratio:4/3;background:#000;border:3px solid #232a4d;border-radius:10px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas#game{width:100%;height:100%;display:block}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 12px;font-family:"Courier New",monospace;font-weight:bold;font-size:clamp(12px,2.4vw,20px);text-shadow:2px 2px 0 #000;pointer-events:none}
+#hud .v{color:#fff}#hud .lab{color:var(--yel);font-size:.62em;display:block;letter-spacing:1px}
+#msg{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:"Arial Black",Arial,sans-serif;font-size:clamp(20px,4.6vw,44px);color:#fff;text-shadow:3px 3px 0 #000,0 0 18px rgba(0,0,0,.8);pointer-events:none;padding:0 8px;white-space:pre-line}
+#lights{position:absolute;top:16%;left:50%;transform:translateX(-50%);display:none;gap:10px}
+#lights span{width:26px;height:26px;border-radius:50%;background:#330d0d;border:2px solid #000;display:block}
+#lights span.on{background:#ff2a2a;box-shadow:0 0 18px #ff2a2a}
+#lights span.go{background:#2aff5e;box-shadow:0 0 18px #2aff5e}
+#overlay{position:absolute;inset:0;background:rgba(3,4,12,.97);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;padding:30px 16px 18px;text-align:center;z-index:5}
+#overlay h2{font-family:"Arial Black",Arial,sans-serif;font-style:italic;margin:4px 0 6px;font-size:clamp(20px,4vw,34px);color:#fff;text-shadow:2px 2px 0 #d21f2c}
+#overlay p{color:var(--dim);max-width:620px;line-height:1.5;font-size:14px;margin:6px 0}
+#overlay .big{color:#fff;font-size:16px}
+button.go{background:#d21f2c;color:#fff;border:0;border-radius:8px;padding:14px 30px;font-size:18px;font-weight:bold;cursor:pointer;margin:10px 0;box-shadow:0 4px 0 #7d0f18}
+button.go:active{transform:translateY(2px)}
+.ctrls{display:grid;grid-template-columns:1fr 1fr;gap:4px 22px;text-align:left;font-size:13px;color:var(--dim);max-width:640px;margin:8px auto}
+.ctrls b{color:#fff;font-family:"Courier New",monospace}
+table.pts{border-collapse:collapse;margin:8px auto;color:var(--dim);font-size:13px}
+table.pts td,table.pts th{border:1px solid #2a3157;padding:4px 12px;text-align:center}
+table.pts th{color:var(--yel)}
+#touch{position:absolute;bottom:8px;left:0;right:0;display:none;justify-content:space-between;padding:0 8px;pointer-events:none;z-index:4}
+#touch .grp{display:flex;gap:6px;pointer-events:auto}
+.tbtn{background:rgba(20,24,48,.72);border:2px solid #46508a;color:#fff;border-radius:12px;padding:13px 8px;font-weight:bold;font-size:12px;min-width:50px;text-align:center}
+.tbtn:active,.tbtn.down{background:rgba(210,31,44,.8)}
+#gearInd{position:absolute;right:12px;bottom:64px;font-family:"Courier New",monospace;font-weight:bold;font-size:clamp(14px,2.6vw,22px);text-shadow:2px 2px 0 #000;pointer-events:none;display:none}
+#stage.playing #gearInd{display:block}
+@media(pointer:coarse){#stage.playing #touch{display:flex}}
+@media(max-width:640px){
+  #stage{aspect-ratio:auto;height:82vh}
+  #stage.playing{aspect-ratio:4/3;height:auto}
+  #overlay{padding:16px 12px}
+  #overlay p{font-size:13px}
+  #overlay table.pts{display:none}
+  .ctrls{font-size:12px;gap:3px 12px}
+  h1.logo{text-shadow:2px 2px 0 #d21f2c,-1px -1px 0 #2456d6}
+  #overlay h2{text-shadow:1px 1px 0 #d21f2c}
+}
+#qrBtn{position:fixed;left:10px;bottom:10px;z-index:40;background:#fff;border:0;border-radius:8px;padding:5px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+#qrBtn img{width:44px;height:44px;display:block}
+#qrBtn.big img{width:196px;height:196px}
+#qrBtn .cap{display:block;font-size:9px;color:#111;font-weight:bold;text-align:center}
+footer{text-align:center;color:#5d6690;font-size:12px;margin-top:12px;line-height:1.6}
+footer a{color:#7f8cc9}
+#docs{max-width:820px;margin:14px auto 0;background:var(--panel);border:1px solid #232a4d;border-radius:10px;padding:14px 18px;color:var(--dim);font-size:13px;line-height:1.65}
+#docs h3{color:#fff;margin:4px 0 8px}
+#docs b{color:var(--yel)}
+</style>
+</head>
+<body>
+<div id="wrap">
+<h1 class="logo">POLE POSITION</h1>
+<p class="sub">REBORN &nbsp;·&nbsp; FUJI SPEEDWAY &nbsp;·&nbsp; NAMCO 1982</p>
+
+<div id="stage">
+  <canvas id="game" width="960" height="720"></canvas>
+  <div id="hud">
+    <div><span class="lab">TIME</span><span class="v" id="hTime">90</span></div>
+    <div><span class="lab">LAP</span><span class="v" id="hLap">—</span></div>
+    <div><span class="lab">SCORE</span><span class="v" id="hScore">0</span></div>
+    <div><span class="lab">POS</span><span class="v" id="hPos">—</span></div>
+    <div style="text-align:right"><span class="lab">SPEED</span><span class="v" id="hSpeed">0 km/h</span></div>
+  </div>
+  <div id="lights"><span></span><span></span><span></span></div>
+  <div id="msg"></div>
+  <div id="gearInd">GEAR: LOW</div>
+  <div id="touch">
+    <div class="grp"><div class="tbtn" id="tL">◀</div><div class="tbtn" id="tR">▶</div></div>
+    <div class="grp"><div class="tbtn" id="tGear">GEAR</div><div class="tbtn" id="tBrk">BRAKE</div><div class="tbtn" id="tGas">GAS</div></div>
+  </div>
+  <div id="overlay">
+    <h2>PREPARE TO QUALIFY</h2>
+    <p class="big">One timed qualifying lap at Fuji Speedway sets your place on the 8-car grid. Beat <b style="color:#ffd23f">58.50s</b> and you take <b style="color:#ffd23f">POLE POSITION</b>. Run out of time and it's game over — then the Grand Prix: <b style="color:#fff">4 laps</b>, 7 rivals, thread past them all.</p>
+    <p><b style="color:#fff">How to play:</b> Qualify first. Shift LOW → HIGH once you're rolling (HIGH bogs down at low speed — downshift for tight corners and after any crash). Rival cars hold their lines and drift across the straights; pass them clean. Touch a car or a sign at speed and your car <b style="color:#fff">explodes</b> — a replacement rolls out, and the clock never stops.</p>
+    <div class="ctrls">
+      <div><b>← →</b> or mouse / drag — steer</div>
+      <div><b>↑</b> — accelerate</div>
+      <div><b>↓</b> — brake</div>
+      <div><b>SHIFT</b> or <b>Z</b> — toggle LOW / HIGH gear</div>
+      <div><b>Touch:</b> ◀ ▶ steer zones or drag</div>
+      <div><b>Touch:</b> GAS · BRAKE · GEAR pedals</div>
+      <div><b>ENTER</b> — start / continue</div>
+      <div><b>M</b> — sound on / off</div>
+    </div>
+    <table class="pts"><tr><th>Qualifying lap</th><th>Grid</th><th>Finish</th><th>Points</th></tr>
+    <tr><td>≤ 58.50</td><td>1st — POLE</td><td>1st</td><td>15,000</td></tr>
+    <tr><td>≤ 62.50</td><td>2nd</td><td>2nd</td><td>12,000</td></tr>
+    <tr><td>≤ 66.50</td><td>3rd</td><td>3rd</td><td>10,000</td></tr>
+    <tr><td>≤ 70.50 / 74.50</td><td>4th / 5th</td><td>4th / 5th</td><td>8,000 / 6,000</td></tr>
+    <tr><td>≤ 78.50 / 82.50</td><td>6th / 7th</td><td>6th / 7th</td><td>4,000 / 2,000</td></tr>
+    <tr><td>≤ 90.00</td><td>8th</td><td>8th</td><td>1,000</td></tr></table>
+    <p>Plus <b style="color:#fff">50 pts</b> for every rival you pass, and a finish bonus of <b style="color:#fff">200 pts per second</b> left on the clock. LOW gear tops out at 160 km/h — HIGH runs to 244 km/h.</p>
+    <button class="go" id="startBtn">START ENGINE</button>
+    <p style="font-size:12px">Sound is effects only — engine, beeps, the crash — just like the cabinet. No music. The original had none.</p>
+  </div>
+</div>
+
+<div id="docs">
+<h3>What “arcade-exact” means here — the documented values used</h3>
+<p><b>Structure:</b> one qualifying lap against a 90-second clock → grid of 8 → Grand Prix of <b>4 laps</b> of Fuji Speedway (factory-default race length) against 7 rivals, with time extended at each lap line. <b>Qualifying brackets (seconds):</b> 58.50 / 62.50 / 66.50 / 70.50 / 74.50 / 78.50 / 82.50 / 90.00 for grid slots 1–8, with the fastest bracket announced as POLE POSITION, as in the arcade. <b>Gearbox:</b> two-speed LOW/HIGH shifter; LOW tops at <b>160 km/h</b>, HIGH at <b>244 km/h</b>, and HIGH bogs at low speed. <b>Scoring:</b> finish points 15,000 / 12,000 / 10,000 / 8,000 / 6,000 / 4,000 / 2,000 / 1,000 for 1st–8th, 50 points per rival passed, 200 points per remaining second at the finish. <b>Honest note:</b> these are the widely published operator-manual / reference values for the 1982 Namco original; the qualifying-bonus scale and per-lap extension seconds vary by DIP-switch setting on real cabinets, so this build uses the standard published brackets and awards time per lap so a ~60-second lap pace keeps the race alive exactly as the default cabinet does.</p>
+</div>
+
+<footer>
+A fan-made tribute rebuild. Generic period billboards in the spirit of the original — no real brand logos.<br>
+<a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+</footer>
+</div>
+
+<button id="qrBtn" aria-label="Show QR code"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAFyAQAAAADAX2ykAAAC4ElEQVR4nO2cS27jMAyGP44FdCkDPUCPYt+gRyp6pLmBdZQcYAB5GUABZ6GHnSz6wKSeCKAWjm19CwIEpZ8iHVG+M8Kvb+FgvPHG/yi/ShlzfnURWEUI4iCMUOfdMfYYf0ce1TioqqoyaQJ8qhP5Xblkbnk0+43/Cl+Ccy0X1QgycxHCCDnE5wPtMf5n+EGBQWVmUH2XJy0+/1/2GP+v/LX3LqKso2h4ScikAD4eao/x9+Wzf3dJUnhVBFxS1ufE9Nsl8AqsR9hj/P35S5bHwKDydnIwRZC5QUFERMaj7DH+fnyWyWVEAK+qi1dV1YQuDHvC9HNnfM6P8u2kqroA4FPNj25mH81+4z8ejnygAWjIv0OC9Uklv3tJgP/jYH1Oj2e/8Z+MXfzi64K8+HaqoYkSxN7itz+e7EGAsjRTfamxzk4RW5/75PNZVXbtpGXX3eI3IwtVh5l/O+O5Us1VVcFQ4rd4ui3cj2a/8R8PBz45BZDp9KSwjmjWXD45meKlHnH5eIA9xt+Xv43fPFpWtO3Otv92yWcPFhG9lQYjAIMyxbb/Wn2wQ36nr2qsFq9Cy5SK482//fElfhe/T4PKRBxqzR/Lfzvly1o8NSc36bylS4U0/3bIX8dvzYryXps9PeQzacuPuuSbtGodVlSlVWK6NWGZvuqQr/11sT4u+RB6P1He2frcIb+rL5Sqb9zqC1vqmyz/7ZMv/TlhHpJMJwH8WRQuTrNqXkcI0kpMj2a/8Z+Mm/6NUjDaHUKXi+2/vfLb9ws+IfPq0HepTVgytk4sn46xx/g78lffL8SqpVpWxJYOW/7bI9/0VT1rLkcbtSq4F9bm3/54d/MseEWCgLI+K2HOdwlWZ/1X3fG3/tXwWtrdBZ8QGJLgz0L+nOHR7Df+K3wpHfmEvJ1EsshaVhFd/FmYTu6a/2l7jL8Xv+uPLbnuOCTgLIqPCDg0vCSnYYwH2GP8fXmx/2cw3vhu+b9x425AdwLlIQAAAABJRU5ErkJggg==" alt="QR code for this game"><span class="cap">QR</span></button>
+
+<script>
+"use strict";
+// ============ QR (tap to enlarge; self-hosted data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAFyAQAAAADAX2ykAAAC4ElEQVR4nO2cS27jMAyGP44FdCkDPUCPYt+gRyp6pLmBdZQcYAB5GUABZ6GHnSz6wKSeCKAWjm19CwIEpZ8iHVG+M8Kvb+FgvPHG/yi/ShlzfnURWEUI4iCMUOfdMfYYf0ce1TioqqoyaQJ8qhP5Xblkbnk0+43/Cl+Ccy0X1QgycxHCCDnE5wPtMf5n+EGBQWVmUH2XJy0+/1/2GP+v/LX3LqKso2h4ScikAD4eao/x9+Wzf3dJUnhVBFxS1ufE9Nsl8AqsR9hj/P35S5bHwKDydnIwRZC5QUFERMaj7DH+fnyWyWVEAK+qi1dV1YQuDHvC9HNnfM6P8u2kqroA4FPNj25mH81+4z8ejnygAWjIv0OC9Uklv3tJgP/jYH1Oj2e/8Z+MXfzi64K8+HaqoYkSxN7itz+e7EGAsjRTfamxzk4RW5/75PNZVXbtpGXX3eI3IwtVh5l/O+O5Us1VVcFQ4rd4ui3cj2a/8R8PBz45BZDp9KSwjmjWXD45meKlHnH5eIA9xt+Xv43fPFpWtO3Otv92yWcPFhG9lQYjAIMyxbb/Wn2wQ36nr2qsFq9Cy5SK482//fElfhe/T4PKRBxqzR/Lfzvly1o8NSc36bylS4U0/3bIX8dvzYryXps9PeQzacuPuuSbtGodVlSlVWK6NWGZvuqQr/11sT4u+RB6P1He2frcIb+rL5Sqb9zqC1vqmyz/7ZMv/TlhHpJMJwH8WRQuTrNqXkcI0kpMj2a/8Z+Mm/6NUjDaHUKXi+2/vfLb9ws+IfPq0HepTVgytk4sn46xx/g78lffL8SqpVpWxJYOW/7bI9/0VT1rLkcbtSq4F9bm3/54d/MseEWCgLI+K2HOdwlWZ/1X3fG3/tXwWtrdBZ8QGJLgz0L+nOHR7Df+K3wpHfmEvJ1EsshaVhFd/FmYTu6a/2l7jL8Xv+uPLbnuOCTgLIqPCDg0vCSnYYwH2GP8fXmx/2cw3vhu+b9x425AdwLlIQAAAABJRU5ErkJggg==, decode-verified) ============
+document.getElementById('qrBtn').addEventListener('click',function(){this.classList.toggle('big');});
+
+// ============ Audio: SFX only, no music (as the original) ============
+var AC=null, engOsc=null, engGain=null, muted=false;
+function audio(){ if(AC) return; try{ AC=new (window.AudioContext||window.webkitAudioContext)();
+  engOsc=AC.createOscillator(); engOsc.type='sawtooth'; engGain=AC.createGain(); engGain.gain.value=0;
+  var f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900;
+  engOsc.connect(f); f.connect(engGain); engGain.connect(AC.destination); engOsc.start();
+}catch(e){} }
+function beep(fr,dur,vol,type){ if(!AC||muted)return; var o=AC.createOscillator(),g=AC.createGain(); o.type=type||'square'; o.frequency.value=fr; g.gain.value=vol||0.12; o.connect(g); g.connect(AC.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur); o.stop(AC.currentTime+dur); }
+function explosionSnd(){ if(!AC||muted)return; var len=AC.sampleRate*0.7, buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+  for(var i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+  var s=AC.createBufferSource(); s.buffer=buf; var g=AC.createGain(); g.gain.value=0.4; var f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=700;
+  s.connect(f); f.connect(g); g.connect(AC.destination); s.start(); }
+function whoosh(){ beep(1200,0.15,0.05,'sine'); }
+
+// ============ Track (Fuji layout feel: long straights, signature sweepers) ============
+var SEG=200, RUMBLE=3, CAMH=1050, CAMD=0.84, ROADW=2100, CENT=0.32, MAXSPD=SEG*60;
+var segments=[], trackLen=0;
+function addSeg(curve,y){ var n=segments.length; segments.push({index:n,curve:curve,
+  p1:{world:{y:segments.length?segments[segments.length-1].p2.world.y:0,z:n*SEG},camera:{},screen:{}},
+  p2:{world:{y:y,z:(n+1)*SEG},camera:{},screen:{}}, color:Math.floor(n/RUMBLE)%2, cars:[], sprites:[]}); }
+function addRoad(enter,hold,leave,curve){ var sy=lastY(), ey=sy; var total=enter+hold+leave,i;
+  for(i=0;i<enter;i++) addSeg(easeIn(0,curve,i/enter), easeInOut(sy,ey,i/total));
+  for(i=0;i<hold;i++) addSeg(curve, easeInOut(sy,ey,(enter+i)/total));
+  for(i=0;i<leave;i++) addSeg(easeInOut(curve,0,i/leave), easeInOut(sy,ey,(enter+hold+i)/total)); }
+function lastY(){ return segments.length?segments[segments.length-1].p2.world.y:0; }
+function easeIn(a,b,p){return a+(b-a)*p*p} function easeInOut(a,b,p){return a+(b-a)*(-Math.cos(p*Math.PI)/2+0.5)}
+function buildTrack(){ segments=[];
+  addRoad(30,30,30,0);            // main straight past the pits
+  addRoad(25,25,25,2);            // first sweeper right
+  addRoad(20,20,20,0);
+  addRoad(30,30,30,-3);           // long left
+  addRoad(15,15,15,4);            // tight right kink
+  addRoad(40,40,40,0);            // back straight — rivals drift here
+  addRoad(25,25,25,-2);
+  addRoad(20,20,20,3);
+  addRoad(35,35,35,0);            // final straight home
+  trackLen=segments.length*SEG; }
+function findSeg(z){ return segments[Math.floor(z/SEG)%segments.length]; }
+
+// Roadside signs: generic period billboards, alternating sides (original placements/spirit)
+var SIGN_NAMES=['FUJI','GRAND PRIX','MOTOR OIL','RACING TYRES','SPARK PLUGS','SPEEDWAY','GP 1982','TURBO','OCTANE','PIT STOP'];
+var signs=[];
+function placeSigns(){ signs=[]; var k=0; for(var i=14;i<segments.length;i+=11){ var side=k%2? -1:1;
+  var s={seg:i,side:side,name:SIGN_NAMES[k%SIGN_NAMES.length],color:['#d21f2c','#2456d6','#e8a013','#1d8a4c','#7a2bd2'][k%5]};
+  signs.push(s); segments[i].sprites.push(s); k++; } }
+
+// ============ Sprites: pre-rendered small canvases (capped well under 1024px) ============
+function carCanvas(body,wing){ var c=document.createElement('canvas'); c.width=120; c.height=72; var x=c.getContext('2d');
+  x.fillStyle='#111'; x.fillRect(8,50,26,16); x.fillRect(86,50,26,16); // tyres
+  x.fillStyle=body; x.beginPath(); x.moveTo(14,52); x.lineTo(30,30); x.lineTo(46,24); x.lineTo(74,24); x.lineTo(90,30); x.lineTo(106,52); x.lineTo(96,56); x.lineTo(24,56); x.closePath(); x.fill();
+  x.fillStyle=wing; x.fillRect(16,16,88,9); x.fillRect(22,25,6,10); x.fillRect(92,25,6,10); // rear wing
+  x.fillStyle='#22242e'; x.fillRect(50,28,20,12); // cockpit
+  x.fillStyle='#f5d90a'; x.beginPath(); x.arc(60,31,6,0,7); x.fill(); // helmet
+  x.fillStyle='rgba(255,255,255,.85)'; x.fillRect(44,44,32,6); // nose stripe
+  return c; }
+var playerSprite=carCanvas('#e8e8f2','#d21f2c');
+var rivalColors=['#2456d6','#37b24d','#e8a013','#7a2bd2','#e8590c','#12b5a5','#e64980','#4dabf7'];
+var rivalSprites=rivalColors.map(function(c){return carCanvas(c,'#16181f');});
+function signCanvas(s){ var c=document.createElement('canvas'); c.width=200; c.height=110; var x=c.getContext('2d');
+  x.fillStyle='#3a3f52'; x.fillRect(94,80,12,30);
+  x.fillStyle=s.color; x.fillRect(4,4,192,80); x.strokeStyle='#fff'; x.lineWidth=5; x.strokeRect(7,7,186,74);
+  x.fillStyle='#fff'; x.font='bold 26px Arial'; x.textAlign='center'; x.fillText(s.name,100,50);
+  x.font='bold 13px Arial'; x.fillText('· RACING ·',100,72); return c; }
+var signCache={}; signs.forEach(function(s){ signCache[s.name+s.color]=signCanvas(s); });
+
+// ============ Game state ============
+var cv=document.getElementById('game'), ctx=cv.getContext('2d'), W=960, H=720;
+var state='title'; // title,count,qual,qualdone,racecount,race,crash,over,finish
+var pos=0, playerX=0, speed=0, gear='LOW', score=0, dx=0;
+var keys={}, mouseSteer=null;
+var timeLeft=0, raceTime=0, qualTime=0, lapStart=0, curLap=0, lapCount=4, gridPos=8, racePos=8;
+var crashT=0, explodeT=0, msgT=0, countT=0, countStep=0, blimpX=0, started=false;
+var QUAL_BRACKETS=[58.5,62.5,66.5,70.5,74.5,78.5,82.5,90.0];
+var QUAL_BONUS=[4000,2000,1000,500,400,300,200,100];
+var FINISH_PTS=[15000,12000,10000,8000,6000,4000,2000,1000];
+var rivals=[];
+function resetRivals(forRace){ rivals=[]; for(var i=0;i<7;i++){ rivals.push({z:(i+1)*trackLen/9 + (forRace? (8-gridPos)*900:0), offset:[-0.55,-0.25,0,0.3,0.55,-0.4,0.45][i], speed:MAXSPD*(0.66+Math.random()*0.10), sprite:i, drift:Math.random()*6.28, passed:false}); }
+  rivals.forEach(function(r){ var s=findSeg(r.z); s.cars.push(r); }); }
+function rebuildCars(){ segments.forEach(function(s){s.cars=[];}); rivals.forEach(function(r){ findSeg(r.z).cars.push(r); }); }
+
+buildTrack(); placeSigns();
+signs.forEach(function(s){ if(!signCache[s.name+s.color]) signCache[s.name+s.color]=signCanvas(s); });
+resetRivals(false);
+
+var msgEl=document.getElementById('msg'), lightsEl=document.getElementById('lights');
+function showMsg(t,secs){ msgEl.textContent=t; msgT=secs||2; }
+function setLights(n,go){ lightsEl.style.display='flex'; var sp=lightsEl.children;
+  for(var i=0;i<3;i++){ sp[i].className = go? 'go' : (i<n?'on':''); }
+  if(go) setTimeout(function(){lightsEl.style.display='none';},600); }
+
+var mode='qual';
+function startQualify(){ audio(); if(AC&&AC.state==='suspended')AC.resume(); mode='qual';
+  score=0; speed=0; playerX=0; gear='LOW'; pos=0; qualTime=0; timeLeft=90; state='count'; countT=0; countStep=0; resetRivals(false); rebuildCars();
+  document.getElementById('overlay').style.display='none'; }
+function startRace(){ mode='race'; speed=0; playerX=0; gear='LOW'; pos=0; curLap=1; raceTime=0; timeLeft=90; lapStart=0; state='racecount'; countT=0; countStep=0; resetRivals(true); rebuildCars(); }
+
+function gridFor(t){ for(var i=0;i<8;i++) if(t<=QUAL_BRACKETS[i]) return i+1; return 0; }
+
+function doCrash(big){ state='crash'; crashT= big? 3.2 : 2.0; explodeT= big? 1.1:0.5; explosionSnd(); showMsg(big?'CRASH!':'SPIN!',1.4); speed=0; }
+function finishRace(){ state='finish'; var pts=FINISH_PTS[racePos-1]; var tbonus=Math.floor(timeLeft)*200; score+=pts+tbonus;
+  showResult('FINISH — '+ordinal(racePos), 'Finish points: '+pts.toLocaleString()+'\nTime bonus: '+Math.floor(timeLeft)+' sec × 200 = '+tbonus.toLocaleString()+'\nTOTAL SCORE: '+score.toLocaleString()); }
+function ordinal(n){return n+(n===1?'st':n===2?'nd':n===3?'rd':'th');}
+function gameOver(t){ state='over'; showResult('GAME OVER', t+'\nSCORE: '+score.toLocaleString()); }
+function showResult(title,body){ var ov=document.getElementById('overlay'); ov.style.display='flex';
+  ov.innerHTML='<h2>'+title+'</h2><p class="big" style="white-space:pre-line">'+body+'</p><button class="go" id="againBtn">RACE AGAIN</button><p style="font-size:12px">ENTER also restarts.</p>';
+  document.getElementById('againBtn').addEventListener('click',function(){ location.reload(); }); }
+
+// ============ Input ============
+document.addEventListener('keydown',function(e){ keys[e.code]=true;
+  if((e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='KeyZ') && (state==='qual'||state==='race') && !e.repeat){ gear = gear==='LOW'?'HIGH':'LOW'; beep(gear==='HIGH'?880:440,0.08,0.1); }
+  if(e.code==='KeyM'){ muted=!muted; }
+  if(e.code==='Enter'){ if(state==='title') startQualify(); else if(state==='over'||state==='finish') location.reload(); else if(state==='qualdone') startRace(); }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code)>=0) e.preventDefault(); });
+document.addEventListener('keyup',function(e){ keys[e.code]=false; });
+var stage=document.getElementById('stage');
+stage.addEventListener('mousemove',function(e){ var r=stage.getBoundingClientRect(); mouseSteer=((e.clientX-r.left)/r.width)*2-1; });
+stage.addEventListener('touchmove',function(e){ var r=stage.getBoundingClientRect(),t=e.touches[0]; mouseSteer=((t.clientX-r.left)/r.width)*2-1; e.preventDefault(); },{passive:false});
+function bindBtn(id,code){ var el=document.getElementById(id);
+  el.addEventListener('touchstart',function(e){ keys[code]=true; el.classList.add('down'); e.preventDefault(); },{passive:false});
+  el.addEventListener('touchend',function(e){ keys[code]=false; el.classList.remove('down'); e.preventDefault(); },{passive:false}); }
+bindBtn('tGas','ArrowUp'); bindBtn('tBrk','ArrowDown'); bindBtn('tL','ArrowLeft'); bindBtn('tR','ArrowRight');
+document.getElementById('tGear').addEventListener('touchstart',function(e){ e.preventDefault(); if(state==='qual'||state==='race'){ gear=gear==='LOW'?'HIGH':'LOW'; beep(700,0.08,0.1);} },{passive:false});
+document.getElementById('startBtn').addEventListener('click',startQualify);
+
+// ============ Update ============
+var lastTs=0;
+function step(dt){
+  blimpX=(blimpX+dt*8)%1400;
+  if(msgT>0){ msgT-=dt; if(msgT<=0) msgEl.textContent=''; }
+  if(state==='count'||state==='racecount'){ countT+=dt; var s=Math.floor(countT/0.9);
+    if(s!==countStep){ countStep=s; if(s<3){ setLights(s+1,false); beep(440,0.15,0.14); showMsg('PREPARE TO '+(state==='count'?'QUALIFY':'RACE'),0.8); }
+      else { setLights(3,true); beep(880,0.4,0.16); showMsg('GO!',0.7); state = state==='count'?'qual':'race'; if(state==='race'){lapStart=0;} } }
+    return; }
+  if(state==='crash'){ crashT-=dt; explodeT-=dt; if(engGain)engGain.gain.value=0; if(crashT<=0){ state = mode==='race'?'race':'qual'; speed=0; gear='LOW'; showMsg('GO!',0.6);} return; }
+  if(state!=='qual'&&state!=='race'){ if(engGain)engGain.gain.value=0; return; }
+  var racing = state==='race'; raceActive=racing;
+  // timer
+  timeLeft-=dt; if(racing) raceTime+=dt; else qualTime+=dt;
+  if(timeLeft<=0){ timeLeft=0; if(engGain)engGain.gain.value=0;
+    if(!racing) gameOver('Out of time in qualifying — no grid slot.'); else gameOver('Out of time on lap '+curLap+' of '+lapCount+'.');
+    return; }
+  var seg=findSeg(pos);
+  var topSpeed = gear==='LOW'? MAXSPD*0.656 : MAXSPD; // 160 / 244 km/h
+  var accel;
+  if(keys['ArrowUp']){ if(gear==='HIGH' && speed<MAXSPD*0.41) accel=MAXSPD/9; // bogging in HIGH at low speed
+    else accel=MAXSPD/3.4; }
+  else accel=0;
+  var decel = keys['ArrowDown']? -MAXSPD/1.1 : -MAXSPD/7;
+  if(!keys['ArrowUp']) decel=-MAXSPD/6;
+  speed += (accel===0? decel : accel - MAXSPD/14)*dt;
+  if(keys['ArrowDown']) speed += (-MAXSPD/1.2)*dt;
+  if(speed>topSpeed) speed=Math.max(topSpeed, speed-MAXSPD*1.4*dt);
+  speed=Math.max(0,Math.min(MAXSPD,speed));
+  // steering
+  var steer=0;
+  if(keys['ArrowLeft']) steer=-1; if(keys['ArrowRight']) steer=1;
+  if(steer===0 && mouseSteer!==null && (keys['ArrowUp'])) steer=mouseSteer;
+  dx = steer * dt * 2.3 * (0.35+0.65*(speed/MAXSPD));
+  playerX += dx;
+  playerX -= seg.curve * CENT * (speed/MAXSPD) * dt * 1.5; // centrifugal push — sweepers stay takeable flat-out, as at Fuji
+  // off-road
+  if(Math.abs(playerX)>1.15 && speed>MAXSPD*0.25){ speed-=MAXSPD*0.9*dt; if(speed<MAXSPD*0.2)speed=MAXSPD*0.2;
+    if(Math.abs(playerX)>1.9){ // sign strike
+      for(var si=0;si<signs.length;si++){ if(signs[si].seg===seg.index && Math.sign(playerX)===signs[si].side){ doCrash(speed>MAXSPD*0.5); playerX=signs[si].side*0.9; return; } }
+      playerX=Math.max(-2.4,Math.min(2.4,playerX)); }
+  }
+  playerX=Math.max(-2.4,Math.min(2.4,playerX));
+  var oldPos=pos;
+  pos += speed*dt*0.22; // world advance scaled so a flat-out lap lands in the documented ~58s bracket zone
+  // rivals
+  rivals.forEach(function(r){ r.z += r.speed*dt*0.22; r.drift+=dt*0.4; r.offset += Math.sin(r.drift)*0.06*dt* (Math.abs(findSeg(r.z).curve)===0?1:0.2); r.offset=Math.max(-0.7,Math.min(0.7,r.offset));
+    if(r.z>=trackLen) r.z-=trackLen; });
+  rebuildCars();
+  // collision with rivals in player segment area
+  var pSeg=findSeg(pos);
+  for(var ci=0;ci<pSeg.cars.length;ci++){ var c=pSeg.cars[ci];
+    if(Math.abs(playerX-c.offset)<0.42 && speed>10){ if(speed>MAXSPD*0.35){ doCrash(true); return; } else { doCrash(false); return; } } }
+  // passing score + whoosh (race)
+  if(racing){ var ahead=0; rivals.forEach(function(r){ var rel=(r.z-pos+trackLen*3)%trackLen; if(rel<trackLen/2) ahead++; });
+    var newPos=ahead+1;
+    if(newPos<racePos){ score+=50*(racePos-newPos); whoosh(); }
+    racePos=newPos; }
+  // lap crossing
+  if(pos>=trackLen){ pos-=trackLen;
+    if(!racing){ var qt=qualTime; gridPos=gridFor(qt);
+      if(gridPos===0){ gameOver('Qualifying lap '+qt.toFixed(2)+'s — outside the 90.00s limit.'); return; }
+      score+=QUAL_BONUS[gridPos-1]; state='qualdone'; if(engGain)engGain.gain.value=0;
+      var ov=document.getElementById('overlay'); ov.style.display='flex';
+      ov.innerHTML='<h2>'+(gridPos===1?'★ POLE POSITION ★':'QUALIFIED — '+ordinal(gridPos).toUpperCase()+' ON THE GRID')+'</h2>'+
+      '<p class="big">Qualifying lap: '+qt.toFixed(2)+' seconds\nGrid slot: '+gridPos+' of 8 · Qualifying bonus: '+QUAL_BONUS[gridPos-1].toLocaleString()+' pts</p>'+
+      '<p>The Grand Prix: '+lapCount+' laps of Fuji. 90 seconds on the clock, extended at every lap line. Finish points up to 15,000, plus 200 per second you have left.</p>'+
+      '<button class="go" id="raceBtn">START THE GRAND PRIX</button><p style="font-size:12px">ENTER also starts the race.</p>';
+      document.getElementById('raceBtn').addEventListener('click',startRace); return;
+    } else { curLap++; if(curLap>lapCount){ finishRace(); return; }
+      timeLeft+=58; showMsg('LAP '+curLap+'  ·  TIME EXTENDED',1.6); beep(990,0.2,0.12); lapStart=raceTime; } }
+  // engine sound tied to RPM (speed within gear)
+  if(AC&&engOsc&&!muted){ var rpm = gear==='LOW'? speed/(MAXSPD*0.656) : speed/MAXSPD; engOsc.frequency.value=55+rpm*165+(keys['ArrowUp']?8:0); engGain.gain.value= started||true ? 0.035+rpm*0.03 : 0; }
+  // HUD
+  document.getElementById('hTime').textContent=Math.ceil(timeLeft);
+  document.getElementById('hScore').textContent=score.toLocaleString();
+  document.getElementById('hSpeed').textContent=Math.round(speed/MAXSPD*244)+' km/h';
+  document.getElementById('hLap').textContent= racing? (curLap+' / '+lapCount) : 'QUAL';
+  document.getElementById('hPos').textContent= racing? ordinal(racePos) : '—';
+  document.getElementById('gearInd').textContent='GEAR: '+gear+(gear==='HIGH'&&speed<MAXSPD*0.41&&keys['ArrowUp']?' (BOGGING)':'');
+  started=true;
+}
+var raceActive=false;
+
+// ============ Render: scaler road, Fuji, blimp, signs, cars ============
+function project(p,camX,camY,camZ){ p.camera.x=(p.world.x||0)-camX; p.camera.y=p.world.y-camY; p.camera.z=p.world.z-camZ;
+  p.screen.scale=CAMD/p.camera.z; p.screen.x=Math.round(W/2 + p.screen.scale*p.camera.x*W/2);
+  p.screen.y=Math.round(H/2 - p.screen.scale*p.camera.y*H/2); p.screen.w=Math.round(p.screen.scale*ROADW*W/2); }
+function poly(x1,y1,x2,y2,x3,y3,x4,y4,color){ ctx.fillStyle=color; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.lineTo(x4,y4); ctx.closePath(); ctx.fill(); }
+function drawSprite(img,cx,baseY,scale,clipY){ var w=img.width*scale, h=img.height*scale; var y=baseY-h; if(clipY!==undefined && baseY>clipY) { /* simple: skip partial clip handling */ }
+  ctx.drawImage(img,cx-w/2,y,w,h); }
+function render(){
+  // sky
+  var sky=ctx.createLinearGradient(0,0,0,H*0.55); sky.addColorStop(0,'#3d7bd6'); sky.addColorStop(1,'#bfe0f5');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+  // Mount Fuji — snow-capped, on the horizon (parallax by playerX/curve feel)
+  var fx=W/2 - playerX*22, fy=H*0.46;
+  ctx.fillStyle='#5b7bab'; ctx.beginPath(); ctx.moveTo(fx-330,fy); ctx.lineTo(fx-90,fy-168); ctx.lineTo(fx+90,fy-168); ctx.lineTo(fx+330,fy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#f4f8ff'; ctx.beginPath(); ctx.moveTo(fx-90,fy-168); ctx.lineTo(fx+90,fy-168); ctx.lineTo(fx+44,fy-118); ctx.lineTo(fx+14,fy-136); ctx.lineTo(fx-16,fy-114); ctx.lineTo(fx-46,fy-134); ctx.closePath(); ctx.fill();
+  // hills
+  ctx.fillStyle='#3e7d3a'; ctx.fillRect(0,fy,W,H*0.1);
+  ctx.fillStyle='#4c9448'; ctx.beginPath(); ctx.ellipse(W*0.12,fy+14,260,36,0,0,7); ctx.ellipse(W*0.9,fy+10,300,42,0,0,7); ctx.fill();
+  // blimp overhead
+  var bx=((blimpX%1400)-200), by=52+Math.sin(blimpX*0.01)*6;
+  ctx.fillStyle='#e8ecf4'; ctx.beginPath(); ctx.ellipse(bx,by,58,17,0,0,7); ctx.fill();
+  ctx.fillStyle='#d21f2c'; ctx.font='bold 12px Arial'; ctx.textAlign='center'; ctx.fillText('FUJI GP',bx,by+4);
+  ctx.fillStyle='#9aa3b5'; ctx.fillRect(bx-8,by+14,16,7);
+  // road
+  var base=findSeg(pos), basePct=(pos%SEG)/SEG, maxy=H;
+  var camY=CAMH+base.p1.world.y, x=0, dxr=-(base.curve*basePct);
+  var drawSegs=110;
+  var n;
+  for(n=0;n<drawSegs;n++){ var s=segments[(base.index+n)%segments.length]; s.loop=s.index<base.index; s.clip=maxy;
+    project(s.p1,(playerX*ROADW)-x, camY, pos-(s.loop?trackLen:0));
+    project(s.p2,(playerX*ROADW)-x-dxr, camY, pos-(s.loop?trackLen:0));
+    x+=dxr; dxr+=s.curve;
+    if(s.p1.camera.z<=CAMD||s.p2.screen.y>=s.p1.screen.y||s.p2.screen.y>=maxy) continue;
+    var r1=s.p1.screen.w/12, r2=s.p2.screen.w/12;
+    var grass=s.color? '#3f9e43':'#35963a';
+    ctx.fillStyle=grass; ctx.fillRect(0,s.p2.screen.y,W,s.p1.screen.y-s.p2.screen.y);
+    poly(s.p1.screen.x-r1-s.p1.screen.w, s.p1.screen.y, s.p1.screen.x-r1, s.p1.screen.y, s.p2.screen.x-r2, s.p2.screen.y, s.p2.screen.x-r2-s.p2.screen.w, s.p2.screen.y, s.color?'#e33':'#f2f2f2');
+    poly(s.p1.screen.x+r1+s.p1.screen.w, s.p1.screen.y, s.p1.screen.x+r1, s.p1.screen.y, s.p2.screen.x+r2, s.p2.screen.y, s.p2.screen.x+r2+s.p2.screen.w, s.p2.screen.y, s.color?'#e33':'#f2f2f2');
+    poly(s.p1.screen.x-s.p1.screen.w, s.p1.screen.y, s.p1.screen.x+s.p1.screen.w, s.p1.screen.y, s.p2.screen.x+s.p2.screen.w, s.p2.screen.y, s.p2.screen.x-s.p2.screen.w, s.p2.screen.y, s.color?'#7a7f8c':'#848a97');
+    if(s.index%40<2){ ctx.fillStyle='#fff'; ctx.fillRect(s.p1.screen.x-3,s.p1.screen.y,6,Math.max(1,s.p1.screen.y-s.p2.screen.y)); }
+    s.fogY=s.p2.screen.y; maxy=s.p2.screen.y; s.drawn=true; s._x=x; }
+  // sprites back-to-front
+  for(n=drawSegs-1;n>=0;n--){ var s2=segments[(base.index+n)%segments.length]; if(!s2.drawn) continue; s2.drawn=false;
+    s2.sprites.forEach(function(sp){ var scale=s2.p1.screen.scale; var destX=s2.p1.screen.x + scale*sp.side*(ROADW+900)*W/2; var destY=s2.p1.screen.y;
+      var img=signCache[sp.name+sp.color]; if(img) drawSprite(img,destX,destY,scale*950); });
+    s2.cars.forEach(function(c){ var scale=s2.p1.screen.scale; var destX=s2.p1.screen.x + scale*c.offset*ROADW*W/2; drawSprite(rivalSprites[c.sprite],destX,s2.p1.screen.y,scale*880); });
+  }
+  // start gantry feel on seg 0 proximity is implicit; player car
+  if(state!=='title'){
+    if(state==='crash'&&explodeT>0){ // exploding crash: fireball + debris, as the arcade
+      var cxp=W/2 - playerX*30, cyp=H-150;
+      ctx.fillStyle='#ff7b1c'; ctx.beginPath(); ctx.arc(cxp,cyp,54+Math.random()*16,0,7); ctx.fill();
+      ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(cxp,cyp,32+Math.random()*10,0,7); ctx.fill();
+      ctx.fillStyle='#2b2b2b'; for(var d=0;d<8;d++){ ctx.fillRect(cxp+Math.sin(d*2.4)*70*Math.random(), cyp-40+Math.cos(d*1.7)*46*Math.random(), 9,6); }
+    } else { var pw=250, ph=150; ctx.drawImage(playerSprite, W/2-pw/2 - playerX*24, H-ph-26, pw, ph); }
+  }
+  // attract mode: slow auto-drive behind title
+  if(state==='title'){ pos=(pos+MAXSPD*0.32*0.016)%trackLen; }
+}
+function frame(ts){ var dt=Math.min(0.05,(ts-lastTs)/1000||0.016); lastTs=ts; step(dt);
+  stage.classList.toggle('playing', ['count','qual','racecount','race','crash'].indexOf(state)>=0);
+  render(); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
