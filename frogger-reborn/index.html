@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" href="data:," />
 <title>Frogger Reborn</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root{
     --bg:#0b0f0c; --panel:#131a14; --ink:#eef7ee; --dim:#a8bfa8;
@@ -13,8 +14,13 @@
     --gold:#ffd83d; --red:#ff5252; --line:#2a3a2c;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);overscroll-behavior:none;
     font-family:"Trebuchet MS","Segoe UI",Verdana,system-ui,sans-serif;}
+  /* rapid taps are hops, never browser gestures: kill double-tap zoom everywhere,
+     and all pan/pinch gestures on the game screen itself */
+  button{touch-action:manipulation;}
+  .pad{touch-action:none;}
+  #game{touch-action:none;}
   #app{max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;}
 
   /* ---------- INTRO ---------- */
@@ -39,7 +45,10 @@
   .panel p{margin:4px 0;}
   .panel .pts{color:var(--green);font-weight:700;}
   #qrBox{text-align:center;}
-  #qrBox canvas{background:#fff;border-radius:6px;padding:6px;}
+  #qrCode{display:inline-block;background:#fff;border-radius:6px;padding:6px;cursor:pointer;line-height:0;}
+  #qrCode img,#qrCode canvas{width:184px;height:184px;display:block;}
+  #qrCode.big img,#qrCode.big canvas{width:min(80vw,320px);height:min(80vw,320px);}
+  .qrUrl{font-size:12px;color:var(--dim);word-break:break-all;}
   .hub{display:block;text-align:center;margin-top:6px;color:var(--dim);font-size:12px;
     letter-spacing:3px;text-decoration:none;font-weight:700;}
   .hub:hover{color:var(--green);}
@@ -96,8 +105,9 @@
     </div>
     <div class="panel" id="qrBox" hidden>
       <h2>PLAY IT ANYWHERE</h2>
-      <canvas id="qrCanvas" width="29" height="29" style="width:174px;height:174px;image-rendering:pixelated;"></canvas>
-      <p>Point a phone camera at the big square on the cabinet — or just open this page on your phone. Same frog, same river.</p>
+      <div id="qrCode" role="img" aria-label="QR code linking to Frogger Reborn at geemondc.github.io/frogger-reborn"></div>
+      <p>Point a phone camera at the code to open Frogger Reborn on your phone. Tap the code to make it bigger.</p>
+      <p class="qrUrl">https://geemondc.github.io/frogger-reborn/</p>
     </div>
     <div class="panel" id="howBox" hidden>
       <h2>HOW TO PLAY</h2>
@@ -530,6 +540,22 @@ function loop(ts){
 requestAnimationFrame(loop);
 
 /* ---------------- controls ---------------- */
+/* Zoom guards: on a phone, fast repeated taps on the hop pads read as a
+   double-tap-zoom gesture and swipes/pinches can scale or scroll the page.
+   Block every one of those while the game screen is up, so a tap is only
+   ever a hop. (iOS Safari ignores user-scalable=no, hence the JS guards.) */
+function gameUp(){ return document.getElementById('game').style.display==='flex'; }
+document.addEventListener('gesturestart',function(e){ if(gameUp()) e.preventDefault(); });
+var lastTouchEnd=0;
+document.addEventListener('touchend',function(e){
+  var now=Date.now();
+  /* only hop surfaces are guarded — deck/overlay buttons keep their click
+     even on a fast second tap; the pads hop on pointerdown, before this fires */
+  var onButton = e.target && e.target.closest && e.target.closest('button');
+  if(gameUp() && now-lastTouchEnd<=350 && !(onButton && !onButton.classList.contains('pad'))) e.preventDefault();
+  lastTouchEnd=now;
+},{passive:false});
+document.getElementById('game').addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 document.querySelectorAll('.pad').forEach(function(b){
   b.addEventListener('pointerdown',function(e){ e.preventDefault(); hop(b.dataset.dir); });
 });
@@ -576,14 +602,14 @@ document.getElementById('qrTog').addEventListener('click',function(){
   var b=document.getElementById('qrBox'), open=b.hidden; b.hidden=!open;
   this.setAttribute('aria-pressed',String(open)); if(open) drawQR(); });
 document.getElementById('hubLink').addEventListener('click',function(e){ e.preventDefault(); });
-/* decorative QR-style finder pattern (visual toggle only) */
+/* real scannable QR for the permanent published address (same QRCode library as the sibling Reborn games) */
+var qrMade=false;
 function drawQR(){
-  var c=document.getElementById('qrCanvas'), q=c.getContext('2d'), n=29, seed=7;
-  q.fillStyle='#fff'; q.fillRect(0,0,n,n); q.fillStyle='#111';
-  function rnd(){ seed=(seed*1103515245+12345)%2147483648; return seed/2147483648; }
-  for(var y=0;y<n;y++) for(var x=0;x<n;x++){ var inF=(x<8&&y<8)||(x>n-9&&y<8)||(x<8&&y>n-9); if(!inF&&rnd()>0.52) q.fillRect(x,y,1,1); }
-  [[0,0],[n-7,0],[0,n-7]].forEach(function(p){ q.fillRect(p[0],p[1],7,7); q.fillStyle='#fff'; q.fillRect(p[0]+1,p[1]+1,5,5); q.fillStyle='#111'; q.fillRect(p[0]+2,p[1]+2,3,3); });
+  if(qrMade) return;
+  try{ if(window.QRCode){ new QRCode(document.getElementById('qrCode'),{text:'https://geemondc.github.io/frogger-reborn/',width:256,height:256,correctLevel:QRCode.CorrectLevel.M}); qrMade=true; } }catch(e){}
 }
+/* tap the code to enlarge it (house standard) */
+document.getElementById('qrCode').addEventListener('click',function(){ this.classList.toggle('big'); });
 /* expose state + constants for verification harness */
 window.__FROGGER__ = { SCORE:SCORE, ROW:ROW, BAY_CENTERS:BAY_CENTERS,
   get G(){ return G; }, hop:hop, die:die, tryHome:tryHome, buildLanes:buildLanes, divePhase:divePhase };
