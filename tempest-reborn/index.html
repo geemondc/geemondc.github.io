@@ -15,17 +15,13 @@
         overflow: hidden; -webkit-user-select: none; user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
-      :root {
-        --bar: 142px; /* height reserved below the well for the control deck */
-        --gs: min(100vw, calc(100vh - var(--bar)));
-        --gs: min(100vw, calc(100dvh - var(--bar)));
-      }
       #stage {
         position: fixed; inset: 0; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; gap: 2px;
+        align-items: stretch; justify-content: flex-start; gap: 0;
         background: #000;
       }
-      #box { position: relative; width: var(--gs); height: var(--gs); flex: none; }
+      /* play area fills every pixel between the top HUD line and the deck */
+      #box { position: relative; flex: 1 1 auto; min-height: 0; width: 100%; }
       canvas { display: block; width: 100%; height: 100%; background: #000; touch-action: none; }
 
       /* ---------- shared panel chrome ---------- */
@@ -143,13 +139,12 @@
       .initBtns button:active { filter: brightness(1.8); }
       #continueCount { color: #ffdf3d; }
 
-      /* ---------- control deck (below the play area, never over it) ---------- */
+      /* ---------- control deck (below the play area, never over it) ----------
+         Play controls only. QR + SOUND live on the intro screen. */
       #controlBar {
-        width: var(--gs); flex: none; display: flex; flex-direction: column;
-        gap: 2px; padding: 2px 2px 0;
+        width: 100%; flex: none; padding: 2px 4px 4px;
       }
-      .utilRow { display: flex; align-items: center; justify-content: space-between; min-height: 38px; }
-      .utilRight { display: flex; align-items: center; gap: 16px; }
+      .introTools { margin-top: 2.4%; display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
       .cornerBtn {
         background: rgba(0,0,0,.55); border: 1px solid #33503a;
         color: #9fc4a8; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px;
@@ -161,11 +156,6 @@
       }
       #qrBtn img { width: 30px; height: 30px; display: block; image-rendering: pixelated; background:#fff; }
       #soundBtn { padding: 7px 10px; font-size: 11px; letter-spacing: .15em; }
-      #hubLink {
-        color: #54685a; font-size: 11px; letter-spacing: .22em; text-decoration: none;
-        font-family: inherit;
-      }
-      #hubLink:hover { color: #9fc4a8; }
       #qrOverlay {
         position: absolute; inset: 0; z-index: 9; background: rgba(0,0,0,.92);
         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
@@ -177,7 +167,7 @@
 
       /* ---------- deck buttons ---------- */
       #titlePanel { background: rgba(0,0,0,.93); }
-      .btnRow { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 4px; }
+      .btnRow { display: flex; align-items: center; justify-content: space-between; padding: 1px 2px 2px; }
       .deckGroup { display: flex; align-items: center; gap: 12px; }
       .dBtn {
         border-radius: 50%; border: 2px solid; background: rgba(255,255,255,.03);
@@ -186,19 +176,16 @@
         -webkit-user-select: none; user-select: none; padding: 0;
       }
       .dBtn.on { filter: brightness(2); }
-      .spinBtn { width: 58px; height: 58px; color: #3dff5e; border-color: #3dff5e; font-size: 22px; }
-      #zapBtn { width: 62px; height: 62px; color: #59b7ff; border-color: #59b7ff; font-size: 12px; }
-      #fireBtn { width: 88px; height: 88px; color: #ffdf3d; border-color: #ffdf3d; font-size: 17px; }
+      .spinBtn { width: 56px; height: 56px; color: #3dff5e; border-color: #3dff5e; font-size: 22px; }
+      #zapBtn { width: 58px; height: 58px; color: #59b7ff; border-color: #59b7ff; font-size: 12px; }
+      #fireBtn { width: 80px; height: 80px; color: #ffdf3d; border-color: #ffdf3d; font-size: 17px; }
       @media (max-width: 640px) {
         .bigMsg { margin-top: 10%; }
       }
       @media (max-height: 480px) {
-        :root { --bar: 108px; }
-        #fireBtn { width: 64px; height: 64px; font-size: 14px; }
+        #fireBtn { width: 62px; height: 62px; font-size: 14px; }
         #zapBtn { width: 48px; height: 48px; }
         .spinBtn { width: 46px; height: 46px; font-size: 18px; }
-        .utilRow { min-height: 30px; }
-        #qrBtn img { width: 22px; height: 22px; }
       }
     </style>
   </head>
@@ -232,13 +219,20 @@
           <div class="skillBonus" id="lvlBonus"></div>
           <button id="startBtn" type="button">▶ START GAME</button>
 
+          <div class="introTools">
+            <button id="qrBtn" type="button" aria-label="Show QR code">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhAAAAIQAQAAAAD4e2okAAACfklEQVR4nO3d227DIAyAYXvK+78yu0iIDyG7aTxB81dqm6bsE1zUAnOYNvn08fOxAAEBAQEBAfFVxCYiouFWE5Xm7rWjxN4TyWVnaQgEBEQ5se1vNirR47WFd3+dy87REAgIiHJi6xf7b99nMyxy9P6Ghj5GLztHQyAgIMqJbXSzj0D6dXPjkZJaQEBArEAM44VKO2JGc0+9iRhzNAQCAqKcOOOFjwXtiA32nr9/uBYQEBArEEe8iLMesV8Rn7nsLA2BgIAoJ3Q8xvAxwc+vjkrP0RAICIhy4lh/kfsNf8+vxvgxR0MgICDKiZTv9POlPX7Yp5biSnuqFhAQECsQm0hcwZn7GjYa8XmM/lcP1QICAmIF4hyPxFXfEmKEiITxSHPjklkaAgEBUU6o/e6PGzK+43seLXwzR0MgICDKCb3GBZtP9ZlN9ptBQLyeSPtTcy6zv1oOI+YyHqoFBATECsSZ7xTRtGs97zNrkldqPVYLCAiIFYiQv7BeRI4Yfk7ERiuP1QICAmIFwq0Ht7GHplxFXNXZQlyZpSEQEBDlRFivZb2H6/71OIfKfCoExAsJjWdd5HO14hoMOe/tpR+rBQQExAqEWq4in5uV716znYxHICBeRQz3p8ZIkddnSRqtzNEQCAiIcmJ4PnhcDd5nVONO1UdrAQEBsQJxcz64zZNYxPAlfcyYoyEQEBDlxM354H4Hmh+FqPteyV9AQLyLGJ73a484GokzJf3THA2BgIAoJ27+n0BcgdHP+/Un51jOY46GQEBAlBPD88HtTsxu+nXiFjPmaAgEBEQ5cXM+uFyyF3Je5zN05mgIBAREOXFzPvg/1wICAgICAgLim4hfRFPBMh6ZnHIAAAAASUVORK5CYII=" alt="QR code for Tempest Reborn" /><span>QR</span>
+            </button>
+            <button id="soundBtn" class="cornerBtn" type="button" aria-label="Toggle sound">SOUND ON</button>
+          </div>
+
           <div class="howto">
             <p class="howLine">Aliens climb the tube toward your <b>Blaster</b> on the rim — blast them down the lanes before they reach you. Clear them all to <b>warp</b> to the next well!</p>
             <dl class="miniGrid">
               <dt>MOVE</dt><dd><b>Drag</b> around the well, move the <b>mouse</b>, or hold <b>◀ ▶</b> / <b>A D</b></dd>
               <dt>FIRE</dt><dd>Hold <b>SPACE</b>, <b>click</b>, or hold the <b>FIRE</b> button below</dd>
               <dt>ZAPPER</dt><dd><b>X</b>, <b>right-click</b>, or the <b>ZAP</b> button — first blast clears the whole well!</dd>
-              <dt>PAUSE · SOUND</dt><dd><b>P</b> pauses · <b>M</b> or the SOUND button below</dd>
+              <dt>PAUSE · SOUND</dt><dd><b>P</b> pauses · <b>M</b> or the SOUND button above</dd>
             </dl>
             <p class="ptsLine">FLIPPER 150 · TANKER 100 · SPIKER 50 · FUSEBALL 250+ · PULSAR 200</p>
             <p class="bonusLine">★ BONUS BLASTER EVERY 20,000 PTS ★</p>
@@ -277,17 +271,8 @@
 
       </div>
 
-      <!-- ============ CONTROL DECK (below the play area) ============ -->
+      <!-- ============ CONTROL DECK (below the play area, play controls only) ============ -->
       <div id="controlBar">
-        <div class="utilRow">
-          <button id="qrBtn" type="button" aria-label="Show QR code">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhAAAAIQAQAAAAD4e2okAAACfklEQVR4nO3d227DIAyAYXvK+78yu0iIDyG7aTxB81dqm6bsE1zUAnOYNvn08fOxAAEBAQEBAfFVxCYiouFWE5Xm7rWjxN4TyWVnaQgEBEQ5se1vNirR47WFd3+dy87REAgIiHJi6xf7b99nMyxy9P6Ghj5GLztHQyAgIMqJbXSzj0D6dXPjkZJaQEBArEAM44VKO2JGc0+9iRhzNAQCAqKcOOOFjwXtiA32nr9/uBYQEBArEEe8iLMesV8Rn7nsLA2BgIAoJ3Q8xvAxwc+vjkrP0RAICIhy4lh/kfsNf8+vxvgxR0MgICDKiZTv9POlPX7Yp5biSnuqFhAQECsQm0hcwZn7GjYa8XmM/lcP1QICAmIF4hyPxFXfEmKEiITxSHPjklkaAgEBUU6o/e6PGzK+43seLXwzR0MgICDKCb3GBZtP9ZlN9ptBQLyeSPtTcy6zv1oOI+YyHqoFBATECsSZ7xTRtGs97zNrkldqPVYLCAiIFYiQv7BeRI4Yfk7ERiuP1QICAmIFwq0Ht7GHplxFXNXZQlyZpSEQEBDlRFivZb2H6/71OIfKfCoExAsJjWdd5HO14hoMOe/tpR+rBQQExAqEWq4in5uV716znYxHICBeRQz3p8ZIkddnSRqtzNEQCAiIcmJ4PnhcDd5nVONO1UdrAQEBsQJxcz64zZNYxPAlfcyYoyEQEBDlxM354H4Hmh+FqPteyV9AQLyLGJ73a484GokzJf3THA2BgIAoJ27+n0BcgdHP+/Un51jOY46GQEBAlBPD88HtTsxu+nXiFjPmaAgEBEQ5cXM+uFyyF3Je5zN05mgIBAREOXFzPvg/1wICAgICAgLim4hfRFPBMh6ZnHIAAAAASUVORK5CYII=" alt="QR code for Tempest Reborn" /><span>QR</span>
-          </button>
-          <div class="utilRight">
-            <button id="soundBtn" class="cornerBtn" type="button" aria-label="Toggle sound">SOUND ON</button>
-            <a id="hubLink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
-          </div>
-        </div>
         <div class="btnRow">
           <div class="deckGroup">
             <button class="dBtn spinBtn" id="spinL" type="button" aria-label="Move left">◀</button>
@@ -315,8 +300,10 @@
    ===================================================================== */
 const cvs = document.getElementById('game');
 const ctx = cvs.getContext('2d');
-const LW = 1000, LH = 1000;                 // logical canvas size
-const CX = 500, CY = 578, RIMR = 332, FAR = 0.13;
+let LW = 1000, LH = 1000;                   // canvas size in CSS px (set by fitCanvas)
+let VIEW = { s: 1, ox: 0, oy: 0 };          // maps the 1000x1000 well space into the canvas
+const CX = 500, CY = 500, FAR = 0.13;
+let RIMR = 332;                             // set per well by updateRim(): bounding radius -> 450
 const LANES = 16;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -387,6 +374,13 @@ function wellForLevel(lvl) {
   if (lvl === 98) return WELLS[1];
   return WELLS[Math.floor(Math.random() * 16)];
 }
+/* scale the current well so its bounding radius fills the play area */
+function wellBound(w) {
+  let m = 0;
+  for (const p of w.pts) { const r = Math.hypot(p[0], p[1]); if (r > m) m = r; }
+  return m || 1;
+}
+function updateRim() { RIMR = 450 / wellBound(G.well); }
 
 /* ---------------- SkillStep (documented ratchets + skip bonuses) ---------------- */
 const RATCHETS = [1,3,5,7,9,11,13,15,17,20,22,24,26,28,31,33,36,40,44,47,49,52,56,60,63,65,73,81];
@@ -523,6 +517,7 @@ function levelComp(lvl) {
 function setupLevel(lvl, keepScore) {
   G.level = lvl;
   G.well = wellForLevel(lvl);
+  updateRim();
   G.scheme = schemeFor(lvl);
   G.enemies = []; G.shots = []; G.bolts = []; G.particles = [];
   G.spikes = new Array(LANES).fill(lvl >= 5 ? 0.05 : 0); // short spikes at far end of every lane (later levels)
@@ -659,9 +654,9 @@ let pointerTarget = null, pointerActive = false;
 let deckDir = 0; // held ◀ ▶ deck buttons: -1 | 0 | 1
 function canvasPos(ev) {
   const r = cvs.getBoundingClientRect();
-  const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX);
-  const cy = (ev.touches ? ev.touches[0].clientY : ev.clientY);
-  return [(cx - r.left) / r.width * LW, (cy - r.top) / r.height * LH];
+  const cxp = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+  const cyp = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+  return [(cxp - r.left - VIEW.ox) / VIEW.s, (cyp - r.top - VIEW.oy) / VIEW.s];
 }
 function nearestRimPos(x, y) {
   let best = 0, bd = 1e18;
@@ -1173,47 +1168,56 @@ function drawEnemies(zoom) {
     ctx.globalAlpha = 1;
   }
 }
+/* one compact HUD line pinned to the very top of the canvas, in CSS px:
+   score · high score + name · spare Blasters · level · SUPERZAPPER status */
 function drawHUD() {
+  const fs = clamp(Math.round(LW / 30), 12, 19);
+  const base = 23;
+  ctx.font = 'bold ' + fs + 'px "Courier New", monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  let x = 10;
   ctx.fillStyle = HUD_GREEN;
-  ctx.font = 'bold 34px "Courier New", monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText(String(G.score).padStart(1, '0'), 428, 84);
-  ctx.textAlign = 'left';
-  ctx.fillText(String(Math.max(G.hiScore, G.score)), 452, 84);
-  ctx.font = 'bold 24px "Courier New", monospace';
+  const sTxt = String(G.score);
+  ctx.fillText(sTxt, x, base); x += ctx.measureText(sTxt).width + 12;
+  const hiTxt = String(Math.max(G.hiScore, G.score));
+  ctx.fillText(hiTxt, x, base); x += ctx.measureText(hiTxt).width + 8;
   ctx.fillStyle = '#8fbf9f';
-  ctx.fillText(G.hiName, 452 + String(Math.max(G.hiScore, G.score)).length * 15 + 12, 84);
-  // current level: small digit under the high score, as on the cabinet
-  ctx.fillStyle = '#4d7dff';
-  ctx.font = 'bold 22px "Courier New", monospace';
-  ctx.fillText(String(Math.min(G.level, 99)), 596, 116);
-  // spare Blasters: small yellow claws under the score
+  ctx.fillText(G.hiName, x, base); x += ctx.measureText(G.hiName).width + 12;
+  // spare Blasters: small yellow claws on the same line
   const spares = clamp(G.lives - (G.mode === 'playing' || G.mode === 'warp' || G.mode === 'dying' ? 1 : 0), 0, 5);
-  ctx.strokeStyle = SCHEMES[0].blaster; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = SCHEMES[0].blaster;
+  const cs = fs * 0.78;
   for (let i = 0; i < spares; i++) {
-    const x = 288 + i * 34, y = 108;
-    ctx.save(); ctx.translate(x, y); ctx.scale(13, 13);
-    ctx.lineWidth = 0.16;
+    ctx.save(); ctx.translate(x + cs * 0.62, base - fs * 0.32); ctx.scale(cs, cs);
+    ctx.lineWidth = 2 / cs;
     poly([[-0.62, 0.30], [-0.55, -0.34], [-0.20, -0.62], [0, -0.26], [0.20, -0.62], [0.55, -0.34], [0.62, 0.30], [0.22, 0.06], [0, 0.40], [-0.22, 0.06]], true);
     ctx.restore();
+    x += cs * 1.35;
   }
-  // superzapper status
-  ctx.font = 'bold 17px "Courier New", monospace';
-  ctx.textAlign = 'right';
-  ctx.fillStyle = G.zapUses === 0 ? G.scheme.zap : G.zapUses === 1 ? '#9fb7c9' : '#3c4a41';
-  if (G.mode === 'playing' || G.mode === 'warp')
-    ctx.fillText(G.zapUses === 0 ? 'SUPERZAPPER READY' : G.zapUses === 1 ? 'ZAPPER: ONE LEFT' : 'ZAPPER SPENT', 972, 84);
-  ctx.textAlign = 'left';
-  if (G.mode === 'playing' && G.spawnQueue.length === 0 && G.enemies.length === 0) { /* warp imminent */ }
+  if (spares) x += 4;
+  // current level
+  ctx.fillStyle = '#4d7dff';
+  ctx.fillText('LV ' + String(Math.min(G.level, 99)), x, base);
+  // superzapper status, right end of the same line
+  if (G.mode === 'playing' || G.mode === 'warp') {
+    ctx.font = 'bold ' + Math.max(11, fs - 3) + 'px "Courier New", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = G.zapUses === 0 ? G.scheme.zap : G.zapUses === 1 ? '#9fb7c9' : '#3c4a41';
+    ctx.fillText(G.zapUses === 0 ? 'SUPERZAPPER READY' : G.zapUses === 1 ? 'ZAPPER: ONE LEFT' : 'ZAPPER SPENT', LW - 10, base);
+    ctx.textAlign = 'left';
+  }
 }
 function render() {
-  ctx.setTransform(cvs._scale, 0, 0, cvs._scale, 0, 0);
+  const dpr = cvs._dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, LW, LH);
   if (G.zapFlash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${(G.zapFlash * 0.5).toFixed(3)})`;
     ctx.fillRect(0, 0, LW, LH);
   }
+  if (G.mode !== 'attract') drawHUD();
+  ctx.setTransform(dpr * VIEW.s, 0, 0, dpr * VIEW.s, dpr * VIEW.ox, dpr * VIEW.oy);
   ctx.save();
   if (G.shake > 0) ctx.translate(rand(-G.shake, G.shake) * 0.6, rand(-G.shake, G.shake) * 0.6);
   const inWarp = G.mode === 'warp' || (G.mode === 'dying' && G.deadFrom === 'warp');
@@ -1222,7 +1226,6 @@ function render() {
   drawEnemies(zoom);
   if (G.mode !== 'gameover' && G.mode !== 'initials') drawBlaster(zoom);
   ctx.restore();
-  if (G.mode !== 'attract') drawHUD();
   if (G.paused) {
     ctx.fillStyle = '#fff'; ctx.font = 'bold 40px "Courier New", monospace'; ctx.textAlign = 'center';
     ctx.fillText('PAUSED', 500, 500); ctx.textAlign = 'left';
@@ -1242,15 +1245,23 @@ function loop(now) {
   update(dt);
   render();
 }
+const HUDH = 32; // CSS px reserved at the top of the canvas for the HUD line
 function fitCanvas() {
   const box = document.getElementById('box');
   const r = box.getBoundingClientRect();
+  LW = Math.max(160, Math.round(r.width));
+  LH = Math.max(160, Math.round(r.height));
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  cvs.width = Math.round(r.width * dpr);
-  cvs.height = Math.round(r.height * dpr);
-  cvs._scale = cvs.width / LW;
+  cvs.width = Math.round(LW * dpr);
+  cvs.height = Math.round(LH * dpr);
+  cvs._dpr = dpr;
+  const availH = Math.max(120, LH - HUDH);
+  const s = Math.min(LW, availH) / 1000;
+  VIEW = { s: s, ox: (LW - 1000 * s) / 2, oy: HUDH + (availH - 1000 * s) / 2 };
+  updateRim();
 }
 window.addEventListener('resize', fitCanvas);
+if (window.ResizeObserver) new ResizeObserver(fitCanvas).observe(document.getElementById('box'));
 fitCanvas();
 requestAnimationFrame(loop);
 </script>
