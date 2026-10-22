@@ -15,11 +15,17 @@
         overflow: hidden; -webkit-user-select: none; user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
+      :root {
+        --bar: 142px; /* height reserved below the well for the control deck */
+        --gs: min(100vw, calc(100vh - var(--bar)));
+        --gs: min(100vw, calc(100dvh - var(--bar)));
+      }
       #stage {
-        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        position: fixed; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 2px;
         background: #000;
       }
-      #box { position: relative; width: min(100vw, 100vh); height: min(100vw, 100vh); }
+      #box { position: relative; width: var(--gs); height: var(--gs); flex: none; }
       canvas { display: block; width: 100%; height: 100%; background: #000; touch-action: none; }
 
       /* ---------- shared panel chrome ---------- */
@@ -118,17 +124,27 @@
       .initBtns button:active { filter: brightness(1.8); }
       #continueCount { color: #ffdf3d; }
 
-      /* ---------- corner controls ---------- */
+      /* ---------- control deck (below the play area, never over it) ---------- */
+      #controlBar {
+        width: var(--gs); flex: none; display: flex; flex-direction: column;
+        gap: 2px; padding: 2px 2px 0;
+      }
+      .utilRow { display: flex; align-items: center; justify-content: space-between; min-height: 38px; }
+      .utilRight { display: flex; align-items: center; gap: 16px; }
       .cornerBtn {
-        position: absolute; z-index: 5; background: rgba(0,0,0,.55); border: 1px solid #33503a;
+        background: rgba(0,0,0,.55); border: 1px solid #33503a;
         color: #9fc4a8; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px;
       }
-      #qrBtn { left: 10px; bottom: 10px; padding: 5px 8px 5px 5px; font-size: 11px; letter-spacing: .15em; }
-      #qrBtn img { width: 34px; height: 34px; display: block; image-rendering: pixelated; background:#fff; }
-      #soundBtn { right: 10px; top: 10px; padding: 7px 10px; font-size: 11px; letter-spacing: .15em; }
+      #qrBtn {
+        background: rgba(0,0,0,.55); border: 1px solid #33503a; color: #9fc4a8;
+        font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px;
+        padding: 3px 8px 3px 3px; font-size: 11px; letter-spacing: .15em;
+      }
+      #qrBtn img { width: 30px; height: 30px; display: block; image-rendering: pixelated; background:#fff; }
+      #soundBtn { padding: 7px 10px; font-size: 11px; letter-spacing: .15em; }
       #hubLink {
-        position: absolute; right: 10px; bottom: 10px; z-index: 5; color: #54685a;
-        font-size: 11px; letter-spacing: .22em; text-decoration: none;
+        color: #54685a; font-size: 11px; letter-spacing: .22em; text-decoration: none;
+        font-family: inherit;
       }
       #hubLink:hover { color: #9fc4a8; }
       #qrOverlay {
@@ -140,24 +156,32 @@
       #qrOverlay .u { color: #3dff5e; font-size: clamp(12px, 3cqw, 17px); word-break: break-all; }
       #qrOverlay .t { color: #8fae97; letter-spacing: .25em; font-size: 12px; }
 
-      /* ---------- touch controls ---------- */
-      #touchBtns { position: absolute; inset: auto 0 0 0; z-index: 6; pointer-events: none; display: none; }
-      body.touch.ingame #touchBtns { display: block; }
+      /* ---------- deck buttons ---------- */
       #titlePanel { background: rgba(0,0,0,.93); }
-      .tBtn {
-        position: absolute; bottom: 64px; pointer-events: auto; border-radius: 50%;
-        border: 2px solid; background: rgba(0,0,0,.45); font-family: inherit; font-weight: bold;
+      .btnRow { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 4px; }
+      .deckGroup { display: flex; align-items: center; gap: 12px; }
+      .dBtn {
+        border-radius: 50%; border: 2px solid; background: rgba(255,255,255,.03);
+        font-family: inherit; font-weight: bold; cursor: pointer; touch-action: none;
         display: flex; align-items: center; justify-content: center; letter-spacing: .08em;
+        -webkit-user-select: none; user-select: none; padding: 0;
       }
-      #fireBtn { right: 16px; width: 92px; height: 92px; color: #ffdf3d; border-color: #ffdf3d; font-size: 17px; }
-      #zapBtn { right: 122px; bottom: 74px; width: 64px; height: 64px; color: #59b7ff; border-color: #59b7ff; font-size: 12px; }
-      .tBtn.on { filter: brightness(2); }
+      .dBtn.on { filter: brightness(2); }
+      .spinBtn { width: 58px; height: 58px; color: #3dff5e; border-color: #3dff5e; font-size: 22px; }
+      #zapBtn { width: 62px; height: 62px; color: #59b7ff; border-color: #59b7ff; font-size: 12px; }
+      #fireBtn { width: 88px; height: 88px; color: #ffdf3d; border-color: #ffdf3d; font-size: 17px; }
       @media (max-width: 640px) {
         .cols { flex-direction: column; }
         .col { width: 100%; }
         .bigMsg { margin-top: 10%; }
-        #soundBtn { top: auto; bottom: 42px; }
-        body:not(.ingame) #soundBtn, body:not(.ingame) #hubLink { display: none; }
+      }
+      @media (max-height: 480px) {
+        :root { --bar: 108px; }
+        #fireBtn { width: 64px; height: 64px; font-size: 14px; }
+        #zapBtn { width: 48px; height: 48px; }
+        .spinBtn { width: 46px; height: 46px; font-size: 18px; }
+        .utilRow { min-height: 30px; }
+        #qrBtn img { width: 22px; height: 22px; }
       }
     </style>
   </head>
@@ -165,12 +189,6 @@
     <div id="stage">
       <div id="box">
         <canvas id="game" width="1000" height="1000"></canvas>
-
-        <button id="soundBtn" class="cornerBtn" type="button" aria-label="Toggle sound">SOUND ON</button>
-        <button id="qrBtn" type="button" aria-label="Show QR code">
-          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhAAAAIQAQAAAAD4e2okAAACfklEQVR4nO3d227DIAyAYXvK+78yu0iIDyG7aTxB81dqm6bsE1zUAnOYNvn08fOxAAEBAQEBAfFVxCYiouFWE5Xm7rWjxN4TyWVnaQgEBEQ5se1vNirR47WFd3+dy87REAgIiHJi6xf7b99nMyxy9P6Ghj5GLztHQyAgIMqJbXSzj0D6dXPjkZJaQEBArEAM44VKO2JGc0+9iRhzNAQCAqKcOOOFjwXtiA32nr9/uBYQEBArEEe8iLMesV8Rn7nsLA2BgIAoJ3Q8xvAxwc+vjkrP0RAICIhy4lh/kfsNf8+vxvgxR0MgICDKiZTv9POlPX7Yp5biSnuqFhAQECsQm0hcwZn7GjYa8XmM/lcP1QICAmIF4hyPxFXfEmKEiITxSHPjklkaAgEBUU6o/e6PGzK+43seLXwzR0MgICDKCb3GBZtP9ZlN9ptBQLyeSPtTcy6zv1oOI+YyHqoFBATECsSZ7xTRtGs97zNrkldqPVYLCAiIFYiQv7BeRI4Yfk7ERiuP1QICAmIFwq0Ht7GHplxFXNXZQlyZpSEQEBDlRFivZb2H6/71OIfKfCoExAsJjWdd5HO14hoMOe/tpR+rBQQExAqEWq4in5uV716znYxHICBeRQz3p8ZIkddnSRqtzNEQCAiIcmJ4PnhcDd5nVONO1UdrAQEBsQJxcz64zZNYxPAlfcyYoyEQEBDlxM354H4Hmh+FqPteyV9AQLyLGJ73a484GokzJf3THA2BgIAoJ27+n0BcgdHP+/Un51jOY46GQEBAlBPD88HtTsxu+nXiFjPmaAgEBEQ5cXM+uFyyF3Je5zN05mgIBAREOXFzPvg/1wICAgICAgLim4hfRFPBMh6ZnHIAAAAASUVORK5CYII=" alt="QR code for Tempest Reborn" /><span>QR</span>
-        </button>
-        <a id="hubLink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
 
         <div id="qrOverlay" class="hidden">
           <div class="t">SCAN TO PLAY ON ANY DEVICE</div>
@@ -218,7 +236,7 @@
                 <dt>◀ ▶ / A D</dt><dd>Sweep the rim (hold to spin)</dd>
                 <dt>SPACE / Z</dt><dd>Fire (hold for rapid fire, max 8 shots)</dd>
                 <dt>SHIFT / X</dt><dd>Superzapper</dd>
-                <dt>TOUCH</dt><dd>Drag around the well to move · FIRE and ZAP buttons</dd>
+                <dt>TOUCH</dt><dd>Drag around the well to move, or hold the ◀ ▶ buttons under the screen · FIRE / ZAP buttons sit under the screen too</dd>
                 <dt>P</dt><dd>Pause</dd>
                 <dt>M</dt><dd>Sound on / off</dd>
               </dl>
@@ -256,10 +274,28 @@
           </div>
         </div>
 
-        <!-- ============ TOUCH ============ -->
-        <div id="touchBtns">
-          <div class="tBtn" id="zapBtn">ZAP</div>
-          <div class="tBtn" id="fireBtn">FIRE</div>
+      </div>
+
+      <!-- ============ CONTROL DECK (below the play area) ============ -->
+      <div id="controlBar">
+        <div class="utilRow">
+          <button id="qrBtn" type="button" aria-label="Show QR code">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAhAAAAIQAQAAAAD4e2okAAACfklEQVR4nO3d227DIAyAYXvK+78yu0iIDyG7aTxB81dqm6bsE1zUAnOYNvn08fOxAAEBAQEBAfFVxCYiouFWE5Xm7rWjxN4TyWVnaQgEBEQ5se1vNirR47WFd3+dy87REAgIiHJi6xf7b99nMyxy9P6Ghj5GLztHQyAgIMqJbXSzj0D6dXPjkZJaQEBArEAM44VKO2JGc0+9iRhzNAQCAqKcOOOFjwXtiA32nr9/uBYQEBArEEe8iLMesV8Rn7nsLA2BgIAoJ3Q8xvAxwc+vjkrP0RAICIhy4lh/kfsNf8+vxvgxR0MgICDKiZTv9POlPX7Yp5biSnuqFhAQECsQm0hcwZn7GjYa8XmM/lcP1QICAmIF4hyPxFXfEmKEiITxSHPjklkaAgEBUU6o/e6PGzK+43seLXwzR0MgICDKCb3GBZtP9ZlN9ptBQLyeSPtTcy6zv1oOI+YyHqoFBATECsSZ7xTRtGs97zNrkldqPVYLCAiIFYiQv7BeRI4Yfk7ERiuP1QICAmIFwq0Ht7GHplxFXNXZQlyZpSEQEBDlRFivZb2H6/71OIfKfCoExAsJjWdd5HO14hoMOe/tpR+rBQQExAqEWq4in5uV716znYxHICBeRQz3p8ZIkddnSRqtzNEQCAiIcmJ4PnhcDd5nVONO1UdrAQEBsQJxcz64zZNYxPAlfcyYoyEQEBDlxM354H4Hmh+FqPteyV9AQLyLGJ73a484GokzJf3THA2BgIAoJ27+n0BcgdHP+/Un51jOY46GQEBAlBPD88HtTsxu+nXiFjPmaAgEBEQ5cXM+uFyyF3Je5zN05mgIBAREOXFzPvg/1wICAgICAgLim4hfRFPBMh6ZnHIAAAAASUVORK5CYII=" alt="QR code for Tempest Reborn" /><span>QR</span>
+          </button>
+          <div class="utilRight">
+            <button id="soundBtn" class="cornerBtn" type="button" aria-label="Toggle sound">SOUND ON</button>
+            <a id="hubLink" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+          </div>
+        </div>
+        <div class="btnRow">
+          <div class="deckGroup">
+            <button class="dBtn spinBtn" id="spinL" type="button" aria-label="Move left">◀</button>
+            <button class="dBtn spinBtn" id="spinR" type="button" aria-label="Move right">▶</button>
+          </div>
+          <div class="deckGroup">
+            <button class="dBtn" id="zapBtn" type="button">ZAP</button>
+            <button class="dBtn" id="fireBtn" type="button">FIRE</button>
+          </div>
         </div>
       </div>
     </div>
@@ -619,6 +655,7 @@ function finishWarp() {
 /* ---------------- input ---------------- */
 const keys = {};
 let pointerTarget = null, pointerActive = false;
+let deckDir = 0; // held ◀ ▶ deck buttons: -1 | 0 | 1
 function canvasPos(ev) {
   const r = cvs.getBoundingClientRect();
   const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX);
@@ -693,6 +730,7 @@ function moveBlaster(dt) {
   let dir = 0;
   if (keys['ArrowLeft'] || keys['a']) dir -= 1;
   if (keys['ArrowRight'] || keys['d']) dir += 1;
+  if (deckDir) dir += deckDir;
   if (dir !== 0) {
     G.blasterVel = clamp(G.blasterVel + dir * 90 * dt, -26, 26);
     pointerActive = false;
@@ -1364,12 +1402,25 @@ function toggleMute() {
   if (masterGain) masterGain.gain.value = muted ? 0 : 0.5;
 }
 $('soundBtn').addEventListener('click', () => { audio(); toggleMute(); });
-const fireBtn = $('fireBtn'), zapBtn = $('zapBtn');
-fireBtn.addEventListener('touchstart', ev => { ev.preventDefault(); audio(); G.fireHeld = true; mouseFire = true; fireBtn.classList.add('on'); }, { passive: false });
-fireBtn.addEventListener('touchend', ev => { ev.preventDefault(); G.fireHeld = mouseFire = false; fireBtn.classList.remove('on'); }, { passive: false });
-zapBtn.addEventListener('touchstart', ev => { ev.preventDefault(); audio(); zapBtn.classList.add('on'); superzap(); }, { passive: false });
-zapBtn.addEventListener('touchend', ev => { ev.preventDefault(); zapBtn.classList.remove('on'); }, { passive: false });
-if (window.matchMedia && matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+/* deck buttons: pointer events, so touch, pen and mouse all drive them */
+function pressable(el, on, off) {
+  el.addEventListener('pointerdown', ev => {
+    ev.preventDefault(); audio();
+    el.classList.add('on');
+    try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+    on();
+  });
+  const end = () => { el.classList.remove('on'); if (off) off(); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  el.addEventListener('contextmenu', ev => ev.preventDefault());
+}
+pressable($('fireBtn'),
+  () => { G.fireHeld = true; mouseFire = true; },
+  () => { mouseFire = false; if (!keys[' '] && !keys['z'] && !keys['j']) G.fireHeld = false; });
+pressable($('zapBtn'), () => superzap());
+pressable($('spinL'), () => { deckDir = -1; }, () => { if (deckDir === -1) deckDir = 0; });
+pressable($('spinR'), () => { deckDir = 1; }, () => { if (deckDir === 1) deckDir = 0; });
 
 /* attract setup */
 setupLevel(1, false);
