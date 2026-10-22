@@ -57,6 +57,10 @@
   .toggle-row{ display:flex; gap:7px; flex-wrap:wrap; justify-content:center; }
   .tbtn{ background:var(--panel); border:2px solid var(--panel-line); border-radius:999px; padding:9px 14px; font-size:13.5px; font-weight:800; box-shadow:var(--shadow); }
   .tbtn .dot{ color:var(--coral); }
+  .mode-row{ display:flex; align-items:center; gap:6px; background:var(--panel); border:2px solid var(--panel-line); border-radius:999px; padding:5px 8px; box-shadow:var(--shadow); flex-wrap:wrap; justify-content:center; }
+  .mode-btn{ padding:9px 15px; border-radius:999px; font-size:13.5px; font-weight:900; letter-spacing:.6px; background:var(--chip); color:var(--ink); }
+  .mode-btn.sel{ background:var(--gold); color:#17203a; box-shadow:0 0 0 3px rgba(255,214,10,.35); }
+  .modal-mode{ box-shadow:none; margin:0 0 14px; width:100%; }
 
   /* ---------- GAME ---------- */
   #game{ max-width:860px; width:100%; margin:0 auto; padding:8px 10px calc(10px + env(safe-area-inset-bottom)); gap:8px; }
@@ -94,23 +98,30 @@
   }
   #coach.show{ opacity:1; }
   #coach.good{ background:#15803d; }
-  #pauseVeil{
+  #pauseVeil, #overVeil{
     position:absolute; inset:0; z-index:6; border-radius:12px;
     background:rgba(13,19,48,.82); color:#fff;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:16px;
   }
-  #pauseVeil h2{ margin:0; font-size:30px; font-weight:900; }
-  #pauseVeil p{ margin:0; font-size:14px; font-weight:700; opacity:.85; }
+  #overVeil{ z-index:7; background:rgba(13,19,48,.88); }
+  #pauseVeil h2, #overVeil h2{ margin:0; font-size:30px; font-weight:900; }
+  #pauseVeil p, #overVeil p{ margin:0; font-size:14px; font-weight:700; opacity:.85; }
+  .ov-stats{ display:flex; gap:10px; }
+  .ov-stats > div{ background:rgba(255,255,255,.13); border-radius:12px; padding:8px 20px; min-width:100px; }
+  .ov-stats label{ display:block; font-size:10px; font-weight:900; letter-spacing:1.5px; opacity:.85; }
+  .ov-stats b{ display:block; font-size:27px; font-weight:900; line-height:1.2; font-variant-numeric:tabular-nums; }
+  #btnPlayAgain{ width:min(270px,86%); padding:15px; font-size:18px; }
   .veil-btn{ width:210px; padding:12px; border-radius:12px; font-size:16px; font-weight:900; background:var(--accent); color:#fff; }
   .veil-btn.alt{ background:#fff; color:#17203a; }
 
-  #deck{ flex:0 0 auto; display:flex; gap:7px; }
+  #deck{ flex:0 0 auto; display:flex; gap:7px; transition:opacity .25s ease; }
+  #deck.locked{ opacity:.35; pointer-events:none; filter:saturate(.35); }
   .dbtn{
-    flex:1; height:60px; border-radius:14px; background:var(--panel);
+    flex:1; height:66px; border-radius:14px; background:var(--panel);
     border:2px solid var(--panel-line); box-shadow:0 4px 0 var(--panel-line);
     font-size:21px; font-weight:900; user-select:none; -webkit-user-select:none; touch-action:none;
   }
-  .dbtn small{ display:block; font-size:9px; letter-spacing:1px; color:var(--ink-soft); font-weight:900; }
+  .dbtn small{ display:block; font-size:10.5px; letter-spacing:.8px; color:var(--ink-soft); font-weight:900; }
   .dbtn.main{ background:#3b82f6; border-color:#2563eb; color:#fff; box-shadow:0 4px 0 #1d4ed8; flex:1.25; }
   .dbtn.main small{ color:rgba(255,255,255,.8); }
   .dbtn.drop{ background:var(--coral); border-color:#e04452; color:#fff; box-shadow:0 4px 0 #b92c3a; }
@@ -121,9 +132,10 @@
   #modal{ position:fixed; inset:0; z-index:50; background:rgba(10,14,34,.62); display:flex; align-items:center; justify-content:center; padding:16px; }
   .modal-card{
     background:var(--panel); color:var(--ink); border-radius:20px; width:100%; max-width:430px;
-    max-height:88dvh; overflow-y:auto; padding:20px 18px calc(18px + env(safe-area-inset-bottom));
-    position:relative; box-shadow:var(--shadow); touch-action:pan-y;
+    max-height:88dvh; overflow:hidden; padding:20px 18px calc(18px + env(safe-area-inset-bottom));
+    position:relative; box-shadow:var(--shadow); display:flex; flex-direction:column;
   }
+  #modalBody{ overflow-y:auto; min-height:0; touch-action:pan-y; }
   .modal-card h2{ margin:0 34px 6px 0; font-size:22px; font-weight:900; }
   .modal-card .sub{ margin:0 0 12px; color:var(--ink-soft); font-weight:700; font-size:13.5px; line-height:1.45; }
   #modalClose{ position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%; background:var(--chip); font-size:16px; font-weight:900; }
@@ -132,10 +144,13 @@
   .qr-wrap img.big{ width:min(74vw,340px); height:auto; cursor:zoom-out; }
   .qr-url{ font-weight:800; font-size:13px; word-break:break-all; margin-top:10px; color:var(--ink-soft); }
   .big-toggle{ width:100%; padding:14px; border-radius:14px; font-size:17px; font-weight:900; background:var(--gold); color:#17203a; }
-  .ctl-group{ margin:0 0 14px; }
-  .ctl-group h3{ margin:0 0 7px; font-size:13px; letter-spacing:1.5px; color:var(--coral); font-weight:900; }
-  .ctl-row{ display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px dashed var(--panel-line); font-size:14.5px; font-weight:700; }
-  .ctl-row span:first-child{ color:var(--ink-soft); font-weight:800; }
+  .ctl-group{ margin:0 0 16px; }
+  .ctl-group h3{ margin:0 0 8px; font-size:19px; letter-spacing:1.5px; color:var(--coral); font-weight:900; }
+  .ctl-row{ display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px dashed var(--panel-line); font-size:18px; line-height:1.35; font-weight:700; }
+  .ctl-row span:first-child{ color:var(--ink); font-weight:900; white-space:nowrap; }
+  .modal-card.controls-big h2{ font-size:27px; }
+  .modal-card.controls-big .sub{ font-size:15.5px; line-height:1.5; }
+  .modal-card.controls-big .mode-btn{ font-size:15.5px; padding:11px 18px; }
   .key-card{ display:flex; gap:12px; align-items:flex-start; background:var(--chip); border-radius:14px; padding:11px 12px; margin-bottom:9px; }
   .key-num{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:var(--coral); color:#fff; font-weight:900; font-size:15px; display:flex; align-items:center; justify-content:center; }
   .key-txt{ flex:1; min-width:0; }
@@ -164,6 +179,12 @@
         <button class="drill-btn" data-drill="4">4</button>
         <button class="drill-btn" data-drill="5">5</button>
       </div>
+      <div class="mode-row" role="group" aria-label="Control mode">
+        <span class="drill-label">PLAY WITH</span>
+        <button class="mode-btn" data-mode="keyboard">KEYBOARD</button>
+        <button class="mode-btn" data-mode="mouse">MOUSE</button>
+        <button class="mode-btn sel" data-mode="both">BOTH</button>
+      </div>
       <button id="startBtn">▶ START PRACTICING</button>
       <div class="toggle-row">
         <button class="tbtn" data-open="qr">▦ QR</button>
@@ -186,6 +207,7 @@
       </div>
       <div class="hud-btns">
         <button class="hbtn pill on" id="btnSuggest" aria-label="Toggle hint">HINT</button>
+        <button class="hbtn pill" id="btnControls" aria-label="Open controls">CONTROLS</button>
         <button class="hbtn pill" id="btnDrill" aria-label="Change drill speed">D3</button>
         <button class="hbtn" id="btnSound" aria-label="Toggle sound">♪</button>
         <button class="hbtn" id="btnPause" aria-label="Pause">❚❚</button>
@@ -208,6 +230,15 @@
           <button class="veil-btn" id="btnResume">▶ KEEP PRACTICING</button>
           <button class="veil-btn alt" id="btnVeilReset">↺ RESTART DRILL</button>
           <button class="veil-btn alt" id="btnVeilHome">⌂ HOME</button>
+        </div>
+        <div id="overVeil" class="hidden">
+          <h2>GAME OVER</h2>
+          <div class="ov-stats">
+            <div><label>LINES</label><b id="ovLines">0</b></div>
+            <div><label>SCORE</label><b id="ovScore">0</b></div>
+          </div>
+          <p>Everybody tops out — that's the game.</p>
+          <button class="veil-btn" id="btnPlayAgain">↺ PLAY AGAIN / RESET</button>
         </div>
       </div>
       <div class="side" id="nextSide">
@@ -272,7 +303,7 @@ TYPES.forEach(function(t){
 /* ================= STATE ================= */
 var S = {
   screen: "intro", drill: 3, sound: true, suggest: true,
-  running: false, paused: false,
+  running: false, paused: false, gameOver: false, mode: "both",
   grid: null, cur: null, hold: null, canHold: true, queue: [],
   score: 0, lines: 0, pieces: 0, tetrises: 0, holesBuried: 0,
   suggestion: null, flashHoles: [], clearRows: null, clearTimer: 0,
@@ -313,7 +344,8 @@ var sfx = {
   clear: function(){ tone(523, 0.07, "square", 0.12); tone(659, 0.07, "square", 0.12, 0.06); tone(784, 0.1, "square", 0.12, 0.12); },
   tetris: function(){ var n=[523,659,784,1047,784,1047,1319]; for (var i=0;i<n.length;i++) tone(n[i], 0.11, "square", 0.13, i*0.07); },
   ding: function(){ tone(880, 0.12, "sine", 0.16); tone(1175, 0.18, "sine", 0.16, 0.1); },
-  gentle: function(){ tone(392, 0.12, "sine", 0.14); tone(523, 0.16, "sine", 0.14, 0.1); }
+  gentle: function(){ tone(392, 0.12, "sine", 0.14); tone(523, 0.16, "sine", 0.14, 0.1); },
+  over: function(){ tone(392, 0.16, "sine", 0.16); tone(330, 0.16, "sine", 0.16, 0.14); tone(262, 0.32, "sine", 0.16, 0.28); }
 };
 
 /* ================= BOARD LOGIC ================= */
@@ -402,8 +434,9 @@ function spawn(type){
   S.cur = { type: type, rot: 0, x: px, y: py };
   S.canHold = true; S.gravAcc = 0; S.restTime = 0;
   if (!cellsValid(S.grid, cellsOf(type, 0, px, py))){
-    gentleClear();
-    S.cur = { type: type, rot: 0, x: px, y: py };
+    gameOver();
+    drawSide();
+    return;
   }
   computeSuggestion();
   drawSide();
@@ -414,7 +447,7 @@ function nextPiece(){
   refillQueue();
 }
 function doHold(){
-  if (!S.cur || !S.canHold || S.clearRows) return;
+  if (!S.cur || !S.canHold || S.clearRows || S.paused || S.gameOver) return;
   var t = S.cur.type;
   if (S.hold){
     var h = S.hold; S.hold = t; spawn(h);
@@ -445,11 +478,13 @@ function lockPiece(){
     showCoach("That buried a hole — digging out costs lines.", false);
     sfx.ding();
   }
-  if (full.length){
+  if (toppedOut){
+    S.cur = null; S.suggestion = null;
+    gameOver();
+  } else if (full.length){
     S.clearRows = full; S.clearTimer = 150;
     S.cur = null; S.suggestion = null;
   } else {
-    if (toppedOut){ gentleClear(); }
     nextPiece();
   }
   updateStats();
@@ -469,23 +504,22 @@ function finishClear(){
   nextPiece();
   updateStats();
 }
-function gentleClear(){
-  var top = ROWS, y, x;
-  for (y=0;y<ROWS;y++) for (x=0;x<COLS;x++) if (S.grid[y][x] && y < top) top = y;
-  if (top < ROWS){
-    var height = ROWS - top;
-    var erase = Math.max(4, Math.round(height * 0.5));
-    for (y=top; y<Math.min(ROWS, top+erase); y++) S.grid[y].fill(null);
-    for (x=0;x<COLS;x++){
-      var stack = [];
-      for (y=ROWS-1;y>=0;y--) if (S.grid[y][x]) stack.push(S.grid[y][x]);
-      for (y=ROWS-1;y>=0;y--) S.grid[y][x] = stack[ROWS-1-y] || null;
-    }
-  }
-  showCoach("No game over here — cleared some room. Keep practicing.", true);
-  sfx.gentle();
+function gameOver(){
+  if (S.gameOver) return;
+  S.gameOver = true;
+  S.cur = null; S.suggestion = null; S.softDrop = false; heldDir = 0;
+  document.getElementById("ovLines").textContent = S.lines;
+  document.getElementById("ovScore").textContent = S.score.toLocaleString();
+  document.getElementById("overVeil").classList.remove("hidden");
+  sfx.over();
+}
+function playAgain(){
+  resetDrill();
+  showCoach("Fresh board — same drill, same speed. Go again.", true);
 }
 function resetDrill(){
+  S.gameOver = false;
+  document.getElementById("overVeil").classList.add("hidden");
   S.grid = emptyGrid();
   S.hold = null; S.queue = []; S.cur = null;
   S.score = 0; S.lines = 0; S.pieces = 0; S.tetrises = 0; S.holesBuried = 0;
@@ -498,16 +532,17 @@ function resetDrill(){
 
 /* ================= MOVES ================= */
 function tryMove(dx){
-  if (!S.cur || S.paused || S.clearRows) return false;
+  if (!S.cur || S.paused || S.gameOver || S.clearRows) return false;
   if (cellsValid(S.grid, cellsOf(S.cur.type, S.cur.rot, S.cur.x+dx, S.cur.y))){
     S.cur.x += dx; S.restTime = 0; sfx.move(); return true;
   }
   return false;
 }
-function tryRotate(){
-  if (!S.cur || S.paused || S.clearRows) return;
+function tryRotate(){ tryRotateDir(1); }
+function tryRotateDir(dir){
+  if (!S.cur || S.paused || S.gameOver || S.clearRows) return;
   var states = ROTATIONS[S.cur.type];
-  var nr = (S.cur.rot + 1) % states.length;
+  var nr = (S.cur.rot + dir + states.length) % states.length;
   var kicks = [0,-1,1,-2,2], i;
   for (i=0;i<kicks.length;i++){
     if (cellsValid(S.grid, cellsOf(S.cur.type, nr, S.cur.x+kicks[i], S.cur.y))){
@@ -529,7 +564,7 @@ function stepDown(manual){
   return false;
 }
 function hardDrop(){
-  if (!S.cur || S.paused || S.clearRows) return;
+  if (!S.cur || S.paused || S.gameOver || S.clearRows) return;
   var gy = dropY(S.grid, S.cur.type, S.cur.rot, S.cur.x, S.cur.y);
   S.score += (gy - S.cur.y) * 2;
   S.cur.y = gy;
@@ -694,7 +729,7 @@ function loop(ts){
   if (S.screen !== "game") return;
   var dt = Math.min(100, ts - (S.lastTime || ts));
   S.lastTime = ts;
-  if (S.running && !S.paused){
+  if (S.running && !S.paused && !S.gameOver){
     if (S.clearRows){
       S.clearTimer -= dt;
       if (S.clearTimer <= 0) finishClear();
@@ -779,6 +814,7 @@ var modal = document.getElementById("modal");
 var modalBody = document.getElementById("modalBody");
 function openModal(name){
   audioInit();
+  document.querySelector(".modal-card").classList.toggle("controls-big", name === "controls");
   var html = "";
   if (name === "qr"){
     html = '<h2>Play on your phone</h2><p class="sub">Point your camera at the code to open Trainer Tetris. Tap the code to make it bigger.</p>' +
@@ -788,20 +824,32 @@ function openModal(name){
     html = '<h2>Sound</h2><p class="sub">Little one-shot sounds for moves, locks, clears and coach tips. No music — ever.</p>' +
       '<button class="big-toggle" id="soundToggle">' + (S.sound ? "♪ SOUND: ON" : "♪ SOUND: OFF") + "</button>";
   } else if (name === "controls"){
-    html = '<h2>Controls</h2><p class="sub">In the trainer, a hard drop is allowed — slamming a piece down to the glowing ghost is great practice.</p>' +
+    html = '<h2>Controls</h2><p class="sub">Play with the keyboard, the mouse, or both together. Pick your mode below — a mode that is off really is off.</p>' +
+      '<div class="mode-row modal-mode" role="group" aria-label="Control mode">' +
+      '<button class="mode-btn" data-mode="keyboard">KEYBOARD</button>' +
+      '<button class="mode-btn" data-mode="mouse">MOUSE</button>' +
+      '<button class="mode-btn" data-mode="both">BOTH</button></div>' +
+      '<div class="ctl-group"><h3>KEYBOARD</h3>' +
+      '<div class="ctl-row"><span>← →</span><span>Move piece</span></div>' +
+      '<div class="ctl-row"><span>↓ (hold)</span><span>Soft drop</span></div>' +
+      '<div class="ctl-row"><span>↑ or X</span><span>Rotate right</span></div>' +
+      '<div class="ctl-row"><span>Z</span><span>Rotate left</span></div>' +
+      '<div class="ctl-row"><span>SPACE</span><span>Hard drop</span></div>' +
+      '<div class="ctl-row"><span>C</span><span>Hold piece</span></div>' +
+      '<div class="ctl-row"><span>P</span><span>Pause</span></div>' +
+      '<div class="ctl-row"><span>ESC</span><span>Close this window</span></div></div>' +
+      '<div class="ctl-group"><h3>MOUSE</h3>' +
+      '<div class="ctl-row"><span>Deck buttons</span><span>HOLD · MOVE · ROTATE · SOFT · DROP</span></div>' +
+      '<div class="ctl-row"><span>Hold ◀ ▶ down</span><span>Keep sliding that way</span></div>' +
+      '<div class="ctl-row"><span>Click the HOLD box</span><span>Swap held piece</span></div>' +
+      '<div class="ctl-row"><span>Drag on the board</span><span>Move piece</span></div>' +
+      '<div class="ctl-row"><span>Click the board</span><span>Rotate</span></div></div>' +
       '<div class="ctl-group"><h3>TOUCH</h3>' +
       '<div class="ctl-row"><span>Drag sideways</span><span>Move piece</span></div>' +
       '<div class="ctl-row"><span>Tap the board</span><span>Rotate</span></div>' +
       '<div class="ctl-row"><span>Press &amp; hold down</span><span>Soft drop</span></div>' +
       '<div class="ctl-row"><span>Flick down fast</span><span>Hard drop</span></div>' +
-      '<div class="ctl-row"><span>Deck buttons</span><span>Hold · Move · Rotate · Drop</span></div></div>' +
-      '<div class="ctl-group"><h3>KEYBOARD</h3>' +
-      '<div class="ctl-row"><span>◀ ▶</span><span>Move</span></div>' +
-      '<div class="ctl-row"><span>▼</span><span>Soft drop</span></div>' +
-      '<div class="ctl-row"><span>▲ or X</span><span>Rotate</span></div>' +
-      '<div class="ctl-row"><span>Space</span><span>Hard drop</span></div>' +
-      '<div class="ctl-row"><span>C</span><span>Hold piece</span></div>' +
-      '<div class="ctl-row"><span>P</span><span>Pause</span></div></div>';
+      '<div class="ctl-row"><span>Deck buttons</span><span>Same buttons as the mouse</span></div></div>';
   } else if (name === "keys"){
     html = '<h2>How to Play — The Keys</h2><p class="sub">Seven keys that turn guessing into seeing. Learn them here, then go prove them on the board.</p>';
     KEYS_DATA.forEach(function(kd, i){
@@ -810,6 +858,7 @@ function openModal(name){
   }
   modalBody.innerHTML = html;
   modal.classList.remove("hidden");
+  syncModeBtns();
   var qr = document.getElementById("qrImg");
   if (qr) qr.addEventListener("click", function(){ qr.classList.toggle("big"); });
   var st = document.getElementById("soundToggle");
@@ -827,6 +876,22 @@ document.querySelectorAll("[data-open]").forEach(function(b){
 });
 
 /* ================= UI WIRING ================= */
+function syncModeBtns(){
+  document.querySelectorAll(".mode-btn").forEach(function(b){
+    b.classList.toggle("sel", b.getAttribute("data-mode") === S.mode);
+  });
+}
+function setMode(m){
+  S.mode = m;
+  syncModeBtns();
+  document.getElementById("deck").classList.toggle("locked", m === "keyboard");
+  if (m === "keyboard") S.softDrop = false;
+}
+function deckEnabled(){ return S.mode !== "keyboard"; }
+document.addEventListener("click", function(e){
+  var t = e.target;
+  if (t && t.classList && t.classList.contains("mode-btn")) setMode(t.getAttribute("data-mode"));
+});
 function syncSoundBtns(){
   document.getElementById("btnSound").classList.toggle("off", !S.sound);
   document.getElementById("btnSound").textContent = S.sound ? "♪" : "♪̶";
@@ -858,8 +923,13 @@ function setPaused(p){
   document.getElementById("pauseVeil").classList.toggle("hidden", !p);
   document.getElementById("btnPause").textContent = p ? "▶" : "❚❚";
 }
-document.getElementById("btnPause").addEventListener("click", function(){ if (S.running) setPaused(!S.paused); });
+document.getElementById("btnPause").addEventListener("click", function(){ if (S.running && !S.gameOver) setPaused(!S.paused); });
 document.getElementById("btnResume").addEventListener("click", function(){ setPaused(false); });
+document.getElementById("btnControls").addEventListener("click", function(){
+  openModal("controls");
+  if (S.running && !S.paused && !S.gameOver) setPaused(true);
+});
+document.getElementById("btnPlayAgain").addEventListener("click", function(){ playAgain(); });
 document.getElementById("btnReset").addEventListener("click", function(){ if (S.running){ resetDrill(); showCoach("Fresh board. Same drill — go again.", true); } });
 document.getElementById("btnVeilReset").addEventListener("click", function(){ resetDrill(); setPaused(false); showCoach("Fresh board. Same drill — go again.", true); });
 function goHome(){
@@ -892,12 +962,18 @@ document.addEventListener("keydown", function(e){
   if (!modal.classList.contains("hidden")) { if (e.key === "Escape") closeModal(); return; }
   var k = e.key;
   if (["ArrowLeft","ArrowRight","ArrowDown","ArrowUp"," "].indexOf(k) !== -1) e.preventDefault();
+  if (S.mode === "mouse") return;
+  if (S.gameOver){
+    if (k === "Enter" || k === " ") playAgain();
+    return;
+  }
   if (k === "p" || k === "P"){ setPaused(!S.paused); return; }
   if (S.paused) return;
   if (k === "ArrowLeft"){ if (heldDir !== -1){ heldDir = -1; dasTime = 0; arrTime = 0; tryMove(-1); } }
   else if (k === "ArrowRight"){ if (heldDir !== 1){ heldDir = 1; dasTime = 0; arrTime = 0; tryMove(1); } }
   else if (k === "ArrowDown"){ S.softDrop = true; }
   else if (k === "ArrowUp" || k === "x" || k === "X"){ if (!e.repeat) tryRotate(); }
+  else if (k === "z" || k === "Z"){ if (!e.repeat) tryRotateDir(-1); }
   else if (k === " "){ if (!e.repeat) hardDrop(); }
   else if (k === "c" || k === "C"){ if (!e.repeat) doHold(); }
 });
@@ -910,7 +986,7 @@ document.addEventListener("keyup", function(e){
 /* ================= INPUT: BOARD GESTURES ================= */
 var gest = null;
 board.addEventListener("pointerdown", function(e){
-  if (!S.running || S.paused) return;
+  if (!S.running || S.paused || S.gameOver) return;
   audioInit();
   board.setPointerCapture(e.pointerId);
   gest = { x: e.clientX, y: e.clientY, lastX: e.clientX, t: performance.now(), moved: false, dead: false };
@@ -953,6 +1029,7 @@ function deckHold(id, down, up){
   var el = document.getElementById(id);
   el.addEventListener("pointerdown", function(e){
     e.preventDefault(); audioInit();
+    if (!deckEnabled()) return;
     el.classList.add("held");
     el.setPointerCapture(e.pointerId);
     down();
@@ -971,16 +1048,17 @@ function deckDir(dir){
     if (dasTime > 150) tryMove(dir);
   }, 45);
 }
-deckHold("dLeft", function(){ if (!S.paused) deckDir(-1); }, function(){ clearInterval(deckDirTimer); });
-deckHold("dRight", function(){ if (!S.paused) deckDir(1); }, function(){ clearInterval(deckDirTimer); });
-deckHold("dDown", function(){ S.softDrop = true; }, function(){ S.softDrop = false; });
-deckHold("dRot", function(){ if (!S.paused) tryRotate(); });
-deckHold("dDrop", function(){ if (!S.paused) hardDrop(); });
-deckHold("dHold", function(){ if (!S.paused) doHold(); });
-document.getElementById("holdSide").addEventListener("click", function(){ if (S.running && !S.paused) doHold(); });
+deckHold("dLeft", function(){ if (!S.paused && !S.gameOver) deckDir(-1); }, function(){ clearInterval(deckDirTimer); });
+deckHold("dRight", function(){ if (!S.paused && !S.gameOver) deckDir(1); }, function(){ clearInterval(deckDirTimer); });
+deckHold("dDown", function(){ if (!S.paused && !S.gameOver) S.softDrop = true; }, function(){ S.softDrop = false; });
+deckHold("dRot", function(){ if (!S.paused && !S.gameOver) tryRotate(); });
+deckHold("dDrop", function(){ if (!S.paused && !S.gameOver) hardDrop(); });
+deckHold("dHold", function(){ if (!S.paused && !S.gameOver) doHold(); });
+document.getElementById("holdSide").addEventListener("click", function(){ if (S.running && !S.paused && !S.gameOver && deckEnabled()) doHold(); });
 
 /* ================= INIT ================= */
 setDrill(3);
+setMode("both");
 syncSoundBtns();
 updateStats();
 window.addEventListener("resize", function(){ if (S.screen === "game") fitCanvases(); });
