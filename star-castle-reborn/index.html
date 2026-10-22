@@ -21,12 +21,13 @@
     touch-action:none; user-select:none; -webkit-user-select:none;
     position:fixed; inset:0;
   }
-  #app{ display:flex; flex-direction:column; height:100dvh; height:100vh; }
+  #app{ display:flex; flex-direction:column; height:100%; min-height:0; }
 
   /* ---------- HUD ---------- */
   #hud{
+    flex:0 0 auto;
     display:flex; align-items:flex-start; justify-content:space-between;
-    padding:8px 14px 2px; min-height:52px; background:#000; z-index:3;
+    padding:6px 14px 3px; min-height:44px; background:#000; z-index:3;
   }
   .hud-cell{ width:33.33%; }
   .hud-left{ text-align:left; }
@@ -41,8 +42,8 @@
   #shipIcons svg{ margin:0 2px; filter:drop-shadow(0 0 3px rgba(140,200,255,.9)); }
 
   /* ---------- Stage ---------- */
-  #stageWrap{ position:relative; flex:1 1 auto; display:flex; align-items:center; justify-content:center; background:#000; min-height:0; }
-  canvas#game{ display:block; background:#000; }
+  #stageWrap{ position:relative; flex:1 1 auto; display:flex; align-items:center; justify-content:center; background:#051630; min-height:0; overflow:hidden; }
+  canvas#game{ display:block; background:#051630; }
   #banner{
     position:absolute; left:0; right:0; top:38%; text-align:center;
     font-size:clamp(20px,6vw,34px); letter-spacing:6px; color:#fff;
@@ -65,6 +66,7 @@
 
   /* ---------- Touch deck ---------- */
   #deck{
+    flex:0 0 auto;
     display:none; justify-content:space-between; align-items:stretch;
     gap:10px; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
     background:#000; z-index:3;
@@ -320,22 +322,25 @@ var Snd = {
 'use strict';
 /* ---------------- Field & constants ---------------- */
 var FW=1000, FH=1000, CX=500, CY=500;
-var RING_R=[300,228,156], RING_PTS=[10,20,30];
-var RING_COL=['#ffd94d','#ff9a2e','#ff4030'];
-var RING_CORE=['#fff6c4','#ffdcb0','#ffc4b0'];
+var RING_R=[205,156,107], RING_PTS=[10,20,30];
+var RING_COL=['#ff4030','#ff9a2e','#ffd94d'];
+var RING_CORE=['#ffc4b0','#ffdcb0','#fff6c4'];
 var SEG_N=12, SEG_STEP=Math.PI*2/SEG_N, SEG_GAP=0.045;
-var INK='#cfe8ff', INK_BRIGHT='#ffffff';
+var INK='#cfe8ff', INK_BRIGHT='#e3f2ff';
 
 var cv=document.getElementById('game'), ctx=cv.getContext('2d');
 var stageWrap=document.getElementById('stageWrap');
 function fitCanvas(){
   var r=stageWrap.getBoundingClientRect();
-  var s=Math.max(220, Math.floor(Math.min(r.width, r.height)));
+  var s=Math.max(120, Math.floor(Math.min(r.width, r.height)));
   var dpr=Math.min(window.devicePixelRatio||1, 2);
   cv.style.width=s+'px'; cv.style.height=s+'px';
   cv.width=Math.round(s*dpr); cv.height=Math.round(s*dpr);
 }
 window.addEventListener('resize', fitCanvas);
+window.addEventListener('orientationchange', function(){ requestAnimationFrame(fitCanvas); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize', fitCanvas);
+if('ResizeObserver' in window) new ResizeObserver(fitCanvas).observe(stageWrap);
 
 var stars=[];
 for(var si=0; si<120; si++) stars.push({x:Math.random()*FW, y:Math.random()*FH, r:Math.random()*1.6+0.5, p:Math.random()*6.28});
@@ -447,6 +452,7 @@ function startGame(n){
   introEl.classList.add('gone');
   goEl.classList.remove('show');
   document.body.classList.add('playing');
+  requestAnimationFrame(fitCanvas);
   Snd.init(); Snd.startHum();
   spawnShip();
   if(n===1) showBanner('GOOD LUCK', 900);
@@ -456,7 +462,7 @@ function onShipDeath(){
   players[cur].lives--;
   ship.alive=false; deadT=1.6;
   burst(ship.x, ship.y, INK, 22, 260, 14);
-  burst(ship.x, ship.y, '#ff9a2e', 10, 170, 10);
+  burst(ship.x, ship.y, '#5fb2ff', 10, 170, 10);
   Snd.shipBoom();
   if(torpedo){ torpedo=null; Snd.stopHiss(); }
   mines=mines.filter(function(m){ return m.mode==='ride'; });
@@ -481,6 +487,7 @@ function gameOver(){
   document.getElementById('goHi').textContent='HIGH SCORE — '+hiScore;
   goEl.classList.add('show');
   document.body.classList.remove('playing');
+  requestAnimationFrame(fitCanvas);
   updateHUD();
 }
 function backToIntro(){
@@ -540,8 +547,8 @@ function finishCastleKill(){
   for(var r=0;r<3;r++) for(var i=0;i<SEG_N;i++)
     if(rings[r].segs[i]>0){ gained+=RING_PTS[r]; burst(CX+Math.cos(segCenter(r,i))*RING_R[r], CY+Math.sin(segCenter(r,i))*RING_R[r], RING_COL[r], 5, 240, 12); }
   if(gained>0) addScore(gained);
-  burst(CX, CY, '#ffffff', 26, 330, 15);
-  burst(CX, CY, '#ff4030', 16, 240, 12);
+  burst(CX, CY, '#e3f2ff', 26, 330, 15);
+  burst(CX, CY, '#ffd94d', 16, 240, 12);
   players[cur].lives++;
   Snd.castleBoom();
   Snd.extraShip();
@@ -604,7 +611,7 @@ function update(dt){
       if(ship.invuln>0) ship.invuln-=dt;
       fireCd-=dt;
       if(keys.fire && fireCd<=0 && bullets.length<4 && phase==='play'){
-        bullets.push({x:ship.x+Math.cos(ship.a)*17, y:ship.y+Math.sin(ship.a)*17,
+        bullets.push({x:ship.x+Math.cos(ship.a)*13, y:ship.y+Math.sin(ship.a)*13,
                       vx:Math.cos(ship.a)*800+ship.vx*0.35, vy:Math.sin(ship.a)*800+ship.vy*0.35, life:1.15});
         fireCd=0.17;
         Snd.shot();
@@ -625,7 +632,7 @@ function update(dt){
         var dc=Math.hypot(b.x-CX, b.y-CY);
         if(dc<30){ bullets.splice(bi,1); hitCannon(); continue; }
         for(var rr=0; rr<3 && !dead; rr++){
-          if(Math.abs(dc-RING_R[rr])<=21){
+          if(Math.abs(dc-RING_R[rr])<=15){
             var idx=segIndex(rr, Math.atan2(b.y-CY, b.x-CX));
             if(rings[rr].segs[idx]>0){
               bulletHitX=b.x; bulletHitY=b.y;
@@ -688,7 +695,7 @@ function update(dt){
     if(phase==='play'){
       torpCd-=dt;
       if(!torpedo && torpCd<=0 && ship.alive && losClear()){
-        torpedo={x:CX+Math.cos(cannon.a)*46, y:CY+Math.sin(cannon.a)*46, a:cannon.a};
+        torpedo={x:CX+Math.cos(cannon.a)*38, y:CY+Math.sin(cannon.a)*38, a:cannon.a};
         Snd.startHiss();
       }
     }
@@ -696,7 +703,7 @@ function update(dt){
       var tsp=430+Math.min(120, (castleLevel-1)*14);
       torpedo.x+=Math.cos(torpedo.a)*tsp*dt;
       torpedo.y+=Math.sin(torpedo.a)*tsp*dt;
-      if(Math.random()<0.55) particles.push({x:torpedo.x,y:torpedo.y,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,life:0.3,t:0,color:'#ffffff',len:5});
+      if(Math.random()<0.55) particles.push({x:torpedo.x,y:torpedo.y,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,life:0.3,t:0,color:'#bfe0ff',len:5});
       if(torpedo.x<-16||torpedo.x>FW+16||torpedo.y<-16||torpedo.y>FH+16){
         torpedo=null; torpCd=0.45; Snd.stopHiss();
       } else if(ship.alive && ship.invuln<=0 && phase==='play' && Math.hypot(torpedo.x-ship.x, torpedo.y-ship.y)<23){
@@ -749,11 +756,18 @@ function drawCannon(sc){
   ctx.translate(CX, CY);
   ctx.scale(sc, sc);
   ctx.rotate(cannon.a);
+  // spiky star / crown cannon, as on the real machine
   ctx.beginPath();
-  ctx.moveTo(8,-6); ctx.lineTo(40,-6); ctx.lineTo(40,6); ctx.lineTo(8,6);
-  stroke2('#ff5030', 2.4);
-  ctx.beginPath(); ctx.arc(0,0,17,0,6.283); stroke2('#ff5030', 2.4);
-  ctx.beginPath(); ctx.arc(0,0,8,0,6.283); stroke2('#ffc4b0', 2);
+  var spikes=8, rOut=30, rIn=13;
+  for(var k=0;k<spikes*2;k++){
+    var rr=(k%2===0)?rOut:rIn, aa=(k/(spikes*2))*Math.PI*2;
+    var px=Math.cos(aa)*rr, py=Math.sin(aa)*rr;
+    if(k===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+  stroke2('#ffd94d', 2.4);
+  ctx.beginPath(); ctx.arc(0,0,7.5,0,6.283); stroke2('#fff6c4', 2);
+  ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(38,0); stroke2('#fff6c4', 2.6);
   ctx.restore();
 }
 function drawShip(){
@@ -763,13 +777,13 @@ function drawShip(){
   ctx.translate(ship.x, ship.y);
   ctx.rotate(ship.a);
   ctx.beginPath();
-  ctx.moveTo(15,0); ctx.lineTo(-11,9.5); ctx.lineTo(-6.5,0); ctx.lineTo(-11,-9.5); ctx.closePath();
+  ctx.moveTo(11.5,0); ctx.lineTo(-8.5,7); ctx.lineTo(-5,0); ctx.lineTo(-8.5,-7); ctx.closePath();
   stroke2(INK, 2.2);
   if(ship.thrusting){
-    var f=10+Math.random()*9;
+    var f=8+Math.random()*7;
     ctx.beginPath();
-    ctx.moveTo(-8,4.5); ctx.lineTo(-8-f,0); ctx.lineTo(-8,-4.5);
-    stroke2(Math.random()<0.5?'#ffd94d':'#ff9a2e', 2);
+    ctx.moveTo(-6.5,3.5); ctx.lineTo(-6.5-f,0); ctx.lineTo(-6.5,-3.5);
+    stroke2(Math.random()<0.5?'#8fd4ff':'#4fa8ff', 2);
   }
   ctx.restore();
 }
@@ -789,7 +803,7 @@ function drawMine(m){
 }
 function draw(){
   ctx.setTransform(cv.width/FW, 0, 0, cv.width/FW, 0, 0);
-  ctx.fillStyle='#000';
+  ctx.fillStyle='#051630';
   ctx.fillRect(0,0,FW,FH);
   // starfield
   for(var i=0;i<stars.length;i++){
@@ -813,10 +827,10 @@ function draw(){
   mines.forEach(drawMine);
   if(torpedo){
     ctx.beginPath(); ctx.arc(torpedo.x, torpedo.y, 15, 0, 6.283);
-    ctx.globalAlpha=0.25; ctx.strokeStyle='#fff'; ctx.lineWidth=5; ctx.stroke();
+    ctx.globalAlpha=0.25; ctx.strokeStyle='#e3f2ff'; ctx.lineWidth=5; ctx.stroke();
     ctx.globalAlpha=1;
     ctx.beginPath(); ctx.arc(torpedo.x, torpedo.y, 9.5, 0, 6.283);
-    stroke2('#ffffff', 2.6);
+    stroke2('#e3f2ff', 2.6);
   }
   for(var b=0;b<bullets.length;b++){
     var bl=bullets[b], ba=Math.atan2(bl.vy, bl.vx);
@@ -923,7 +937,7 @@ document.getElementById('tglControls').addEventListener('click', function(){
 document.getElementById('tglHow').addEventListener('click', function(){
   openOv('HOW TO PLAY',
     '<p>The cannon sits at the center of three rotating shield rings. Blast a gap through all three and shoot the cannon.</p>' +
-    '<p>Every shield segment takes <b>two hits</b>. Segments score <span class="pts-y"><b>10</b> (yellow)</span> · <span class="pts-o"><b>20</b> (orange)</span> · <span class="pts-r"><b>30</b> (red)</span>.</p>' +
+    '<p>Every shield segment takes <b>two hits</b>. Segments score <span class="pts-r"><b>10</b> (outer red)</span> · <span class="pts-o"><b>20</b> (orange)</span> · <span class="pts-y"><b>30</b> (inner yellow)</span>.</p>' +
     '<p>Destroy the cannon and you earn an <b>extra ship</b> — then a faster castle rises.</p>' +
     '<p>Careful: the moment your gap lines up, the cannon fires its torpedo straight back through it. One hit and you are gone.</p>' +
     '<p>Three homing mines ride the rings and chase you for about ten seconds. Shoot them or outrun them — they score nothing.</p>' +
