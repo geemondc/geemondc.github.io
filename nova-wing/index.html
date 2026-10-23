@@ -43,9 +43,17 @@
       }
       #torpBtn:active, #torpBtn.held{ background:rgba(255,176,46,.22); }
       #torpBtn:disabled{ opacity:.32; box-shadow:none; }
+      #turboBtn{
+        right:18px; bottom:calc(126px + env(safe-area-inset-bottom));
+        border-color:var(--mag); color:var(--mag);
+        text-shadow:0 0 8px var(--mag); box-shadow:0 0 18px rgba(255,79,216,.3), inset 0 0 18px rgba(255,79,216,.15);
+        width:76px; height:76px; font-size:12px;
+      }
+      #turboBtn:active, #turboBtn.held{ background:rgba(255,79,216,.22); }
       @media (max-width:480px){
         #fireBtn{ width:84px; height:84px; font-size:14px; right:10px; }
         #torpBtn{ width:68px; height:68px; left:10px; }
+        #turboBtn{ width:68px; height:68px; right:10px; bottom:calc(112px + env(safe-area-inset-bottom)); }
       }
       .hidden{ display:none !important; }
 
@@ -142,6 +150,7 @@
     <canvas id="game"></canvas>
 
     <button id="torpBtn" class="thumbBtn hidden" aria-label="Launch torpedo">TORP<small id="torpCount">× 3</small></button>
+    <button id="turboBtn" class="thumbBtn hidden" aria-label="Turbo surge">TURBO<small id="turboPct">100%</small></button>
     <button id="fireBtn" class="thumbBtn hidden" aria-label="Fire lasers">FIRE</button>
 
     <!-- INTRO -->
@@ -201,10 +210,10 @@
 <script>
 "use strict";
 /* =========================================================
-   NOVA WING v1 — a vector space duel.
+   NOVA WING — a vector space duel.
    Fly with the compass stick, shoot wireframe fighters,
-   watch them blow up. Phases/carrier ideas are parked for v2;
-   the wave loop below is where they'd slot in.
+   watch them blow up. Gary's loop: 10 kills a round, every
+   round quicker and hotter, an extra ship every 3rd round.
    ========================================================= */
 
 /* ---------------- tiny 3D helpers ---------------- */
@@ -260,7 +269,8 @@ var AudioSys = {
   lockTick:function(){ this.tone(1250,1250,0.045,"sine",0.08); },
   locked:function(){ this.tone(1250,1250,0.06,"sine",0.1); this.tone(1680,1680,0.09,"sine",0.1,0.07); },
   torp:function(){ this.tone(220,990,0.32,"sawtooth",0.12); },
-  waveHorn:function(){ this.tone(392,392,0.11,"square",0.1); this.tone(587,587,0.16,"square",0.1,0.12); }
+  waveHorn:function(){ this.tone(392,392,0.11,"square",0.1); this.tone(587,587,0.16,"square",0.1,0.12); },
+  extraShip:function(){ this.tone(523,523,0.1,"square",0.11); this.tone(659,659,0.1,"square",0.11,0.1); this.tone(784,784,0.12,"square",0.11,0.2); this.tone(1046,1046,0.22,"square",0.12,0.3); }
 };
 
 /* ---------------- ship wireframe: ONE twin-panel fighter ----------------
@@ -348,15 +358,16 @@ var running = false;
 
 function newRun(){
   return {
-    t:0, score:0, wave:0,
-    shield:100, hull:100, lastHurt:-99,
+    t:0, score:0, round:0, roundKills:0, ships:3,
+    shield:100, hull:100, lastHurt:-99, invuln:0, centerMsg:null, lastClearExtra:false,
+    turboBtnHeld:false, turbo:0, turboFuel:100,
     player:{ pos:v3(0,0,0), yaw:0, pitch:0, roll:0, speed:16, boost:0 },
     steer:{ x:0, y:0, active:false },
     enemies:[], bolts:[], ebolts:[], frags:[], bursts:[], sparks:[], popups:[], torps:[],
     torpAmmo:3, fireHeld:false, fireCd:0,
     lockTarget:null, lockTime:0, lockBeepCd:0,
     shake:0, flashRed:0, flashWhite:0,
-    spawnQueue:0, spawnCd:0, waveState:"banner", waveTimer:2.2,
+    spawnCd:0, roundState:"banner", roundTimer:2.2,
     comms:[], commsCd:0, kills:0
   };
 }
@@ -370,53 +381,57 @@ function comms(who, line, color){
 var LANG = "en";
 var STR = {
   en:{ subtitle:"VECTOR SPACE DUEL", start:"START", sound:"SOUND", on:"ON", off:"OFF", how:"HOW TO FLY", gotit:"GOT IT",
-    score:"SCORE", best:"BEST", wave:"WAVE", hostiles:"HOSTILES", shield:"SHIELD", hull:"HULL", sensor:"SENSOR", lock:"LOCK",
+    score:"SCORE", best:"BEST", round:"ROUND", kills:"KILLS", ships:"SHIPS", shield:"SHIELD", hull:"HULL", sensor:"SENSOR", lock:"LOCK",
     shd:"SHD", hul:"HUL", torpNote:"LOCK + TORP = ONE-HIT KILL",
-    waveClear:"WAVE CLEAR", shieldDown:"SHIELD DOWN", hullCrit:"HULL CRITICAL",
+    roundClear:"ROUND CLEAR", extraShip:"EXTRA SHIP", shieldDown:"SHIELD DOWN", hullCrit:"HULL CRITICAL",
     shipLost:"SHIP LOST", finalScore:"FINAL SCORE", flyAgain:"FLY AGAIN",
     fire:"FIRE", qrTitle:"SCAN TO PLAY", close:"CLOSE",
-    waveInbound:function(n){ return "WAVE " + n + " — fighters inbound"; },
-    waveCleared:"Wave cleared  +250",
+    roundInbound:function(n){ return "ROUND " + n + " — fighters inbound"; },
+    roundCleared:"Round cleared  +250",
+    extraShipMsg:"Extra ship earned!",
+    shipsLeft:function(n){ return n + (n===1 ? " SHIP LEFT" : " SHIPS LEFT"); },
     shieldDownMsg:"Shield down! Hull exposed!",
     aceInbound:"ACE inbound — curved wings, big bounty!",
     startLine:"All yours, Nova Wing. Light 'em up.",
-    reachedWave:function(w,k){ return "YOU REACHED WAVE " + w + " — " + k + " KILLS"; },
+    reachedRound:function(w,k){ return "YOU REACHED ROUND " + w + " — " + k + " KILLS"; },
     bestSession:"BEST THIS SESSION: ",
     how1:'<span class="k">STEER</span> — touch and hold anywhere on the sky: your ship turns toward your thumb — above center climbs, below dives, sides bank. The whole screen is your windshield now. Hold the turn and she accelerates.',
-    how2:'<span class="k">FIRE</span> — hold the FIRE button with your right thumb (or mouse / spacebar). Line the crosshair up and let them have it.',
+    how2:'<span class="k">FIRE + TURBO</span> — hold the FIRE button with your right thumb (or mouse / spacebar) and let them have it. Hold TURBO (or Shift) to surge — zoom right at a pack, or blow straight through it and leave it behind. Zooming is half the fun.',
     how3:'<span class="k">TORPEDO</span> — hold your crosshair on a fighter until it locks, then hit TORP. One shot, one kill.',
-    how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through: fighters and fire show right through it, even the ones diving in from below. Blips at the edge are behind you — swing around and hunt. Arrows at the rim of the view point to hostiles off-screen.',
-    how5:'<span class="k">SURVIVE</span> — enemy fire eats your shield first, then your hull. Clear the wave, earn shield back. Hull gone, run over.',
+    how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through. Every fighter is a bright green dot on the scope, and YOU are always the marker in the center — read the fight as green dots closing around you. No hunting: they all come to you. Arrows at the rim of the view point to hostiles off-screen.',
+    how5:'<span class="k">THE LOOP</span> — shoot down 10 fighters to clear the round. Round 1 is gentle: slow fighters, one hit kills them, and each fires a single slow shot you can watch all the way in. Every round they come quicker and fire more, faster shots. Clear every 3rd round to earn an EXTRA SHIP. Enemy fire eats shield, then hull — lose your hull, lose a ship. Out of ships, run over.',
     how6:'<span class="k">THE ACE</span> — the curved-wing ACE is worth 500. Fast and mean — lock a torpedo on him.' },
   es:{ subtitle:"DUELO ESPACIAL VECTORIAL", start:"INICIAR", sound:"SONIDO", on:"SÍ", off:"NO", how:"CÓMO VOLAR", gotit:"ENTENDIDO",
-    score:"PUNTOS", best:"RÉCORD", wave:"OLEADA", hostiles:"ENEMIGOS", shield:"ESCUDO", hull:"CASCO", sensor:"SENSOR", lock:"FIJADO",
+    score:"PUNTOS", best:"RÉCORD", round:"RONDA", kills:"BAJAS", ships:"NAVES", shield:"ESCUDO", hull:"CASCO", sensor:"SENSOR", lock:"FIJADO",
     shd:"ESC", hul:"CAS", torpNote:"FIJADO + TORP = MUERTE SEGURA",
-    waveClear:"¡OLEADA SUPERADA!", shieldDown:"¡ESCUDO CAÍDO!", hullCrit:"¡CASCO CRÍTICO!",
+    roundClear:"¡RONDA SUPERADA!", extraShip:"¡NAVE EXTRA!", shieldDown:"¡ESCUDO CAÍDO!", hullCrit:"¡CASCO CRÍTICO!",
     shipLost:"NAVE PERDIDA", finalScore:"PUNTUACIÓN FINAL", flyAgain:"VOLAR OTRA VEZ",
     fire:"FUEGO", qrTitle:"ESCANEA PARA JUGAR", close:"CERRAR",
-    waveInbound:function(n){ return "OLEADA " + n + " — cazas en camino"; },
-    waveCleared:"Oleada superada  +250",
+    roundInbound:function(n){ return "RONDA " + n + " — cazas en camino"; },
+    roundCleared:"Ronda superada  +250",
+    extraShipMsg:"¡Nave extra ganada!",
+    shipsLeft:function(n){ return n===1 ? "QUEDA 1 NAVE" : "QUEDAN " + n + " NAVES"; },
     shieldDownMsg:"¡Escudo caído! ¡Casco expuesto!",
     aceInbound:"¡AS en camino — alas curvas, gran recompensa!",
     startLine:"Todo tuyo, Nova Wing. ¡A por ellos!",
-    reachedWave:function(w,k){ return "LLEGASTE A LA OLEADA " + w + " — " + k + " BAJAS"; },
+    reachedRound:function(w,k){ return "LLEGASTE A LA RONDA " + w + " — " + k + " BAJAS"; },
     bestSession:"RÉCORD DE LA SESIÓN: ",
     how1:'<span class="k">PILOTAR</span> — toca y mantén en cualquier parte del cielo: tu nave gira hacia tu pulgar — arriba sube, abajo baja, a los lados se inclina. Ahora toda la pantalla es tu cabina. Mantén el giro y acelera.',
-    how2:'<span class="k">FUEGO</span> — mantén el botón FUEGO con el pulgar derecho (o el ratón / barra espaciadora). Alinea la mira y dales.',
+    how2:'<span class="k">FUEGO + TURBO</span> — mantén el botón FUEGO con el pulgar derecho (o el ratón / barra espaciadora) y dales. Mantén TURBO (o Mayús) para acelerar: lánzate hacia un grupo o atraviésalo y déjalo atrás. Acelerar es la mitad de la diversión.',
     how3:'<span class="k">TORPEDO</span> — mantén la mira sobre un caza hasta fijarlo y pulsa TORP. Un disparo, una baja.',
-    how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente: los cazas y el fuego se ven a través de él, incluso los que suben desde abajo. Los puntos en el borde están detrás de ti: gira y a cazar. Las flechas en el borde de la vista señalan a los enemigos fuera de pantalla.',
-    how5:'<span class="k">SOBREVIVE</span> — el fuego enemigo consume primero tu escudo y luego el casco. Supera la oleada y recuperas escudo. Si el casco llega a cero, se acabó.',
+    how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente. Cada caza es un punto verde brillante en el sensor, y TÚ eres siempre la marca del centro: lee la pelea como puntos verdes cerrándose a tu alrededor. No hay que buscar: todos vienen a ti. Las flechas en el borde de la vista señalan a los enemigos fuera de pantalla.',
+    how5:'<span class="k">EL CICLO</span> — derriba 10 cazas para superar la ronda. La ronda 1 es suave: cazas lentos, caen de un solo tiro, y cada uno dispara un solo tiro lento que ves venir desde lejos. Cada ronda vienen más rápido y disparan más, con tiros más veloces. Supera cada 3ª ronda y ganas una NAVE EXTRA. El fuego enemigo consume el escudo y luego el casco: perder el casco es perder una nave. Sin naves, se acabó.',
     how6:'<span class="k">EL AS</span> — el AS de alas curvas vale 500. Rápido y peligroso: fíjale un torpedo.' }
 };
 function S(){ return STR[LANG]; }
 var CREW_LINES = {
   en:{ kill:["Nice shooting!","He's dust!","Scratch one!","Beautiful — he's gone!"],
        hurt:["Shields taking fire!","Shake it off!","You're hit — keep flying!"],
-       wave:["Here they come!","More on the scope!","Stay sharp!"],
+       round:["Here they come!","More on the scope!","Stay sharp!"],
        lock:["That's a lock — TORP!","Locked on! Send it!"] },
   es:{ kill:["¡Buen tiro!","¡Hecho polvo!","¡Uno menos!","¡Precioso — cayó!"],
        hurt:["¡Escudos bajo fuego!","¡Sacúdete!","¡Te dieron — sigue volando!"],
-       wave:["¡Ahí vienen!","¡Más en el sensor!","¡Mantente alerta!"],
+       round:["¡Ahí vienen!","¡Más en el sensor!","¡Mantente alerta!"],
        lock:["¡Fijado — TORP!","¡Lo tengo! ¡Lánzalo!"] }
 };
 var CREW_NAMES = ["BRAIDS","TEAL","GOGGLES","PHONES"];
@@ -426,23 +441,57 @@ function crewSay(kind){
         lines[Math.floor(Math.random()*lines.length)]);
 }
 
-/* ---------------- waves ---------------- */
-function startWave(n){
-  G.wave = n;
-  G.waveState = "banner"; G.waveTimer = 2.0;
-  G.spawnQueue = 5 + n*3;                       /* wave 1 = 8 fighters, and it only gets busier */
+/* ---------------- rounds: Gary's loop ----------------
+   10 kills clears the round. Fighters keep coming until the quota
+   is met. Every round everything steps up a little — approach speed,
+   fireball speed, shots per fighter, fire rate — a smooth ramp,
+   never a cliff. Round 1 is deliberately gentle: slow one-hit
+   fighters, one slow shot each. Clearing every 3rd round = +1 ship. */
+var KILLS_PER_ROUND = 10;
+function roundSpeedFactor(r){ return 0.70 + Math.min(0.06*(r-1), 0.62); }   /* r1 .70 → r6 1.00 → r12 1.32 */
+function roundBoltSpeed(r){ return Math.min(34 + (r-1)*6, 95); }            /* r1 34 → r5 58 → r11 94 */
+function roundMaxShots(r, key){
+  var s = Math.min(r, 6);                                                    /* r1: 1 shot per fighter per life */
+  return key==="ace" ? Math.ceil(s*1.5) : s;
+}
+function roundFireGap(r){ return clamp(2.9 - (r-1)*0.22, 1.05, 2.9); }       /* seconds between a fighter's shots */
+
+function startRound(n){
+  G.round = n;
+  G.roundKills = 0;
+  G.roundState = "banner"; G.roundTimer = 2.0;
+  G.lastClearExtra = false;
   G.spawnCd = 0;                                 /* first fighter appears the moment the banner drops */
   G.torpAmmo = Math.min(6, G.torpAmmo + 1);
   AudioSys.waveHorn();
-  comms("CONTROL", S().waveInbound(n), "#37e6ff");
-  if(n>1) crewSay("wave");
+  comms("CONTROL", S().roundInbound(n), "#37e6ff");
+  if(n>1) crewSay("round");
 }
-function waveComposition(){
-  /* standard fighters, with an occasional curved-wing ACE from wave 2 on */
-  if(G.wave >= 2){
+function roundCleared(){
+  G.roundState = "clear"; G.roundTimer = 2.8;
+  /* the rest of the sky pops with the round — pure celebration, no score */
+  for(var i=0;i<G.enemies.length;i++){
+    var e = G.enemies[i];
+    if(!e.dead){ explode(e, false); e.dead = true; }
+  }
+  G.ebolts.length = 0;
+  if(G.lockTarget){ G.lockTarget = null; G.lockTime = 0; }
+  G.shield = Math.min(100, G.shield + 25);
+  G.score += 250;
+  comms("CONTROL", S().roundCleared, "#37e6ff");
+  if(G.round % 3 === 0){
+    G.ships++;
+    G.lastClearExtra = true;
+    comms("CONTROL", S().extraShipMsg, "#ffb02e");
+    AudioSys.extraShip();
+  }
+}
+function roundComposition(){
+  /* standard fighters, with an occasional curved-wing ACE from round 2 on */
+  if(G.round >= 2){
     var aces = 0;
     for(var i=0;i<G.enemies.length;i++) if(G.enemies[i].key==="ace") aces++;
-    if(aces < 2 && Math.random() < Math.min(0.10 + G.wave*0.02, 0.26)) return "ace";
+    if(aces < 2 && Math.random() < Math.min(0.10 + G.round*0.02, 0.26)) return "ace";
   }
   return "fighter";
 }
@@ -459,15 +508,18 @@ function spawnPosAhead(dist){
   return vadd(G.player.pos, vscale(worldDir, dist));
 }
 function spawnEnemy(){
-  var key = waveComposition();
+  var key = roundComposition();
   var m = MODELS[key];
   /* close: arrives in the windshield fast and already reads as a ship */
   var pos = spawnPosAhead(rand(55, 82));
+  var spdF = key==="ace" ? Math.max(roundSpeedFactor(G.round), 0.95) : roundSpeedFactor(G.round);
   G.enemies.push({
-    key:key, model:m, pos:pos, size: key==="ace" ? 1.65 : 1.55,
+    key:key, model:m, pos:pos, size: key==="ace" ? 1.9 : 1.75,
     heading: vnorm(vsub(G.player.pos, pos)),
-    roll:0, hp:m.hp, speed: m.speed * rand(0.9,1.12) * (1 + G.wave*0.02),
-    state:"approach", stateT: rand(3,5), fireCd: rand(1.2,2.6),
+    roll:0, hp: (G.round===1 && key==="fighter") ? 1 : m.hp,
+    speed: m.speed * rand(0.9,1.12) * spdF,
+    state:"approach", stateT: rand(3,5), fireCd: rand(1.5,3.0),
+    shots:0, maxShots: roundMaxShots(G.round, key),
     wob: rand(0, Math.PI*2), flash:0, strafeDir: Math.random()<0.5?-1:1
   });
   if(key==="ace") comms("CONTROL", S().aceInbound, "#ffb02e");
@@ -488,7 +540,7 @@ function project(wp, basis){
   var cr = Math.cos(G.player.roll), sr = Math.sin(G.player.roll);
   var rx = cx*cr - cyy*sr, ry = cx*sr + cyy*cr;
   if(cz < 0.6) return null;
-  var f = viewH*1.35;
+  var f = viewH*1.35*(1 + 0.13*((G && G.turbo) || 0));   /* turbo: a gentle funnel of space */
   return { x: VCX + rx/cz*f, y: VCY - ry/cz*f, z: cz, scale: f/cz };
 }
 function strokePath(pts, color, width, glow){
@@ -561,11 +613,13 @@ function killEnemy(e, byTorp){
   var total = e.model.score + (byTorp?50:0);
   G.score += total;
   G.kills++;
+  G.roundKills++;
+  e.dead = true;
   var basis = camBasis(); var pr = project(e.pos, basis);
   if(pr) G.popups.push({ x:pr.x, y:pr.y, text:(e.key==="ace" ? "ACE +" : "+") + total, ttl:0.9, color: e.key==="ace" ? "#ffb02e" : "#7dffb0" });
   if(G.lockTarget===e){ G.lockTarget=null; G.lockTime=0; }
   if(Math.random()<0.45) crewSay("kill");
-  e.dead = true;
+  if(G.roundState==="fight" && G.roundKills>=KILLS_PER_ROUND) roundCleared();
 }
 
 /* ---------------- combat ---------------- */
@@ -599,15 +653,17 @@ function fireTorpedo(){
   G.lockTarget = null; G.lockTime = 0;
 }
 function enemyShoot(e){
+  var bs = roundBoltSpeed(G.round);
   var toP = vsub(G.player.pos, e.pos);
   var dist = vlen(toP);
-  var lead = vadd(G.player.pos, vscale(camBasis().F, G.player.speed * dist/62 * 0.55));
+  var lead = vadd(G.player.pos, vscale(camBasis().F, G.player.speed * dist/bs * 0.55));
   var aim = vnorm(vsub(lead, e.pos));
   aim = vnorm(vadd(aim, v3(rand(-0.05,0.05), rand(-0.05,0.05), rand(-0.05,0.05))));
-  G.ebolts.push({ pos: v3(e.pos.x, e.pos.y, e.pos.z), vel: vscale(aim, 62), life: dist/62 + 0.4 });
+  G.ebolts.push({ pos: v3(e.pos.x, e.pos.y, e.pos.z), vel: vscale(aim, bs), life: dist/bs + 0.4 });
   AudioSys.enemyLaser();
 }
 function hurtPlayer(dmg){
+  if(G.invuln > 0) return;
   var now = G.t;
   if(G.shield > 0){
     G.shield = Math.max(0, G.shield - dmg);
@@ -618,7 +674,21 @@ function hurtPlayer(dmg){
   G.lastHurt = now; G.flashRed = 0.55; G.shake = Math.min(12, G.shake+5);
   AudioSys.hit();
   if(Math.random()<0.4) crewSay("hurt");
-  if(G.hull<=0) gameOver();
+  if(G.hull<=0){
+    if(G.ships > 1){
+      /* lose a ship, fly on: fresh hull and shield, a breath of grace */
+      G.ships--;
+      G.hull = 100; G.shield = 100;
+      G.lastHurt = now;
+      G.ebolts.length = 0;
+      G.invuln = 2.5;
+      G.centerMsg = { title:S().shipLost, sub:S().shipsLeft(G.ships), ttl:2.2 };
+      G.flashWhite = 0.5; G.shake = 10;
+      AudioSys.explosion(true);
+    } else {
+      gameOver();
+    }
+  }
 }
 
 /* ---------------- update ---------------- */
@@ -641,7 +711,16 @@ function update(dt){
   p.pitch += -sy2 * turnRate * dt * clamp(mag,0,1.15);
   p.pitch = clamp(p.pitch, -1.25, 1.25);
   p.roll = lerp(p.roll, clamp(-sx*0.5, -0.55, 0.55), 1 - Math.pow(0.0018, dt));
-  p.speed = lerp(p.speed, 15 + 17*p.boost, 1 - Math.pow(0.01, dt));
+
+  /* --- turbo: hold to surge. Zoom at a pack, or blow through it and
+         leave it behind. The meter drains while surging and refills
+         while cruising — but it always answers a press. --- */
+  var turboHeld = G.turboBtnHeld || keys["ShiftLeft"] || keys["ShiftRight"];
+  var surging = turboHeld && G.turboFuel > 0.5;
+  if(surging) G.turboFuel = Math.max(0, G.turboFuel - 26*dt);
+  else G.turboFuel = Math.min(100, G.turboFuel + 13*dt);
+  G.turbo = lerp(G.turbo, surging ? 1 : 0, 1 - Math.pow(0.002, dt));
+  p.speed = lerp(p.speed, (15 + 17*p.boost) * (1 + 1.15*G.turbo), 1 - Math.pow(0.01, dt));
   var basis = camBasis();
   p.pos = vadd(p.pos, vscale(basis.F, p.speed*dt));
 
@@ -650,28 +729,28 @@ function update(dt){
     G.shield = Math.min(100, G.shield + 3.2*dt);
   }
 
-  /* --- waves --- */
-  if(G.waveState==="banner"){
-    G.waveTimer -= dt;
-    if(G.waveTimer<=0) G.waveState = "fight";
-  } else if(G.waveState==="fight"){
-    if(G.spawnQueue>0){
+  /* --- rounds: fighters keep coming until the 10-kill quota is met --- */
+  if(G.roundState==="banner"){
+    G.roundTimer -= dt;
+    if(G.roundTimer<=0) G.roundState = "fight";
+  } else if(G.roundState==="fight"){
+    if(G.roundKills < KILLS_PER_ROUND){
       G.spawnCd -= dt;
-      if(G.spawnCd<=0 && G.enemies.length < 14){ spawnEnemy(); G.spawnQueue--; G.spawnCd = rand(0.22,0.55); }
-    } else if(G.enemies.length===0){
-      G.waveState = "clear"; G.waveTimer = 2.4;
-      G.shield = Math.min(100, G.shield + 25);
-      G.score += 250;
-      comms("CONTROL", S().waveCleared, "#37e6ff");
+      var cap = Math.min(5 + G.round, 14);
+      if(G.spawnCd<=0 && G.enemies.length < cap && (G.roundKills + G.enemies.length) < KILLS_PER_ROUND + 2){
+        spawnEnemy(); G.spawnCd = rand(0.3, 0.7);
+      }
     }
-  } else if(G.waveState==="clear"){
-    G.waveTimer -= dt;
-    if(G.waveTimer<=0) startWave(G.wave+1);
+  } else if(G.roundState==="clear"){
+    G.roundTimer -= dt;
+    if(G.roundTimer<=0) startRound(G.round+1);
   }
+  if(G.invuln > 0) G.invuln -= dt;
+  if(G.centerMsg){ G.centerMsg.ttl -= dt; if(G.centerMsg.ttl<=0) G.centerMsg = null; }
 
   /* --- firing --- */
   G.fireCd -= dt;
-  if(G.fireHeld && G.fireCd<=0 && G.waveState!=="banner"){ playerFire(); G.fireCd = 0.13; }
+  if(G.fireHeld && G.fireCd<=0 && G.roundState!=="banner"){ playerFire(); G.fireCd = 0.13; }
 
   /* --- enemies --- */
   for(var i=0;i<G.enemies.length;i++){
@@ -718,24 +797,29 @@ function update(dt){
     e.pos = vadd(e.pos, vscale(e.heading, e.speed*dt));
 
     /* enemy fire: only when the player is in their forward cone AND the
-       fighter is in the player's forward hemisphere — no invisible back-shots */
+       fighter is in the player's forward hemisphere — no invisible back-shots.
+       Each fighter carries a per-life shot budget for the round: 1 in
+       round 1, stepping up every round after. */
     e.fireCd -= dt;
     var facing = vdot(e.heading, vnorm(toPlayer));
     var inFront = vdot(basis.F, vnorm(vsub(e.pos, p.pos))) > 0.02;
-    if(e.fireCd<=0 && facing > 0.86 && dist < 85 && dist > 9 && inFront){
+    if(e.fireCd<=0 && e.shots < e.maxShots && facing > 0.86 && dist < 85 && dist > 9 && inFront){
       enemyShoot(e);
-      e.fireCd = rand(1.5, 2.7) * clamp(1.15 - G.wave*0.05, 0.6, 1.15) * (e.key==="ace" ? 0.6 : 1);
+      e.shots++;
+      e.fireCd = roundFireGap(G.round) * rand(0.85, 1.2) * (e.key==="ace" ? 0.65 : 1);
     }
     /* collision */
     if(dist < 3.6){
       killEnemy(e, false);
       hurtPlayer(14);
     }
-    /* drifted too far off -> recycle as a fresh approach dead ahead */
+    /* drifted too far off -> recycle as a fresh approach dead ahead,
+       with a fresh shot budget: a new pass, a new chance to fire */
     if(dist > 170){
       e.pos = spawnPosAhead(rand(60, 90));
       e.heading = vnorm(vsub(p.pos, e.pos));
       e.state = "approach"; e.stateT = rand(3,5);
+      e.shots = 0;
     }
   }
   G.enemies = G.enemies.filter(function(e){ return !e.dead; });
@@ -855,7 +939,7 @@ function drawShip(e, basis){
   for(var j=0;j<e.model.edges.length;j++){
     var a = pts[e.model.edges[j][0]], b = pts[e.model.edges[j][1]];
     /* glow pass (near ships only) then core pass */
-    if(pts[0].z < 95){
+    if(pts[0].z < 120){
       ctx.strokeStyle = color; ctx.globalAlpha = 0.28; ctx.lineWidth = lw*3.1;
       ctx.shadowBlur = 12; ctx.shadowColor = color;
       ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
@@ -864,16 +948,17 @@ function drawShip(e, basis){
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  /* distant-contact dot: a far fighter still reads as a glowing contact
-     growing out of the black instead of vanishing into it */
-  if(pts[0].z > 55){
+  /* distant-contact dot: a far fighter still reads as a big glowing
+     green contact growing out of the black — visible from the moment
+     it spawns, never a speck you have to hunt for */
+  if(pts[0].z > 40){
     var mx = 0, my = 0;
     for(var q=0;q<pts.length;q++){ mx += pts[q].x; my += pts[q].y; }
     mx /= pts.length; my /= pts.length;
     ctx.fillStyle = color;
-    ctx.globalAlpha = clamp(1.35 - pts[0].z/150, 0.25, 0.85);
-    ctx.shadowBlur = 9; ctx.shadowColor = color;
-    ctx.beginPath(); ctx.arc(mx, my, 2.3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = clamp(1.55 - pts[0].z/130, 0.35, 0.95);
+    ctx.shadowBlur = 12; ctx.shadowColor = color;
+    ctx.beginPath(); ctx.arc(mx, my, 3.4, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   }
 }
@@ -978,18 +1063,31 @@ function drawHUD(basis){
   ctx.font = "500 12px Orbitron, sans-serif"; ctx.fillStyle = "#7dffb0";
   ctx.fillText(S().best + " " + Math.max(bestScore, G.score), pad, pad+46);
   ctx.shadowBlur = 0;
+  /* SHIPS remaining: little cyan wedges under the score */
+  ctx.font = "500 11px Orbitron, sans-serif"; ctx.fillStyle = "#ff3b5c";
+  ctx.fillText(S().ships, pad, pad+66);
+  var nShips = Math.min(G.ships, 6);
+  for(var si2=0; si2<nShips; si2++){
+    var wx2 = pad + 52 + si2*16, wy2 = pad+64;
+    ctx.beginPath();
+    ctx.moveTo(wx2, wy2); ctx.lineTo(wx2+5, wy2+11); ctx.lineTo(wx2, wy2+7); ctx.lineTo(wx2-5, wy2+11); ctx.closePath();
+    ctx.fillStyle = "#37e6ff"; ctx.shadowBlur = 6; ctx.shadowColor = "#37e6ff"; ctx.fill(); ctx.shadowBlur = 0;
+  }
+  if(G.ships > 6){
+    ctx.font = "700 12px Orbitron, sans-serif"; ctx.fillStyle = "#37e6ff";
+    ctx.fillText("× " + G.ships, pad + 52 + 6*16 + 2, pad+66);
+  }
 
-  /* WAVE top-right */
+  /* ROUND top-right, with the KILLS x/10 quota counter */
   ctx.textAlign = "right";
   ctx.font = "700 15px Orbitron, sans-serif";
   ctx.fillStyle = "#ff3b5c"; ctx.shadowBlur = 8; ctx.shadowColor = "#ff3b5c";
-  ctx.fillText(S().wave, W-pad, pad);
+  ctx.fillText(S().round, W-pad, pad);
   ctx.fillStyle = "#39ff6a"; ctx.shadowColor = "#39ff6a";
   ctx.font = "700 21px Orbitron, sans-serif";
-  ctx.fillText(String(G.wave), W-pad, pad+19);
+  ctx.fillText(String(G.round), W-pad, pad+19);
   ctx.font = "500 12px Orbitron, sans-serif"; ctx.fillStyle = "#7dffb0";
-  var left = G.spawnQueue + G.enemies.length;
-  ctx.fillText(S().hostiles + " " + left, W-pad, pad+46);
+  ctx.fillText(S().kills + " " + G.roundKills + "/" + KILLS_PER_ROUND, W-pad, pad+46);
   ctx.shadowBlur = 0;
 
   /* SHIELD trapezoid gauge top-center (the '83 frame) */
@@ -1079,11 +1177,14 @@ function drawHUD(basis){
   ctx.beginPath(); ctx.moveTo(rcx, rcy);
   ctx.lineTo(rcx + Math.sin(sa)*rr, rcy - Math.cos(sa)*rr);
   ctx.strokeStyle = "rgba(57,255,106,.4)"; ctx.stroke();
-  /* player wedge (pointing up = ahead) */
+  /* player marker: fixed at the CENTER of the scope — you are always
+     the middle, and the fight reads as green dots arranged around you */
+  ctx.beginPath(); ctx.arc(rcx, rcy, 8.5, 0, Math.PI*2);
+  ctx.strokeStyle = "rgba(55,230,255,.55)"; ctx.lineWidth = 1.2; ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(rcx, rcy-6); ctx.lineTo(rcx-4, rcy+4); ctx.lineTo(rcx+4, rcy+4); ctx.closePath();
-  ctx.fillStyle = "#37e6ff"; ctx.fill();
-  /* blips: bearing in the player's horizontal frame */
+  ctx.fillStyle = "#37e6ff"; ctx.shadowBlur = 7; ctx.shadowColor = "#37e6ff"; ctx.fill(); ctx.shadowBlur = 0;
+  /* blips: every fighter a clear GREEN dot around your center marker */
   var cyaw = Math.cos(G.player.yaw), syaw = Math.sin(G.player.yaw);
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i];
@@ -1094,10 +1195,15 @@ function drawHUD(basis){
     var s = Math.min(dist, 200)/200;
     var bx = rcx + (rx/Math.max(dist,1))*s*rr*0.92;
     var by = rcy - (fx/Math.max(dist,1))*s*rr*0.92;
-    ctx.fillStyle = e.key==="ace" ? "#ffb02e" : e.model.color;
-    ctx.shadowBlur = 6; ctx.shadowColor = ctx.fillStyle;
-    ctx.fillRect(bx-2, by-2, 4, 4);
+    ctx.beginPath(); ctx.arc(bx, by, e.key==="ace" ? 4.2 : 3.4, 0, Math.PI*2);
+    ctx.fillStyle = "#39ff6a";
+    ctx.shadowBlur = 8; ctx.shadowColor = "#39ff6a";
+    ctx.fill();
     ctx.shadowBlur = 0;
+    if(e.key==="ace"){
+      ctx.beginPath(); ctx.arc(bx, by, 6.6, 0, Math.PI*2);
+      ctx.strokeStyle = "rgba(255,176,46,.9)"; ctx.lineWidth = 1.3; ctx.stroke();
+    }
   }
   ctx.font = "500 9px Orbitron, sans-serif"; ctx.fillStyle = "rgba(125,255,176,.8)";
   ctx.textAlign = "center"; ctx.fillText(S().sensor, rcx, rcy+rr+4);
@@ -1148,17 +1254,36 @@ function drawHUD(basis){
     ctx.fillText(S().torpNote, px, py + 18);
   }
 
-  /* wave banner */
-  if(G.waveState==="banner"){
+  /* round banner */
+  if(G.roundState==="banner"){
     ctx.font = "900 40px Orbitron, sans-serif"; ctx.textAlign = "center";
     ctx.fillStyle = "#eafff1"; ctx.shadowBlur = 22; ctx.shadowColor = "#39ff6a";
-    ctx.fillText(S().wave + " " + G.wave, W/2, VCY - 20);
+    ctx.fillText(S().round + " " + G.round, W/2, VCY - 20);
     ctx.shadowBlur = 0;
-  } else if(G.waveState==="clear"){
+  } else if(G.roundState==="clear"){
     ctx.font = "900 30px Orbitron, sans-serif"; ctx.textAlign = "center";
     ctx.fillStyle = "#baffd2"; ctx.shadowBlur = 18; ctx.shadowColor = "#39ff6a";
-    ctx.fillText(S().waveClear, W/2, VCY - 15);
+    ctx.fillText(S().roundClear, W/2, VCY - 15);
     ctx.shadowBlur = 0;
+    if(G.lastClearExtra){
+      ctx.font = "900 24px Orbitron, sans-serif";
+      ctx.fillStyle = "#ffd27a"; ctx.shadowBlur = 20; ctx.shadowColor = "#ffb02e";
+      ctx.fillText(S().extraShip, W/2, VCY + 26);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  /* center message (ship lost, ships remaining) */
+  if(G.centerMsg && G.centerMsg.ttl > 0){
+    ctx.globalAlpha = clamp(G.centerMsg.ttl/0.8, 0, 1);
+    ctx.textAlign = "center";
+    ctx.font = "900 30px Orbitron, sans-serif";
+    ctx.fillStyle = "#ff8296"; ctx.shadowBlur = 18; ctx.shadowColor = "#ff3b5c";
+    ctx.fillText(G.centerMsg.title, W/2, VCY - 70);
+    ctx.font = "700 15px Orbitron, sans-serif";
+    ctx.fillStyle = "#baffd2"; ctx.shadowBlur = 10; ctx.shadowColor = "#39ff6a";
+    ctx.fillText(G.centerMsg.sub, W/2, VCY - 36);
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
   }
 
   /* popups */
@@ -1203,6 +1328,28 @@ function render(){
   ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
 
   drawStars(basis);
+
+  /* turbo: faint radial streaks streaming past the windshield — a
+     whisper of hyperspace, a slight tunnel, never the full Tempest.
+     Melts away the moment TURBO is released. */
+  if(G.turbo > 0.04){
+    ctx.save();
+    ctx.globalAlpha = 0.26 * G.turbo;
+    ctx.strokeStyle = "#bfe9ff"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+    var maxR = Math.max(W, H) * 0.62;
+    for(var si=0; si<46; si++){
+      var ang = si * 2.39996;                    /* golden-angle spread */
+      var ph = (G.t*1.35 + si*0.173) % 1;        /* outward streaming phase */
+      var r0 = 34 + ph * maxR;
+      var r1 = r0 + 22 + ph * 95 * G.turbo;
+      ctx.beginPath();
+      ctx.moveTo(VCX + Math.cos(ang)*r0, VCY + Math.sin(ang)*r0);
+      ctx.lineTo(VCX + Math.cos(ang)*r1, VCY + Math.sin(ang)*r1);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
 
   /* enemy fireballs: glowing orbs with a short trail — shoot them down
      by shooting the fighter, not the ball; they just have to miss you */
@@ -1353,15 +1500,16 @@ var introEl = document.getElementById("intro");
 var goEl = document.getElementById("gameover");
 var fireBtn = document.getElementById("fireBtn");
 var torpBtn = document.getElementById("torpBtn");
+var turboBtn = document.getElementById("turboBtn");
 
 function gameOver(){
   running = false;
   bestScore = Math.max(bestScore, G.score);
   document.getElementById("goTitle").textContent = S().shipLost;
   document.getElementById("goScore").textContent = G.score;
-  document.getElementById("goWave").textContent = S().reachedWave(G.wave, G.kills);
+  document.getElementById("goWave").textContent = S().reachedRound(G.round, G.kills);
   document.getElementById("goBest").textContent = S().bestSession + bestScore;
-  fireBtn.classList.add("hidden"); torpBtn.classList.add("hidden");
+  fireBtn.classList.add("hidden"); torpBtn.classList.add("hidden"); turboBtn.classList.add("hidden");
   goEl.classList.remove("hidden");
   AudioSys.explosion(true);
 }
@@ -1374,11 +1522,12 @@ function startGame(){
   goEl.classList.add("hidden");
   fireBtn.classList.remove("hidden");
   torpBtn.classList.remove("hidden");
+  turboBtn.classList.remove("hidden");
   torpBtn.disabled = false;
   document.getElementById("torpCount").textContent = "× 3";
   running = true;
   lastTs = performance.now();
-  startWave(1);
+  startRound(1);
   comms("BRAIDS", S().startLine, "#7dffb0");
 }
 
@@ -1417,6 +1566,7 @@ function bindHold(btn, on, off){
   });
 }
 bindHold(fireBtn, function(){ if(G) G.fireHeld = true; }, function(){ if(G) G.fireHeld = false; });
+bindHold(turboBtn, function(){ if(G) G.turboBtnHeld = true; }, function(){ if(G) G.turboBtnHeld = false; });
 torpBtn.addEventListener("pointerdown", function(ev){
   ev.preventDefault(); ev.stopPropagation(); AudioSys.ensure();
   if(G && G.lockTarget && G.lockTime>=0.7) fireTorpedo();
@@ -1447,12 +1597,13 @@ setInterval(function(){
   else if(kbSteer){ G.steer.x = 0; G.steer.y = 0; G.steer.active = false; kbSteer = false; }
 }, 50);
 
-/* torp button enable state follows lock */
+/* torp button enable state follows lock; turbo meter readout follows fuel */
 setInterval(function(){
   if(!G) return;
   var ready = G.lockTarget && G.lockTime>=0.7 && G.torpAmmo>0;
   torpBtn.disabled = !ready;
   torpBtn.style.opacity = ready ? "1" : "";
+  document.getElementById("turboPct").textContent = Math.round(G.turboFuel) + "%";
 }, 120);
 
 /* ---------------- intro / overlays ---------------- */
