@@ -398,7 +398,7 @@ var STR = {
     how1:'<span class="k">STEER</span> — touch and hold anywhere on the sky: your ship turns toward your thumb — above center climbs, below dives, sides bank. The whole screen is your windshield now. Hold the turn and she accelerates.',
     how2:'<span class="k">FIRE + TURBO</span> — hold the FIRE button with your right thumb (or mouse / spacebar) and let them have it. Hold TURBO (or Shift) to surge — zoom right at a pack, or blow straight through it and leave it behind. Zooming is half the fun.',
     how3:'<span class="k">TORPEDO</span> — hold your crosshair on a fighter until it locks, then hit TORP. One shot, one kill.',
-    how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through. Every fighter is a bright green dot on the scope, and YOU are always the marker in the center — read the fight as green dots closing around you. No hunting: they all come to you. Arrows at the rim of the view point to hostiles off-screen.',
+    how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through, and it is a miniature of your windshield: a dot sits exactly where the fighter is from your nose. Below center means BELOW you — pitch down and it is right there in the glass. Any solid dot inside the SECOND ring is already on your screen — look for its green glow. Fighters still outside your view sit hollow on the rim, and bright arrows at the screen edges point the way to them.',
     how5:'<span class="k">THE LOOP</span> — shoot down 10 fighters to clear the round. Round 1 is gentle: slow fighters, one hit kills them, and each fires a single slow shot you can watch all the way in. Every round they come quicker and fire more, faster shots. Clear every 3rd round to earn an EXTRA SHIP. Enemy fire eats shield, then hull — lose your hull, lose a ship. Out of ships, run over.',
     how6:'<span class="k">THE ACE</span> — the curved-wing ACE is worth 500. Fast and mean — lock a torpedo on him.' },
   es:{ subtitle:"DUELO ESPACIAL VECTORIAL", start:"INICIAR", sound:"SONIDO", on:"SÍ", off:"NO", how:"CÓMO VOLAR", gotit:"ENTENDIDO",
@@ -419,7 +419,7 @@ var STR = {
     how1:'<span class="k">PILOTAR</span> — toca y mantén en cualquier parte del cielo: tu nave gira hacia tu pulgar — arriba sube, abajo baja, a los lados se inclina. Ahora toda la pantalla es tu cabina. Mantén el giro y acelera.',
     how2:'<span class="k">FUEGO + TURBO</span> — mantén el botón FUEGO con el pulgar derecho (o el ratón / barra espaciadora) y dales. Mantén TURBO (o Mayús) para acelerar: lánzate hacia un grupo o atraviésalo y déjalo atrás. Acelerar es la mitad de la diversión.',
     how3:'<span class="k">TORPEDO</span> — mantén la mira sobre un caza hasta fijarlo y pulsa TORP. Un disparo, una baja.',
-    how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente. Cada caza es un punto verde brillante en el sensor, y TÚ eres siempre la marca del centro: lee la pelea como puntos verdes cerrándose a tu alrededor. No hay que buscar: todos vienen a ti. Las flechas en el borde de la vista señalan a los enemigos fuera de pantalla.',
+    how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente, y es una miniatura de tu cabina: cada punto está exactamente donde está el caza desde tu morro. Debajo del centro significa DEBAJO de ti: inclínate hacia abajo y estará en el cristal. Todo punto sólido dentro del SEGUNDO anillo ya está en tu pantalla: busca su brillo verde. Los cazas aún fuera de tu vista quedan huecos en el borde, y flechas brillantes en los bordes de la pantalla indican el camino hacia ellos.',
     how5:'<span class="k">EL CICLO</span> — derriba 10 cazas para superar la ronda. La ronda 1 es suave: cazas lentos, caen de un solo tiro, y cada uno dispara un solo tiro lento que ves venir desde lejos. Cada ronda vienen más rápido y disparan más, con tiros más veloces. Supera cada 3ª ronda y ganas una NAVE EXTRA. El fuego enemigo consume el escudo y luego el casco: perder el casco es perder una nave. Sin naves, se acabó.',
     how6:'<span class="k">EL AS</span> — el AS de alas curvas vale 500. Rápido y peligroso: fíjale un torpedo.' }
 };
@@ -495,23 +495,25 @@ function roundComposition(){
   }
   return "fighter";
 }
-/* a point in the cone ahead of the player — where fighters should appear
-   so the player actually SEES them coming, '83-style */
+/* a point in the cone ahead of the player's NOSE — built from the full
+   camera basis (yaw AND pitch), so fighters appear inside or just at
+   the edge of the windshield the player is actually looking through.
+   Nobody spawns in a blind zone. */
 function spawnPosAhead(dist){
-  var bearing = rand(-Math.PI, Math.PI);
-  if(Math.random() < 0.85) bearing = rand(-0.55, 0.55);   /* mostly dead ahead */
-  var elev = rand(-0.48, 0.34);   /* full height: plenty come in LOW, up from below the nose */
-  var dir = v3(Math.sin(bearing)*Math.cos(elev), Math.sin(elev), -Math.cos(bearing)*Math.cos(elev));
-  /* rotate dir by player yaw so "ahead" means player's ahead */
-  var cy = Math.cos(G.player.yaw), sy = Math.sin(G.player.yaw);
-  var worldDir = v3(dir.x*cy - dir.z*sy, dir.y, dir.x*sy + dir.z*cy);
-  return vadd(G.player.pos, vscale(worldDir, dist));
+  var basis = camBasis();
+  var bearing = rand(-0.42, 0.42), elev = rand(-0.30, 0.26);
+  if(Math.random() < 0.18){ bearing = rand(-0.8, 0.8); elev = rand(-0.5, 0.42); }  /* occasional wide entry, still near the cone */
+  var dir = vnorm(vadd(
+    vadd(vscale(basis.F, Math.cos(bearing)*Math.cos(elev)), vscale(basis.R, Math.sin(bearing)*Math.cos(elev))),
+    vscale(basis.U, Math.sin(elev))
+  ));
+  return vadd(G.player.pos, vscale(dir, dist));
 }
 function spawnEnemy(){
   var key = roundComposition();
   var m = MODELS[key];
   /* close: arrives in the windshield fast and already reads as a ship */
-  var pos = spawnPosAhead(rand(55, 82));
+  var pos = spawnPosAhead(rand(46, 70));
   var spdF = key==="ace" ? Math.max(roundSpeedFactor(G.round), 0.95) : roundSpeedFactor(G.round);
   G.enemies.push({
     key:key, model:m, pos:pos, size: key==="ace" ? 1.9 : 1.75,
@@ -540,7 +542,10 @@ function project(wp, basis){
   var cr = Math.cos(G.player.roll), sr = Math.sin(G.player.roll);
   var rx = cx*cr - cyy*sr, ry = cx*sr + cyy*cr;
   if(cz < 0.6) return null;
-  var f = viewH*1.35*(1 + 0.13*((G && G.turbo) || 0));   /* turbo: a gentle funnel of space */
+  /* wide windshield: focal length from the NARROW screen axis, so the
+     visible half-angle is ~33° in every direction on phone and desktop
+     alike — the cone the SENSOR scope's second ring is calibrated to */
+  var f = Math.min(W, viewH)*0.78*(1 + 0.13*((G && G.turbo) || 0));   /* turbo: a gentle funnel of space */
   return { x: VCX + rx/cz*f, y: VCY - ry/cz*f, z: cz, scale: f/cz };
 }
 function strokePath(pts, color, width, glow){
@@ -709,7 +714,7 @@ function update(dt){
   var turnRate = 1.55 * (0.55 + 0.75*p.boost);
   p.yaw   += sx  * turnRate * dt * clamp(mag,0,1.15);
   p.pitch += -sy2 * turnRate * dt * clamp(mag,0,1.15);
-  p.pitch = clamp(p.pitch, -1.25, 1.25);
+  p.pitch = clamp(p.pitch, -1.45, 1.45);   /* ±83°: the nose can reach anything the scope can plot */
   p.roll = lerp(p.roll, clamp(-sx*0.5, -0.55, 0.55), 1 - Math.pow(0.0018, dt));
 
   /* --- turbo: hold to surge. Zoom at a pack, or blow through it and
@@ -815,8 +820,8 @@ function update(dt){
     }
     /* drifted too far off -> recycle as a fresh approach dead ahead,
        with a fresh shot budget: a new pass, a new chance to fire */
-    if(dist > 170){
-      e.pos = spawnPosAhead(rand(60, 90));
+    if(dist > 140){
+      e.pos = spawnPosAhead(rand(48, 72));
       e.heading = vnorm(vsub(p.pos, e.pos));
       e.state = "approach"; e.stateT = rand(3,5);
       e.shots = 0;
@@ -948,17 +953,38 @@ function drawShip(e, basis){
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  /* distant-contact dot: a far fighter still reads as a big glowing
-     green contact growing out of the black — visible from the moment
-     it spawns, never a speck you have to hunt for */
-  if(pts[0].z > 40){
+  /* contact marker + engine flare: while a fighter's wireframe is still
+     small on the glass it carries a bright pulsing halo and a white-hot
+     engine core, so it reads as a FIGHTER from the moment it spawns —
+     never a speck you have to hunt for. Fades out as the ship itself
+     grows big enough to read on its own. */
+  var appR = pts[0].scale * e.model.radius * (e.size||1);
+  if(appR < 40){
     var mx = 0, my = 0;
     for(var q=0;q<pts.length;q++){ mx += pts[q].x; my += pts[q].y; }
     mx /= pts.length; my /= pts.length;
+    var fade = clamp((40 - appR)/26, 0, 1);
+    var pulse = 0.85 + 0.15*Math.sin(G.t*7 + e.wob);
+    /* halo */
     ctx.fillStyle = color;
-    ctx.globalAlpha = clamp(1.55 - pts[0].z/130, 0.35, 0.95);
-    ctx.shadowBlur = 12; ctx.shadowColor = color;
-    ctx.beginPath(); ctx.arc(mx, my, 3.4, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 0.5 * fade * pulse;
+    ctx.shadowBlur = 18; ctx.shadowColor = color;
+    ctx.beginPath(); ctx.arc(mx, my, clamp(11 - appR*0.16, 5, 11)*pulse, 0, Math.PI*2); ctx.fill();
+    /* engine flare core */
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.fillStyle = "#eafff1";
+    ctx.shadowBlur = 14; ctx.shadowColor = "#ffffff";
+    ctx.beginPath(); ctx.arc(mx, my, 2.1, 0, Math.PI*2); ctx.fill();
+    /* corner ticks — reads as a tracked contact, not a star */
+    ctx.globalAlpha = 0.85 * fade;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.shadowBlur = 8;
+    var tk = clamp(15 - appR*0.2, 7, 15), tl = 4;
+    ctx.beginPath();
+    ctx.moveTo(mx-tk, my-tk+tl); ctx.lineTo(mx-tk, my-tk); ctx.lineTo(mx-tk+tl, my-tk);
+    ctx.moveTo(mx+tk-tl, my-tk); ctx.lineTo(mx+tk, my-tk); ctx.lineTo(mx+tk, my-tk+tl);
+    ctx.moveTo(mx+tk, my+tk-tl); ctx.lineTo(mx+tk, my+tk); ctx.lineTo(mx+tk-tl, my+tk);
+    ctx.moveTo(mx-tk+tl, my+tk); ctx.lineTo(mx-tk, my+tk); ctx.lineTo(mx-tk, my+tk-tl);
+    ctx.stroke();
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   }
 }
@@ -1016,7 +1042,7 @@ function drawPlayerGuns(){
    A pulsing chevron at the windshield rim for every hostile you
    can't see — you can always turn toward the fight. */
 function drawHostileArrows(basis){
-  var inset = 30;
+  var inset = 36;
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i];
     var pr = project(e.pos, basis);
@@ -1039,10 +1065,16 @@ function drawHostileArrows(basis){
     var col = e.key==="ace" ? "#ffb02e" : "#39ff6a";
     ctx.save();
     ctx.translate(ax, ay); ctx.rotate(Math.atan2(dy, dx));
-    ctx.globalAlpha = 0.6 + 0.4*Math.sin(G.t*6 + i);
-    ctx.fillStyle = col; ctx.shadowBlur = 10; ctx.shadowColor = col;
+    ctx.globalAlpha = 0.78 + 0.22*Math.sin(G.t*6 + i);
+    ctx.fillStyle = col; ctx.shadowBlur = 12; ctx.shadowColor = col;
+    /* double chevron: slim, bright, readable at a glance — a fighter
+       below you gets a clear arrow on the bottom edge pointing down */
     ctx.beginPath();
-    ctx.moveTo(13,0); ctx.lineTo(-9,-8); ctx.lineTo(-4,0); ctx.lineTo(-9,8); ctx.closePath();
+    ctx.moveTo(17,0); ctx.lineTo(-4,-11); ctx.lineTo(1,0); ctx.lineTo(-4,11); ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha *= 0.55;
+    ctx.beginPath();
+    ctx.moveTo(3,0); ctx.lineTo(-13,-9); ctx.lineTo(-9,0); ctx.lineTo(-13,9); ctx.closePath();
     ctx.fill();
     ctx.restore();
   }
@@ -1184,24 +1216,42 @@ function drawHUD(basis){
   ctx.beginPath();
   ctx.moveTo(rcx, rcy-6); ctx.lineTo(rcx-4, rcy+4); ctx.lineTo(rcx+4, rcy+4); ctx.closePath();
   ctx.fillStyle = "#37e6ff"; ctx.shadowBlur = 7; ctx.shadowColor = "#37e6ff"; ctx.fill(); ctx.shadowBlur = 0;
-  /* blips: every fighter a clear GREEN dot around your center marker */
-  var cyaw = Math.cos(G.player.yaw), syaw = Math.sin(G.player.yaw);
+  /* blips: plotted in the NOSE frame — the scope is a miniature of the
+     windshield itself. A dot's direction from center is the fighter's
+     true direction off your nose, with the same view roll applied:
+     below center means BELOW THE NOSE, and pitching down brings it
+     into the glass. Radial distance is the angle off the nose, and
+     ring 2's edge (0.62 of the radius) is calibrated to the windshield's
+     visible half-angle — any SOLID dot inside the second circle is in
+     your windshield right now. Fighters outside the visible cone are
+     never plotted inside the circle: they clamp HOLLOW onto the rim,
+     pointing the way to turn. Dot size still shrinks with range. */
+  var visA = Math.atan(0.5/(0.78*(1 + 0.13*(G.turbo||0))));   /* visible half-angle, turbo stretch included */
+  var cr2 = Math.cos(G.player.roll), sr2 = Math.sin(G.player.roll);
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i];
     var d = vsub(e.pos, G.player.pos);
-    var fx = d.x*syaw - d.z*cyaw;      /* forward component (matches heading frame) */
-    var rx = d.x*cyaw + d.z*syaw;      /* right component */
-    var dist = Math.hypot(rx, fx);
-    var s = Math.min(dist, 200)/200;
-    var bx = rcx + (rx/Math.max(dist,1))*s*rr*0.92;
-    var by = rcy - (fx/Math.max(dist,1))*s*rr*0.92;
-    ctx.beginPath(); ctx.arc(bx, by, e.key==="ace" ? 4.2 : 3.4, 0, Math.PI*2);
-    ctx.fillStyle = "#39ff6a";
-    ctx.shadowBlur = 8; ctx.shadowColor = "#39ff6a";
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    var dist3 = vlen(d) || 1;
+    var ux = vdot(d, basis.R)/dist3, uy = vdot(d, basis.U)/dist3, uz = vdot(d, basis.F)/dist3;
+    var rX = ux*cr2 - uy*sr2, rY = ux*sr2 + uy*cr2;   /* same roll the windshield applies */
+    var theta = Math.atan2(Math.hypot(rX, rY), uz);  /* angle off the nose */
+    var frac = theta * 0.62 / visA;                  /* theta == visA lands exactly on ring 2 */
+    var onRim = frac > 1; if(onRim) frac = 1;
+    var phi = Math.atan2(rY, rX);
+    var bx = rcx + Math.cos(phi)*frac*rr*0.94;
+    var by = rcy - Math.sin(phi)*frac*rr*0.94;
+    var dotR = clamp(5.4 - dist3*0.016, 3.1, 5.2) + (e.key==="ace" ? 0.8 : 0);
+    ctx.beginPath(); ctx.arc(bx, by, dotR, 0, Math.PI*2);
+    if(onRim){
+      ctx.strokeStyle = "rgba(57,255,106,.8)"; ctx.lineWidth = 1.5; ctx.stroke();
+    } else {
+      ctx.fillStyle = "#39ff6a";
+      ctx.shadowBlur = 9; ctx.shadowColor = "#39ff6a";
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
     if(e.key==="ace"){
-      ctx.beginPath(); ctx.arc(bx, by, 6.6, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(bx, by, dotR + 3.2, 0, Math.PI*2);
       ctx.strokeStyle = "rgba(255,176,46,.9)"; ctx.lineWidth = 1.3; ctx.stroke();
     }
   }
