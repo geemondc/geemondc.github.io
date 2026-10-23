@@ -10,14 +10,15 @@
 <style>
 :root{color-scheme:dark;--bg:#070b24;--panel:#101736;--ink:#f4f6ff;--muted:#b9c2e8;--gold:#ffd94d;--pink:#ff7ad9;--cyan:#54e0ff;--green:#7dff8a;--line:#2a3566}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif}
-html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+html,body{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none}
 body{background:radial-gradient(120% 60% at 50% 0%,#1b2560 0%,#070b24 55%)}
-.wrap{position:fixed;inset:0}
-.hud{position:absolute;top:0;left:0;right:0;z-index:6;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;letter-spacing:.04em;font-size:13px;padding:calc(6px + env(safe-area-inset-top)) 10px 8px;background:linear-gradient(180deg,rgba(4,6,20,.78),rgba(4,6,20,0));pointer-events:none;text-shadow:0 1px 4px #000}
+.wrap{position:fixed;inset:0;width:100%;height:100%;height:100dvh;overflow:hidden}
+.hud{position:absolute;top:0;left:0;right:0;max-width:100%;overflow:hidden;z-index:6;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;letter-spacing:.04em;font-size:13px;padding:calc(6px + env(safe-area-inset-top)) 10px 8px;background:linear-gradient(180deg,rgba(4,6,20,.78),rgba(4,6,20,0));pointer-events:none;text-shadow:0 1px 4px #000}
+.hud>span{min-width:0}
 .hud b{color:var(--gold)} .hud .hi{color:var(--muted);font-weight:600}
 .hud .lives{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
 .stage{position:absolute;inset:0;overflow:hidden;background:#0a1030;touch-action:none;user-select:none;-webkit-user-select:none}
-canvas{display:block;width:100%;height:100%}
+canvas{display:block;width:100%;height:100%;touch-action:none}
 .hub{display:block;text-align:center;margin-top:14px;color:#8fa0d8;font-size:12px;letter-spacing:.22em;text-decoration:none}
 /* Intro */
 #intro{position:fixed;inset:0;overflow:auto;background:#070b24;z-index:20;padding:14px 12px 30px}
@@ -311,6 +312,8 @@ function ptrMove(e){ if(!G) return; var p=ptrPos(e); G.guardian.x=p.x; G.guardia
 stage.addEventListener('pointerdown',function(e){ e.preventDefault(); stage.setPointerCapture(e.pointerId); if(G){G.firing=true;} ptrMove(e); });
 stage.addEventListener('pointermove',function(e){ if(G&&G.firing) ptrMove(e); else if(G&&e.pointerType==='mouse') ptrMove(e); });
 ['pointerup','pointercancel'].forEach(function(ev){ stage.addEventListener(ev,function(){ if(G)G.firing=false; }); });
+/* Viewport lock during play: a drag in any direction (sideways, diagonal, vertical) moves only the cannon — the page itself can never pan, scroll, or rubber-band */
+document.addEventListener('touchmove',function(e){ if(G&&G.started&&!G.over) e.preventDefault(); },{passive:false});
 window.addEventListener('keydown',function(e){ if(!G)return; var c=e.key.toLowerCase();
   if(c==='arrowleft'||c==='a')G.keys.left=true; if(c==='arrowright'||c==='d')G.keys.right=true;
   if(c==='arrowup'||c==='w')G.keys.up=true; if(c==='arrowdown'||c==='s')G.keys.down=true;
