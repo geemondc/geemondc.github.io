@@ -87,6 +87,40 @@
         background:#fffdf4;transform:rotate(45deg);border-radius:3px;}
       #bubble.show{opacity:1;transform:scale(1) translateY(0);}
 
+      /* NIL BUSTED!!!! — the surprise-party moment when a Nil takes its 3rd trick */
+      #nilBust{position:absolute;inset:0;z-index:45;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;pointer-events:none;text-align:center;padding:0 16px;}
+      #nilBust .nb-bang{font-family:var(--hand-font);font-weight:900;color:#ffd23e;
+        font-size:clamp(40px,11.5vw,72px);line-height:1;letter-spacing:1px;transform:rotate(-3deg);
+        text-shadow:0 3px 0 #b23a2a, 0 6px 0 rgba(120,20,10,.55), 0 12px 30px rgba(0,0,0,.6);}
+      #nilBust .nb-sub{font-family:var(--hand-font);color:#fff;font-size:clamp(17px,4.6vw,24px);
+        margin-top:10px;text-shadow:0 2px 8px rgba(0,0,0,.85);}
+      #nilBust.pop .nb-bang{animation:bustPop .45s cubic-bezier(.2,1.6,.4,1);}
+      #nilBust.pop .nb-sub{animation:bustPop .45s .06s cubic-bezier(.2,1.6,.4,1) backwards;}
+      @keyframes bustPop{0%{transform:scale(.3) rotate(4deg);opacity:0}100%{transform:scale(1) rotate(-3deg);opacity:1}}
+      #nilBust.pop .nb-sub{animation-name:bustSubPop;}
+      @keyframes bustSubPop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+
+      /* BID BADGES — one beside each avatar. While that player hasn't bid yet the
+         frame flashes a light color to call the eye (the badge shows only a dash —
+         no bid ever leaks early). The moment the bid is recorded the light goes
+         OUT and the bid itself stands there in red for the whole hand. */
+      .bidBadge{position:absolute;z-index:14;display:flex;flex-direction:column;align-items:center;
+        background:rgba(12,26,18,.9);border:2px solid rgba(255,233,176,.35);border-radius:12px;
+        padding:4px 12px 5px;color:var(--cream);pointer-events:none;min-width:62px;text-align:center;
+        box-shadow:0 4px 12px rgba(0,0,0,.45);}
+      .bidBadge .bb-name{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#ffe9b0;}
+      .bidBadge .bb-bid{font-family:var(--hand-font);font-size:21px;font-weight:900;color:#ff4038;line-height:1.15;}
+      .bidBadge.waiting .bb-bid{color:#ffe9b0;}
+      .bidBadge.waiting{animation:bidFlash 1s ease-in-out infinite;}
+      @keyframes bidFlash{
+        0%,100%{box-shadow:0 0 0 2px rgba(255,225,77,.25), 0 0 6px 2px rgba(255,225,77,.25);border-color:rgba(255,225,77,.5);}
+        50%{box-shadow:0 0 0 3px #ffe14d, 0 0 24px 8px rgba(255,225,77,.8);border-color:#ffe14d;}}
+      /* scene-anchored beside the portrait's shoulder, just above the table line —
+         the portrait wrap's own bottom sits behind the table, so the badge can't live there */
+      #badgeAi{left:calc(50% + min(25vw, 158px));bottom:calc(60% + 4px);}
+      #badgeYou{right:3.5%;bottom:calc(23.5% - 56px);}
+
       /* the one big first-person table */
       #table{position:absolute;left:0;right:0;bottom:0;height:60%;z-index:6;
         background:#7a4b28;
@@ -106,21 +140,51 @@
       #bowlProp.nudge{animation:bowlNudge .5s ease-in-out 2;}
       @keyframes bowlNudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px) rotate(2deg)}}
 
-      /* notebook on the felt */
-      #notebook{position:absolute;z-index:7;right:3.5%;bottom:23.5%;width:132px;min-height:96px;
+      /* notebook on the felt — a two-column scorepad on lined paper:
+         Gary's column left, the friend's right, one ruled line per hand,
+         each bid circled by hand, the hand's points on that same line */
+      #notebook{position:absolute;z-index:7;right:3.5%;bottom:23.5%;width:188px;
         background:var(--paper);border-radius:4px 10px 10px 4px;color:var(--ink);
         box-shadow:0 6px 14px rgba(0,0,0,.5), inset 0 0 0 2px var(--paper-edge);
-        padding:8px 8px 6px 17px;text-align:left;transform:rotate(-3deg);}
+        padding:7px 7px 5px 16px;text-align:left;transform:rotate(-3deg);
+        font-family:var(--hand-font);}
       #notebook::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:4px;
         background-image:radial-gradient(rgba(190,110,95,.85) 1.6px, transparent 2.3px);
         background-size:4px 8px;background-repeat:repeat-y;}
-      #notebook .nb-title{font-family:var(--hand-font);font-size:12px;color:#8a4b2a;letter-spacing:.4px;}
-      #notebook .nb-lines{font-family:var(--hand-font);font-size:13.5px;line-height:1.5;margin-top:1px;}
-      #notebook .nb-total{font-family:var(--hand-font);font-size:14.5px;font-weight:700;border-top:1.5px solid #b9a888;margin-top:2px;padding-top:1px;}
+      #notebook .nb-head,#notebook .nb-row,#notebook .nb-totrow{display:grid;grid-template-columns:13px 1fr 1fr;align-items:center;}
+      #notebook .nb-head{font-size:13.5px;font-weight:700;color:#5d3a1f;border-bottom:2px solid #8a6f4d;padding-bottom:2px;}
+      #notebook .nb-row{font-size:12.5px;line-height:1.35;padding:2.5px 0;border-bottom:1px solid rgba(96,138,196,.45);}
+      #notebook .nb-hn{font-size:9.5px;color:#9a8a6d;font-family:var(--ui-font);font-weight:700;}
+      #notebook .nb-cell{padding-left:4px;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:3px;}
+      #notebook .nb-mid{display:inline-flex;flex-direction:column;line-height:1.15;}
+      #notebook .nb-pen{font-size:8.5px;color:#b23a2a;font-weight:700;}
+      #notebook .nb-cell.ai{border-left:1.5px solid rgba(196,90,74,.45);padding-left:6px;}
+      #notebook .nb-res{font-size:11px;color:#4c4234;}
+      #notebook .nb-empty{font-size:12.5px;padding:4px 0 2px;color:#6b5b43;}
+      #notebook .nb-totrow{font-size:14.5px;font-weight:700;border-top:2px solid #8a6f4d;margin-top:1px;padding-top:2px;color:#3c2c17;}
+      /* a bid, circled by hand in red pencil */
+      .circ{display:inline-block;border:1.8px solid #b23a2a;color:#7c2415;font-weight:700;
+        border-radius:49% 51% 55% 45%/62% 58% 42% 55%;padding:0 5px;line-height:1.3;transform:rotate(-2deg);}
+      .circ.alt{transform:rotate(1.8deg);border-radius:55% 45% 48% 52%/45% 55% 60% 40%;}
       #pencil{position:absolute;z-index:8;right:17.5%;bottom:36.8%;width:64px;height:11px;transform:rotate(24deg);
         pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));}
       #pencil.writing{animation:scribble .16s linear infinite;}
       @keyframes scribble{0%{transform:rotate(24deg) translate(0,0)}50%{transform:rotate(19deg) translate(3px,2px)}100%{transform:rotate(26deg) translate(-2px,1px)}}
+
+      /* BOOKS — won tricks stacked in front of each player, the real-table way:
+         first pair flat, each next pair laid perpendicular on top, alternating
+         into a staircase you can count at a glance — plus a big red counter */
+      .booksZone{position:absolute;z-index:8;width:118px;pointer-events:none;}
+      #booksAi{left:10px;top:38.5%;}
+      #booksYou{left:10px;bottom:23.5%;}
+      .bkLabel{display:flex;align-items:baseline;gap:7px;text-shadow:0 1px 4px rgba(0,0,0,.85);}
+      .bkName{font-size:12px;font-weight:800;letter-spacing:1.2px;color:#ffe9b0;}
+      .bkCount{font-size:31px;font-weight:900;color:#ff4038;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,.65);}
+      .bkStack{position:relative;height:92px;margin-top:2px;}
+      .book{position:absolute;width:58px;height:46px;transform-origin:50% 50%;}
+      .book .card{position:absolute;top:2px;}
+      .book .card:first-child{left:0;}
+      .book .card:last-child{left:22px;top:5px;}
 
       /* draft stage on the felt */
       #stageArea{position:absolute;z-index:8;left:50%;bottom:34.5%;transform:translateX(-50%);
@@ -179,7 +243,7 @@
       #actions:empty{background:none;box-shadow:none;padding:0;}
       /* while the bid bar is up it is tall — hug the left so the notebook stays clear */
       #actionStrip:has(.bidbtn){justify-content:flex-start;padding-left:10px;}
-      #actionStrip:has(.bidbtn) #actions{max-width:254px;}
+      #actionStrip:has(.bidbtn) #actions{max-width:min(254px, calc(100vw - 204px));}
       .btn{min-height:48px;padding:10px 22px;border-radius:14px;font-size:17px;font-weight:800;
         background:#274d3a;color:var(--cream);box-shadow:0 3px 0 #0a1f16, 0 5px 12px rgba(0,0,0,.35);
         transition:transform .08s, filter .15s;}
@@ -216,6 +280,9 @@
       #hand .card.legal:hover{filter:brightness(1.12);}
       #hand .card.dim{filter:brightness(.62) saturate(.8);}
       #hand .card.played{transition:transform .45s ease, opacity .45s;}
+      /* the blind card taken on a PASS, under the magnifying glass: lit yellow */
+      #hand .card.freshBlind{filter:brightness(1.1);
+        box-shadow:0 0 0 3px #ffe14d, 0 0 26px 8px rgba(255,225,77,.8), 0 12px 26px rgba(0,0,0,.55);}
 
       /* ============ INTRO — Intro Standard v2 ============ */
       #intro{position:absolute;inset:0;z-index:40;}
@@ -274,6 +341,19 @@
       table.scoreTable td{border-bottom:1px solid #d8cba6;padding:4px 3px;text-align:right;}
       table.scoreTable tr.totals td{border-top:2.5px solid #8a6f4d;border-bottom:none;font-weight:700;font-size:18px;}
       .tallyMarks{letter-spacing:1.5px;color:#5d3a1f;}
+      /* the full notebook sheet — the same two-column pad, one ruled line per hand:
+         circled bid, then tricks and points, running total at the line's right edge */
+      .padHead,.padRow,.padTotals{display:grid;grid-template-columns:30px 1fr 1fr;align-items:center;font-family:var(--hand-font);}
+      .padHead{font-size:20px;font-weight:700;color:#5d3a1f;border-bottom:2.5px solid #8a6f4d;padding:2px 0 4px;}
+      .padHead .ai,.padTotals .ai{border-left:1.5px solid rgba(196,90,74,.45);padding-left:10px;}
+      .padRow{font-size:16.5px;padding:5px 0;border-bottom:1px solid rgba(96,138,196,.45);}
+      .padHn{font-size:12px;color:#9a8a6d;font-family:var(--ui-font);font-weight:700;}
+      .padCell{display:flex;align-items:center;gap:7px;padding-right:6px;min-width:0;}
+      .padMid{display:inline-flex;flex-direction:column;line-height:1.25;}
+      .padPen{font-size:12.5px;color:#b23a2a;font-weight:700;}
+      .padCell.ai{border-left:1.5px solid rgba(196,90,74,.45);padding-left:10px;}
+      .padRun{margin-left:auto;font-weight:700;}
+      .padTotals{font-size:19px;font-weight:700;border-top:2.5px solid #8a6f4d;padding-top:4px;margin-top:2px;color:#3c2c17;}
       #qrSheet{background:#fff;color:#111;border-radius:18px;padding:24px;width:min(92vw,360px);
         text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6);}
       #qrSheet h2{margin:0 0 4px;font-size:21px;}
@@ -314,6 +394,11 @@
           </div></div></div></div>
         </div>
         <div id="bubble" role="status"></div>
+        <div class="bidBadge hidden" id="badgeAi" aria-hidden="true"><span class="bb-name" id="bbNameAi">—</span><span class="bb-bid" id="bbBidAi">—</span></div>
+        <div id="nilBust" class="hidden" aria-hidden="true">
+          <div class="nb-bang">NIL BUSTED!!!!</div>
+          <div class="nb-sub" id="nilBustSub"></div>
+        </div>
         <div id="table">
           <div id="felt"></div>
         </div>
@@ -326,11 +411,20 @@
           <div id="trashFan" aria-hidden="true"><div id="trashCount">trash 0</div></div>
         </div>
         <button id="notebook" aria-label="Open the score notebook">
-          <div class="nb-title">SCORE</div>
-          <div class="nb-lines" id="nbLines">no hands yet</div>
-          <div class="nb-total" id="nbTotal">You 0 · — 0</div>
+          <div class="nb-head"><span class="nb-hn"></span><span class="nb-cell">Gary</span><span class="nb-cell ai" id="nbFriendName">—</span></div>
+          <div id="nbRows"><div class="nb-empty">no hands yet</div></div>
+          <div class="nb-totrow"><span class="nb-hn">Σ</span><span class="nb-cell" id="nbTotYou">0</span><span class="nb-cell ai" id="nbTotAi">0</span></div>
         </button>
         <div id="pencil" aria-hidden="true"></div>
+        <div class="booksZone hidden" id="booksAi" aria-hidden="true">
+          <div class="bkLabel"><span class="bkName" id="bkNameAi">—</span><span class="bkCount" id="bkCountAi">0</span></div>
+          <div class="bkStack" id="bkStackAi"></div>
+        </div>
+        <div class="booksZone hidden" id="booksYou" aria-hidden="true">
+          <div class="bkLabel"><span class="bkName">GARY</span><span class="bkCount" id="bkCountYou">0</span></div>
+          <div class="bkStack" id="bkStackYou"></div>
+        </div>
+        <div class="bidBadge hidden" id="badgeYou" aria-hidden="true"><span class="bb-name">GARY</span><span class="bb-bid" id="bbBidYou">—</span></div>
         <button class="iconbtn" id="howBtn" aria-label="How to play">?</button>
         <button class="iconbtn" id="soundBtn" aria-label="Toggle sound">🔊</button>
         <button class="iconbtn" id="homeBtn" aria-label="Back to intro — reset the game">⌂</button>
@@ -505,10 +599,10 @@
       deck: [], trashPassed: 0, trashDown: 0,
       hand: { you: [], ai: [] },
       draftTurn: "you", picksLeft: { you: 13, ai: 13 },
-      bids: { you: null, ai: null }, tricksWon: { you: 0, ai: 0 },
+      bids: { you: null, ai: null }, tricksWon: { you: 0, ai: 0 }, books: { you: 0, ai: 0 },
       leader: "you", trick: [], spadesBroken: false, trickNo: 0,
       score: { you: 0, ai: 0 }, bags: { you: 0, ai: 0 },
-      history: [], handNo: 0, starter: "you",
+      history: [], handNo: 0, starter: "you", freshBlind: null,
       sound: true, busy: false
     };
 
@@ -729,7 +823,27 @@
       flip(){ noiseBurst(.07, 2400, .12); },
       snap(){ noiseBurst(.05, 3200, .22); setTimeout(()=>noiseBurst(.04, 1800, .1), 30); },
       trash(){ noiseBurst(.06, 2600, .1); },
-      chip(){ noiseBurst(.05, 4000, .08, "highpass"); }
+      chip(){ noiseBurst(.05, 4000, .08, "highpass"); },
+      /* the NIL BUSTED sting — one big one-shot party blast: a confetti pop under
+         a three-note party-horn chord that scoops up into tune. An effect, never music. */
+      bust(){
+        noiseBurst(.09, 900, .3, "lowpass");
+        if (!S.sound) return; const ac = audio(); if (!ac) return;
+        const t = ac.currentTime;
+        [392, 494, 587].forEach(f0 => {
+          const o = ac.createOscillator(); o.type = "sawtooth";
+          o.frequency.setValueAtTime(f0 * .8, t);
+          o.frequency.exponentialRampToValueAtTime(f0, t + .09);
+          const fl = ac.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = 2600;
+          const g = ac.createGain();
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(.15, t + .05);
+          g.gain.setValueAtTime(.15, t + .42);
+          g.gain.exponentialRampToValueAtTime(.001, t + .68);
+          o.connect(fl); fl.connect(g); g.connect(ac.destination);
+          o.start(t); o.stop(t + .7);
+        });
+      }
     };
     /* CARD & DECK SOUNDS ONLY (Gary's rule) — short, dry clicks and flips.
        NO ambient/background sound of any kind: no place/setting atmosphere,
@@ -757,6 +871,23 @@
       } else if (S.phase === "draft"){
         t.innerHTML = `Draft — You ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">trash ${S.trashPassed + S.trashDown}</span>`;
       } else t.textContent = "";
+      renderBidBadges();
+    }
+    /* the bid badges ride along with every tally update — flashing beside a
+       player who still owes a bid, steady red once the bid is on record */
+    function renderBidBadges(){
+      const show = S.phase === "bid" || S.phase === "play";
+      const set = (badge, nameEl, bidEl, who) => {
+        const b = $(badge); if (!b) return;
+        b.classList.toggle("hidden", !show);
+        if (!show) return;
+        if (nameEl) $(nameEl).textContent = S.friend.name.toUpperCase();
+        const bid = S.bids[who];
+        $(bidEl).textContent = bid === null ? "—" : padBid(bid);
+        b.classList.toggle("waiting", bid === null);
+      };
+      set("badgeAi", "bbNameAi", "bbBidAi", "ai");
+      set("badgeYou", null, "bbBidYou", "you");
     }
     function bidLabel(b){ if (b === null || b === undefined) return "…"; return b === 0 ? "NIL" : b === 4 ? "BOARD·4" : String(b); }
 
@@ -770,8 +901,12 @@
       S.hand.you.forEach((c, i) => {
         const el = makeCardEl(c);
         const mid = (n - 1) / 2, off = i - mid;
-        el.style.transform = `translateX(calc(-50% + ${off * spread}px)) rotate(${off * 1.4}deg) translateY(${Math.abs(off) * 1.2}px)`;
-        el.style.zIndex = i + 1;
+        /* your just-taken blind card renders under the magnifying glass:
+           scaled up inside the fan and raised above its neighbours */
+        const fresh = !!S.freshBlind && c === S.freshBlind;
+        el.style.transform = `translateX(calc(-50% + ${off * spread}px)) rotate(${off * 1.4}deg) translateY(${Math.abs(off) * 1.2}px)${fresh ? " scale(1.5)" : ""}`;
+        el.style.zIndex = fresh ? 40 : i + 1;
+        if (fresh) el.classList.add("freshBlind");
         el.setAttribute("aria-label", rankStr(c.rank) + " of " + SUITS[c.suit].name);
         const isLegal = legal ? legal.includes(c) : false;
         if (S.phase === "play" && S.trick.length < 2){
@@ -846,9 +981,15 @@
     }
     async function startHand(){
       S.handNo++;
+      /* THE DEAL ROTATES EVERY HAND. S.starter is the NON-DEALER, and the
+         non-dealer takes every first of the hand — first peek in the draft,
+         first bid, and the trick-1 lead — all three together. The starter
+         alternates hand over hand, flipped right here so no path into a new
+         hand can skip it or double it. */
+      if (S.handNo > 1) S.starter = S.starter === "you" ? "ai" : "you";
       S.deck = newDeck(); S.trashPassed = 0; S.trashDown = 0;
-      S.hand = { you: [], ai: [] };
-      S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
+      S.hand = { you: [], ai: [] }; S.freshBlind = null;
+      S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 }; S.books = { you: 0, ai: 0 };
       S.trick = []; S.spadesBroken = false; S.trickNo = 0;
       S.phase = "draft"; S.draftTurn = S.starter;
       showStage(true); renderStage(); renderHand(); renderFriendFan(); renderTally();
@@ -923,7 +1064,16 @@
         const blindNext = S.deck.pop();
         S.hand[turn].push(blindNext); sortHand(S.hand[turn]);
         flyCard($("flipCard"), $("trashFan"), null, null); // only A travels — face-down to the trash
-        if (turn === "you") status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not.`);
+        if (turn === "you"){
+          /* The blind card is YOURS — once it lands in your hand you get to see it.
+             It sits under the magnifying glass, lit yellow and enlarged, for 2 full
+             seconds so you know exactly what you got. (Only ever your own card —
+             your friend's blind cards are never revealed.) */
+          S.freshBlind = blindNext;
+          const fb = blindNext;
+          setTimeout(() => { if (S.freshBlind === fb && g === GEN){ S.freshBlind = null; renderHand(); } }, 2000);
+          status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not. It's the ${cardName(blindNext)} — lit up in your hand.`);
+        }
         else status(`${S.friend.name} passed — the peeked card went to the trash unseen, and the next card is theirs, blind.`);
       }
       if (turn === "you") renderHand(); else renderFriendFan();
@@ -978,11 +1128,20 @@
       let b = Math.round(est + (S.friend.agg - .55) * 1.2);
       return clamp(b, 4, 12);
     }
+    /* ONE bid record per player per hand, written exactly once, through this
+       gate and nowhere else. A second write for the same hand is refused, so
+       the bid the banner announces is the bid the HUD shows, the notebook
+       writes, and settlement scores — the same record, forever. */
+    function recordBid(who, b){
+      if (S.bids[who] !== null) return false;
+      S.bids[who] = b;
+      return true;
+    }
     function startBidding(){
       S.phase = "bid"; renderTally();
-      const first = S.starter === "you" ? "ai" : "you"; // non-starter bids first
+      const first = S.starter; // the non-dealer bids first — the dealer's bid stays hidden until that bid is locked in
       if (first === "ai"){
-        S.bids.ai = aiChooseBid();
+        recordBid("ai", aiChooseBid());
         const g = GEN;
         setTimeout(() => {
           if (g !== GEN || S.phase !== "bid") return;
@@ -1004,9 +1163,8 @@
       renderTally();
     }
     function yourBid(b){
-      S.bids.you = b;
-      if (S.bids.ai === null){
-        S.bids.ai = aiChooseBid();
+      recordBid("you", b);
+      if (recordBid("ai", aiChooseBid())){
         say(S.bids.ai === 0 ? "Me? NIL. Zero tricks, watch me dance." : `${S.friend.name === "Blond" ? "…" : ""}I bid ${bidLabel(S.bids.ai)}.`, 2400);
       }
       setActions([]);
@@ -1016,7 +1174,7 @@
       renderNotebook(true);
       setTimeout(() => $("pencil").classList.remove("writing"), 900);
       if (b === 0) say(pick(GENERIC.yourNil), 3000);
-      S.leader = S.starter === "you" ? "ai" : "you"; // non-starter leads trick 1
+      S.leader = S.starter; // the non-dealer leads trick 1
       beginPlay();
     }
     function setActions(list){
@@ -1055,7 +1213,48 @@
     function beginPlay(){
       S.phase = "play"; S.trickNo = 0;
       setActions([]); // installs the emote bar for the play phase
-      renderTally(); nextTrick();
+      renderTally(); renderBooks(); nextTrick();
+    }
+    /* BOOKS — every won trick is laid in front of its winner as a pair of cards:
+       first pair flat, the next perpendicular, alternating up the staircase.
+       The big red number beside each name is the same count, unmissable. */
+    function renderBooks(){
+      const show = S.phase === "play";
+      $("booksAi").classList.toggle("hidden", !show);
+      $("booksYou").classList.toggle("hidden", !show);
+      if (!show) return;
+      $("bkNameAi").textContent = S.friend.name.toUpperCase();
+      $("bkCountAi").textContent = S.books.ai;
+      $("bkCountYou").textContent = S.books.you;
+      const fill = (id, n) => {
+        const st = $(id); st.innerHTML = "";
+        for (let i = 0; i < n; i++){
+          const b = document.createElement("div"); b.className = "book";
+          b.style.left = (i * 3) + "px"; b.style.top = (i * 3) + "px"; b.style.zIndex = i + 1;
+          b.style.transform = `rotate(${i % 2 ? 90 : 0}deg)`;
+          const c1 = makeBackEl(); c1.style.setProperty("--cw", "32px");
+          const c2 = makeBackEl(); c2.style.setProperty("--cw", "32px");
+          b.appendChild(c1); b.appendChild(c2);
+          st.appendChild(b);
+        }
+      };
+      fill("bkStackAi", S.books.ai);
+      fill("bkStackYou", S.books.you);
+    }
+    /* NIL BUSTED!!!! — banner + confetti + the big sting, held a full second.
+       Fires the instant a Nil bidder wins trick #3, whoever holds the Nil. */
+    let nilBustTimer = 0;
+    function nilBustParty(who){
+      const b = $("nilBust");
+      $("nilBustSub").textContent = who === "ai"
+        ? `${S.friend.name}'s Nil just blew up — that's −100!`
+        : "Your Nil just blew up — that's −100!";
+      b.classList.remove("hidden"); b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+      sfx.bust();
+      confetti();
+      setExpr(who === "ai" ? "beaten" : "celebrating");
+      clearTimeout(nilBustTimer);
+      nilBustTimer = setTimeout(() => b.classList.add("hidden"), 1250); // a full second on screen, then gone
     }
     function nextTrick(){
       S.trick = []; S.trickNo++;
@@ -1130,6 +1329,10 @@
         if (g !== GEN || S.phase !== "play") return;
         const winner = trickWinner();
         S.tricksWon[winner]++;
+        S.books[winner]++; renderBooks(); // the pair lands in front of the winner, counter ticks up
+        /* FRIENDLY NIL: tricks 1 and 2 are forgiven in silence — the 3rd one
+           sets off the surprise party, right now, mid-hand, for either player */
+        if (S.bids[winner] === 0 && S.tricksWon[winner] === 3) nilBustParty(winner);
         const wEl = $(winner === "ai" ? "slotAi" : "slotYou");
         [ $("slotAi"), $("slotYou") ].forEach(s => { if (s) s.style.transition = "transform .45s ease, opacity .45s"; });
         if ($("slotAi")) $("slotAi").style.transform = winner === "ai" ? "translateY(-26px)" : "translateY(10px)";
@@ -1252,18 +1455,25 @@
     }
 
     /* ---------------- SCORING + NOTEBOOK ---------------- */
+    /* Gary's scoring, exactly as the pad keeps it: a made bid pays 10 per trick
+       bid plus 1 for each bag; a made Nil pays 100 flat. And the bag bank has
+       teeth: whenever a hand pushes your cumulative bags across a multiple of
+       10, −100 comes off THAT hand's settlement — computed openly here and
+       notated on the notebook line, never buried inside the number. Scoring
+       reads exactly ONE bid per player: the bid locked in S.bids this hand. */
     function scorePlayer(bid, tricks, who){
       if (bid === 0) return { pts: tricks <= 2 ? 100 : -100, bags: 0, nil: true };
       if (tricks >= bid){
         const newBags = tricks - bid;
-        const before = Math.floor(S.bags[who] / 10), after = Math.floor((S.bags[who] + newBags) / 10);
-        return { pts: bid * 10 + newBags - (after - before) * 100, bags: newBags, bagPenalty: (after - before) * 100 };
+        const crossings = Math.floor((S.bags[who] + newBags) / 10) - Math.floor(S.bags[who] / 10);
+        return { pts: bid * 10 + newBags - crossings * 100, bags: newBags, bagPenalty: crossings * 100 };
       }
       return { pts: -bid * 10, bags: 0, set: true };
     }
     async function endHand(){
       const g = GEN;
       S.phase = "handEnd"; clearTrickZone(); renderHand(); setActions([]);
+      S.books = { you: 0, ai: 0 }; renderBooks(); // the books are swept up as the hand ends
       const ry = scorePlayer(S.bids.you, S.tricksWon.you, "you");
       const ra = scorePlayer(S.bids.ai, S.tricksWon.ai, "ai");
       S.bags.you += ry.bags || 0; S.bags.ai += ra.bags || 0;
@@ -1289,7 +1499,7 @@
       const matchPoint = S.score.you >= S.target - 60 || S.score.ai >= S.target - 60;
       status(line + (matchPoint ? " Next hand could end it." : " Next hand?"));
       if (matchPoint) say(pick(GENERIC.matchPoint), 2600);
-      setActions([{ label: `DEAL HAND ${S.handNo + 1} ♠`, cls: "primary", fn: () => { S.starter = S.starter === "you" ? "ai" : "you"; startHand(); } }]);
+      setActions([{ label: `DEAL HAND ${S.handNo + 1} ♠`, cls: "primary", fn: () => startHand() }]);
       renderTally();
     }
     function endMatch(){
@@ -1325,43 +1535,60 @@
     function bidLinePending(){
       return S.bids.you !== null && S.bids.ai !== null && !S.history.some(h => h.n === S.handNo);
     }
+    /* a bid written on the pad gets circled by hand, in red pencil — and the pad
+       speaks plainly: NIL or the bare number, no "BOARD" jargon */
+    function padBid(b){ return b === 0 ? "NIL" : String(b); }
+    function circBid(b, alt){ return `<span class="circ${alt ? " alt" : ""}">${padBid(b)}</span>`; }
+    /* The pad on the felt: two columns — Gary left, the friend right — one ruled
+       line per hand. The current hand's line carries the two circled bids the
+       moment bidding ends; when the hand is scored its points are written on
+       that same line. Running totals sit at the foot of each column. */
     function renderNotebook(pop){
-      let line;
+      $("nbFriendName").textContent = S.friend.name;
+      const rows = [];
+      S.history.slice(-4).forEach(h => {
+        const pen = (r) => r && r.bagPenalty ? `<span class="nb-pen">−${r.bagPenalty} bags</span>` : "";
+        rows.push(`<div class="nb-row"><span class="nb-hn">${h.n}</span>` +
+          `<span class="nb-cell">${circBid(h.yb, h.n % 2 === 0)} <span class="nb-mid"><span class="nb-res">${fmtPts(h.yp)}</span>${pen(h.ry)}</span></span>` +
+          `<span class="nb-cell ai">${circBid(h.ab, h.n % 2 === 1)} <span class="nb-mid"><span class="nb-res">${fmtPts(h.ap)}</span>${pen(h.ra)}</span></span></div>`);
+      });
       if (bidLinePending()){
-        /* the bids, written on this hand's line the moment bidding ended */
-        line = `H${S.handNo} — You ${bidLabel(S.bids.you)} · ${S.friend.name} ${bidLabel(S.bids.ai)}`;
-      } else {
-        const last = S.history[S.history.length - 1];
-        line = last
-          ? `H${last.n} — You ${bidLabel(last.yb)}→${last.yt} ${fmtPts(last.yp)} · ${S.friend.name} ${bidLabel(last.ab)}→${last.at} ${fmtPts(last.ap)}`
-          : "no hands yet";
+        rows.push(`<div class="nb-row"><span class="nb-hn">${S.handNo}</span>` +
+          `<span class="nb-cell">${circBid(S.bids.you, S.handNo % 2 === 0)}</span>` +
+          `<span class="nb-cell ai">${circBid(S.bids.ai, S.handNo % 2 === 1)}</span></div>`);
       }
-      $("nbLines").textContent = line;
-      $("nbTotal").textContent = `You ${S.score.you} · ${S.friend.name} ${S.score.ai}`;
+      $("nbRows").innerHTML = rows.length ? rows.join("") : `<div class="nb-empty">no hands yet</div>`;
+      $("nbTotYou").textContent = S.score.you;
+      $("nbTotAi").textContent = S.score.ai;
       if (pop){ const nb = $("notebook"); nb.style.transform = "rotate(-3deg) scale(1.12)"; setTimeout(() => nb.style.transform = "rotate(-3deg)", 350); }
     }
     function scoreSheetHTML(){
       if (!S.history.length && !bidLinePending()) return `<h2>The Notebook</h2><p>No hands yet — the pencil is sharp and waiting.</p>
-        <p>Match to <b>${S.target}</b>. Bags so far — you: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
-      const rows = S.history.map(h => `<tr><td>Hand ${h.n}</td>
-        <td>${bidLabel(h.yb)} → ${h.yt}<br>${h.yp >= 0 ? "+" : ""}${h.yp}</td>
-        <td>${bidLabel(h.ab)} → ${h.at}<br>${h.ap >= 0 ? "+" : ""}${h.ap}</td>
-        <td><b>${h.yTot}</b></td><td><b>${h.aTot}</b></td></tr>`).join("")
-        + (bidLinePending() ? `<tr><td>Hand ${S.handNo}</td>
-        <td>${bidLabel(S.bids.you)} → ${S.tricksWon.you}<br>playing…</td>
-        <td>${bidLabel(S.bids.ai)} → ${S.tricksWon.ai}<br>playing…</td>
-        <td><b>${S.score.you}</b></td><td><b>${S.score.ai}</b></td></tr>` : "");
+        <p>Match to <b>${S.target}</b>. Bags so far — Gary: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
+      const padRow = (n, yb, ab, yRes, aRes, yTot, aTot) =>
+        `<div class="padRow"><span class="padHn">${n}</span>` +
+        `<span class="padCell">${circBid(yb, n % 2 === 0)} <span class="padMid">${yRes}</span><span class="padRun">${yTot}</span></span>` +
+        `<span class="padCell ai">${circBid(ab, n % 2 === 1)} <span class="padMid">${aRes}</span><span class="padRun">${aTot}</span></span></div>`;
+      /* when the bag bank bites, the step is written out on the line:
+         what the bid paid, then the −100, so the net is never a mystery */
+      const resText = (took, net, r) => r && r.bagPenalty
+        ? `took ${took} · ${fmtPts(net)}<span class="padPen">bid paid ${fmtPts(net + r.bagPenalty)} · bag penalty −${r.bagPenalty}</span>`
+        : `took ${took} · ${fmtPts(net)}`;
+      const rows = S.history.map(h => padRow(h.n, h.yb, h.ab,
+          resText(h.yt, h.yp, h.ry), resText(h.at, h.ap, h.ra), h.yTot, h.aTot)).join("")
+        + (bidLinePending() ? padRow(S.handNo, S.bids.you, S.bids.ai,
+          `took ${S.tricksWon.you} so far`, `took ${S.tricksWon.ai} so far`, S.score.you, S.score.ai) : "");
       return `<h2>The Notebook 📓</h2>
-        <p style="margin-top:0">Match to <b>${S.target}</b> vs <b>${S.friend.name}</b>. Bid → tricks taken, then points.</p>
-        <table class="scoreTable"><tr><th></th><th>You</th><th>${S.friend.name}</th><th>You Σ</th><th>${S.friend.name} Σ</th></tr>
+        <p style="margin-top:0">Match to <b>${S.target}</b> vs <b>${S.friend.name}</b>. One line per hand — the bid circled, then tricks taken and points, running total at the right.</p>
+        <div class="padHead"><span></span><span>Gary</span><span class="ai">${S.friend.name}</span></div>
         ${rows}
-        <tr class="totals"><td>Total</td><td></td><td></td><td>${S.score.you}</td><td>${S.score.ai}</td></tr></table>
-        <p><b>Bags</b> — you: <span class="tallyMarks">${tallyStr(S.bags.you)}</span> (${S.bags.you}) · ${S.friend.name}: <span class="tallyMarks">${tallyStr(S.bags.ai)}</span> (${S.bags.ai})<br>
-        <span style="font-size:13.5px">Every 10 bags in the bank costs 100. The pencil forgets nothing.</span></p>`;
+        <div class="padTotals"><span class="padHn">Σ</span><span>${S.score.you}</span><span class="ai">${S.score.ai}</span></div>
+        <p><b>Bags</b> — Gary: <span class="tallyMarks">${tallyStr(S.bags.you)}</span> (${S.bags.you}) · ${S.friend.name}: <span class="tallyMarks">${tallyStr(S.bags.ai)}</span> (${S.bags.ai})<br>
+        <span style="font-size:13.5px">Every 10 bags in the bank costs −100, charged on the hand that crosses it — and written on that hand's line. The pencil forgets nothing.</span></p>`;
     }
     function matchSheetHTML(youWin){
       return `<div id="matchBanner"><div class="big">${youWin ? "🏆 You take the table!" : S.friend.name + " takes the table"}</div>
-        <p>Final from the notebook: <b>You ${S.score.you}</b> · <b>${S.friend.name} ${S.score.ai}</b> — first to ${S.target}.</p></div>
+        <p>Final from the notebook: <b>Gary ${S.score.you}</b> · <b>${S.friend.name} ${S.score.ai}</b> — first to ${S.target}.</p></div>
         ${scoreSheetHTML()}
         <div class="closeRow" style="gap:10px;flex-wrap:wrap">
           <button class="paperBtn" id="rematchBtn">REMATCH ♠</button>
@@ -1406,7 +1633,7 @@
       <h3>📓 Scoring — notebook &amp; pencil</h3>
       <ul>
         <li>Make your bid: <b>10 points per trick bid</b>. Each trick over is a <b>bag, +1</b>.</li>
-        <li>Every <b>10 bags</b> in the bank: <b>−100</b>.</li>
+        <li>Every <b>10 bags</b> in the bank: <b>−100</b>, charged on the hand that crosses it — and written on that hand's notebook line.</li>
         <li>Miss your bid: <b>−10 per trick bid</b>.</li>
         <li>First to the match score — <b>250</b> or <b>500</b>, your pick at the table — wins.</li>
       </ul>
@@ -1465,6 +1692,7 @@
       S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
       S.hand = { you: [], ai: [] }; S.deck = []; S.trashPassed = 0; S.trashDown = 0;
       S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
+      S.books = { you: 0, ai: 0 }; S.freshBlind = null;
       S.trick = []; S.trickNo = 0; S.spadesBroken = false;
       draftCard = null;
       $("app").classList.add("introOpen");
@@ -1474,6 +1702,8 @@
       const z = $("trickZone"); if (z) z.classList.add("hidden");
       $("flipCard").innerHTML = "";
       $("bubble").classList.remove("show");
+      $("nilBust").classList.add("hidden"); clearTimeout(nilBustTimer);
+      renderBidBadges();
       $("friendWrap").classList.remove("cel-bounce");
       setActions([]); renderHand(); renderFriendFan(); renderNotebook();
       $("tally").textContent = "";
@@ -1522,7 +1752,7 @@
       $("bustImg").alt = S.friend.name;
       layoutLids();
       setExpr("idle"); renderFriendFan();
-      $("nbTotal").textContent = `You ${S.score.you} · ${S.friend.name} ${S.score.ai}`;
+      renderNotebook();
     }
     /* ambient prop life + parallax */
     setInterval(() => {
