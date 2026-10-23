@@ -62,7 +62,7 @@
     padding:10px;border-radius:8px;transition:transform .18s ease;cursor:zoom-in;}
   #qrImg.big{transform:scale(1.45);cursor:zoom-out;}
   .qr-url{text-align:center;font-size:12px;color:#9fc6da;letter-spacing:.05em;margin-top:10px;word-break:break-all;}
-  .p1c{color:var(--cyan);font-weight:700;} .p2c{color:var(--green);font-weight:700;} .pitc{color:var(--orange);font-weight:700;}
+  .p1c{color:var(--cyan);font-weight:700;} .p2c{color:var(--green);font-weight:700;} .pitc{color:#a9bfd4;font-weight:700;}
 
   /* ============ GAME ============ */
   #game{position:fixed;inset:0;display:none;flex-direction:column;background:#000;}
@@ -329,34 +329,37 @@ var sfx={
   zap:function(){ tone('square',1400,160,0,0.13,0.20); noiseBurst(0.08,3000,500,0.12); },
   sting:function(){ tone('sawtooth',320,38,0,0.55,0.24); tone('square',160,30,0.05,0.5,0.12); },
   chime:function(){ tone('sine',1318,1318,0,0.12,0.20); tone('sine',1760,1760,0.11,0.22,0.20); },
-  whoosh:function(){ noiseBurst(0.16,500,2400,0.10); }
+  whoosh:function(){ noiseBurst(0.16,500,2400,0.10); },
+  clink:function(){ tone('square',2600,1400,0,0.05,0.07); tone('square',3400,2000,0.02,0.04,0.05); }
 };
 </script>
 <script>
 'use strict';
 /* ================= GAME ================= */
-var VW=900, VH=600, MARG=26, SCALE=3, BODY_R=15*SCALE, SPEED=285, KNOCK=620;
-var PITS=[ {x:450-118, y:300, s:92}, {x:450+118, y:300, s:92} ]; /* centers, s = side — unchanged arena */
+var VW=900, VH=600, MARG=26, SCALE=3, BODY_R=15*SCALE, SPEED=62, KNOCK=620; /* SPEED: stately glide — ~5s to cross a third of the arena, per the 1979 video */
+var PITS=[ {x:450-135, y:300, s:190}, {x:450+135, y:300, s:190} ]; /* two BIG black squares dominating the centre — ~a quarter of the arena — with a duel lane between them and lanes around */
 var canvas=document.getElementById('arena'), ctx=canvas.getContext('2d');
 var state='idle'; /* idle | fight | freeze | fall | over */
 var target=5, score=[0,0];
 var gameMode='1P'; /* DEFAULT: 1 player vs the computer. '2P' is the intro option. */
 var freezeT=0, bannerT=0, lastTs=0, timeNow=0, pointSerial=0;
-var sparks=[], embers=[];
+var sparks=[], clashCd=0;
 var keys={};
 /* touch joystick state per player: analog dx/dy (-1..1) + attack (the old stance) */
 var touchIn=[ {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0}, {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0} ];
 
-function mkKnight(x,y,color,glow){
-  return { x:x,y:y, sx:x,sy:y, vx:0,vy:0, face:0, sword:0, stance:false,
+function mkKnight(x,y,cx,cy,color,glow){
+  return { x:cx,y:cy, sx:x,sy:y, cx:cx,cy:cy, spawnT:1, vx:0,vy:0, face:0, sword:0, stance:false,
            fallT:0, fallPit:null, scale:1, spin:0, color:color, glow:glow, whooshCd:0 };
 }
-var K=[ mkKnight(215,300,'#3fd9ff','rgba(63,217,255,'), mkKnight(685,300,'#52ff74','rgba(82,255,116,') ];
+/* marks: P1 always LEFT (165,300), rival always RIGHT (735,300).
+   corners: P1 emerges from the TOP-LEFT, the rival from the BOTTOM-RIGHT. */
+var K=[ mkKnight(165,300, 104,104,'#3fd9ff','rgba(63,217,255,'), mkKnight(735,300, 796,496,'#52ff74','rgba(82,255,116,') ];
 
 function guardAngle(k,opp){ return Math.atan2(opp.y-k.y, opp.x-k.x); }
 function resetPositions(){
   for(var i=0;i<2;i++){ var k=K[i];
-    k.x=k.sx; k.y=k.sy; k.vx=0; k.vy=0; k.stance=false; k.fallT=0; k.fallPit=null; k.scale=1; k.spin=0; }
+    k.x=k.cx; k.y=k.cy; k.spawnT=0; k.vx=0; k.vy=0; k.stance=false; k.fallT=0; k.fallPit=null; k.scale=1; k.spin=0; }
   K[0].face=guardAngle(K[0],K[1]); K[0].sword=K[0].face;
   K[1].face=guardAngle(K[1],K[0]); K[1].sword=K[1].face;
   sparks.length=0;
@@ -411,7 +414,7 @@ function aiInput(dt){
   var me=K[1], opp=K[0];
   ai.think-=dt;
   if(ai.think<=0){
-    ai.think=0.13+Math.random()*0.12; /* human-ish reaction cadence */
+    ai.think=0.30+Math.random()*0.25; /* stately reaction cadence, matched to the slow glide */
     var dx=opp.x-me.x, dy=opp.y-me.y, dist=Math.hypot(dx,dy)||1;
     /* pit the human is nearest — the one the CPU wants to shove him into */
     var pit=PITS[0], d0=Math.hypot(opp.x-PITS[0].x,opp.y-PITS[0].y), d1=Math.hypot(opp.x-PITS[1].x,opp.y-PITS[1].y);
@@ -448,7 +451,7 @@ function aiInput(dt){
         /* aim from the sword HAND (offset to one side), not the body centre,
            or a straight-on swing passes beside the rival */
         var fc=Math.cos(me.face), fs=Math.sin(me.face);
-        var hx=me.x+fs*11*SCALE+fc*4*SCALE, hy=me.y-fc*11*SCALE+fs*4*SCALE;
+        var hx=me.x+fs*5*SCALE+fc*5*SCALE, hy=me.y-fc*5*SCALE+fs*5*SCALE;
         var base=Math.atan2(opp.y-hy,opp.x-hx)+ai.aimErr;
         ai.dx=Math.cos(base); ai.dy=Math.sin(base);
       }else if(r<0.82){
@@ -493,14 +496,22 @@ function segSegDist(p1,p2,p3,p4){
   return Math.min( ptSeg(p1.x,p1.y,p3.x,p3.y,p4.x,p4.y), ptSeg(p2.x,p2.y,p3.x,p3.y,p4.x,p4.y),
                    ptSeg(p3.x,p3.y,p1.x,p1.y,p2.x,p2.y), ptSeg(p4.x,p4.y,p1.x,p1.y,p2.x,p2.y) );
 }
+function segInt(p1,p2,p3,p4){
+  var d=(p2.x-p1.x)*(p4.y-p3.y)-(p2.y-p1.y)*(p4.x-p3.x);
+  if(Math.abs(d)<1e-9) return null;
+  var t=((p3.x-p1.x)*(p4.y-p3.y)-(p3.y-p1.y)*(p4.x-p3.x))/d;
+  var u=((p3.x-p1.x)*(p2.y-p1.y)-(p3.y-p1.y)*(p2.x-p1.x))/d;
+  if(t>=0&&t<=1&&u>=0&&u<=1) return { x:p1.x+t*(p2.x-p1.x), y:p1.y+t*(p2.y-p1.y) };
+  return null;
+}
 function bodySeg(k){
-  var c=Math.cos(k.face), s=Math.sin(k.face), h=13*SCALE; /* torso segment, 3× */
-  return [ {x:k.x-c*h, y:k.y-s*h}, {x:k.x+c*h, y:k.y+s*h} ];
+  var c=Math.cos(k.face), s=Math.sin(k.face); /* hit segment spans the wireframe body: crown at back, chest forward */
+  return [ {x:k.x-c*17*SCALE, y:k.y-s*17*SCALE}, {x:k.x+c*13*SCALE, y:k.y+s*13*SCALE} ];
 }
 function swordSeg(k){
   var c=Math.cos(k.face), s=Math.sin(k.face);
-  var hx=k.x + (-s)*(-11*SCALE) + c*4*SCALE, hy=k.y + c*(-11*SCALE) + s*4*SCALE; /* hand at right side, 3× */
-  var L = (k.stance?46:30)*SCALE; /* sword length, 3× */
+  var hx=k.x + (-s)*(-5*SCALE) + c*5*SCALE, hy=k.y + c*(-5*SCALE) + s*5*SCALE; /* lance base at the front of the thicket, 3× */
+  var L = (k.stance?54:44)*SCALE; /* the lance IS the figure: ~1.5–2× the body cluster's length */
   return [ {x:hx, y:hy}, {x:hx+Math.cos(k.sword)*L, y:hy+Math.sin(k.sword)*L} ];
 }
 function burst(x,y,color,n){
@@ -537,11 +548,6 @@ function startFall(k, pit){
 /* ---------- update ---------- */
 function step(dt){
   timeNow+=dt;
-  /* embers */
-  if(Math.random()<0.25){ var p=PITS[Math.floor(Math.random()*2)];
-    embers.push({x:p.x+(Math.random()-0.5)*(p.s-14), y:p.y+p.s/2-6, vy:-(14+Math.random()*22), life:1});
-  }
-  for(var i=embers.length-1;i>=0;i--){ var e=embers[i]; e.y+=e.vy*dt; e.life-=dt*0.8; if(e.life<=0) embers.splice(i,1); }
   for(var j=sparks.length-1;j>=0;j--){ var s=sparks[j]; s.x+=s.vx*dt; s.y+=s.vy*dt; s.vx*=0.86; s.vy*=0.86; s.life-=dt; if(s.life<=0) sparks.splice(j,1); }
   if(bannerT>0){ bannerT-=dt; if(bannerT<=0) document.getElementById('banner').classList.remove('show'); }
 
@@ -552,12 +558,24 @@ function step(dt){
     if(fk){ fk.fallT+=dt; fk.x += (fk.fallPit.x-fk.x)*Math.min(1,dt*7);
       fk.y += (fk.fallPit.y-fk.y)*Math.min(1,dt*7);
       fk.scale=Math.max(0.08, 1-fk.fallT*1.5); fk.spin+=dt*9;
-      if(Math.random()<0.5) burst(fk.x,fk.y,'#ff5a1f',2);
+      if(Math.random()<0.5) burst(fk.x,fk.y,fk.color,2);
       if(fk.fallT>=0.62){ var loser=K.indexOf(fk); fk.fallT=0; awardPoint(1-loser, fk, 'pit'); }
     }
     return;
   }
   if(state!=='fight') return;
+
+  /* corner emergence: each knight glides out of his own corner to his mark
+     before the duel opens — no input, no hits, no pit falls on the way in */
+  if(K[0].spawnT<1 || K[1].spawnT<1){
+    for(var sn=0;sn<2;sn++){ var sk=K[sn];
+      if(sk.spawnT<1){ sk.spawnT=Math.min(1, sk.spawnT+dt/1.15);
+        var se=1-Math.pow(1-sk.spawnT,3);
+        sk.x=sk.cx+(sk.sx-sk.cx)*se; sk.y=sk.cy+(sk.sy-sk.cy)*se; }
+      sk.face=guardAngle(sk,K[1-sn]); sk.sword=sk.face; sk.stance=false; sk.vx=0; sk.vy=0;
+    }
+    return;
+  }
 
   var inp=[readInput(0), gameMode==='1P' ? aiInput(dt) : readInput(1)];
   for(var n=0;n<2;n++){
@@ -570,14 +588,14 @@ function step(dt){
       if(inpN.active){
         var targetA=Math.atan2(inpN.dy,inpN.dx);
         var diff=((targetA-k.sword+Math.PI*3)%(Math.PI*2))-Math.PI;
-        var maxTurn=11*dt, turn=Math.max(-maxTurn,Math.min(maxTurn,diff));
+        var maxTurn=3.2*dt, turn=Math.max(-maxTurn,Math.min(maxTurn,diff)); /* slow, deliberate swing */
         var prev=k.sword; k.sword+=turn;
         if(Math.abs(turn)>0.02 && k.whooshCd<=0){ sfx.whoosh(); k.whooshCd=0.24; }
       }
     }else{
       if(wasStance) k.sword=k.face; /* snap back handled smoothly below too */
       var diffG=((k.face-k.sword+Math.PI*3)%(Math.PI*2))-Math.PI;
-      k.sword+=diffG*Math.min(1,dt*16); /* snap back to ready guard */
+      k.sword+=diffG*Math.min(1,dt*7); /* settle back to ready guard */
       k.vx=inpN.dx*SPEED; k.vy=inpN.dy*SPEED;
       k.x+=k.vx*dt; k.y+=k.vy*dt;
     }
@@ -621,6 +639,14 @@ function step(dt){
       return;
     }
   }
+  /* lance clash — when the two blades cross, they spark at the crossing point */
+  if(clashCd>0) clashCd-=dt;
+  var s0=swordSeg(K[0]), s1=swordSeg(K[1]);
+  var cross=segInt(s0[0],s0[1],s1[0],s1[1]);
+  if(cross && clashCd<=0){
+    burst(cross.x,cross.y,'#ffffff',6); burst(cross.x,cross.y,K[0].color,3); burst(cross.x,cross.y,K[1].color,3);
+    sfx.clink(); clashCd=0.28;
+  }
 }
 
 /* ---------- drawing ---------- */
@@ -642,75 +668,118 @@ function drawArena(){
   ctx.shadowBlur=0;
   /* start marks — P1 (BLUE) always on the left mark, opponent always on the right */
   ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=1.5;
-  [215,685].forEach(function(x){ ctx.beginPath(); ctx.arc(x,300,26*SCALE,0,Math.PI*2); ctx.stroke(); });
+  [165,735].forEach(function(x){ ctx.beginPath(); ctx.arc(x,300,26*SCALE,0,Math.PI*2); ctx.stroke(); });
+  /* corner emblems, as in the 1979 arena: P1's green roundel top-left,
+     the rival's red square bottom-right — the knights emerge from these corners */
+  ctx.lineWidth=2.5; ctx.shadowBlur=8;
+  /* top-left: green roundel, diamond inside, red points — as printed on the 1979 overlay */
+  ctx.strokeStyle='#2fe07a'; ctx.shadowColor='#2fe07a';
+  ctx.beginPath(); ctx.arc(66,66,34,0,Math.PI*2); ctx.stroke();
+  ctx.lineWidth=1.8;
+  ctx.beginPath(); ctx.moveTo(66,40); ctx.lineTo(92,66); ctx.lineTo(66,92); ctx.lineTo(40,66); ctx.closePath(); ctx.stroke();
+  ctx.fillStyle='#e0342b'; ctx.shadowColor='#e0342b';
+  [[66,45,60,55,72,55],[66,87,60,77,72,77],[45,66,55,60,55,72],[87,66,77,60,77,72]].forEach(function(tr){
+    ctx.beginPath(); ctx.moveTo(tr[0],tr[1]); ctx.lineTo(tr[2],tr[3]); ctx.lineTo(tr[4],tr[5]); ctx.closePath(); ctx.fill();
+  });
+  ctx.strokeStyle='#2fe07a'; ctx.shadowColor='#2fe07a'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.arc(66,66,4.5,0,Math.PI*2); ctx.stroke();
+  /* bottom-right: red square, cross, green rings */
+  ctx.strokeStyle='#e0342b'; ctx.shadowColor='#e0342b'; ctx.lineWidth=2.5;
+  ctx.strokeRect(VW-96,VH-96,60,60);
+  ctx.lineWidth=1.4;
+  line(VW-66,VH-96,VW-66,VH-36); line(VW-96,VH-66,VW-36,VH-66);
+  ctx.strokeStyle='#2fe07a'; ctx.shadowColor='#2fe07a'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(VW-66,VH-66,15,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(VW-66,VH-66,8,0,Math.PI*2); ctx.stroke();
+  ctx.shadowBlur=0;
 }
 function drawPits(){
   for(var i=0;i<2;i++){ var p=PITS[i], h=p.s/2;
-    var flick=0.82+Math.sin(timeNow*9+i*2.1)*0.10+Math.random()*0.06;
-    var g=ctx.createRadialGradient(p.x,p.y,4,p.x,p.y,p.s*0.72);
-    g.addColorStop(0,'rgba(255,60,10,0.95)'); g.addColorStop(0.55,'rgba(160,25,0,0.85)'); g.addColorStop(1,'rgba(40,0,0,0.9)');
-    ctx.fillStyle=g; ctx.globalAlpha=flick; ctx.fillRect(p.x-h,p.y-h,p.s,p.s); ctx.globalAlpha=1;
-    ctx.strokeStyle='#ff5a1f'; ctx.lineWidth=3; ctx.shadowColor='#ff5a1f'; ctx.shadowBlur=16;
+    /* BLACK void — plain black interior, as in the original */
+    ctx.fillStyle='#000'; ctx.fillRect(p.x-h,p.y-h,p.s,p.s);
+    var g=ctx.createRadialGradient(p.x,p.y,2,p.x,p.y,p.s*0.72);
+    g.addColorStop(0,'rgba(20,26,38,0.5)'); g.addColorStop(0.6,'rgba(8,10,16,0.3)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(p.x-h,p.y-h,p.s,p.s);
+    /* quiet ornate rim: outer line, inner line, notches, corner brackets */
+    ctx.strokeStyle='rgba(148,170,196,0.55)'; ctx.lineWidth=2;
     ctx.strokeRect(p.x-h,p.y-h,p.s,p.s);
-    ctx.strokeStyle='rgba(255,190,120,0.9)'; ctx.lineWidth=1.2; ctx.shadowBlur=8;
+    ctx.strokeStyle='rgba(148,170,196,0.22)'; ctx.lineWidth=1;
     ctx.strokeRect(p.x-h+5,p.y-h+5,p.s-10,p.s-10);
-    ctx.shadowBlur=0;
-    /* corner spikes read as danger ring */
-    ctx.strokeStyle='#ffb59d'; ctx.lineWidth=2;
+    ctx.strokeStyle='rgba(148,170,196,0.38)'; ctx.lineWidth=1.5;
+    for(var tx=p.x-h+13; tx<p.x+h-6; tx+=19){
+      line(tx,p.y-h-4,tx,p.y-h+2); line(tx,p.y+h+4,tx,p.y+h-2);
+    }
+    for(var ty=p.y-h+13; ty<p.y+h-6; ty+=19){
+      line(p.x-h-4,ty,p.x-h+2,ty); line(p.x+h+4,ty,p.x+h-2,ty);
+    }
+    ctx.strokeStyle='rgba(190,210,230,0.6)'; ctx.lineWidth=2;
     [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(function(cn){
-      line(p.x+cn[0]*h, p.y+cn[1]*h, p.x+cn[0]*(h+9), p.y+cn[1]*h);
-      line(p.x+cn[0]*h, p.y+cn[1]*h, p.x+cn[0]*h, p.y+cn[1]*(h+9));
+      line(p.x+cn[0]*h, p.y+cn[1]*h, p.x+cn[0]*(h+8), p.y+cn[1]*h);
+      line(p.x+cn[0]*h, p.y+cn[1]*h, p.x+cn[0]*h, p.y+cn[1]*(h+8));
     });
   }
-  /* embers */
-  ctx.fillStyle='#ffb59d';
-  for(var j=0;j<embers.length;j++){ var e=embers[j]; ctx.globalAlpha=Math.max(0,e.life)*0.8; ctx.fillRect(e.x,e.y,2.4,2.4); }
-  ctx.globalAlpha=1;
 }
 function drawKnight(k){
   ctx.save();
   ctx.translate(k.x,k.y);
   if(k.fallT>0){ ctx.rotate(k.spin); ctx.scale(k.scale,k.scale); ctx.globalAlpha=Math.max(0.15,1-k.fallT*1.1); }
-  ctx.scale(SCALE,SCALE); /* warriors at 3× — all local drawing below is the original figure, scaled */
-  var f=k.face, c=Math.cos(f), s=Math.sin(f);
+  ctx.rotate(k.face);
+  ctx.scale(SCALE,SCALE); /* warriors at 3× — local figure below faces +x, crown at the rear, lance forward */
   ctx.strokeStyle=k.color; ctx.fillStyle=k.color;
-  ctx.shadowColor=k.color; ctx.shadowBlur=13; ctx.lineCap='round';
-  /* planted stance: anchor marks + wider guard — the unmistakable mode change */
+  ctx.shadowColor=k.color; ctx.shadowBlur=12; ctx.lineCap='round'; ctx.lineJoin='round';
+  function L(pts,close){ ctx.beginPath(); ctx.moveTo(pts[0],pts[1]);
+    for(var i=2;i<pts.length;i+=2) ctx.lineTo(pts[i],pts[i+1]);
+    if(close) ctx.closePath(); ctx.stroke(); }
+  /* planted stance: anchor marks + guard ring — the unmistakable mode change */
   if(k.stance){
-    ctx.lineWidth=2.4;
-    var px=-s, py=c; /* perpendicular */
-    line(px*15-c*7, py*15-s*7, px*15+c*2, py*15+s*2);
-    line(-px*15-c*7, -py*15-s*7, -px*15+c*2, -py*15+s*2);
-    ctx.beginPath(); ctx.arc(0,0,15+6,0,Math.PI*2);
-    ctx.strokeStyle=k.glow+'0.35)'; ctx.lineWidth=1.4; ctx.stroke();
+    ctx.lineWidth=1.5;
+    L([-7,15, 2,15]); L([-7,-15, 2,-15]);
+    ctx.beginPath(); ctx.arc(0,0,21,0,Math.PI*2);
+    ctx.strokeStyle=k.glow+'0.35)'; ctx.lineWidth=1.1; ctx.stroke();
     ctx.strokeStyle=k.color;
   }
-  /* legs */
-  ctx.lineWidth=2.2;
-  line(-s*6-c*10, c*6-s*10, -s*9-c*17, c*9-s*17);
-  line(s*6-c*10, -c*6-s*10, s*9-c*17, -c*9-s*17);
-  /* torso */
-  ctx.lineWidth=3;
-  line(-c*12,-s*12, c*11, s*11);
-  /* shoulders */
-  ctx.lineWidth=2.4;
-  line(-s*10+c*5, c*10+s*5, s*10+c*5, -c*10+s*5);
-  /* shield arm (left) */
-  ctx.lineWidth=2.6;
-  line(-s*10+c*5, c*10+s*5, -s*14+c*13, c*14+s*13);
-  /* head marker */
-  ctx.beginPath(); ctx.arc(c*15,s*15,4.6,0,Math.PI*2);
-  ctx.fillStyle=k.color; ctx.fill(); ctx.strokeStyle='#eaffff'; ctx.lineWidth=1; ctx.stroke();
+  /* ===== THE THICKET — traced from the 1979 frames: no head, no limbs,
+     a dense lattice of nested kites, spokes and zigzag teeth at the base ===== */
+  ctx.lineWidth=1.6;
+  L([-19,0, -3,-13, 10,0, -3,13], true);        /* outer kite */
+  ctx.lineWidth=1.25;
+  L([-12.5,0, -3,-8.5, 5.5,0, -3,8.5], true);   /* mid kite */
+  L([-7,0, -3,-4.8, 2.5,0, -3,4.8], true);      /* inner kite */
+  /* spokes webbing the kites together */
+  L([-19,0, -3,-8.5]); L([-19,0, -3,8.5]);
+  L([10,0, -3,-8.5]);  L([10,0, -3,8.5]);
+  L([-12.5,0, -3,-4.8]); L([-12.5,0, -3,4.8]);
+  L([5.5,0, -3,-4.8]);   L([5.5,0, -3,4.8]);
+  L([-19,0, 10,0]); /* spine */
+  /* zigzag teeth along the rear — the crown tangle */
+  ctx.lineWidth=1.35;
+  L([-11,-8, -16,-6, -12.5,-2.5, -17.5,0, -12.5,2.5, -16,6, -11,8]);
+  /* jewel triangles */
+  L([2.5,0, 8,-3.4, 8,3.4], true);
+  L([-9,-4, -5,-7.5, -2,-3.5], true);
+  L([-9,4, -5,7.5, -2,3.5], true);
   ctx.restore();
-  /* sword (drawn in world space from the hand) */
+  /* ===== THE LANCE — twin rails running forward from the thicket, cross-ties
+     along the shaft, ending in a point (world space; hit-line = swordSeg) ===== */
   var ss=swordSeg(k);
+  var hx=ss[0].x, hy=ss[0].y, tx=ss[1].x, ty=ss[1].y;
+  var dx=tx-hx, dy=ty-hy, dl=Math.hypot(dx,dy)||1, ux=dx/dl, uy=dy/dl, px=-uy, py=ux;
+  var hw=(k.stance?1.6:1.35)*SCALE; /* rail separation at the base */
+  var ax=hx+px*hw, ay=hy+py*hw, bx=hx-px*hw, by=hy-py*hw;
   ctx.save();
-  ctx.strokeStyle=k.color; ctx.shadowColor=k.color; ctx.shadowBlur=k.stance?18:10; ctx.lineCap='round';
-  ctx.lineWidth=(k.stance?3.4:2.6)*SCALE;
-  line(ss[0].x,ss[0].y,ss[1].x,ss[1].y);
-  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.1*SCALE; ctx.shadowBlur=4;
-  line(ss[0].x,ss[0].y,ss[1].x,ss[1].y);
-  if(k.stance){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(ss[1].x,ss[1].y,2.4*SCALE,0,Math.PI*2); ctx.fill(); }
+  ctx.strokeStyle=k.color; ctx.shadowColor=k.color; ctx.shadowBlur=k.stance?16:10; ctx.lineCap='round';
+  ctx.lineWidth=2.3;
+  line(ax,ay,tx,ty); /* rail A */
+  line(bx,by,tx,ty); /* rail B */
+  ctx.lineWidth=1.6; /* cross-ties along the shaft */
+  [0.28,0.52,0.76].forEach(function(t){
+    line(ax+(tx-ax)*t, ay+(ty-ay)*t, bx+(tx-bx)*t, by+(ty-by)*t);
+  });
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.0*SCALE; ctx.shadowBlur=4;
+  line(hx,hy,tx,ty); /* bright core */
+  ctx.strokeStyle=k.color; ctx.shadowBlur=k.stance?16:10; ctx.lineWidth=2.2;
+  line(hx,hy, hx-ux*3*SCALE, hy-uy*3*SCALE); /* pommel nub */
+  if(k.stance){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(tx,ty,2.2*SCALE,0,Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
 function draw(){
