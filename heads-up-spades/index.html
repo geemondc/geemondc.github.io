@@ -405,11 +405,11 @@
         greet:"Shades on. Tell unreadable. Your move, whenever.",
         lines:{ win:["…","Yeah. That happened."], lose:["Cool. Literally don't care. (I care.)","One. Don't get used to it."],
           nil:["Nil. Watch me not sweat."], set:["Set. Behind the shades: pain."] } },
-      { id:"curls", name:"Curls", trait:"Counts the trash",
+      { id:"curls", name:"Curls", trait:"Remembers every flip",
         skin:"#a06838", hair:"#2e1a0e", hairStyle:"curls", shirt:"#7a4d8f",
         accessory:"moonEarrings", agg:0.4, draftKeep:0.6,
-        greet:"I remember every card that hits that trash pile. Every one.",
-        lines:{ win:["Trash told me that was coming.","Memory: 1, luck: 0."], lose:["I counted it. I still lost it.","Recalculating… rude."],
+        greet:"I remember every flip you've ever shown me. Every one.",
+        lines:{ win:["The flips told me that was coming.","Memory: 1, luck: 0."], lose:["I remembered it. I still lost it.","Recalculating… rude."],
           nil:["Nil. The moon and I have a plan."], set:["Set. My spreadsheet is crying."] } },
       { id:"dreads", name:"Dreads", trait:"Laid-back shark",
         skin:"#6f4526", hair:"#191008", hairStyle:"dreads", shirt:"#5d7040",
@@ -449,7 +449,7 @@
     const S = {
       friend: FRIENDS[0], place: PLACES[0], target: 250,
       phase: "intro",            // intro | draft | bid | play | handEnd | matchEnd
-      deck: [], trashUp: [], trashDown: 0,
+      deck: [], trashPassed: 0, trashDown: 0,
       hand: { you: [], ai: [] },
       draftTurn: "you", picksLeft: { you: 13, ai: 13 },
       bids: { you: null, ai: null }, tricksWon: { you: 0, ai: 0 },
@@ -797,7 +797,7 @@
           (S.bids.you !== null ? `<br><span class="dim">Bid: You ${bidLabel(S.bids.you)} · ${S.friend.name} ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "…"}</span>` : "") +
           `<br><span class="dim">${S.spadesBroken ? "♠ broken" : "♠ not broken"}</span>`;
       } else if (S.phase === "draft"){
-        t.innerHTML = `Draft — You ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">trash ${S.trashUp.length + S.trashDown}</span>`;
+        t.innerHTML = `Draft — You ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">trash ${S.trashPassed + S.trashDown}</span>`;
       } else t.textContent = "";
     }
     function bidLabel(b){ if (b === null || b === undefined) return "…"; return b === 0 ? "NIL" : b === 4 ? "BOARD·4" : String(b); }
@@ -838,14 +838,16 @@
       }
       const fan = $("trashFan");
       fan.querySelectorAll(".mini").forEach(e => e.remove());
-      const show = S.trashUp.slice(-7);
-      show.forEach((c, i) => {
-        const el = makeCardEl(c, "mini");
+      /* The trash pile is FACE DOWN, always — backs only, just a count. */
+      const total = S.trashPassed + S.trashDown;
+      const showN = Math.min(total, 7);
+      for (let i = 0; i < showN; i++){
+        const el = makeBackEl("mini");
         el.style.setProperty("--cw", "40px");
-        el.style.transform = `rotate(${(i - (show.length - 1) / 2) * 13}deg)`;
+        el.style.transform = `rotate(${(i - (showN - 1) / 2) * 13}deg)`;
         fan.appendChild(el);
-      });
-      $("trashCount").textContent = "trash " + (S.trashUp.length + S.trashDown);
+      }
+      $("trashCount").textContent = "trash " + total;
     }
     function showStage(on){
       $("stageArea").classList.toggle("hidden", !on);
@@ -882,7 +884,7 @@
     }
     async function startHand(){
       S.handNo++;
-      S.deck = newDeck(); S.trashUp = []; S.trashDown = 0;
+      S.deck = newDeck(); S.trashPassed = 0; S.trashDown = 0;
       S.hand = { you: [], ai: [] };
       S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
       S.trick = []; S.spadesBroken = false; S.trickNo = 0; S.seenKeptYou = [];
@@ -937,12 +939,12 @@
         if (turn === "you") status(`Kept the ${cardName(card)}. The next card goes to the trash, unseen.`);
         else status(`${S.friend.name} kept the ${cardName(card)}.`);
       } else {
-        S.trashUp.push(card);
+        S.trashPassed++;
         sfx.trash();
         if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftPass));
         const forced = S.deck.pop();
         S.hand[turn].push(forced); sortHand(S.hand[turn]);
-        flyCard($("flipCard"), $("trashFan"), card, null);
+        flyCard($("flipCard"), $("trashFan"), null, null); // passed card flies face-down — seen only during the flip
         if (turn === "you") status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not.`);
         else status(`${S.friend.name} passed on the ${cardName(card)} and took the next one blind.`);
       }
@@ -1163,7 +1165,7 @@
       if (winner === "ai"){ setExpr("pleased"); if (Math.random() < .5) say(pick(S.friend.lines.win.concat(GENERIC.winTrick)), 1700); }
       else { setExpr(Math.random() < .5 ? "worried" : "playing"); if (Math.random() < .4) say(pick(S.friend.lines.lose.concat(GENERIC.loseTrick)), 1700); }
     }
-    /* ---- AI card choice: only public info (own hand, played cards, public trash/keeps) ---- */
+    /* ---- AI card choice: only public info (own hand, played cards, public flips/keeps — never face-down trash) ---- */
     function aiPlay(){
       if (S.phase !== "play") return;
       const card = aiChooseCard();
@@ -1380,11 +1382,11 @@
       <p>There's no regular deal and no stock to draw from. The shuffled deck sits face-down in the middle and you <b>draft</b> your hands, one decision at a time:</p>
       <ul>
         <li>On your turn, flip the top card so <b>both players see it</b>.</li>
-        <li><b>Like it?</b> Keep it — and the next card goes to the trash <i>unseen</i>.</li>
-        <li><b>Don't like it?</b> It goes in the trash — and you <b>must</b> take the next card, no second thoughts.</li>
+        <li><b>Like it?</b> Keep it — and the next card goes straight to the trash <i>face down, never seen by anyone</i>.</li>
+        <li><b>Don't like it?</b> It goes in the trash <i>face down</i> — and you <b>must</b> take the next card blind, no second thoughts.</li>
         <li>Back and forth until you both hold 13. The whole deck gets used: <b>26 kept, 26 trashed</b>.</li>
       </ul>
-      <p>Every flipped card is public, so track the trash — knowing what's dead is half the game. Your friend plays by the same information you get. Nothing up anyone's sleeve.</p>
+      <p>The flip is the only look anyone gets. The moment a card hits the trash it lands <b>face down and stays hidden</b> — no peeking, no list, just the count. The only record of what's dead is your memory of the flips. Your friend plays by exactly the same blindness you do. Nothing up anyone's sleeve.</p>
       <h3>🎯 Bidding</h3>
       <p>After the draft, bid how many tricks you'll take. The bid bar is <b>NIL · BOARD (4) · 5 · 6 · 7 · 8 · 9 · 10 · 11 · 12 · 13</b>. There are no 1, 2 or 3 bids — <b>lowest you can go is Board — 4</b>.</p>
       <h3>🌙 Nil — the friendly way</h3>
