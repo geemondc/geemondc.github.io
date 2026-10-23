@@ -457,9 +457,9 @@
         <div class="bigEmoji">🦸</div>
         <h2>How to fly</h2>
         <ul>
-          <li><b>👆 Touch:</b> drag to steer — the PUSH is the gas: push further from where your finger landed to fly faster, ease back or lift to settle into a gentle cruise.</li>
-          <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light.</li>
-          <li><b>🖱 Mouse:</b> move to steer — you bend toward your cursor, no click needed. <b>Hold the left button</b> for gas and just <b>point where you want to go</b>: up climbs — all the way into space — down dives, left and right turn. Eased and gentle, even with the cursor resting at the screen's edge. Release and you settle back to a calm cruise.</li>
+          <li><b>👆 Touch:</b> drag to steer — the PUSH is the gas: push further from where your finger landed to fly faster, and <b>keep holding the push</b> and the flight keeps accelerating that way — the turn, climb or dive builds the longer you hold. Ease back or lift to settle into a gentle cruise.</li>
+          <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed up in the sky — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light. (Underwater, full speed stays water and light.)</li>
+          <li><b>🖱 Mouse:</b> the screen is a compass around its center — <b>point where you want to go</b>, no click needed. Above center climbs, below dives, the sides turn, the corners blend both — and the further from center you point, the stronger it answers. Dead center flies straight and level. <b>Hold the left button</b> for gas — and keep holding it pointed somewhere and the flight keeps <b>accelerating</b> that way: hold high underwater and you'll pitch up toward the light, burst out of the surface, and keep climbing through the air into space, one unbroken push. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
           <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination, the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours.</li>
           <li><b>Climb high</b> through the clouds to change worlds. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
@@ -578,7 +578,7 @@ const S={
   lookYaw:0, lookPitch:0, lookActive:false, lookBack:0, peekT:0,
   diveF:0, wash:0, gate:0, gatePhase:'', pendingBiome:null,
   highT:0, tourT:0, rainbowT:0, reentryT:0, prevAlt:0.42, altVel:0,
-  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, warpHue:0, flyT:0,
+  idleT:0, drift:false, whooshT:0, spaceF:0, skimF:0, warpT:0, warpF:0, warpHue:0, flyT:0, holdBoost:0,   /* holdBoost: the build-up of a quadrant held down — the longer the hold, the harder the flight accelerates that way */
   windOn:true, panelIdle:0,
   uwF:0, uwPrev:'beach', surfT:0, uwClock:0   /* underwater: blend, the sky world to surface back to, surface-exit timer, seconds on this dive (the tour's stack traverse is keyed to it) */
 };
@@ -2472,7 +2472,7 @@ function render(){
    hue-cycling — see resolveRP) whenever warpF is up. Everything scales
    with warpF, so easing the gas off melts the tunnel away. */
 function drawWarpOverlay(t){
-  const wf=S.warpF; if(wf<=0.02)return;
+  const wf=S.warpF*(1-S.uwF); if(wf<=0.02)return;   /* the tunnel belongs to the sky: it dissolves as the water closes over you, and the swim up stays water and light */
   const cx2=W/2 - S.lookYaw*W*0.08 + S.bankD*W*0.10;
   const cy2=H*0.46 - S.pitchD*H*0.10;
   const maxR=Math.hypot(W,H)*0.62;
@@ -2643,6 +2643,7 @@ function update(dt){
   if(flying){ if(S.mouseGas||keys.gas||touchHeld)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
   S.panelIdle+=dt;
 
+  if(!flying)S.holdBoost=Math.max(0,(S.holdBoost||0)-dt*1.4);   /* off the stick (landing, takeoff, intro) the hold build melts away */
   /* ---- steering: the finger IS the flight ---- */
   const steerHeld=pointers.size>0&&steerId!==null;
   const spT=steerId!==null?pointers.get(steerId):null;
@@ -2673,7 +2674,7 @@ function update(dt){
          The same offset distance is the throttle (see GAS below). */
       const R=Math.max(1,Math.min(W,H)*0.42);
       const tx=shapeStick(clamp((spT.x-spT.sx)/R,-1,1)), ty=shapeStick(clamp((spT.sy-spT.y)/R,-1,1));
-      const mr=dt*(1.9-0.8*S.warpF)*(1-S.warpF*0.45);   /* heavier damping: eases onto the target, never twitches past it */
+      const mr=dt*(1.9-0.8*S.warpF)*(1-S.warpF*0.45)*(1+S.holdBoost*0.9);   /* heavier damping: eases onto the target, never twitches past it — and a held push answers faster and faster */
       S.bank=lerp(S.bank,tx,mr); S.pitch=lerp(S.pitch,ty,mr);
     } else if(!steerHeld){
       if(S.mouseGas){ /* PRESS AND POINT: while the button is held, the last
@@ -2683,11 +2684,25 @@ function update(dt){
          2.5s and the flight stalled mid-hold (the reported freeze); the
          held state itself is the command now: top edge keeps climbing into
          space, side edges keep turning, until the button is released. */
-        const mr=dt*(1.9-0.8*S.warpF);
-        S.bank=lerp(S.bank,shapeStick(clamp(mouseTX,-1,1)),mr); S.pitch=lerp(S.pitch,shapeStick(clamp(mouseTY,-1,1)),mr); }
-      else if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,shapeStick(mouseTX),dt*1.8); S.pitch=lerp(S.pitch,shapeStick(mouseTY),dt*1.8); }
+        const mr=dt*(1.9-0.8*S.warpF)*(1+S.holdBoost*0.9);
+        S.bank=lerp(S.bank,clamp(mouseTX,-1,1),mr); S.pitch=lerp(S.pitch,clamp(mouseTY,-1,1),mr); }
+      else if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,mouseTX,dt*1.8); S.pitch=lerp(S.pitch,mouseTY,dt*1.8); }
       else { S.pitch=lerp(S.pitch,0,dt*0.8); S.bank=lerp(S.bank,0,dt*1.1); }   /* released: the flight gently settles back toward level */
     }
+    /* HOLD TO ACCELERATE — a quadrant held down is not a fixed command.
+       Keep the button or finger held out in a quadrant and the flight
+       keeps ACCELERATING that way: the turn carves deeper, the climb or
+       dive gathers, the pace builds — for as long as the hold lasts.
+       That is the push that carries one unbroken climb from the reef up
+       through the surface, out into the air, and on toward space. Ease
+       back toward center, or let go entirely, and the build melts away
+       toward calm (release also drops it fast — see the decay here). */
+    if(!S.pilot&&!S.drift){
+      const mag=steerTouch&&spT? Math.min(1,Math.hypot(spT.x-spT.sx,spT.y-spT.sy)/Math.max(1,Math.min(W,H)*0.42))
+               : S.mouseGas? Math.hypot(mouseTX,mouseTY) : 0;
+      if(mag>0.14)S.holdBoost=Math.min(1,S.holdBoost+dt*0.5*mag);
+      else S.holdBoost=Math.max(0,S.holdBoost-dt*0.9);
+    } else S.holdBoost=Math.max(0,S.holdBoost-dt*0.9);
     if(!S.pilot){ if(keys.look){
       if(keys.left)S.lookYaw=clamp(S.lookYaw-dt*2.4,-3.05,3.05);
       if(keys.right)S.lookYaw=clamp(S.lookYaw+dt*2.4,-3.05,3.05);
@@ -2726,7 +2741,7 @@ function update(dt){
   if(flying||S.mode==='takeoff'){ const base=lerp(0.42,1.02,S.throttle);
     spdT=base*(1+Math.max(0,-S.pitch)*0.85-Math.max(0,S.pitch)*0.16);
     spdT*= S.pilot? (1-0.42*S.uwF) : 1;   /* the TOUR drifts slower and dreamier underwater; a hand on the stick gets the sky's own speed — same throttle curve, same SPEED settings, same dive bonus. The water tints the flight, it no longer mutes it */
-    if(!S.pilot)spdT*= S.speedMode==='drift'?0.72 : S.speedMode==='zoom'?1.18 : 1;   /* the SPEED pick scales hand-flown pace; the tour keeps its own cruise */ }
+    if(!S.pilot)spdT*= (S.speedMode==='drift'?0.72 : S.speedMode==='zoom'?1.18 : 1)*(1+S.holdBoost*0.30);   /* the SPEED pick scales hand-flown pace, and a sustained quadrant hold keeps building pace on top of it; the tour keeps its own cruise */ }
   if(S.mode==='intro')spdT=0.3;
   S.effSpeed=lerp(S.effSpeed,spdT,dt*(S.pilot?1.9:1.45));   /* manual speed settles in more smoothly; top speed itself is untouched */
   S.speedN=S.effSpeed;
@@ -2734,7 +2749,7 @@ function update(dt){
   /* altitude from pitch */
   if(flying){
     const pv=S.alt;
-    S.altVel=S.pitch*(0.085+S.effSpeed*0.17)*(S.pilot?(1-0.30*S.uwF):1)*(S.pilot?1:0.75);   /* hand-flown climbs/dives glide ~25% softer — in the water exactly as in the air, so a held dive really does take you MID → DEEP and a held climb brings SHALLOW back; only the tour's loop keeps the dreamy 30% */
+    S.altVel=S.pitch*(0.085+S.effSpeed*0.17)*(S.pilot?(1-0.30*S.uwF):1)*(S.pilot?1:0.75)*(S.pilot?1:1+S.holdBoost*1.25);   /* hand-flown climbs/dives glide ~25% softer — in the water exactly as in the air, so a held dive really does take you MID → DEEP and a held climb brings SHALLOW back; only the tour's loop keeps the dreamy 30%. A sustained hold keeps gathering climb/dive on top, so holding high underwater truly drives you out of the water and on up */
     /* ground effect: with speed on, a cushion of air holds you in a SKIM
        just above the ground/water — only slow flight settles to touchdown */
     const gFloor=0.03+0.028*sstep(0.55,0.95,S.effSpeed);
@@ -2763,7 +2778,7 @@ function update(dt){
      push most of all — could fly flat-out forever and never warp. Hold
      max speed for a sustained moment and the flight melts into the
      Tempest rainbow; ease off the speed and it melts back out. */
-  const atMax=flying&&(S.throttle>0.97||S.effSpeed>=1.0);
+  const atMax=flying&&S.biome!=='underwater'&&(S.throttle>0.97||S.effSpeed>=1.0);   /* the water never melts: full speed underwater stays painterly — streaming water and light toward the surface, never the neon tunnel */
   if(atMax)S.warpT+=dt; else S.warpT=Math.max(0,S.warpT-dt*1.5);
   S.warpF=lerp(S.warpF,S.warpT>0.9?1:0,dt*(S.warpT>0.9?1.3:0.7));
   S.diveF=lerp(S.diveF,sstep(0.42,0.95,-S.pitch)*(flying?1:0),dt*2.4);
@@ -2778,7 +2793,7 @@ function update(dt){
   S.rainbowT=Math.max(0,S.rainbowT-dt);
 
   /* pan (the world turning under the bank) */
-  const panD=flying? S.bank*(0.22+S.effSpeed*0.8)*0.5*dt : 0;
+  const panD=flying? S.bank*(0.22+S.effSpeed*0.8)*0.5*(1+S.holdBoost*1.25)*dt : 0;   /* a held bank keeps carving deeper — the turn accelerates with the hold */
   S.pan+=panD;
 
   /* look */
@@ -2799,7 +2814,13 @@ function update(dt){
   if(S.biomeBlend<1){ S.biomeBlend=Math.min(1,S.biomeBlend+dt/1.6);
     if(S.biomeBlend>=0.5&&!S._blendSwapped){ S._blendSwapped=true; for(const sp of sprites)spawnSprite(sp,true); resetLandmarks(S.biome); } }
   if(S.gate&&S.gatePhase==='in'){ S.wash=Math.min(0.96,S.wash+dt/(S.gate===2?0.65:1.05));
-    if(S.wash>=0.95){ S.biomeFrom=S.biome; S.biome=S.pendingBiome; S.biomeBlend=1;
+    if(S.wash>=0.95){ const wasUw=S.biome==='underwater'; S.biomeFrom=S.biome; S.biome=S.pendingBiome; S.biomeBlend=1;
+      /* the splash crossing hands the flight across the surface, unbroken:
+         burst out of the water and you are LOW over it — the whole sky,
+         and space above that, still to climb through; plunge in and you
+         start just under the light in the SHALLOW, free to sink or rise */
+      if(S.gate===2&&wasUw&&S.biome!=='underwater'){ S.alt=0.16; S.prevAlt=0.16; }
+      else if(S.gate===2&&!wasUw&&S.biome==='underwater'){ S.alt=0.88; S.prevAlt=0.88; }
       for(const sp of sprites)spawnSprite(sp,true); resetLandmarks(S.biome); applyTrail();
       S.gatePhase='out'; showLabel(BIOMES[S.biome].label); arriveLight(S.biome); } }
   else if(S.gate&&S.gatePhase==='out'){ S.wash=Math.max(0,S.wash-dt/(S.gate===2?0.85:1.25)); if(S.wash<=0)S.gate=0; }
@@ -2951,7 +2972,7 @@ function update(dt){
   if(!Number.isFinite(S.bank))S.bank=0; if(!Number.isFinite(S.pitch))S.pitch=0;
   if(!Number.isFinite(S.alt))S.alt=0.42; if(!Number.isFinite(S.throttle))S.throttle=0;
   if(!Number.isFinite(S.effSpeed))S.effSpeed=0.62; if(!Number.isFinite(S.pan))S.pan=0;
-  if(!Number.isFinite(S.warpF))S.warpF=0; if(!Number.isFinite(S.spaceF))S.spaceF=0;
+  if(!Number.isFinite(S.warpF))S.warpF=0; if(!Number.isFinite(S.spaceF))S.spaceF=0; if(!Number.isFinite(S.holdBoost))S.holdBoost=0;
   if(!Number.isFinite(S.uwF))S.uwF=0; if(!Number.isFinite(S.surfT))S.surfT=0;
   if(!Number.isFinite(S.warpHue))S.warpHue=0;
   S.bank=clamp(S.bank,-1,1); S.pitch=clamp(S.pitch,-1,1);
@@ -2963,6 +2984,22 @@ function update(dt){
 /* ============================== input: finger-follow flight ============================== */
 const pointers=new Map(); let steerId=null, lookHeld=false;
 let mouseTX=0, mouseTY=0, mouseFreshT=-9; const suppressed=new Set();
+/* THE COMPASS — the cursor's position on the screen IS the stick, read as
+   ONE vector out from screen center, never as two independent axes.
+   DIRECTION sets the steer: right of center banks right, left banks left,
+   ABOVE center climbs, below center dives, and a corner blends both in
+   proportion. DISTANCE from center sets the strength: dead center flies
+   straight and level, halfway out is a gentle command, at any edge the
+   command is full. The response curve shapes the distance (radially), so
+   the direction pointed is the direction answered — up means up. */
+function setMouseStick(mx,my){
+  let nx=(mx-W/2)/Math.max(1,W/2), ny=(my-H/2)/Math.max(1,H/2);   /* -1..1 per axis, screen y down */
+  let r=Math.hypot(nx,ny);
+  if(r>1){ nx/=r; ny/=r; r=1; }   /* past the corners the direction holds, the strength caps at full */
+  if(r<1e-4){ mouseTX=0; mouseTY=0; return; }
+  const m=shapeStick(r);   /* its dead zone is the quiet center; full strength at the edge */
+  mouseTX=nx/r*m; mouseTY=-ny/r*m;   /* screen-up becomes pitch-up: above center climbs */
+}
 function wake(){ S.idleT=0; S.drift=false; S.panelIdle=0; }
 window.addEventListener('pointerdown',e=>{
   wake(); audioInit();
@@ -2979,8 +3016,7 @@ window.addEventListener('pointerdown',e=>{
      release keep arriving even if the cursor slips outside the window
      mid-hold — no stuck gas, no lost release, clean recovery. */
   if(e.pointerType==='mouse'){ if(e.button===0)S.mouseGas=true;
-    mouseTX=clamp((e.clientX/Math.max(1,W)-0.5)*1.9,-1,1);
-    mouseTY=clamp((0.5-e.clientY/Math.max(1,H))*1.9,-1,1); mouseFreshT=S.flyT; }
+    setMouseStick(e.clientX,e.clientY); mouseFreshT=S.flyT; }
   else if(steerId===null)steerId=e.pointerId;
   /* capture EVERY pointer — touch included — to the canvas: on iOS a held
      finger that wanders (or a gesture Safari tries to reinterpret) must
@@ -2991,8 +3027,7 @@ window.addEventListener('pointerdown',e=>{
 window.addEventListener('pointermove',e=>{
   if(e.pointerType==='mouse'){
     const mx=Number.isFinite(e.clientX)?e.clientX:W/2, my=Number.isFinite(e.clientY)?e.clientY:H/2;
-    mouseTX=clamp((mx/Math.max(1,W)-0.5)*1.9,-1,1);
-    mouseTY=clamp((0.5-my/Math.max(1,H))*1.9,-1,1);
+    setMouseStick(mx,my);
     mouseFreshT=S.flyT; wake(); return; }
   const p=pointers.get(e.pointerId); if(!p)return;
   if(suppressed.has(e.pointerId)){ p.x=e.clientX; p.y=e.clientY; return; }
@@ -3131,6 +3166,7 @@ window.__tourDur=40;
 window.__setTourDur=function(s){ const v=parseFloat(s); window.__tourDur=(v>0)?v:40; };
 window.__sdState=function(){ return { mode:S.mode, pilot:!!S.pilot, biome:S.biome, gate:S.gate, alt:S.alt,
   bank:S.bank, pitch:S.pitch, throttle:S.throttle, effSpeed:S.effSpeed, uwF:S.uwF,
+  holdBoost:+S.holdBoost.toFixed(3), warpF:+S.warpF.toFixed(3), spaceF:+S.spaceF.toFixed(3), mouseStick:{x:+mouseTX.toFixed(3),y:+mouseTY.toFixed(3)},
   moonPhase:S.moonPhase, moonColor:S.moonColor, weatherMode:S.weatherMode, wxSeg:S.wxSeg, trail:S.trail, trailMode:S.trailMode, speedMode:S.speedMode,
   uwClock:S.uwClock, uwBand:{deep:+UW_BAND.deep.toFixed(2),mid:+UW_BAND.mid.toFixed(2),shallow:+UW_BAND.shallow.toFixed(2),detail:+UW_BAND.detail.toFixed(2)},
   pfZone:{far:+PF_W.far.toFixed(2),approach:+PF_W.approach.toFixed(2),close:+PF_W.close.toFixed(2),side:+PF_W.side.toFixed(2),above:+PF_W.above.toFixed(2)},
