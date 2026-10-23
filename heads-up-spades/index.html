@@ -1,0 +1,1545 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Heads-Up Spades</title>
+    <style>
+      :root{
+        --cw:56px;
+        --ink:#2b2118;
+        --paper:#f8f1dc;
+        --paper-edge:#e7dcc0;
+        --gold:#e9b44c;
+        --gold-deep:#c98f1f;
+        --felt:#17573d;
+        --felt-deep:#0e3d2a;
+        --panel:#12291f;
+        --panel-line:#2c5543;
+        --cream:#fdf6e3;
+        --red:#c22f2f;
+        --cardline:#d8d2c4;
+        --hand-font:"Segoe Print","Bradley Hand","Comic Sans MS",cursive;
+        --ui-font:"Avenir Next","Trebuchet MS","Segoe UI",system-ui,sans-serif;
+      }
+      html,body{height:100%;overflow:hidden;background:#0a1f16;}
+      body{
+        margin:0;position:fixed;inset:0;font-family:var(--ui-font);color:var(--cream);
+        -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+        overscroll-behavior:none;touch-action:none;
+      }
+      button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+      button:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+
+      #app{height:100dvh;width:100%;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+      #introCard,.paperSheet,#qrSheet,.chip,.friendChip,.btn,.bidbtn,.emote,.introBtn,#startBtn,#notebook,.card{box-sizing:border-box;}
+      #app.introOpen #panel{visibility:hidden;}
+      .friendChip{min-width:0;}
+      .friendChip .ftrait{overflow-wrap:break-word;}
+
+      /* ============ SCENE (top) ============ */
+      #scene{position:relative;flex:0 0 45%;overflow:hidden;background:#1a2f28;}
+      .place-layer{position:absolute;inset:-14px;will-change:transform;}
+      .place-layer svg{width:100%;height:100%;display:block;}
+      #vignette{position:absolute;inset:0;pointer-events:none;
+        background:radial-gradient(ellipse 120% 90% at 50% 42%, rgba(0,0,0,0) 55%, rgba(0,0,0,.38) 100%);}
+
+      /* friend */
+      #friendWrap{position:absolute;left:50%;bottom:24%;width:min(58vw,320px);aspect-ratio:1/1.04;
+        transform:translateX(-50%);z-index:5;pointer-events:none;}
+      #friendWrap svg{width:100%;height:100%;display:block;overflow:visible;}
+      .breathe{animation:breathe 3.4s ease-in-out infinite alternate;}
+      @keyframes breathe{from{transform:translateY(0)}to{transform:translateY(4px)}}
+      .headSway{animation:headSway 7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:50% 85%;}
+      @keyframes headSway{from{transform:rotate(-1.1deg)}to{transform:rotate(1.1deg)}}
+      .headTiltThink{animation:none;transform:rotate(-5deg);transform-box:fill-box;transform-origin:50% 85%;transition:transform .4s;}
+      .headDown{transform:translateY(5px) rotate(2deg);transform-box:fill-box;transform-origin:50% 85%;transition:transform .4s;}
+      .blink{transform-box:fill-box;transform-origin:50% 50%;animation:blink 4.8s infinite;}
+      @keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}97%{transform:scaleY(1)}}
+      .pupils{animation:glance 9s ease-in-out infinite;}
+      @keyframes glance{0%,38%,100%{transform:translateX(0)}46%,70%{transform:translateX(2.6px)}78%,88%{transform:translateX(-2.6px)}}
+      .celebrateBounce{animation:celBounce .55s ease-in-out 3;}
+      @keyframes celBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-12px)}}
+
+      /* speech bubble */
+      #bubble{position:absolute;z-index:9;max-width:62%;left:56%;bottom:64%;
+        background:#fffdf4;color:var(--ink);border-radius:16px;padding:9px 13px;
+        font-family:var(--hand-font);font-size:17px;line-height:1.25;
+        box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:scale(.7) translateY(8px);
+        transform-origin:bottom left;transition:opacity .18s,transform .18s;pointer-events:none;}
+      #bubble::after{content:"";position:absolute;left:14px;bottom:-9px;width:18px;height:18px;
+        background:#fffdf4;transform:rotate(45deg);border-radius:3px;}
+      #bubble.show{opacity:1;transform:scale(1) translateY(0);}
+
+      /* table */
+      #table{position:absolute;left:0;right:0;bottom:0;height:31%;z-index:6;
+        background:#7a4b28;
+        box-shadow:inset 0 14px 0 #96633a, inset 0 18px 0 #5d3a1f, inset 0 -30px 44px rgba(0,0,0,.45);}
+      #table::before{content:"";position:absolute;inset:0;
+        background-image:radial-gradient(rgba(0,0,0,.16) 1px, transparent 1.6px);
+        background-size:9px 9px;opacity:.5;}
+      #felt{position:absolute;left:50%;top:16%;transform:translateX(-50%);width:min(78%,560px);height:76%;
+        background:var(--felt);border-radius:50%/62%;
+        box-shadow:inset 0 0 0 5px #0d4630, inset 0 0 34px rgba(0,0,0,.5), 0 2px 0 rgba(255,255,255,.08);}
+      /* props */
+      .prop{position:absolute;z-index:6;}
+      #drinkProp{right:5%;bottom:35%;width:44px;height:58px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));}
+      #drinkProp.sip{animation:sipWobble .7s ease-in-out 2;}
+      @keyframes sipWobble{0%,100%{transform:rotate(0)}30%{transform:rotate(-7deg) translateY(-3px)}60%{transform:rotate(5deg)}}
+      #bowlProp{left:4.5%;bottom:37%;width:58px;height:34px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.4));}
+      #bowlProp.nudge{animation:bowlNudge .5s ease-in-out 2;}
+      @keyframes bowlNudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px) rotate(2deg)}}
+
+      /* notebook on the table */
+      #notebook{position:absolute;z-index:7;right:4%;bottom:5%;width:118px;height:86px;
+        background:var(--paper);border-radius:4px 10px 10px 4px;color:var(--ink);
+        box-shadow:0 6px 14px rgba(0,0,0,.5), inset 0 0 0 2px var(--paper-edge);
+        padding:7px 8px 6px 16px;text-align:left;transform:rotate(-3deg);}
+      #notebook::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:4px;
+        background-image:radial-gradient(rgba(190,110,95,.85) 1.6px, transparent 2.3px);
+        background-size:4px 8px;background-repeat:repeat-y;}
+      #notebook .nb-title{font-family:var(--hand-font);font-size:11px;color:#8a4b2a;letter-spacing:.4px;}
+      #notebook .nb-lines{font-family:var(--hand-font);font-size:12.5px;line-height:1.5;margin-top:1px;white-space:nowrap;}
+      #notebook .nb-total{font-family:var(--hand-font);font-size:13.5px;font-weight:700;border-top:1.5px solid #b9a888;margin-top:2px;padding-top:1px;}
+      #pencil{position:absolute;z-index:8;right:9%;bottom:24%;width:64px;height:11px;transform:rotate(24deg);
+        pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));}
+      #pencil.writing{animation:scribble .16s linear infinite;}
+      @keyframes scribble{0%{transform:rotate(24deg) translate(0,0)}50%{transform:rotate(19deg) translate(3px,2px)}100%{transform:rotate(26deg) translate(-2px,1px)}}
+
+      /* draft stage + trick on the felt */
+      #stageArea{position:absolute;z-index:8;left:50%;bottom:9%;transform:translateX(-50%);
+        display:flex;align-items:flex-end;gap:14px;}
+      #deckStack{position:relative;width:62px;height:88px;}
+      #deckStack .stackcard{position:absolute;inset:0;}
+      #flipCard{width:76px;height:106px;perspective:600px;}
+      #trashFan{position:relative;width:96px;height:74px;margin-left:2px;}
+      #trashFan .mini{position:absolute;bottom:0;left:50%;width:40px;height:56px;margin-left:-20px;
+        transform-origin:50% 100%;}
+      #trashCount{position:absolute;z-index:9;right:-4px;bottom:-8px;background:#201409;color:var(--gold);
+        font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+      #stageLabel{position:absolute;z-index:8;left:50%;bottom:calc(9% + 118px);transform:translateX(-50%);
+        background:rgba(16,10,4,.78);color:var(--cream);font-size:13.5px;font-weight:600;
+        padding:5px 14px;border-radius:20px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.4);}
+      .hidden{display:none !important;}
+
+      /* ============ CARDS ============ */
+      .card{position:relative;width:var(--cw);height:calc(var(--cw)*1.4);border-radius:calc(var(--cw)*.13);
+        background:#fffef9;box-shadow:0 2px 6px rgba(0,0,0,.45), inset 0 0 0 1px var(--cardline);
+        color:#22252b;font-weight:700;flex:0 0 auto;}
+      .card .rk{position:absolute;top:4%;left:7%;font-size:calc(var(--cw)*.34);line-height:1;}
+      .card .st{position:absolute;top:26%;left:8%;font-size:calc(var(--cw)*.30);line-height:1;}
+      .card .pip{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+        font-size:calc(var(--cw)*.62);}
+      .card.red{color:var(--red);}
+      .card.spade{color:#232a35;}
+      .card.back{background:#31589e;box-shadow:0 2px 6px rgba(0,0,0,.45), inset 0 0 0 3px #f3ead2, inset 0 0 0 5px #274a86;
+        background-image:radial-gradient(rgba(255,255,255,.35) 1.2px, transparent 1.8px);background-size:8px 8px;}
+      .card.mini{border-radius:6px;}
+      .card.flipIn{animation:flipIn .38s ease-out;}
+      @keyframes flipIn{from{transform:rotateY(88deg) scale(.92)}to{transform:rotateY(0) scale(1)}}
+      .card.shake{animation:shake .34s ease-in-out;}
+      @keyframes shake{0%,100%{margin-left:0}25%{margin-left:-6px}75%{margin-left:6px}}
+
+      /* trick slots */
+      .trick-slot{width:70px;height:98px;display:flex;align-items:flex-start;justify-content:center;position:relative;}
+      .trick-slot .card{--cw:64px;}
+      .trick-slot .who{position:absolute;margin-top:100px;font-size:11px;font-weight:700;color:#ffe9b0;
+        text-shadow:0 1px 3px rgba(0,0,0,.8);letter-spacing:.4px;}
+
+      /* ============ PANEL (bottom) ============ */
+      #panel{flex:1 1 auto;background:var(--panel);border-top:4px solid #060f0b;
+        box-shadow:inset 0 2px 0 rgba(255,255,255,.06);
+        display:flex;flex-direction:column;padding:8px 12px calc(8px + env(safe-area-inset-bottom));min-height:0;}
+      #statusRow{display:flex;align-items:center;gap:10px;min-height:30px;}
+      #statusText{flex:1;font-size:16.5px;font-weight:600;line-height:1.25;color:var(--cream);}
+      #tally{font-size:13px;color:#ffd97a;font-weight:700;white-space:nowrap;text-align:right;line-height:1.35;}
+      #tally .dim{color:#9fc4ae;font-weight:600;}
+      #actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:center;
+        min-height:52px;padding:4px 0 2px;}
+      .btn{min-height:48px;padding:10px 22px;border-radius:14px;font-size:17px;font-weight:800;
+        background:#274d3a;color:var(--cream);box-shadow:0 3px 0 #0a1f16, 0 5px 12px rgba(0,0,0,.35);
+        transition:transform .08s, filter .15s;}
+      .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #0a1f16;}
+      .btn.primary{background:var(--gold);color:#3a2703;box-shadow:0 3px 0 var(--gold-deep), 0 6px 14px rgba(0,0,0,.4);}
+      .btn.pass{background:#5b3a63;color:#f3e6ff;}
+      .btn:disabled{opacity:.45;cursor:default;}
+      .btn.small{min-height:44px;padding:8px 15px;font-size:14.5px;border-radius:12px;}
+      .bidbtn{min-width:52px;min-height:50px;padding:8px 6px;border-radius:12px;font-size:16.5px;font-weight:800;
+        background:#1e4030;color:var(--cream);box-shadow:0 3px 0 #081b11;}
+      .bidbtn:active{transform:translateY(2px);}
+      .bidbtn.nil{background:#43305e;color:#efe6ff;min-width:64px;}
+      .bidbtn.board{background:#7a5216;color:#ffe9b0;min-width:86px;}
+      .emote{min-width:52px;min-height:50px;border-radius:12px;font-size:23px;background:#1e4030;
+        box-shadow:0 3px 0 #081b11;}
+      .emote:active{transform:translateY(2px);}
+      .iconbtn{width:46px;height:46px;border-radius:50%;background:rgba(10,25,18,.72);color:var(--cream);
+        font-size:20px;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 3px 8px rgba(0,0,0,.45);z-index:12;}
+      #soundBtn{position:absolute;top:10px;right:10px;}
+      #howBtn{position:absolute;top:10px;left:10px;font-weight:900;font-size:19px;}
+
+      /* your hand */
+      #handZone{margin-top:auto;padding-top:2px;}
+      #handLabel{font-size:12px;letter-spacing:1.2px;color:#9fc4ae;font-weight:700;text-align:center;margin-bottom:1px;}
+      #hand{position:relative;height:calc(var(--cw)*1.62);max-width:640px;margin:0 auto;}
+      #hand .card{position:absolute;left:50%;bottom:0;transform-origin:50% 130%;
+        transition:transform .18s ease, filter .18s ease;}
+      #hand .card.legal{cursor:pointer;filter:brightness(1.06);
+        box-shadow:0 0 0 2.5px var(--gold), 0 6px 16px rgba(0,0,0,.55);}
+      #hand .card.legal:hover{filter:brightness(1.12);}
+      #hand .card.dim{filter:brightness(.62) saturate(.8);}
+      #hand .card.played{transition:transform .45s ease, opacity .45s;}
+
+      /* ============ INTRO ============ */
+      #intro{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:flex-end;}
+      #introShade{position:absolute;inset:0;background:radial-gradient(ellipse 130% 62% at 50% 108%, rgba(5,14,10,.88) 30%, rgba(5,14,10,0) 78%);}
+      #introCard{position:relative;max-height:78%;overflow-y:auto;touch-action:pan-y;
+        background:#0c1d15;border-top:3px solid var(--gold);
+        border-radius:22px 22px 0 0;padding:16px 18px calc(14px + env(safe-area-inset-bottom));
+        box-shadow:0 -12px 40px rgba(0,0,0,.5);max-width:680px;width:100%;margin:0 auto;}
+      #introCard h1{margin:0;font-size:31px;letter-spacing:.3px;color:#fff;}
+      #introCard h1 .spadeGlyph{color:var(--gold);}
+      #tagline{margin:3px 0 12px;font-size:15.5px;color:#cfe6d6;}
+      .pickLabel{font-size:12px;letter-spacing:1.6px;font-weight:800;color:#ffd97a;margin:13px 0 7px;}
+      #friendPick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+      .friendChip{background:#1a3a2a;border-radius:14px;padding:7px 2px 6px;text-align:center;
+        box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .15s;}
+      .friendChip svg{width:52px;height:52px;}
+      .friendChip .fname{font-size:13px;font-weight:700;margin-top:1px;}
+      .friendChip .ftrait{font-size:10.5px;color:#a9cbb6;line-height:1.15;}
+      .friendChip.sel{box-shadow:inset 0 0 0 2.5px var(--gold);background:#22482f;}
+      #placePick,#gamePick,#scorePick{display:flex;gap:8px;flex-wrap:wrap;}
+      .chip{flex:1 1 0;min-width:96px;min-height:48px;border-radius:13px;background:#1a3a2a;
+        font-size:15px;font-weight:700;padding:9px 8px;box-shadow:inset 0 0 0 2px transparent;line-height:1.25;}
+      .chip small{display:block;font-size:11.5px;color:#a9cbb6;font-weight:600;}
+      .chip.sel{box-shadow:inset 0 0 0 2.5px var(--gold);background:#22482f;}
+      .chip.off{opacity:.48;cursor:default;}
+      #startBtn{width:100%;min-height:58px;margin-top:17px;border-radius:16px;background:var(--gold);
+        color:#3a2703;font-size:21px;font-weight:900;letter-spacing:.6px;
+        box-shadow:0 4px 0 var(--gold-deep), 0 10px 22px rgba(0,0,0,.45);}
+      #startBtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--gold-deep);}
+      #introBtns{display:flex;gap:9px;margin-top:11px;justify-content:center;}
+      .introBtn{flex:1;min-height:48px;border-radius:13px;background:#1e4030;font-size:15px;font-weight:800;
+        display:flex;align-items:center;justify-content:center;gap:7px;}
+
+      /* ============ MODALS ============ */
+      .overlay{position:absolute;inset:0;z-index:60;background:rgba(4,10,7,.66);
+        display:flex;align-items:center;justify-content:center;padding:16px;}
+      .paperSheet{background:var(--paper);color:var(--ink);border-radius:8px 16px 16px 8px;
+        width:min(94vw,520px);max-height:88%;overflow-y:auto;touch-action:pan-y;
+        padding:22px 22px 18px 30px;position:relative;
+        box-shadow:0 18px 50px rgba(0,0,0,.6), inset 0 0 0 2px var(--paper-edge);}
+      .paperSheet::before{content:"";position:absolute;left:12px;top:14px;bottom:14px;width:4px;
+        background-image:radial-gradient(rgba(190,110,95,.8) 1.8px, transparent 2.6px);
+        background-size:4px 10px;background-repeat:repeat-y;}
+      .paperSheet h2{font-family:var(--hand-font);margin:0 0 4px;font-size:26px;color:#5d3a1f;}
+      .paperSheet h3{font-family:var(--hand-font);margin:16px 0 3px;font-size:20px;color:#5d3a1f;}
+      .paperSheet p,.paperSheet li{font-size:15.5px;line-height:1.45;}
+      .paperSheet ul{margin:4px 0;padding-left:20px;}
+      .closeRow{display:flex;justify-content:center;margin-top:16px;}
+      .paperBtn{min-height:48px;padding:10px 26px;border-radius:12px;background:#5d3a1f;color:#ffeec9;
+        font-size:16px;font-weight:800;box-shadow:0 3px 0 #3a2410;}
+      table.scoreTable{width:100%;border-collapse:collapse;font-family:var(--hand-font);font-size:15.5px;}
+      table.scoreTable th{border-bottom:2px solid #8a6f4d;padding:4px 3px;text-align:right;font-size:14px;}
+      table.scoreTable th:first-child,table.scoreTable td:first-child{text-align:left;}
+      table.scoreTable td{border-bottom:1px solid #d8cba6;padding:4px 3px;text-align:right;}
+      table.scoreTable tr.totals td{border-top:2.5px solid #8a6f4d;border-bottom:none;font-weight:700;font-size:18px;}
+      .tallyMarks{letter-spacing:1.5px;color:#5d3a1f;}
+      #qrSheet{background:#fff;color:#111;border-radius:18px;padding:24px;width:min(92vw,360px);
+        text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6);}
+      #qrSheet h2{margin:0 0 4px;font-size:21px;}
+      #qrSheet p{margin:4px 0 12px;font-size:13.5px;color:#555;word-break:break-all;}
+      #qrCanvas{width:248px;height:248px;image-rendering:pixelated;}
+      #matchBanner{text-align:center;}
+      #matchBanner .big{font-family:var(--hand-font);font-size:31px;color:#5d3a1f;margin:2px 0;}
+      .confetti{position:absolute;width:9px;height:14px;z-index:70;border-radius:2px;pointer-events:none;
+        animation:confFall 1.6s ease-in forwards;}
+      @keyframes confFall{to{transform:translateY(105dvh) rotate(560deg);opacity:.9;}}
+
+      .fly{position:absolute;z-index:30;pointer-events:none;transition:transform .5s cubic-bezier(.3,.7,.4,1), opacity .5s;}
+
+      @media (min-width:760px){
+        :root{--cw:66px;}
+        #scene{flex-basis:48%;}
+        #friendWrap{width:330px;}
+        #statusText{font-size:18px;}
+        #introCard h1{font-size:36px;}
+        #notebook{width:138px;height:98px;}
+        #bubble{font-size:19px;}
+      }
+      @media (prefers-color-scheme: light){
+        #panel{background:#1c3a2c;}
+      }
+      @media (prefers-reduced-motion: reduce){
+        .breathe,.headSway,.blink,.pupils{animation-duration:12s;}
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <!-- ================= SCENE ================= -->
+      <section id="scene" aria-label="At the table">
+        <div class="place-layer" id="placeBack" data-depth="4"></div>
+        <div class="place-layer" id="placeMid" data-depth="9"></div>
+        <div id="friendWrap" aria-hidden="true"></div>
+        <div id="bubble" role="status"></div>
+        <div id="table">
+          <div id="felt"></div>
+        </div>
+        <div class="prop" id="drinkProp" aria-hidden="true"></div>
+        <div class="prop" id="bowlProp" aria-hidden="true"></div>
+        <div id="stageLabel" class="hidden"></div>
+        <div id="stageArea" class="hidden">
+          <div id="deckStack" aria-hidden="true"></div>
+          <div id="flipCard"></div>
+          <div id="trashFan" aria-hidden="true"><div id="trashCount">trash 0</div></div>
+        </div>
+        <button id="notebook" aria-label="Open the score notebook">
+          <div class="nb-title">SCORE</div>
+          <div class="nb-lines" id="nbLines">no hands yet</div>
+          <div class="nb-total" id="nbTotal">You 0 · — 0</div>
+        </button>
+        <div id="pencil" aria-hidden="true"></div>
+        <button class="iconbtn" id="howBtn" aria-label="How to play">?</button>
+        <button class="iconbtn" id="soundBtn" aria-label="Toggle sound">🔊</button>
+        <div id="vignette"></div>
+      </section>
+
+      <!-- ================= PANEL ================= -->
+      <section id="panel">
+        <div id="statusRow">
+          <div id="statusText">Pick your friend, pick your place — then take a seat.</div>
+          <div id="tally"></div>
+        </div>
+        <div id="actions"></div>
+        <div id="handZone">
+          <div id="handLabel">YOUR HAND</div>
+          <div id="hand"></div>
+        </div>
+      </section>
+
+      <!-- ================= INTRO ================= -->
+      <div id="intro">
+        <div id="introShade"></div>
+        <div id="introCard">
+          <h1>Heads-Up <span class="spadeGlyph">♠</span> Spades</h1>
+          <p id="tagline">One friend, one deck, your house rules — play heads up with whoever you want, wherever you want.</p>
+          <div class="pickLabel">WHO'S ACROSS THE TABLE?</div>
+          <div id="friendPick"></div>
+          <div class="pickLabel">WHERE ARE YOU PLAYING?</div>
+          <div id="placePick"></div>
+          <div class="pickLabel">GAME</div>
+          <div id="gamePick"></div>
+          <div class="pickLabel">MATCH — FIRST TO…</div>
+          <div id="scorePick"></div>
+          <button id="startBtn">TAKE YOUR SEAT ♠</button>
+          <div id="introBtns">
+            <button class="introBtn" id="qrBtn">▦ QR CODE</button>
+            <button class="introBtn" id="soundBtn2">🔊 SOUND ON</button>
+            <button class="introBtn" id="howBtn2">? HOW TO PLAY</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MODALS ================= -->
+      <div class="overlay hidden" id="sheetOverlay">
+        <div class="paperSheet" id="sheetBody"></div>
+      </div>
+      <div class="overlay hidden" id="qrOverlay">
+        <div id="qrSheet">
+          <h2>Take this table anywhere</h2>
+          <p>https://geemondc.github.io/heads-up-spades/</p>
+          <canvas id="qrCanvas" width="33" height="33"></canvas>
+          <div class="closeRow"><button class="paperBtn" id="qrClose">DONE</button></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    "use strict";
+    /* =====================================================================
+       HEADS-UP SPADES — Gary's table. Draft deal, Board floor, friendly Nil.
+       ===================================================================== */
+    const $ = id => document.getElementById(id);
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    /* ---------------- CAST ---------------- */
+    const FRIENDS = [
+      { id:"teal", name:"Teal", trait:"Cool & steady",
+        skin:"#f2c49b", hair:"#4a2e1c", hairStyle:"bob", shirt:"#f6f1e7", overalls:"#ef7fa5",
+        accessory:"glasses", agg:0.45, draftKeep:0.52,
+        greet:"House rules, your draft deal. I respect it. Mostly.",
+        lines:{ win:["Counted that one coming.","Steady does it."], lose:["Hm. Noted.","That one stings a little."],
+          nil:["Nil? Bold. I like it."], set:["Set. The notebook doesn't lie."] } },
+      { id:"goggles", name:"Goggles", trait:"Fast & fearless",
+        skin:"#c98a5e", hair:"#201812", hairStyle:"spiky", shirt:"#e8712c", jacket:true,
+        accessory:"goggles", agg:0.85, draftKeep:0.42,
+        greet:"No safety net, no mercy — let's FLY through this deck.",
+        lines:{ win:["TOO fast for you!","Woo! Did you see that?"], lose:["Okay okay, ONE for you.","Crash landing. Fine."],
+          nil:["Nil?! HA. I live for this."], set:["You SET me? Rematch energy."] } },
+      { id:"braids", name:"Braids", trait:"Sweet, then ruthless",
+        skin:"#f6cfa9", hair:"#c33d21", hairStyle:"braids", shirt:"#2e8f86",
+        accessory:"heartEarrings", agg:0.6, draftKeep:0.5,
+        greet:"Hi hi! I brought snacks and absolutely no mercy.",
+        lines:{ win:["Oops. Did I do that? ♡","Sweet, right?"], lose:["Aww. Okay, that was good.","You earned that one."],
+          nil:["Nil is just a puzzle. Watch me."], set:["Set?! But I was so nice…"] } },
+      { id:"phones", name:"Phones", trait:"Reads every card",
+        skin:"#8a5a34", hair:"#14100c", hairStyle:"buzz", shirt:"#27407c", varsity:true,
+        accessory:"headphones", agg:0.55, draftKeep:0.55,
+        greet:"I already heard how this deck shuffles. Let's go.",
+        lines:{ win:["Called it three tricks ago.","Beat drops, so do you."], lose:["Static. That was static.","One glitch. Moving on."],
+          nil:["Nil. Silent mode: ON."], set:["Set. Rewinding that hand in my head…"] } },
+      { id:"purple", name:"Purple", trait:"Bluff in her eyes",
+        skin:"#eebd93", hair:"#7a3fa0", hairStyle:"long", shirt:"#33243f",
+        accessory:"starEarrings", agg:0.72, draftKeep:0.46,
+        greet:"The stars say I win tonight. The stars are me. I say it.",
+        lines:{ win:["Written in the stars. Told you.","Sparkle beats strategy."], lose:["The stars… misfiled that one.","Enjoy it. It's rare."],
+          nil:["Nil, darling. Watch the magic."], set:["Set? The constellation is ruined."] } },
+      { id:"blond", name:"Blond", trait:"Ice cold",
+        skin:"#f4c795", hair:"#eec25e", hairStyle:"waves", shirt:"#3d3d44",
+        accessory:"sunglasses", agg:0.5, draftKeep:0.58,
+        greet:"Shades on. Tell unreadable. Your move, whenever.",
+        lines:{ win:["…","Yeah. That happened."], lose:["Cool. Literally don't care. (I care.)","One. Don't get used to it."],
+          nil:["Nil. Watch me not sweat."], set:["Set. Behind the shades: pain."] } },
+      { id:"curls", name:"Curls", trait:"Counts the trash",
+        skin:"#a06838", hair:"#2e1a0e", hairStyle:"curls", shirt:"#7a4d8f",
+        accessory:"moonEarrings", agg:0.4, draftKeep:0.6,
+        greet:"I remember every card that hits that trash pile. Every one.",
+        lines:{ win:["Trash told me that was coming.","Memory: 1, luck: 0."], lose:["I counted it. I still lost it.","Recalculating… rude."],
+          nil:["Nil. The moon and I have a plan."], set:["Set. My spreadsheet is crying."] } },
+      { id:"dreads", name:"Dreads", trait:"Laid-back shark",
+        skin:"#6f4526", hair:"#191008", hairStyle:"dreads", shirt:"#5d7040",
+        accessory:"noseStud", agg:0.62, draftKeep:0.48,
+        greet:"Easy vibes, heavy spades. Sit back, I'll handle the drama.",
+        lines:{ win:["Smooth. Like I said.","No rush. Still mine."], lose:["All good. Tide comes back.","Respect. One for the road."],
+          nil:["Nil, mon. Zero stress, zero tricks."], set:["Set me? Island justice: rematch."] } }
+    ];
+    const GENERIC = {
+      draftKeep:["Keeping that.","Oh, that one's mine.","Yes. Absolutely yes."],
+      draftPass:["Pass. Trash it.","Nope. Next.","Hard no."],
+      bidHigh:["Feeling tall tonight.","This hand has teeth."],
+      bidLow:["Board. Don't laugh.","Minimum. The draft was cruel."],
+      winTrick:["Mine.","And that one.","Thank you kindly."],
+      loseTrick:["Yours. This time.","Take it. Take it!"],
+      yourNil:["You bid NIL? Brave table tonight.","Nil for you? I'm coming for trick three."],
+      nilMade:["Nil… made. Tip the cap.","Zero-ish and paid. Fine. FINE."],
+      nilBust:["THIRD trick! Nil is BUSTED.","Busted! The notebook saw everything."],
+      gg:["Good game. The notebook has spoken."],
+      emoteClap:["Thank you, thank you. I play here all week.","*bows* You're too kind."],
+      emoteLaugh:["Ha! At least we're having fun. One of us is winning.","😄 Right back at you."],
+      emoteThink:["Thinking? I can wait. I counted the trash twice already.","Take your time. The cards aren't moving. (They are. In my head.)"],
+      matchPoint:["Match point. The pencil is sweating.","One hand for the whole thing…"]
+    };
+
+    const PLACES = [
+      { id:"gameroom", name:"Game Room", sub:"warm lamp light" },
+      { id:"beach", name:"Beach Boardwalk", sub:"sunset over the water" },
+      { id:"porch", name:"Front Porch", sub:"dusk & fireflies" }
+    ];
+    const GAMES = [
+      { name:"Spades", on:true }, { name:"Tonk", on:false }, { name:"Gin Rummy", on:false },
+      { name:"Poker", on:false }, { name:"Cribbage", on:false }
+    ];
+
+    /* ---------------- STATE ---------------- */
+    const S = {
+      friend: FRIENDS[0], place: PLACES[0], target: 250,
+      phase: "intro",            // intro | draft | bid | play | handEnd | matchEnd
+      deck: [], trashUp: [], trashDown: 0,
+      hand: { you: [], ai: [] },
+      draftTurn: "you", picksLeft: { you: 13, ai: 13 },
+      bids: { you: null, ai: null }, tricksWon: { you: 0, ai: 0 },
+      leader: "you", trick: [], spadesBroken: false, trickNo: 0,
+      score: { you: 0, ai: 0 }, bags: { you: 0, ai: 0 },
+      history: [], handNo: 0, starter: "you",
+      seenKeptYou: [],           // first-flips Gary kept (public)
+      sound: true, busy: false
+    };
+
+    /* ---------------- CARDS ---------------- */
+    const SUITS = [ {s:"♠", cls:"spade", name:"spades"}, {s:"♥", cls:"red", name:"hearts"},
+                    {s:"♦", cls:"red", name:"diamonds"}, {s:"♣", cls:"", name:"clubs"} ];
+    const RANK = {11:"J",12:"Q",13:"K",14:"A"};
+    const rankStr = r => RANK[r] || String(r);
+    const isSpade = c => c.suit === 0;
+    function newDeck(){
+      const d = [];
+      for (let s = 0; s < 4; s++) for (let r = 2; r <= 14; r++) d.push({ suit:s, rank:r });
+      for (let i = d.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; }
+      return d;
+    }
+    function sortHand(h){
+      const order = {0:0, 1:1, 3:2, 2:3}; // ♠ ♥ ♣ ♦
+      h.sort((a,b) => order[a.suit] - order[b.suit] || b.rank - a.rank);
+    }
+    function cardHTML(c, extra){
+      const su = SUITS[c.suit];
+      return `<div class="rk">${rankStr(c.rank)}</div><div class="st">${su.s}</div><div class="pip">${su.s}</div>`;
+    }
+    function makeCardEl(c, cls){
+      const el = document.createElement("div");
+      el.className = "card " + SUITS[c.suit].cls + (cls ? " " + cls : "");
+      el.innerHTML = cardHTML(c);
+      el.dataset.suit = c.suit; el.dataset.rank = c.rank;
+      return el;
+    }
+    function makeBackEl(cls){
+      const el = document.createElement("div");
+      el.className = "card back" + (cls ? " " + cls : "");
+      return el;
+    }
+    const cardName = c => rankStr(c.rank) + SUITS[c.suit].s;
+
+    /* ---------------- FRIEND SVG ---------------- */
+    function hairSVG(f){
+      const h = f.hair;
+      switch(f.hairStyle){
+        case "bob": return `<path d="M78,118 Q70,38 150,34 Q222,38 214,118 L206,168 Q214,96 196,66 Q150,48 104,66 Q86,96 94,168 L86,118 Z" fill="${h}"/>
+          <path d="M96,64 Q150,44 204,64 Q196,50 150,46 Q104,50 96,64Z" fill="${h}"/>`;
+        case "spiky": return `<path d="M92,102 L100,52 L118,66 L128,40 L146,58 L160,38 L172,60 L190,48 L198,78 L208,102 Q206,58 150,52 Q94,58 92,102Z" fill="${h}"/>`;
+        case "braids": return `<path d="M84,110 Q84,44 150,42 Q216,44 216,110 L204,104 Q208,58 150,56 Q92,58 96,104Z" fill="${h}"/>
+          <g stroke="${h}" stroke-width="13" stroke-linecap="round" fill="none">
+          <path d="M92,104 Q80,150 90,196"/><path d="M208,104 Q220,150 210,196"/></g>
+          <circle cx="90" cy="200" r="6" fill="#e9b44c"/><circle cx="210" cy="200" r="6" fill="#e9b44c"/>`;
+        case "buzz": return `<path d="M88,106 Q90,50 150,48 Q210,50 212,106 Q206,66 150,64 Q94,66 88,106Z" fill="${h}"/>`;
+        case "long": return `<path d="M76,240 Q66,60 108,44 Q150,32 192,44 Q236,60 224,240 L206,240 Q214,120 200,74 Q150,54 100,74 Q86,120 94,240Z" fill="${h}"/>`;
+        case "waves": return `<path d="M82,118 Q76,40 150,36 Q224,40 218,118 Q228,150 210,168 Q220,120 202,72 Q150,50 98,72 Q80,120 90,168 Q72,150 82,118Z" fill="${h}"/>`;
+        case "curls": return `<g fill="${h}">${[[104,52],[128,40],[152,36],[176,40],[198,54],[212,76],[90,76],[84,100],[216,100],[80,124],[220,124]]
+          .map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="17"/>`).join("")}<path d="M84,120 Q84,44 150,42 Q216,44 216,120 L200,116 Q204,62 150,60 Q96,62 100,116Z"/></g>`;
+        case "dreads": return `<path d="M84,112 Q84,42 150,40 Q216,42 216,112 L202,106 Q206,58 150,56 Q94,58 98,106Z" fill="${h}"/>
+          <g stroke="${h}" stroke-width="10" stroke-linecap="round">${[86,100,214,200].map(x=>`<path d="M${x},${x<150?104:104} q${x<150?-4:4},60 -2,104"/>`).join("")}</g>`;
+      }
+      return "";
+    }
+    function accessorySVG(f){
+      switch(f.accessory){
+        case "glasses": return `<g fill="none" stroke="#3a2c22" stroke-width="4.5">
+          <circle cx="118" cy="118" r="27"/><circle cx="182" cy="118" r="27"/><path d="M145,116 Q150,110 155,116"/></g>
+          <g fill="rgba(255,255,255,.14)"><circle cx="118" cy="118" r="25"/><circle cx="182" cy="118" r="25"/></g>`;
+        case "goggles": return `<g><rect x="98" y="36" width="104" height="13" rx="6" fill="#5d3a1f"/>
+          <circle cx="122" cy="56" r="19" fill="#ffd98a" stroke="#5d3a1f" stroke-width="5"/>
+          <circle cx="178" cy="56" r="19" fill="#ffd98a" stroke="#5d3a1f" stroke-width="5"/>
+          <rect x="141" y="50" width="18" height="9" fill="#5d3a1f"/></g>`;
+        case "headphones": return `<path d="M84,128 Q80,58 150,54 Q220,58 216,128" fill="none" stroke="#c22f2f" stroke-width="13"/>
+          <rect x="66" y="116" width="26" height="46" rx="10" fill="#c22f2f"/><rect x="208" y="116" width="26" height="46" rx="10" fill="#c22f2f"/>
+          <rect x="72" y="126" width="14" height="26" rx="6" fill="#7e1a1a"/><rect x="214" y="126" width="14" height="26" rx="6" fill="#7e1a1a"/>`;
+        case "sunglasses": return `<g><path d="M92,104 L208,104 L202,132 Q198,146 180,144 L160,140 L140,140 L120,144 Q102,146 98,132Z" fill="#191922"/>
+          <path d="M100,112 L140,112 L136,134 L106,136Z" fill="#3d4b63"/><path d="M160,112 L200,112 L194,136 L164,134Z" fill="#3d4b63"/>
+          <rect x="88" y="98" width="124" height="7" rx="3" fill="#191922"/></g>`;
+        case "heartEarrings": return `<g fill="#e2543e"><path d="M84,168 q-9,-12 3,-15 q7,-1 9,6 q2,-7 9,-6 q12,3 3,15 l-12,11Z"/><path d="M216,168 q-9,-12 3,-15 q7,-1 9,6 q2,-7 9,-6 q12,3 3,15 l-12,11Z" transform="translate(-24,0)"/></g>`;
+        case "starEarrings": return `<g fill="#ffd94d"><path d="M86,164 l3.5,8 8.6,.8 -6.4,5.8 1.9,8.5 -7.6,-4.4 -7.6,4.4 1.9,-8.5 -6.4,-5.8 8.6,-.8Z"/><path d="M214,164 l3.5,8 8.6,.8 -6.4,5.8 1.9,8.5 -7.6,-4.4 -7.6,4.4 1.9,-8.5 -6.4,-5.8 8.6,-.8Z"/></g>`;
+        case "moonEarrings": return `<g fill="#ffe9a8"><path d="M92,162 a11,11 0 1,0 8,19 a8.5,8.5 0 1,1 -8,-19Z"/><path d="M208,162 a11,11 0 1,0 8,19 a8.5,8.5 0 1,1 -8,-19Z"/></g>`;
+        case "noseStud": return `<circle cx="160" cy="146" r="3.4" fill="#e8e8f0" stroke="#9a9aa8" stroke-width="1"/>`;
+      }
+      return "";
+    }
+    function friendSVG(f, mini){
+      const brows = `<g class="brows" stroke="#3a2413" stroke-width="5" stroke-linecap="round" fill="none">
+          <path class="browL" d="M100,96 Q118,88 138,94"/><path class="browR" d="M162,94 Q182,88 200,96"/></g>`;
+      const eyes = `<g class="blink">
+          <g class="eyesOpen">
+            <ellipse cx="118" cy="118" rx="11" ry="12.5" fill="#fff"/><ellipse cx="182" cy="118" rx="11" ry="12.5" fill="#fff"/>
+            <g class="pupils"><circle cx="118" cy="120" r="6" fill="#241811"/><circle cx="182" cy="120" r="6" fill="#241811"/>
+            <circle cx="120.5" cy="117" r="2.1" fill="#fff"/><circle cx="184.5" cy="117" r="2.1" fill="#fff"/></g>
+          </g>
+          <g class="eyesHappy" style="display:none" stroke="#241811" stroke-width="5.5" stroke-linecap="round" fill="none">
+            <path d="M105,122 Q118,108 131,122"/><path d="M169,122 Q182,108 195,122"/></g>
+          <g class="eyesDown" style="display:none" stroke="#241811" stroke-width="5" stroke-linecap="round" fill="none">
+            <path d="M106,114 Q118,124 130,115"/><path d="M170,115 Q182,124 194,114"/></g>
+        </g>`;
+      const torso = f.varsity
+        ? `<path d="M52,300 Q58,232 108,222 L192,222 Q242,232 248,300Z" fill="${f.shirt}"/>
+           <path d="M108,222 L132,222 L128,300 L96,300 Q84,252 108,222Z" fill="#e8e2d2"/>
+           <path d="M192,222 L168,222 L172,300 L204,300 Q216,252 192,222Z" fill="#e8e2d2"/>
+           <path d="M138,224 L162,224 L158,262 L142,262Z" fill="#f2ede0"/>`
+        : f.overalls
+        ? `<path d="M52,300 Q58,232 108,222 L192,222 Q242,232 248,300Z" fill="${f.shirt}"/>
+           <path d="M104,236 L196,236 L200,300 L100,300Z" fill="${f.overalls}"/>
+           <path d="M112,224 L126,224 L124,246 L110,246Z" fill="${f.overalls}"/><path d="M174,224 L188,224 L190,246 L176,246Z" fill="${f.overalls}"/>
+           <circle cx="122" cy="252" r="4" fill="#ffd94d"/><circle cx="178" cy="252" r="4" fill="#ffd94d"/>`
+        : f.jacket
+        ? `<path d="M52,300 Q58,232 108,222 L192,222 Q242,232 248,300Z" fill="${f.shirt}"/>
+           <path d="M140,222 L160,222 L160,300 L140,300Z" fill="#b34f16"/><rect x="147" y="222" width="6" height="78" fill="#5d3a1f"/>`
+        : `<path d="M52,300 Q58,232 108,222 L192,222 Q242,232 248,300Z" fill="${f.shirt}"/>
+           <path d="M128,222 Q150,244 172,222 L164,214 Q150,226 136,214Z" fill="rgba(0,0,0,.18)"/>`;
+      const freckles = f.id === "teal" ? `<g fill="#c98a5e">${[[102,140],[114,144],[126,141],[174,141],[186,144],[198,140]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.2"/>`).join("")}</g>` : "";
+      return `<svg viewBox="0 0 300 308" role="img" aria-label="${f.name}">
+        <g class="breathe">
+          ${torso}
+          <path d="M52,268 Q20,262 8,286 L4,308 L66,308 Q62,282 52,268Z" fill="${f.shirt}"/>
+          <path d="M248,268 Q280,262 292,286 L296,308 L234,308 Q238,282 248,268Z" fill="${f.shirt}"/>
+          <ellipse cx="34" cy="300" rx="20" ry="10" fill="${f.skin}"/><ellipse cx="266" cy="300" rx="20" ry="10" fill="${f.skin}"/>
+          <g class="friendFan"></g>
+          <g class="headG">
+            <rect x="132" y="196" width="36" height="34" rx="10" fill="${f.skin}"/>
+            <ellipse cx="86" cy="128" rx="11" ry="16" fill="${f.skin}"/><ellipse cx="214" cy="128" rx="11" ry="16" fill="${f.skin}"/>
+            <ellipse cx="150" cy="122" rx="66" ry="74" fill="${f.skin}"/>
+            ${hairSVG(f)}
+            <ellipse cx="103" cy="146" rx="11" ry="6.5" fill="rgba(240,110,90,.35)"/>
+            <ellipse cx="197" cy="146" rx="11" ry="6.5" fill="rgba(240,110,90,.35)"/>
+            ${freckles}
+            ${brows}
+            ${eyes}
+            <path d="M150,128 Q145,146 150,150 Q155,152 158,149" fill="none" stroke="rgba(120,70,40,.55)" stroke-width="3.5" stroke-linecap="round"/>
+            <path class="mouth" d="M132,168 Q150,180 168,168" fill="none" stroke="#7a3b26" stroke-width="5" stroke-linecap="round"/>
+            ${accessorySVG(f)}
+          </g>
+        </g>
+      </svg>`;
+    }
+    const MOUTHS = {
+      idle:      { d:"M132,168 Q150,180 168,168", brow:0 },
+      thinking:  { d:"M140,172 Q150,168 160,172", brow:1 },
+      playing:   { d:"M134,167 Q150,177 166,167", brow:0 },
+      pleased:   { d:"M128,164 Q150,186 172,164", brow:0 },
+      worried:   { d:"M134,176 Q142,168 150,176 Q158,184 166,176", brow:2 },
+      celebrating:{ d:"M126,162 Q150,192 174,162 Q150,176 126,162Z", brow:0, fill:"#7a3b26" },
+      beaten:    { d:"M134,178 Q150,166 166,178", brow:2 }
+    };
+    function setExpr(state){
+      const wrap = $("friendWrap"); if (!wrap) return;
+      const svg = wrap.querySelector("svg"); if (!svg) return;
+      const m = MOUTHS[state] || MOUTHS.idle;
+      const mouth = svg.querySelector(".mouth");
+      mouth.setAttribute("d", m.d);
+      mouth.setAttribute("fill", m.fill || "none");
+      const happy = (state === "pleased" || state === "celebrating");
+      svg.querySelector(".eyesOpen").style.display = happy || state === "beaten" ? "none" : "";
+      svg.querySelector(".eyesHappy").style.display = happy ? "" : "none";
+      svg.querySelector(".eyesDown").style.display = state === "beaten" ? "" : "none";
+      const browL = svg.querySelector(".browL"), browR = svg.querySelector(".browR");
+      browL.removeAttribute("transform"); browR.removeAttribute("transform");
+      if (m.brow === 1){ browR.setAttribute("transform","translate(0,-5) rotate(-6 182 92)"); }
+      if (m.brow === 2){ browL.setAttribute("transform","rotate(14 118 92)"); browR.setAttribute("transform","rotate(-14 182 92)"); }
+      const head = svg.querySelector(".headG");
+      head.classList.toggle("headTiltThink", state === "thinking");
+      head.classList.toggle("headDown", state === "beaten");
+      head.classList.toggle("headSway", state !== "thinking" && state !== "beaten");
+    }
+    function renderFriendFan(){
+      const svg = $("friendWrap").querySelector("svg"); if (!svg) return;
+      const g = svg.querySelector(".friendFan"); if (!g) return;
+      const n = clamp(S.hand.ai.length, 0, 7);
+      let s = "";
+      for (let i = 0; i < n; i++){
+        const x = 150 + (i - (n - 1) / 2) * 17, rot = (i - (n - 1) / 2) * 9;
+        s += `<g transform="translate(${x},262) rotate(${rot})"><rect x="-17" y="-24" width="34" height="48" rx="5" fill="#31589e" stroke="#f3ead2" stroke-width="2.5"/></g>`;
+      }
+      g.innerHTML = s;
+    }
+
+    /* ---------------- PLACE SCENES (layered painterly SVG) ---------------- */
+    function placeSVG(place, layer){
+      if (place.id === "gameroom"){
+        if (layer === "back") return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+          <rect width="800" height="460" fill="#4a3220"/>
+          <rect width="800" height="250" fill="#5d3f27"/>
+          <rect y="250" width="800" height="14" fill="#33220f"/>
+          ${Array.from({length:9},(_,i)=>`<rect x="${i*92+6}" y="0" width="3" height="250" fill="rgba(0,0,0,.13)"/>`).join("")}
+          <g><rect x="52" y="58" width="150" height="180" rx="8" fill="#241a30"/>
+            <rect x="62" y="68" width="130" height="160" rx="5" fill="#2e3a5c"/>
+            <circle cx="158" cy="102" r="19" fill="#f4ecd2"/><circle cx="151" cy="97" r="16" fill="#2e3a5c" opacity=".55"/>
+            ${[[86,92],[104,138],[92,168],[168,150],[140,190],[178,84]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.4" fill="#ffeeb8"/>`).join("")}
+            <rect x="52" y="58" width="150" height="180" rx="8" fill="none" stroke="#8a6136" stroke-width="7"/></g>
+          <g><rect x="586" y="66" width="168" height="150" rx="6" fill="#3c2716"/>
+            <rect x="596" y="78" width="148" height="56" fill="#6d4a26"/>
+            ${[0,1,2,3,4,5,6].map(i=>`<rect x="${604+i*20}" y="${88+((i*7)%8)}" width="13" height="${38-((i*7)%8)}" fill="${["#a03d2d","#2d6da0","#3f8a4f","#c9973f","#7a4d8f","#a03d2d","#2d6da0"][i]}"/>`).join("")}
+            <rect x="596" y="140" width="148" height="8" fill="#54381c"/>
+            ${[0,1,2,3,4].map(i=>`<rect x="${606+i*27}" y="${152+((i*5)%6)}" width="17" height="${40-((i*5)%6)}" fill="${["#3f8a4f","#c9973f","#a03d2d","#2d6da0","#7a4d8f"][i]}"/>`).join("")}</g>
+          <g><rect x="330" y="86" width="140" height="104" rx="6" fill="#7a5a30"/>
+            <rect x="340" y="96" width="120" height="84" fill="#8a4b3a"/>
+            <circle cx="400" cy="126" r="24" fill="#e9c46a"/><path d="M352,180 Q400,138 448,180Z" fill="#274d3a"/></g>
+          <ellipse cx="400" cy="452" rx="430" ry="60" fill="#5d2f22"/>
+          <ellipse cx="400" cy="452" rx="300" ry="42" fill="#7a3b2a"/>
+          <ellipse cx="400" cy="452" rx="180" ry="26" fill="#96603a"/></svg>`;
+        return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+          <g class="lampSwing" style="transform-origin:400px 0;animation:lampSway 6s ease-in-out infinite alternate">
+            <rect x="397" y="0" width="6" height="34" fill="#2b1c0d"/>
+            <path d="M366,72 L400,30 L434,72Z" fill="#c9973f"/>
+            <path d="M366,72 L434,72 L428,82 L372,82Z" fill="#a87c2c"/>
+            <circle cx="400" cy="80" r="10" fill="#ffd98a"/></g>
+          <ellipse class="lampGlow" cx="400" cy="104" rx="200" ry="105" fill="#ffca7a" opacity=".14"/>
+          <g opacity=".9"><path d="M30,330 Q60,268 96,292 Q118,306 104,344 Q70,366 38,352Z" fill="#3f6d43"/>
+            <path d="M52,318 Q70,286 92,300" stroke="#5d8f63" stroke-width="6" fill="none"/></g>
+          <style>@keyframes lampSway{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
+          .lampGlow{animation:glowPulse 3.8s ease-in-out infinite alternate}@keyframes glowPulse{from{opacity:.12}to{opacity:.2}}</style></svg>`;
+      }
+      if (place.id === "beach"){
+        if (layer === "back") return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+          <rect width="800" height="200" fill="#51386e"/>
+          <rect y="88" width="800" height="60" fill="#a04e68"/>
+          <rect y="140" width="800" height="42" fill="#e07a4e"/>
+          <rect y="176" width="800" height="26" fill="#f2a65a"/>
+          <circle class="sunSink" cx="400" cy="178" r="42" fill="#ffd98a"/>
+          <circle cx="400" cy="178" r="58" fill="#ffb35c" opacity=".35"/>
+          <rect y="200" width="800" height="86" fill="#33658a"/>
+          ${Array.from({length:12},(_,i)=>`<rect class="shimmer" x="${(i*67)%780}" y="${212+((i*23)%58)}" width="${34+((i*13)%40)}" height="3.4" rx="2" fill="#ffd98a" opacity="${.25+((i*7)%40)/100}" style="animation:shim ${2.4+(i%4)*.7}s ease-in-out ${i*.3}s infinite alternate"/>`).join("")}
+          <rect y="284" width="800" height="176" fill="#9c6b43"/>
+          ${Array.from({length:7},(_,i)=>`<rect x="0" y="${292+i*24}" width="800" height="5" fill="rgba(60,34,14,.4)"/>`).join("")}
+          ${Array.from({length:10},(_,i)=>`<rect x="${i*84+8}" y="288" width="5" height="168" fill="rgba(60,34,14,.35)"/>`).join("")}
+          <style>@keyframes shim{from{transform:translateX(-9px)}to{transform:translateX(9px)}}
+          .sunSink{animation:sunSink 26s ease-in-out infinite alternate}@keyframes sunSink{from{transform:translateY(0)}to{transform:translateY(7px)}}</style></svg>`;
+        return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+          <g class="wheelSpin" style="transform-origin:688px 128px;animation:wheel 46s linear infinite" opacity=".85">
+            <circle cx="688" cy="128" r="86" fill="none" stroke="#3a2440" stroke-width="7"/>
+            <circle cx="688" cy="128" r="12" fill="#3a2440"/>
+            ${Array.from({length:8},(_,i)=>{const a=i*Math.PI/4;return `<line x1="688" y1="128" x2="${688+Math.cos(a)*86}" y2="${128+Math.sin(a)*86}" stroke="#3a2440" stroke-width="5"/><circle cx="${688+Math.cos(a)*86}" cy="${128+Math.sin(a)*86}" r="9" fill="#51386e"/>`;}).join("")}
+          </g><path d="M682,214 L694,214 L700,292 L676,292Z" fill="#3a2440"/>
+          <g fill="#2c1e33"><path d="M66,292 Q58,196 96,148 Q84,206 108,238 Q76,238 88,292Z"/>
+            <path d="M96,150 Q60,120 22,138 Q62,140 84,162Z"/><path d="M96,150 Q104,106 140,96 Q116,132 108,160Z"/>
+            <path d="M96,150 Q132,124 168,140 Q128,146 106,164Z"/></g>
+          <g class="lightSway" style="transform-origin:400px 0;animation:lampSway 7s ease-in-out infinite alternate">
+            <path d="M-10,26 Q400,86 810,26" fill="none" stroke="rgba(20,10,20,.65)" stroke-width="3.5"/>
+            ${Array.from({length:11},(_,i)=>{const x=36+i*73,y=34+Math.sin(i/10*Math.PI)*38;return `<line x1="${x}" y1="${y-10}" x2="${x}" y2="${y}" stroke="rgba(20,10,20,.6)" stroke-width="2.5"/><circle cx="${x}" cy="${y+7}" r="6.5" fill="#ffd98a"/><circle cx="${x}" cy="${y+7}" r="12" fill="#ffd98a" opacity=".22"/>`;}).join("")}
+          </g>
+          <style>@keyframes wheel{to{transform:rotate(360deg)}}@keyframes lampSway{from{transform:rotate(-.7deg)}to{transform:rotate(.7deg)}}</style></svg>`;
+      }
+      /* porch */
+      if (layer === "back") return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+        <rect width="800" height="300" fill="#2c3a63"/>
+        <rect y="150" width="800" height="70" fill="#5a4a72"/>
+        <rect y="212" width="800" height="40" fill="#c97b4a"/>
+        <circle cx="668" cy="66" r="24" fill="#f4ecd2"/><circle cx="659" cy="60" r="20" fill="#2c3a63" opacity=".4"/>
+        ${[[70,50],[150,90],[240,40],[330,74],[520,44],[590,96],[720,140],[430,58]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.2" fill="#ffeeb8"/>`).join("")}
+        <path d="M0,252 Q120,196 260,238 Q420,196 560,232 Q700,200 800,234 L800,300 L0,300Z" fill="#22331f"/>
+        <rect y="248" width="800" height="212" fill="#4f3a26"/>
+        ${Array.from({length:9},(_,i)=>`<rect x="${i*92+4}" y="248" width="4" height="212" fill="rgba(0,0,0,.25)"/>`).join("")}
+        <rect y="238" width="800" height="12" fill="#3a2a18"/></svg>`;
+      return `<svg viewBox="0 0 800 460" preserveAspectRatio="xMidYMid slice">
+        <rect x="0" y="0" width="46" height="330" fill="#3a2a18"/><rect x="754" y="0" width="46" height="330" fill="#3a2a18"/>
+        <rect x="0" y="0" width="800" height="26" fill="#33240f"/>
+        <g class="bulbSway" style="transform-origin:400px 20px;animation:lampSway 5.4s ease-in-out infinite alternate">
+          <rect x="397" y="20" width="5" height="58" fill="#191008"/>
+          <circle cx="400" cy="92" r="14" fill="#ffd98a"/><circle cx="400" cy="92" r="30" fill="#ffd98a" opacity=".2"/></g>
+        ${[[0,318],[64,318],[736,318],[672,318]].map(p=>`<rect x="${p[0]}" y="${p[1]}" width="16" height="90" fill="#3a2a18"/>`).join("")}
+        <rect x="0" y="330" width="240" height="10" fill="#3a2a18"/><rect x="560" y="330" width="240" height="10" fill="#3a2a18"/>
+        ${Array.from({length:7},(_,i)=>`<circle class="firefly" cx="${90+((i*113)%620)}" cy="${270+((i*37)%110)}" r="3.2" fill="#ffe98a" style="animation:flyFloat ${5+(i%3)*1.6}s ease-in-out ${i*.8}s infinite alternate"/>`).join("")}
+        <style>@keyframes lampSway{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+        @keyframes flyFloat{0%{transform:translate(0,0);opacity:.25}50%{opacity:1}100%{transform:translate(16px,-20px);opacity:.4}}</style></svg>`;
+    }
+    function renderPlace(){
+      $("placeBack").innerHTML = placeSVG(S.place, "back");
+      $("placeMid").innerHTML = placeSVG(S.place, "mid");
+    }
+    /* props drawn as inline SVG */
+    function renderProps(){
+      $("drinkProp").innerHTML = `<svg viewBox="0 0 44 58"><path d="M8,14 L36,14 L33,54 Q22,57 11,54Z" fill="#e88ca0" opacity=".92"/>
+        <path d="M8,14 L36,14 L35,24 L9,24Z" fill="#f4a9bc"/><rect x="24" y="0" width="5" height="22" rx="2" fill="#ffd94d" transform="rotate(9 26 10)"/>
+        <ellipse cx="22" cy="14" rx="14" ry="3.4" fill="#fbd3dd"/></svg>`;
+      $("bowlProp").innerHTML = `<svg viewBox="0 0 58 34"><path d="M4,12 L54,12 Q50,32 29,32 Q8,32 4,12Z" fill="#31589e"/>
+        <path d="M4,12 L54,12 Q53,17 50,19 L8,19 Q5,17 4,12Z" fill="#274a86"/>
+        <g fill="#f2c14e"><ellipse cx="18" cy="11" rx="7" ry="3.6"/><ellipse cx="30" cy="9" rx="7" ry="3.6"/><ellipse cx="41" cy="11" rx="7" ry="3.6"/><ellipse cx="24" cy="13" rx="7" ry="3.4"/><ellipse cx="36" cy="13" rx="7" ry="3.4"/></g></svg>`;
+      $("pencil").innerHTML = `<svg viewBox="0 0 64 11"><path d="M0,5.5 L10,1 L10,10Z" fill="#e8c39a"/><path d="M8,3.4 L11,5.5 L8,7.6Z" fill="#333"/>
+        <rect x="10" y="1" width="42" height="9" fill="#f2b134"/><rect x="52" y="1" width="5" height="9" fill="#c0c0c8"/><rect x="57" y="1" width="7" height="9" rx="2" fill="#e88ca0"/></svg>`;
+    }
+
+    /* ---------------- SOUND (synth only, no music) ---------------- */
+    let AC = null;
+    function audio(){ if (!AC){ try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
+      if (AC && AC.state === "suspended") AC.resume(); return AC; }
+    function noiseBurst(dur, freq, gain, type){
+      if (!S.sound) return; const ac = audio(); if (!ac) return;
+      const n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = ac.createBufferSource(); src.buffer = buf;
+      const f = ac.createBiquadFilter(); f.type = type || "bandpass"; f.frequency.value = freq; f.Q.value = 1.1;
+      const g = ac.createGain(); g.gain.value = gain;
+      src.connect(f); f.connect(g); g.connect(ac.destination); src.start();
+    }
+    const sfx = {
+      flip(){ noiseBurst(.07, 2400, .12); },
+      snap(){ noiseBurst(.05, 3200, .22); setTimeout(()=>noiseBurst(.04, 1800, .1), 30); },
+      sweep(){ noiseBurst(.28, 700, .07, "lowpass"); },
+      trash(){ noiseBurst(.09, 1200, .1, "lowpass"); },
+      chip(){ noiseBurst(.05, 4000, .08, "highpass"); }
+    };
+    let ambientNodes = null;
+    function ambient(on){
+      const ac = audio(); if (!ac) return;
+      if (on && !ambientNodes && S.sound){
+        const n = ac.sampleRate * 2, buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
+        let last = 0; for (let i = 0; i < n; i++){ const w = Math.random() * 2 - 1; last = (last + .02 * w) / 1.02; ch[i] = last * 3.2; }
+        const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+        const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 320;
+        const g = ac.createGain(); g.gain.value = .028;
+        const lfo = ac.createOscillator(); lfo.frequency.value = .09;
+        const lg = ac.createGain(); lg.gain.value = .012; lfo.connect(lg); lg.connect(g.gain);
+        src.connect(f); f.connect(g); g.connect(ac.destination); src.start(); lfo.start();
+        ambientNodes = { src, g, lfo };
+      } else if (!on && ambientNodes){
+        try { ambientNodes.src.stop(); ambientNodes.lfo.stop(); } catch(e){}
+        ambientNodes = null;
+      }
+    }
+    function setSound(on){
+      S.sound = on;
+      $("soundBtn").textContent = on ? "🔊" : "🔇";
+      $("soundBtn2").textContent = on ? "🔊 SOUND ON" : "🔇 SOUND OFF";
+      ambient(on && S.phase !== "intro");
+    }
+
+    /* ---------------- SPEECH / STATUS ---------------- */
+    let bubbleTimer = null;
+    function say(text, ms){
+      const b = $("bubble"); b.textContent = text; b.classList.add("show");
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => b.classList.remove("show"), ms || 2600);
+    }
+    function status(t){ $("statusText").textContent = t; }
+    function renderTally(){
+      const t = $("tally");
+      if (S.phase === "play" || S.phase === "bid"){
+        t.innerHTML = `Tricks — You ${S.tricksWon.you} · ${S.friend.name} ${S.tricksWon.ai}` +
+          (S.bids.you !== null ? `<br><span class="dim">Bid: You ${bidLabel(S.bids.you)} · ${S.friend.name} ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "…"}</span>` : "") +
+          `<br><span class="dim">${S.spadesBroken ? "♠ broken" : "♠ not broken"}</span>`;
+      } else if (S.phase === "draft"){
+        t.innerHTML = `Draft — You ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">trash ${S.trashUp.length + S.trashDown}</span>`;
+      } else t.textContent = "";
+    }
+    function bidLabel(b){ if (b === null || b === undefined) return "…"; return b === 0 ? "NIL" : b === 4 ? "BOARD·4" : String(b); }
+
+    /* ---------------- HAND RENDERING ---------------- */
+    function renderHand(legal){
+      const handEl = $("hand"); handEl.innerHTML = "";
+      const n = S.hand.you.length;
+      const cwPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cw")) || 56;
+      const avail = handEl.clientWidth || 640;
+      const spread = n > 1 ? clamp((avail - cwPx) / (n - 1), 15, 44) : 0;
+      S.hand.you.forEach((c, i) => {
+        const el = makeCardEl(c);
+        const mid = (n - 1) / 2, off = i - mid;
+        el.style.transform = `translateX(calc(-50% + ${off * spread}px)) rotate(${off * 1.4}deg) translateY(${Math.abs(off) * 1.2}px)`;
+        el.style.zIndex = i + 1;
+        el.setAttribute("aria-label", rankStr(c.rank) + " of " + SUITS[c.suit].name);
+        const isLegal = legal ? legal.includes(c) : false;
+        if (S.phase === "play" && S.trick.length < 2){
+          el.setAttribute("role", "button");
+          el.classList.add(isLegal ? "legal" : "dim");
+          if (isLegal){
+            el.tabIndex = 0;
+            el.addEventListener("click", () => onCardTap(c, el));
+            el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onCardTap(c, el); } });
+          } else {
+            el.setAttribute("aria-disabled", "true");
+          }
+        }
+        handEl.appendChild(el);
+      });
+    }
+    function renderStage(){
+      const deck = $("deckStack"); deck.innerHTML = "";
+      const layers = clamp(Math.ceil(S.deck.length / 9), 0, 6);
+      for (let i = 0; i < layers; i++){
+        const b = makeBackEl("stackcard"); b.style.transform = `translate(${-i * 1.5}px, ${-i * 1.5}px)`; deck.appendChild(b);
+      }
+      const fan = $("trashFan");
+      fan.querySelectorAll(".mini").forEach(e => e.remove());
+      const show = S.trashUp.slice(-7);
+      show.forEach((c, i) => {
+        const el = makeCardEl(c, "mini");
+        el.style.setProperty("--cw", "40px");
+        el.style.transform = `rotate(${(i - (show.length - 1) / 2) * 13}deg)`;
+        fan.appendChild(el);
+      });
+      $("trashCount").textContent = "trash " + (S.trashUp.length + S.trashDown);
+    }
+    function showStage(on){
+      $("stageArea").classList.toggle("hidden", !on);
+      if (!on) $("stageLabel").classList.add("hidden");
+    }
+    function stageLabel(t){
+      const l = $("stageLabel");
+      if (!t){ l.classList.add("hidden"); return; }
+      l.textContent = t; l.classList.remove("hidden");
+    }
+    function flyCard(fromEl, toEl, faceCard, done){
+      if (!fromEl || !toEl){ done && done(); return; }
+      const scene = $("scene").getBoundingClientRect();
+      const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+      const ghost = faceCard ? makeCardEl(faceCard) : makeBackEl();
+      ghost.classList.add("fly");
+      ghost.style.left = (a.left - scene.left) + "px"; ghost.style.top = (a.top - scene.top) + "px";
+      ghost.style.setProperty("--cw", Math.round(a.width) + "px");
+      $("scene").appendChild(ghost);
+      requestAnimationFrame(() => {
+        ghost.style.transform = `translate(${b.left - a.left + (b.width - a.width) / 2}px, ${b.top - a.top}px) scale(.55)`;
+        ghost.style.opacity = ".25";
+      });
+      setTimeout(() => { ghost.remove(); done && done(); }, 520);
+    }
+
+    /* ---------------- DRAFT ---------------- */
+    let draftCard = null;
+    async function startMatch(){
+      S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
+      S.starter = Math.random() < .5 ? "you" : "ai";
+      renderNotebook(); ambient(S.sound);
+      await startHand();
+    }
+    async function startHand(){
+      S.handNo++;
+      S.deck = newDeck(); S.trashUp = []; S.trashDown = 0;
+      S.hand = { you: [], ai: [] };
+      S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
+      S.trick = []; S.spadesBroken = false; S.trickNo = 0; S.seenKeptYou = [];
+      S.phase = "draft"; S.draftTurn = S.starter;
+      showStage(true); renderStage(); renderHand(); renderFriendFan(); renderTally();
+      $("flipCard").innerHTML = "";
+      status(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You flip first." : S.friend.name + " flips first."}`);
+      say(S.handNo === 1 ? S.friend.greet : pick(["Fresh deck. Same rules.","New hand — watch the trash.","The draft is where this is won."]), 3000);
+      setExpr("idle");
+      await wait(900);
+      draftStep();
+    }
+    function draftStep(){
+      if (S.hand.you.length >= 13 && S.hand.ai.length >= 13){ endDraft(); return; }
+      renderStage(); renderTally();
+      const turn = S.draftTurn;
+      draftCard = S.deck.pop();
+      sfx.flip();
+      const flip = $("flipCard");
+      flip.innerHTML = "";
+      const el = makeCardEl(draftCard, "flipIn"); el.style.setProperty("--cw", "76px");
+      flip.appendChild(el);
+      renderStage();
+      if (turn === "you"){
+        stageLabel("Your flip — take it or trash it?");
+        status(`You flipped the ${cardName(draftCard)}. Keep it, or trash it and take the next card blind?`);
+        setActions([
+          { label: "KEEP ✓", cls: "primary", fn: () => draftDecide(true) },
+          { label: "PASS ✕", cls: "pass", fn: () => draftDecide(false) }
+        ]);
+        setExpr("playing");
+      } else {
+        stageLabel(`${S.friend.name} is eyeing the ${cardName(draftCard)}…`);
+        status(`${S.friend.name} flipped the ${cardName(draftCard)} and is deciding…`);
+        setActions([]);
+        setExpr("thinking");
+        setTimeout(() => draftDecide(aiDraftLikes(draftCard)), 1000 + Math.random() * 900 + (S.friend.id === "blond" ? 500 : 0));
+      }
+    }
+    async function draftDecide(keep){
+      const turn = S.draftTurn, card = draftCard; draftCard = null;
+      setActions([]);
+      $("flipCard").innerHTML = "";
+      if (keep){
+        S.hand[turn].push(card); sortHand(S.hand[turn]);
+        if (turn === "you"){ S.seenKeptYou.push(card); }
+        if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftKeep));
+        const blind = S.deck.pop();
+        S.trashDown++;
+        sfx.trash();
+        flyCard($("deckStack"), $("trashFan"), null, null);
+        if (turn === "you") status(`Kept the ${cardName(card)}. The next card goes to the trash, unseen.`);
+        else status(`${S.friend.name} kept the ${cardName(card)}.`);
+      } else {
+        S.trashUp.push(card);
+        sfx.trash();
+        if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftPass));
+        const forced = S.deck.pop();
+        S.hand[turn].push(forced); sortHand(S.hand[turn]);
+        flyCard($("flipCard"), $("trashFan"), card, null);
+        if (turn === "you") status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not.`);
+        else status(`${S.friend.name} passed on the ${cardName(card)} and took the next one blind.`);
+      }
+      if (turn === "you") renderHand(); else renderFriendFan();
+      renderStage(); renderTally();
+      S.draftTurn = turn === "you" ? "ai" : "you";
+      await wait(turn === "you" ? 620 : 480);
+      draftStep();
+    }
+    function cardDraftValue(c, hand){
+      let v = (c.rank - 2) / 12;                       // 0..1 by rank
+      if (isSpade(c)) v += .3;                          // trump is gold
+      if (c.rank >= 13) v += .12;
+      if (c.rank === 14) v += .1;
+      const suitCount = hand.filter(x => x.suit === c.suit).length;
+      if (!isSpade(c) && suitCount === 0 && c.rank <= 8) v += .08; // short-suit potential
+      return v;
+    }
+    function aiDraftLikes(c){
+      const v = cardDraftValue(c, S.hand.ai);
+      return v >= S.friend.draftKeep + (Math.random() * .1 - .05);
+    }
+    function endDraft(){
+      showStage(false); stageLabel("");
+      sortHand(S.hand.you); sortHand(S.hand.ai);
+      renderHand(); renderFriendFan();
+      status(`Draft done — 26 cards kept, 26 in the trash. Time to bid.`);
+      say(pick(["That's a hand. Now we talk numbers.","Draft's done. Bid honest… or don't.","Twenty-six gone forever. I counted the good ones."]), 2600);
+      startBidding();
+    }
+
+    /* ---------------- BIDDING ---------------- */
+    function handStrength(h){
+      let est = 0;
+      const bySuit = [[], [], [], []];
+      h.forEach(c => bySuit[c.suit].push(c));
+      for (let s = 0; s < 4; s++){
+        const cards = bySuit[s];
+        cards.forEach(c => { if (c.rank === 14) est += .95; else if (c.rank === 13) est += cards.length >= 2 ? .62 : .4; else if (c.rank === 12) est += cards.length >= 3 ? .3 : .12; });
+        if (s !== 0 && cards.length <= 2 && bySuit[0].length >= 2) est += (2 - cards.length) * .38; // ruffing short suits
+      }
+      const sp = bySuit[0];
+      est += Math.max(0, sp.length - 2) * .3;
+      if (sp.some(c => c.rank === 14)) est += .25;
+      if (sp.some(c => c.rank === 13)) est += .15;
+      return est;
+    }
+    function aiChooseBid(){
+      const est = handStrength(S.hand.ai);
+      const weak = est < 1.6 && !S.hand.ai.some(c => c.rank === 14) && S.hand.ai.filter(isSpade).length <= 2;
+      if (weak && Math.random() < .55) return 0; // NIL
+      let b = Math.round(est + (S.friend.agg - .55) * 1.2);
+      return clamp(b, 4, 12);
+    }
+    function startBidding(){
+      S.phase = "bid"; renderTally();
+      const first = S.starter === "you" ? "ai" : "you"; // non-starter bids first
+      if (first === "ai"){
+        S.bids.ai = aiChooseBid();
+        setTimeout(() => {
+          say(S.bids.ai === 0 ? "I'm going NIL. Laugh it up." : S.bids.ai >= 8 ? pick(GENERIC.bidHigh) : S.bids.ai <= 4 ? pick(GENERIC.bidLow) : `I'll take ${S.bids.ai}.`, 2600);
+          setExpr(S.bids.ai === 0 ? "thinking" : "pleased");
+          promptYourBid();
+        }, 1100);
+      } else {
+        say("You bid first. Remember — lowest you can go is Board.", 2600);
+        promptYourBid();
+      }
+    }
+    function promptYourBid(){
+      status(`${S.friend.name} bid ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "—"}. Your bid?`);
+      const acts = [{ label: "NIL", cls: "nil", fn: () => yourBid(0) },
+                    { label: "BOARD · 4", cls: "board", fn: () => yourBid(4) }];
+      for (let b = 5; b <= 13; b++) acts.push({ label: String(b), cls: "bid", fn: () => yourBid(b) });
+      setActions(acts);
+      renderTally();
+    }
+    function yourBid(b){
+      S.bids.you = b;
+      if (S.bids.ai === null){
+        S.bids.ai = aiChooseBid();
+        say(S.bids.ai === 0 ? "Me? NIL. Zero tricks, watch me dance." : `${S.friend.name === "Blond" ? "…" : ""}I bid ${bidLabel(S.bids.ai)}.`, 2400);
+      }
+      setActions([]);
+      status(`Bids are in — You: ${bidLabel(b)} · ${S.friend.name}: ${bidLabel(S.bids.ai)}. Play!`);
+      if (b === 0) say(pick(GENERIC.yourNil), 3000);
+      S.leader = S.starter === "you" ? "ai" : "you"; // non-starter leads trick 1
+      beginPlay();
+    }
+    function setActions(list){
+      const bar = $("actions"); bar.innerHTML = "";
+      list.forEach(a => {
+        const btn = document.createElement("button");
+        btn.textContent = a.label;
+        btn.className = a.cls === "bid" || a.cls === "nil" || a.cls === "board" ? "bidbtn " + a.cls.replace("bid","") : "btn " + (a.cls || "");
+        btn.addEventListener("click", a.fn);
+        bar.appendChild(btn);
+      });
+    }
+
+    /* ---------------- TRICK PLAY ---------------- */
+    function legalCards(who){
+      const h = S.hand[who];
+      if (S.trick.length === 0){
+        if (S.spadesBroken || h.every(isSpade)) return h.slice();
+        return h.filter(c => !isSpade(c));
+      }
+      const led = S.trick[0].card.suit;
+      const follow = h.filter(c => c.suit === led);
+      return follow.length ? follow : h.slice();
+    }
+    function trickWinner(){
+      const led = S.trick[0].card.suit;
+      let best = S.trick[0];
+      for (const p of S.trick){
+        const c = p.card;
+        if (isSpade(c) && !isSpade(best.card)) best = p;
+        else if (c.suit === best.card.suit && c.rank > best.card.rank) best = p;
+        else if (!isSpade(best.card) && c.suit === led && best.card.suit !== led) best = p;
+      }
+      return best.who;
+    }
+    function beginPlay(){
+      S.phase = "play"; S.trickNo = 0;
+      setActions([]); // installs the emote bar for the play phase
+      renderTally(); nextTrick();
+    }
+    function nextTrick(){
+      S.trick = []; S.trickNo++;
+      renderTrick();
+      if (S.trickNo > 13){ endHand(); return; }
+      if (S.leader === "ai"){
+        status(`${S.friend.name} leads trick ${S.trickNo}.`);
+        setExpr("playing");
+        setTimeout(aiPlay, 850 + Math.random() * 500);
+      } else {
+        status(`Your lead, trick ${S.trickNo}.${!S.spadesBroken ? " Spades aren't broken yet." : ""}`);
+        renderHand(legalCards("you"));
+      }
+      renderTally();
+    }
+    function renderTrick(){ clearTrickZone(); }
+    function showTrickCard(who, card){
+      let zone = $("trickZone");
+      if (!zone){
+        zone = document.createElement("div"); zone.id = "trickZone";
+        zone.style.cssText = "position:absolute;z-index:8;left:50%;bottom:10%;transform:translateX(-50%);display:flex;gap:26px;";
+        $("scene").appendChild(zone);
+        zone.innerHTML = `<div class="trick-slot" id="slotAi"></div><div class="trick-slot" id="slotYou"></div>`;
+      }
+      zone.classList.remove("hidden");
+      const slot = $(who === "ai" ? "slotAi" : "slotYou");
+      slot.innerHTML = "";
+      const el = makeCardEl(card, "flipIn"); el.style.setProperty("--cw", "64px");
+      slot.appendChild(el);
+      const who1 = document.createElement("div"); who1.className = "who";
+      who1.textContent = who === "ai" ? S.friend.name.toUpperCase() : "YOU";
+      slot.appendChild(who1);
+      sfx.snap();
+    }
+    function clearTrickZone(){ const z = $("trickZone"); if (z) z.innerHTML = `<div class="trick-slot" id="slotAi"></div><div class="trick-slot" id="slotYou"></div>`; }
+    function onCardTap(card, el){
+      if (S.phase !== "play" || S.busy) return;
+      const legal = legalCards("you");
+      if (!legal.includes(card)){
+        el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+        const led = S.trick.length ? S.trick[0].card.suit : null;
+        status(led !== null && S.hand.you.some(c => c.suit === led)
+          ? `You have to follow ${SUITS[led].name} if you can.`
+          : "Spades can't be led until they're broken.");
+        return;
+      }
+      playCard("you", card);
+    }
+    async function playCard(who, card){
+      const h = S.hand[who];
+      h.splice(h.indexOf(card), 1);
+      S.trick.push({ who, card });
+      if (isSpade(card)) S.spadesBroken = true;
+      showTrickCard(who, card);
+      if (who === "you") renderHand(); else renderFriendFan();
+      renderTally();
+      if (S.trick.length === 1){
+        const other = who === "you" ? "ai" : "you";
+        if (other === "ai"){
+          status(`${S.friend.name} is thinking…`);
+          setExpr("thinking");
+          setTimeout(aiPlay, 800 + Math.random() * 550);
+        } else {
+          status(`Follow ${SUITS[card.suit].name} if you can — your play.`);
+          renderHand(legalCards("you"));
+        }
+      } else {
+        S.busy = true;
+        await wait(950);
+        const winner = trickWinner();
+        S.tricksWon[winner]++;
+        const wEl = $(winner === "ai" ? "slotAi" : "slotYou");
+        [ $("slotAi"), $("slotYou") ].forEach(s => { if (s) s.style.transition = "transform .45s ease, opacity .45s"; });
+        if ($("slotAi")) $("slotAi").style.transform = winner === "ai" ? "translateY(-26px)" : "translateY(10px)";
+        if ($("slotYou")) $("slotYou").style.transform = winner === "you" ? "translateY(16px)" : "translateY(-8px)";
+        [ $("slotAi"), $("slotYou") ].forEach(s => { if (s) s.style.opacity = ".15"; });
+        sfx.sweep();
+        await wait(480);
+        clearTrickZone();
+        [ $("slotAi"), $("slotYou") ].forEach(s => { if (s){ s.style.transform = ""; s.style.opacity = ""; } });
+        S.busy = false;
+        S.leader = winner;
+        reactToTrick(winner);
+        renderTally();
+        nextTrick();
+      }
+    }
+    let lastReactTrick = 0;
+    function reactToTrick(winner){
+      if (S.trickNo - lastReactTrick < 3 || Math.random() < .45) return;
+      lastReactTrick = S.trickNo;
+      if (winner === "ai"){ setExpr("pleased"); if (Math.random() < .5) say(pick(S.friend.lines.win.concat(GENERIC.winTrick)), 1700); }
+      else { setExpr(Math.random() < .5 ? "worried" : "playing"); if (Math.random() < .4) say(pick(S.friend.lines.lose.concat(GENERIC.loseTrick)), 1700); }
+    }
+    /* ---- AI card choice: only public info (own hand, played cards, public trash/keeps) ---- */
+    function aiPlay(){
+      if (S.phase !== "play") return;
+      const card = aiChooseCard();
+      setExpr("playing");
+      playCard("ai", card);
+    }
+    function aiChooseCard(){
+      const h = S.hand.ai, legal = legalCards("ai");
+      const aiNil = S.bids.ai === 0, youNil = S.bids.you === 0;
+      const byRank = (a, b) => a.rank - b.rank;
+      const lowest = arr => arr.slice().sort(byRank)[0];
+      const highest = arr => arr.slice().sort(byRank)[arr.length - 1];
+      const need = aiNil ? 99 : (S.bids.ai - S.tricksWon.ai); // tricks still needed
+      const led = S.trick.length ? S.trick[0] : null;
+      const curWin = led ? trickWinner() : null;
+
+      function duckOptions(){ // cards that do NOT win the current trick
+        if (!led) return legal;
+        return legal.filter(c => {
+          if (c.suit === led.card.suit) return isSpade(led.card) ? c.rank < led.card.rank : (isSpade(c) ? false : c.rank < led.card.rank);
+          return !isSpade(c);
+        });
+      }
+      if (led){
+        const follow = legal.filter(c => c.suit === led.card.suit);
+        if (aiNil || (need <= 0 && !youNil)){
+          const ducks = duckOptions();
+          if (follow.length){
+            const under = follow.filter(c => c.rank < led.card.rank);
+            if (under.length) return highest(under);
+            return lowest(follow);
+          }
+          if (ducks.length){
+            const junk = ducks.filter(c => !isSpade(c));
+            return junk.length ? highest(junk) : lowest(ducks); // shed big junk, never waste trump to win
+          }
+          return lowest(legal);
+        }
+        if (youNil && curWin === "you"){
+          // feed the Nil bidder tricks: stay UNDER their card
+          if (follow.length){
+            const under = follow.filter(c => c.rank < led.card.rank);
+            if (under.length) return highest(under);
+            return lowest(follow); // forced: ai wins it back — take lowest
+          }
+          const junk = legal.filter(c => !isSpade(c));
+          return junk.length ? lowest(junk) : lowest(legal);
+        }
+        // normal: try to win cheaply if still needed
+        if (follow.length){
+          const winners = follow.filter(c => c.rank > led.card.rank && !(isSpade(led.card) && !isSpade(c)));
+          if (winners.length && curWin === "you") return lowest(winners);
+          return lowest(follow);
+        }
+        // void in led suit
+        if (curWin === "you" && need > 0){
+          const trumps = legal.filter(isSpade);
+          if (trumps.length){
+            const cur = S.trick.find(p => p.who === curWin).card;
+            const winT = trumps.filter(c => !isSpade(cur) || c.rank > cur.rank);
+            if (winT.length) return lowest(winT);
+          }
+        }
+        const junk = legal.filter(c => !isSpade(c));
+        return junk.length ? lowest(junk) : lowest(legal);
+      }
+      /* leading */
+      if (aiNil){
+        return lowest(legal.filter(c => !isSpade(c)).length ? legal.filter(c => !isSpade(c)) : legal);
+      }
+      if (youNil){
+        // lead low into suits where Gary was SEEN keeping high cards (public info)
+        const nonSpade = legal.filter(c => !isSpade(c));
+        const pool = nonSpade.length ? nonSpade : legal;
+        let bestLead = null;
+        for (const c of pool){
+          const seenHigh = S.seenKeptYou.some(k => k.suit === c.suit && k.rank > c.rank);
+          if (seenHigh && c.rank <= 9){ bestLead = c; break; }
+        }
+        return bestLead || lowest(pool);
+      }
+      if (need > 0){
+        // lead an ace, or from longest suit; draw trump if broken & strong
+        const ace = legal.find(c => c.rank === 14 && !isSpade(c));
+        if (ace) return ace;
+        if (S.spadesBroken){
+          const bigSpade = legal.filter(isSpade).sort(byRank).reverse()[0];
+          if (bigSpade && bigSpade.rank >= 12 && Math.random() < .6) return bigSpade;
+        }
+        const bySuit = {};
+        legal.filter(c => !isSpade(c)).forEach(c => { (bySuit[c.suit] = bySuit[c.suit] || []).push(c); });
+        let bestSuit = null;
+        Object.values(bySuit).forEach(arr => { if (!bestSuit || arr.length > bestSuit.length) bestSuit = arr; });
+        if (bestSuit) return lowest(bestSuit);
+      }
+      const nonSpade = legal.filter(c => !isSpade(c));
+      return lowest(nonSpade.length ? nonSpade : legal);
+    }
+
+    /* ---------------- SCORING + NOTEBOOK ---------------- */
+    function scorePlayer(bid, tricks, who){
+      if (bid === 0) return { pts: tricks <= 2 ? 100 : -100, bags: 0, nil: true };
+      if (tricks >= bid){
+        const newBags = tricks - bid;
+        const before = Math.floor(S.bags[who] / 10), after = Math.floor((S.bags[who] + newBags) / 10);
+        return { pts: bid * 10 + newBags - (after - before) * 100, bags: newBags, bagPenalty: (after - before) * 100 };
+      }
+      return { pts: -bid * 10, bags: 0, set: true };
+    }
+    async function endHand(){
+      S.phase = "handEnd"; clearTrickZone(); renderHand(); setActions([]);
+      const ry = scorePlayer(S.bids.you, S.tricksWon.you, "you");
+      const ra = scorePlayer(S.bids.ai, S.tricksWon.ai, "ai");
+      S.bags.you += ry.bags || 0; S.bags.ai += ra.bags || 0;
+      S.score.you += ry.pts; S.score.ai += ra.pts;
+      S.history.push({ n: S.handNo, yb: S.bids.you, ab: S.bids.ai, yt: S.tricksWon.you, at: S.tricksWon.ai,
+        yp: ry.pts, ap: ra.pts, yTot: S.score.you, aTot: S.score.ai, yBags: S.bags.you, aBags: S.bags.ai, ry, ra });
+      /* friend writes it in the notebook */
+      status(`${S.friend.name} is writing it in the notebook…`);
+      $("pencil").classList.add("writing");
+      if (ry.nil) { setExpr(ry.pts > 0 ? "beaten" : "celebrating"); say(ry.pts > 0 ? pick(GENERIC.nilMade) : pick(GENERIC.nilBust), 3000); }
+      else if (ra.nil) { setExpr(ra.pts > 0 ? "pleased" : "worried"); say(ra.pts > 0 ? "Nil made. The ducking worked." : "My Nil — BUSTED. The pencil saw it too.", 3000); }
+      else if (ry.set) { setExpr("pleased"); say(pick(S.friend.lines.set.concat(["You needed " + S.bids.you + ". The notebook is merciless."])), 3000); }
+      else if (ra.set) { setExpr("beaten"); say(pick(["Set. ME. Write it small, please.","Okay. That hand never happened. (It did. It's in the book.)"]), 3000); }
+      else setExpr(S.score.you >= S.score.ai ? "worried" : "pleased");
+      await wait(1500);
+      $("pencil").classList.remove("writing");
+      renderNotebook(true);
+      sfx.chip();
+      const line = `Hand ${S.handNo}: You ${ry.pts >= 0 ? "+" : ""}${ry.pts} · ${S.friend.name} ${ra.pts >= 0 ? "+" : ""}${ra.pts}.`;
+      const matchOver = (S.score.you >= S.target || S.score.ai >= S.target) && S.score.you !== S.score.ai;
+      if (matchOver) return endMatch();
+      const matchPoint = S.score.you >= S.target - 60 || S.score.ai >= S.target - 60;
+      status(line + (matchPoint ? " Next hand could end it." : " Next hand?"));
+      if (matchPoint) say(pick(GENERIC.matchPoint), 2600);
+      setActions([{ label: `DEAL HAND ${S.handNo + 1} ♠`, cls: "primary", fn: () => { S.starter = S.starter === "you" ? "ai" : "you"; startHand(); } }]);
+      renderTally();
+    }
+    function endMatch(){
+      S.phase = "matchEnd";
+      const youWin = S.score.you > S.score.ai;
+      setExpr(youWin ? "beaten" : "celebrating");
+      if (!youWin) $("friendWrap").classList.add("celebrateBounce");
+      setTimeout(() => $("friendWrap").classList.remove("celebrateBounce"), 1800);
+      say(pick(GENERIC.gg), 3000);
+      status(`Match over — ${youWin ? "you take the table!" : S.friend.name + " takes the table."} Final: You ${S.score.you} · ${S.friend.name} ${S.score.ai}.`);
+      if (youWin) confetti();
+      showSheet(matchSheetHTML(youWin));
+    }
+    function confetti(){
+      const colors = ["#e9b44c", "#c22f2f", "#31589e", "#3f8a4f", "#ef7fa5"];
+      for (let i = 0; i < 26; i++){
+        const d = document.createElement("div"); d.className = "confetti";
+        d.style.left = Math.random() * 100 + "vw"; d.style.top = "-20px";
+        d.style.background = pick(colors); d.style.animationDelay = (Math.random() * .5) + "s";
+        document.body.appendChild(d); setTimeout(() => d.remove(), 2600);
+      }
+    }
+    function tallyStr(n){
+      if (n === 0) return "—";
+      let s = "";
+      const groups = Math.floor(n / 5), rem = n % 5;
+      for (let i = 0; i < groups; i++) s += "||||╱ ";
+      for (let i = 0; i < rem; i++) s += "|";
+      return s.trim();
+    }
+    function renderNotebook(pop){
+      const last = S.history[S.history.length - 1];
+      $("nbLines").textContent = last
+        ? `H${last.n}: you ${last.yTot} · ${S.friend.name.toLowerCase()} ${last.aTot}`
+        : "no hands yet";
+      $("nbTotal").textContent = `You ${S.score.you} · ${S.friend.name} ${S.score.ai}`;
+      if (pop){ const nb = $("notebook"); nb.style.transform = "rotate(-3deg) scale(1.12)"; setTimeout(() => nb.style.transform = "rotate(-3deg)", 350); }
+    }
+    function scoreSheetHTML(){
+      if (!S.history.length) return `<h2>The Notebook</h2><p>No hands yet — the pencil is sharp and waiting.</p>
+        <p>Match to <b>${S.target}</b>. Bags so far — you: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
+      const rows = S.history.map(h => `<tr><td>Hand ${h.n}</td>
+        <td>${bidLabel(h.yb)} → ${h.yt}<br>${h.yp >= 0 ? "+" : ""}${h.yp}</td>
+        <td>${bidLabel(h.ab)} → ${h.at}<br>${h.ap >= 0 ? "+" : ""}${h.ap}</td>
+        <td><b>${h.yTot}</b></td><td><b>${h.aTot}</b></td></tr>`).join("");
+      return `<h2>The Notebook 📓</h2>
+        <p style="margin-top:0">Match to <b>${S.target}</b> vs <b>${S.friend.name}</b>. Bid → tricks taken, then points.</p>
+        <table class="scoreTable"><tr><th></th><th>You</th><th>${S.friend.name}</th><th>You Σ</th><th>${S.friend.name} Σ</th></tr>
+        ${rows}
+        <tr class="totals"><td>Total</td><td></td><td></td><td>${S.score.you}</td><td>${S.score.ai}</td></tr></table>
+        <p><b>Bags</b> — you: <span class="tallyMarks">${tallyStr(S.bags.you)}</span> (${S.bags.you}) · ${S.friend.name}: <span class="tallyMarks">${tallyStr(S.bags.ai)}</span> (${S.bags.ai})<br>
+        <span style="font-size:13.5px">Every 10 bags in the bank costs 100. The pencil forgets nothing.</span></p>`;
+    }
+    function matchSheetHTML(youWin){
+      return `<div id="matchBanner"><div class="big">${youWin ? "🏆 You take the table!" : S.friend.name + " takes the table"}</div>
+        <p>Final from the notebook: <b>You ${S.score.you}</b> · <b>${S.friend.name} ${S.score.ai}</b> — first to ${S.target}.</p></div>
+        ${scoreSheetHTML()}
+        <div class="closeRow" style="gap:10px;flex-wrap:wrap">
+          <button class="paperBtn" id="rematchBtn">REMATCH ♠</button>
+          <button class="paperBtn" id="changeTableBtn" style="background:#274d3a">CHANGE TABLE</button>
+        </div>`;
+    }
+
+    /* ---------------- SHEETS / MODALS ---------------- */
+    function showSheet(html){
+      $("sheetBody").innerHTML = html + (html.includes("closeRow") && html.includes("rematchBtn") ? "" :
+        `<div class="closeRow"><button class="paperBtn" id="sheetClose">BACK TO THE TABLE</button></div>`);
+      $("sheetOverlay").classList.remove("hidden");
+      const c = $("sheetClose"); if (c) c.addEventListener("click", hideSheet);
+      const r = $("rematchBtn"); if (r) r.addEventListener("click", () => { hideSheet(); startMatch(); });
+      const t = $("changeTableBtn"); if (t) t.addEventListener("click", () => { hideSheet(); backToIntro(); });
+    }
+    function hideSheet(){ $("sheetOverlay").classList.add("hidden"); }
+    function howToHTML(){
+      return `<h2>How We Play ♠</h2>
+      <p style="margin-top:0">Heads-up Spades, Gary's house rules. Two players, one deck, no partners to hide behind.</p>
+      <h3>🂡 The Draft Deal</h3>
+      <p>There's no regular deal and no stock to draw from. The shuffled deck sits face-down in the middle and you <b>draft</b> your hands, one decision at a time:</p>
+      <ul>
+        <li>On your turn, flip the top card so <b>both players see it</b>.</li>
+        <li><b>Like it?</b> Keep it — and the next card goes to the trash <i>unseen</i>.</li>
+        <li><b>Don't like it?</b> It goes in the trash — and you <b>must</b> take the next card, no second thoughts.</li>
+        <li>Back and forth until you both hold 13. The whole deck gets used: <b>26 kept, 26 trashed</b>.</li>
+      </ul>
+      <p>Every flipped card is public, so track the trash — knowing what's dead is half the game. Your friend plays by the same information you get. Nothing up anyone's sleeve.</p>
+      <h3>🎯 Bidding</h3>
+      <p>After the draft, bid how many tricks you'll take. The bid bar is <b>NIL · BOARD (4) · 5 · 6 · 7 · 8 · 9 · 10 · 11 · 12 · 13</b>. There are no 1, 2 or 3 bids — <b>lowest you can go is Board — 4</b>.</p>
+      <h3>🌙 Nil — the friendly way</h3>
+      <p>Bid <b>Nil</b> instead of a number and you may take <b>up to 2 tricks</b> and still make it. The <b>3rd trick busts you</b>. Made Nil pays <b>+100</b>; busted Nil costs <b>−100</b>. Nil replaces your bid completely — those 0–2 tricks aren't bags and score nothing else. Your opponent scores their own bid as usual… and yes, they'll try to force that third trick on you.</p>
+      <h3>🃏 Playing Tricks</h3>
+      <ul>
+        <li>Follow suit if you can. Can't? Trump with a spade or throw off junk.</li>
+        <li><b>Spades can't be led until they're broken</b> — a spade has to hit the table on a trick first.</li>
+        <li>Highest card of the led suit wins, unless a spade takes it. Trick winner leads next.</li>
+        <li>Your hand is the 13 you drafted. Win a trick, lose a trick — no drawing, ever.</li>
+      </ul>
+      <h3>📓 Scoring — notebook &amp; pencil</h3>
+      <ul>
+        <li>Make your bid: <b>10 points per trick bid</b>. Each trick over is a <b>bag, +1</b>.</li>
+        <li>Every <b>10 bags</b> in the bank: <b>−100</b>.</li>
+        <li>Miss your bid: <b>−10 per trick bid</b>.</li>
+        <li>First to the match score — <b>250</b> or <b>500</b>, your pick at the table — wins.</li>
+      </ul>
+      <p>The score lives in the paper notebook on the table. Tap it any time to read the whole sheet.</p>`;
+    }
+    /* ---------------- QR ---------------- */
+    const QR_ROWS = ["111111101111000010011101001111111","100000101100101011001001101000001","101110100100011000110001101011101","101110101110100100110101101011101","101110100110100011100111101011101","100000100010010110100101001000001","111111101010101010101010101111111","000000001011100111110000100000000","101101110011101111100101001001011","001100001010110011111001001101111","001110100011110000101111101111011","110101010100000011011110100101000","101010111011101010001111110111011","000001010110011001001001000100010","011011101100111001011000101011000","101001000101101100100101011101100","000001111010010000000110011010100","011100000011101100001011111011011","111011111110011110101100010110100","101011000101011111101011101010010","001001110111110110000010000101110","101010010100100111001111101000101","000100101011010100111101111111011","011010010000000100001001001010001","101100101101010001010000111110001","000000001110010100010101100011010","111111101010011001111101101010000","100000101000000011111001100011100","101110100111100111100011111110111","101110101011001011010111000101111","101110101000101110101011101101100","100000100110011001101000111110001","111111101111101011110101000011100"];
+    function drawQR(){
+      const cv = $("qrCanvas"), ctx = cv.getContext("2d");
+      const N = QR_ROWS.length, Q = 4, total = N + Q * 2;
+      cv.width = total; cv.height = total;
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, total, total);
+      ctx.fillStyle = "#111";
+      QR_ROWS.forEach((row, y) => { for (let x = 0; x < N; x++) if (row[x] === "1") ctx.fillRect(x + Q, y + Q, 1, 1); });
+    }
+
+    /* ---------------- EMOTES ---------------- */
+    function emoteBar(){
+      const bar = document.createElement("div");
+      bar.style.cssText = "display:flex;gap:9px;justify-content:center;width:100%";
+      [["👏","clap"],["😄","laugh"],["🤔","think"]].forEach(([e, k]) => {
+        const b = document.createElement("button"); b.className = "emote"; b.textContent = e;
+        b.setAttribute("aria-label", "Send " + e);
+        b.addEventListener("click", () => {
+          sfx.chip();
+          if (k === "clap"){ setExpr("pleased"); say(pick(GENERIC.emoteClap), 2200); }
+          if (k === "laugh"){ setExpr("celebrating"); say(pick(GENERIC.emoteLaugh), 2200); }
+          if (k === "think"){ setExpr("thinking"); say(pick(GENERIC.emoteThink), 2600); }
+          setTimeout(() => { if (S.phase === "play") setExpr("playing"); }, 2300);
+        });
+        bar.appendChild(b);
+      });
+      return bar;
+    }
+    const _setActions = setActions;
+    setActions = function(list){
+      _setActions(list);
+      if ((S.phase === "play" || S.phase === "bid") && list.length >= 0 && S.phase === "play")
+        $("actions").appendChild(emoteBar());
+    };
+
+    /* ---------------- INTRO / WIRING ---------------- */
+    function backToIntro(){
+      S.phase = "intro";
+      $("app").classList.add("introOpen");
+      $("intro").classList.remove("hidden");
+      showStage(false); clearTrickZone();
+      const z = $("trickZone"); if (z) z.classList.add("hidden");
+      setActions([]); renderHand(); $("tally").textContent = "";
+      status("Pick your friend, pick your place — then take a seat.");
+      ambient(false);
+    }
+    function buildIntro(){
+      const fp = $("friendPick"); fp.innerHTML = "";
+      FRIENDS.forEach(f => {
+        const chip = document.createElement("button");
+        chip.className = "friendChip" + (f === S.friend ? " sel" : "");
+        chip.innerHTML = friendSVG(f, true) + `<div class="fname">${f.name}</div><div class="ftrait">${f.trait}</div>`;
+        const chipSvg = chip.querySelector("svg");
+        if (chipSvg) chipSvg.setAttribute("viewBox", "58 14 184 196"); // head-and-shoulders crop for the picker
+        chip.addEventListener("click", () => {
+          S.friend = f;
+          fp.querySelectorAll(".friendChip").forEach(c => c.classList.remove("sel"));
+          chip.classList.add("sel"); seatFriend(); sfx.chip();
+        });
+        fp.appendChild(chip);
+      });
+      const pp = $("placePick"); pp.innerHTML = "";
+      PLACES.forEach(p => {
+        const chip = document.createElement("button");
+        chip.className = "chip" + (p === S.place ? " sel" : "");
+        chip.innerHTML = `${p.name}<small>${p.sub}</small>`;
+        chip.addEventListener("click", () => {
+          S.place = p;
+          pp.querySelectorAll(".chip").forEach(c => c.classList.remove("sel"));
+          chip.classList.add("sel"); renderPlace(); sfx.chip();
+        });
+        pp.appendChild(chip);
+      });
+      const gp = $("gamePick"); gp.innerHTML = "";
+      GAMES.forEach(g => {
+        const chip = document.createElement("button");
+        chip.className = "chip" + (g.on ? " sel" : " off");
+        chip.innerHTML = g.on ? `Spades<small>heads-up · house rules</small>` : `${g.name}<small>coming to this table</small>`;
+        gp.appendChild(chip);
+      });
+      const sp = $("scorePick"); sp.innerHTML = "";
+      [250, 500].forEach(v => {
+        const chip = document.createElement("button");
+        chip.className = "chip" + (S.target === v ? " sel" : "");
+        chip.innerHTML = `${v}<small>${v === 250 ? "a good evening" : "the long game"}</small>`;
+        chip.addEventListener("click", () => {
+          S.target = v;
+          sp.querySelectorAll(".chip").forEach(c => c.classList.remove("sel"));
+          chip.classList.add("sel"); sfx.chip();
+        });
+        sp.appendChild(chip);
+      });
+    }
+    function seatFriend(){
+      $("friendWrap").innerHTML = friendSVG(S.friend);
+      setExpr("idle"); renderFriendFan();
+      $("nbTotal").textContent = `You ${S.score.you} · ${S.friend.name} ${S.score.ai}`;
+    }
+    /* ambient prop life + parallax */
+    setInterval(() => {
+      if (S.phase === "intro") return;
+      const which = Math.random() < .5 ? "drinkProp" : "bowlProp";
+      const el = $(which); el.classList.remove("sip", "nudge"); void el.offsetWidth;
+      el.classList.add(which === "drinkProp" ? "sip" : "nudge");
+    }, 7000);
+    $("scene").addEventListener("pointermove", e => {
+      const r = $("scene").getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - .5, dy = (e.clientY - r.top) / r.height - .5;
+      document.querySelectorAll(".place-layer").forEach(l => {
+        const d = parseFloat(l.dataset.depth || 5);
+        l.style.transform = `translate(${dx * d}px, ${dy * d * .5}px)`;
+      });
+    });
+    document.addEventListener("gesturestart", e => e.preventDefault());
+    document.addEventListener("dblclick", e => e.preventDefault());
+    /* wire buttons */
+    $("startBtn").addEventListener("click", () => {
+      audio(); sfx.snap();
+      $("app").classList.remove("introOpen");
+      $("intro").classList.add("hidden");
+      startMatch();
+    });
+    $("notebook").addEventListener("click", () => { sfx.chip(); showSheet(scoreSheetHTML()); });
+    $("howBtn").addEventListener("click", () => showSheet(howToHTML()));
+    $("howBtn2").addEventListener("click", () => showSheet(howToHTML()));
+    $("soundBtn").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
+    $("soundBtn2").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
+    $("qrBtn").addEventListener("click", () => { drawQR(); $("qrOverlay").classList.remove("hidden"); });
+    $("qrClose").addEventListener("click", () => $("qrOverlay").classList.add("hidden"));
+    $("sheetOverlay").addEventListener("click", e => { if (e.target === $("sheetOverlay")) hideSheet(); });
+    $("qrOverlay").addEventListener("click", e => { if (e.target === $("qrOverlay")) $("qrOverlay").classList.add("hidden"); });
+    /* init */
+    $("app").classList.add("introOpen");
+    renderProps(); renderPlace(); buildIntro(); seatFriend(); renderNotebook();
+    </script>
+  </body>
+</html>
