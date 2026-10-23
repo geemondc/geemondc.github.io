@@ -42,8 +42,8 @@
   #shipIcons svg{ margin:0 2px; filter:drop-shadow(0 0 3px rgba(140,200,255,.9)); }
 
   /* ---------- Stage ---------- */
-  #stageWrap{ position:relative; flex:1 1 auto; display:flex; align-items:center; justify-content:center; background:#051630; min-height:0; overflow:hidden; }
-  canvas#game{ display:block; background:#051630; }
+  #stageWrap{ position:relative; flex:1 1 auto; display:flex; align-items:center; justify-content:center; background:#000; min-height:0; overflow:hidden; }
+  canvas#game{ display:block; background:#000; }
   #banner{
     position:absolute; left:0; right:0; top:38%; text-align:center;
     font-size:clamp(20px,6vw,34px); letter-spacing:6px; color:#fff;
@@ -324,7 +324,7 @@ var Snd = {
 var FW=1000, FH=1000, CX=500, CY=500;
 var RING_R=[205,156,107], RING_PTS=[10,20,30];
 var RING_COL=['#ff4030','#ff9a2e','#ffd94d'];
-var RING_CORE=['#ffc4b0','#ffdcb0','#fff6c4'];
+var RING_CORE=['#ff4030','#ff9a2e','#ffd94d'];
 var SEG_N=12, SEG_STEP=Math.PI*2/SEG_N, SEG_GAP=0.045;
 var INK='#cfe8ff', INK_BRIGHT='#e3f2ff';
 
@@ -461,8 +461,8 @@ function startGame(n){
 function onShipDeath(){
   players[cur].lives--;
   ship.alive=false; deadT=1.6;
-  burst(ship.x, ship.y, INK, 22, 260, 14);
-  burst(ship.x, ship.y, '#5fb2ff', 10, 170, 10);
+  burst(ship.x, ship.y, '#3366ff', 22, 260, 14);
+  burst(ship.x, ship.y, '#ffffff', 10, 170, 10);
   Snd.shipBoom();
   if(torpedo){ torpedo=null; Snd.stopHiss(); }
   mines=mines.filter(function(m){ return m.mode==='ride'; });
@@ -583,8 +583,12 @@ function finishCastleKill(){
   for(var r=0;r<3;r++) for(var i=0;i<SEG_N;i++)
     if(rings[r].segs[i]>0){ gained+=RING_PTS[r]; burst(CX+Math.cos(segCenter(r,i))*RING_R[r], CY+Math.sin(segCenter(r,i))*RING_R[r], RING_COL[r], 5, 240, 12); }
   if(gained>0) addScore(gained);
-  burst(CX, CY, '#e3f2ff', 26, 330, 15);
+  // castle kill: one large multi-color starburst — yellow / orange / red / blue
+  burst(CX, CY, '#ffffff', 26, 330, 15);
   burst(CX, CY, '#ffd94d', 16, 240, 12);
+  burst(CX, CY, '#ff9a2e', 14, 285, 13);
+  burst(CX, CY, '#ff4030', 14, 305, 13);
+  burst(CX, CY, '#3366ff', 12, 260, 12);
   players[cur].lives++;
   Snd.castleBoom();
   Snd.extraShip();
@@ -692,7 +696,7 @@ function update(dt){
           for(var mi=0; mi<mines.length; mi++){
             var mn=mines[mi];
             if(mn.mode==='chase' && Math.hypot(b.x-mn.x, b.y-mn.y)<16){
-              burst(mn.x, mn.y, INK, 10, 200, 10);
+              burst(mn.x, mn.y, '#ffffff', 10, 200, 10);
               Snd.mineBoom();
               mines.splice(mi,1);
               dead=true; break;
@@ -733,7 +737,7 @@ function update(dt){
         m.x+=m.vx*dt; m.y+=m.vy*dt;
         var out = m.x<-24||m.x>FW+24||m.y<-24||m.y>FH+24;
         if(m.life<=0 || out){
-          burst(m.x, m.y, INK, 4, 80, 7);
+          burst(m.x, m.y, '#ffffff', 4, 80, 7);
           mines.splice(mj,1); continue;
         }
         if(ship.alive && ship.invuln<=0 && Math.hypot(m.x-ship.x, m.y-ship.y)<26 && phase==='play'){
@@ -755,10 +759,15 @@ function update(dt){
       }
     }
     if(torpedo){
+      // the original torpedo tracks the ship with a limited turn rate
+      if(ship.alive){
+        var wantT=Math.atan2(ship.y-torpedo.y, ship.x-torpedo.x);
+        torpedo.a=turnToward(torpedo.a, wantT, 1.05*dt);
+      }
       var tsp=430+Math.min(120, (castleLevel-1)*14);
       torpedo.x+=Math.cos(torpedo.a)*tsp*dt;
       torpedo.y+=Math.sin(torpedo.a)*tsp*dt;
-      if(Math.random()<0.55) particles.push({x:torpedo.x,y:torpedo.y,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,life:0.3,t:0,color:'#bfe0ff',len:5});
+      if(Math.random()<0.55) particles.push({x:torpedo.x,y:torpedo.y,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30,life:0.3,t:0,color:'#ffffff',len:5});
       if(torpedo.x<-16||torpedo.x>FW+16||torpedo.y<-16||torpedo.y>FH+16){
         torpedo=null; Snd.stopHiss();
       } else if(ship.alive && ship.invuln<=0 && phase==='play' && Math.hypot(torpedo.x-ship.x, torpedo.y-ship.y)<23){
@@ -791,9 +800,14 @@ function drawRings(sc){
     for(var i=0;i<SEG_N;i++){
       var hp=ring.segs[i]; if(hp<=0) continue;
       var a0=ring.rot + i*SEG_STEP + SEG_GAP, a1=ring.rot + (i+1)*SEG_STEP - SEG_GAP;
+      // straight-chord polygon segment, as on the original vector display —
+      // flat outer and inner edges joined by radial end lines, no arcs
+      var c0=Math.cos(a0), s0=Math.sin(a0), c1=Math.cos(a1), s1=Math.sin(a1);
       ctx.beginPath();
-      ctx.arc(CX, CY, rad+half, a0, a1);
-      ctx.arc(CX, CY, rad-half, a1, a0, true);
+      ctx.moveTo(CX+c0*(rad+half), CY+s0*(rad+half));
+      ctx.lineTo(CX+c1*(rad+half), CY+s1*(rad+half));
+      ctx.lineTo(CX+c1*(rad-half), CY+s1*(rad-half));
+      ctx.lineTo(CX+c0*(rad-half), CY+s0*(rad-half));
       ctx.closePath();
       if(hp===1){
         var fl = ring.flash[i]>0 ? 1 : 0.72+0.28*Math.sin(elapsed*22+i);
@@ -811,29 +825,29 @@ function drawCannon(sc){
   ctx.translate(CX, CY);
   ctx.scale(sc, sc);
   ctx.rotate(cannon.a);
-  // wide angular enemy warship — broad faceted hull, gun tracking the player
+  // fat angular arrowhead / chevron fortress, thin yellow outline only —
+  // pointed nose, swept-back notched wing shoulders, stepped tail prongs
   ctx.beginPath();
-  ctx.moveTo(36,0);
-  ctx.lineTo(20,11);
-  ctx.lineTo(8,21);
-  ctx.lineTo(-13,23);
-  ctx.lineTo(-23,13);
-  ctx.lineTo(-18,0);
-  ctx.lineTo(-23,-13);
-  ctx.lineTo(-13,-23);
-  ctx.lineTo(8,-21);
-  ctx.lineTo(20,-11);
+  ctx.moveTo(37,0);
+  ctx.lineTo(17,14);
+  ctx.lineTo(-4,26);
+  ctx.lineTo(-13,15);
+  ctx.lineTo(-25,20);
+  ctx.lineTo(-19,0);
+  ctx.lineTo(-25,-20);
+  ctx.lineTo(-13,-15);
+  ctx.lineTo(-4,-26);
+  ctx.lineTo(17,-14);
   ctx.closePath();
   stroke2('#ffd94d', 2.4);
-  // hull facets: wing struts converging on the turret
+  // inner chevron facet echoing the nose
   ctx.beginPath();
-  ctx.moveTo(20,11); ctx.lineTo(0,0); ctx.lineTo(20,-11);
-  ctx.moveTo(-13,23); ctx.lineTo(-18,0); ctx.lineTo(-13,-23);
-  stroke2('#ff9a2e', 1.6);
-  // turret + long gun barrel with muzzle, aimed at the player
-  ctx.beginPath(); ctx.arc(2,0,8.5,0,6.283); stroke2('#fff6c4', 2);
-  ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(46,0); stroke2('#fff6c4', 3);
-  ctx.beginPath(); ctx.moveTo(46,-4.5); ctx.lineTo(46,4.5); stroke2('#fff6c4', 2.4);
+  ctx.moveTo(21,0);
+  ctx.lineTo(7,8.5);
+  ctx.lineTo(-6,0);
+  ctx.lineTo(7,-8.5);
+  ctx.closePath();
+  stroke2('#ffd94d', 1.8);
   ctx.restore();
 }
 function drawShip(){
@@ -843,14 +857,23 @@ function drawShip(){
   ctx.translate(ship.x, ship.y);
   ctx.rotate(ship.a);
   ctx.beginPath();
-  // wide, squat arrowhead wedge — broad across the wings, short body
-  ctx.moveTo(11,0); ctx.lineTo(-7,10.5); ctx.lineTo(-4,0); ctx.lineTo(-7,-10.5); ctx.closePath();
-  stroke2(INK, 2.2);
+  // three-pronged Y-dart, thin blue outline only — one forward point,
+  // two rear prongs splitting back-left and back-right around a center spike
+  ctx.moveTo(13,0);
+  ctx.lineTo(0,5);
+  ctx.lineTo(-11,12);
+  ctx.lineTo(-6,4);
+  ctx.lineTo(-10,0);
+  ctx.lineTo(-6,-4);
+  ctx.lineTo(-11,-12);
+  ctx.lineTo(0,-5);
+  ctx.closePath();
+  stroke2('#3366ff', 2.2);
   if(ship.thrusting){
     var f=8+Math.random()*7;
     ctx.beginPath();
-    ctx.moveTo(-5.5,4.5); ctx.lineTo(-5.5-f,0); ctx.lineTo(-5.5,-4.5);
-    stroke2(Math.random()<0.5?'#8fd4ff':'#4fa8ff', 2);
+    ctx.moveTo(-9,3.5); ctx.lineTo(-9-f,0); ctx.lineTo(-9,-3.5);
+    stroke2(Math.random()<0.5?'#ffffff':'#3366ff', 2);
   }
   ctx.restore();
 }
@@ -858,28 +881,20 @@ function drawMine(m){
   ctx.save();
   ctx.translate(m.x, m.y);
   ctx.rotate(m.spin);
+  // small star/X mark, in the color of the ring it rides (white once chasing)
+  var col = m.mode==='ride' ? RING_COL[m.ring] : '#ffffff';
   ctx.beginPath();
-  for(var k=0;k<4;k++){
-    var a=k*Math.PI/4;
-    ctx.moveTo(Math.cos(a)*-10, Math.sin(a)*-10);
-    ctx.lineTo(Math.cos(a)*10, Math.sin(a)*10);
-  }
-  ctx.moveTo(4.5,0); ctx.arc(0,0,4.5,0,6.283);
-  stroke2(INK, 1.8);
+  ctx.moveTo(-7,-7); ctx.lineTo(7,7);
+  ctx.moveTo(7,-7);  ctx.lineTo(-7,7);
+  ctx.moveTo(0,-9.5); ctx.lineTo(0,9.5);
+  ctx.moveTo(-9.5,0); ctx.lineTo(9.5,0);
+  stroke2(col, 1.8);
   ctx.restore();
 }
 function draw(){
   ctx.setTransform(cv.width/FW, 0, 0, cv.width/FW, 0, 0);
-  ctx.fillStyle='#051630';
+  ctx.fillStyle='#000';
   ctx.fillRect(0,0,FW,FH);
-  // starfield
-  for(var i=0;i<stars.length;i++){
-    var s=stars[i];
-    ctx.globalAlpha=0.35+0.3*Math.sin(elapsed*1.7+s.p);
-    ctx.fillStyle='#a9c6e8';
-    ctx.fillRect(s.x, s.y, s.r, s.r);
-  }
-  ctx.globalAlpha=1;
   // pulses
   for(var u=0;u<pulses.length;u++){
     var pu=pulses[u];
@@ -893,20 +908,27 @@ function draw(){
   if(!(phase==='seq' && seq.stage==='explode')){ drawRings(sc); drawCannon(sc); }
   mines.forEach(drawMine);
   if(torpedo){
-    ctx.beginPath(); ctx.arc(torpedo.x, torpedo.y, 20, 0, 6.283);
-    ctx.globalAlpha=0.25; ctx.strokeStyle='#e3f2ff'; ctx.lineWidth=6; ctx.stroke();
-    ctx.globalAlpha=1;
-    ctx.beginPath(); ctx.arc(torpedo.x, torpedo.y, 12.5, 0, 6.283);
-    stroke2('#e3f2ff', 3);
-    ctx.beginPath(); ctx.arc(torpedo.x, torpedo.y, 4.5, 0, 6.283);
-    stroke2('#ffffff', 2.4);
+    // sparking plasma ball: small outline core with radiating spark spokes
+    ctx.save();
+    ctx.translate(torpedo.x, torpedo.y);
+    ctx.rotate(elapsed*9);
+    ctx.beginPath();
+    for(var tk=0;tk<8;tk++){
+      var ta2=tk*Math.PI/4;
+      ctx.moveTo(Math.cos(ta2)*5.5, Math.sin(ta2)*5.5);
+      ctx.lineTo(Math.cos(ta2)*13, Math.sin(ta2)*13);
+    }
+    stroke2('#ffffff', 2);
+    ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, 6.283);
+    stroke2('#ffffff', 2.2);
+    ctx.restore();
   }
   for(var b=0;b<bullets.length;b++){
     var bl=bullets[b], ba=Math.atan2(bl.vy, bl.vx);
     ctx.beginPath();
     ctx.moveTo(bl.x-Math.cos(ba)*6, bl.y-Math.sin(ba)*6);
     ctx.lineTo(bl.x+Math.cos(ba)*6, bl.y+Math.sin(ba)*6);
-    stroke2(INK_BRIGHT, 2.4);
+    stroke2('#ffffff', 2.4);
   }
   drawShip();
   for(var q=0;q<particles.length;q++){
