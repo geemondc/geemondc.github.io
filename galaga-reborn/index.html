@@ -57,7 +57,7 @@
   .hudCell .val.hi{color:var(--yellow);}
   #stageVal{color:var(--cyan);}
   #cvWrap{position:relative; margin:0 auto; width:100%;}
-  canvas{display:block; width:100%; height:auto; background:#000; touch-action:none;
+  canvas{display:block; width:100%; height:auto; background:#000; touch-action:none; outline:none;
     border-top:2px solid #26265a; border-bottom:2px solid #26265a;}
   #deck{display:flex; gap:10px; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); align-items:stretch;}
   .deckBtn{border:2px solid #34346b; background:#12122e; color:#fff; border-radius:14px;
@@ -118,7 +118,7 @@
     <div class="hudCell"><div class="lab">HI-SCORE</div><div class="val hi" id="hiVal">0</div></div>
     <div class="hudCell"><div class="lab">STAGE</div><div class="val" id="stageVal">1</div></div>
   </div>
-  <div id="cvWrap"><canvas id="cv" width="448" height="576"></canvas></div>
+  <div id="cvWrap"><canvas id="cv" width="448" height="576" tabindex="0"></canvas></div>
   <div id="deck">
     <button class="deckBtn" id="leftBtn" aria-label="Move left">◀</button>
     <button class="deckBtn" id="fireBtn">FIRE</button>
@@ -768,19 +768,61 @@ function loop(ts){
   if(!G.paused){ update(dt); draw(); }
 }
 
-/* ---------------- input ---------------- */
+/* ---------------- input ----------------
+   Keyboard is bound on WINDOW in the CAPTURE phase: arrows + space work
+   no matter where the mouse is parked or which element last held focus,
+   and the page can never scroll or steal the keys mid-game. */
 const keys={left:false,right:false};
 let deckMove=0;
-document.addEventListener('keydown',e=>{
-  if(e.code==='ArrowLeft') keys.left=true;
-  if(e.code==='ArrowRight') keys.right=true;
-  if(e.code==='Space'){ fireHeld=true; e.preventDefault(); }
-});
-document.addEventListener('keyup',e=>{
-  if(e.code==='ArrowLeft') keys.left=false;
-  if(e.code==='ArrowRight') keys.right=false;
-  if(e.code==='Space') fireHeld=false;
-});
+function claimFocus(){
+  try{ window.focus(); }catch(e){}
+  const a=document.activeElement;
+  if(a && a.tagName==='BUTTON' && a.blur) a.blur();   /* a focused button would eat Space as a click */
+  const g=document.getElementById('game');
+  if(g && g.style.display==='flex'){ try{ cv.focus({preventScroll:true}); }catch(e){ try{ cv.focus(); }catch(e2){} } }
+}
+function togglePause(){
+  if(!G||!G.run) return;
+  if(G.paused){ closeModal(); return; }
+  G.paused=true;
+  openModal(`<h2>PAUSED</h2><p style="text-align:center">Stage ${G.stage} · Score ${G.score}</p>
+    <div class="rowBtns"><button class="modalClose" id="mResume">RESUME</button>
+    <button class="modalClose altBtn" id="mHow">HOW TO PLAY</button></div>
+    <button class="modalClose altBtn" id="mQuit">QUIT TO INTRO</button>`);
+  $('mClose').style.display='none';
+  $('mResume').onclick=closeModal;
+  $('mHow').onclick=()=>{ openModal(HOW_HTML); };
+  $('mQuit').onclick=()=>{ closeModal(); stopToIntro(); };
+}
+function onKeyDown(e){
+  claimFocus();   /* first keystroke after any focus loss re-engages AND counts as input */
+  switch(e.code){
+    case 'ArrowLeft': keys.left=true; e.preventDefault(); break;
+    case 'ArrowRight': keys.right=true; e.preventDefault(); break;
+    case 'ArrowUp': case 'ArrowDown': e.preventDefault(); break;
+    case 'Space': fireHeld=true; e.preventDefault(); break;
+    case 'KeyP': if(!e.repeat) togglePause(); break;
+    case 'Escape':
+      if(e.repeat) break;
+      if(document.getElementById('modalBk').classList.contains('open')){
+        if(G && (G.paused || !G.over)) closeModal();
+      } else togglePause();
+      break;
+  }
+}
+function onKeyUp(e){
+  switch(e.code){
+    case 'ArrowLeft': keys.left=false; e.preventDefault(); break;
+    case 'ArrowRight': keys.right=false; e.preventDefault(); break;
+    case 'ArrowUp': case 'ArrowDown': e.preventDefault(); break;
+    case 'Space': fireHeld=false; e.preventDefault(); break;
+  }
+}
+window.addEventListener('keydown', onKeyDown, true);
+window.addEventListener('keyup', onKeyUp, true);
+window.addEventListener('blur', ()=>{ keys.left=false; keys.right=false; fireHeld=false; deckMove=0; });
+document.addEventListener('pointerdown', claimFocus, true);
+window.addEventListener('load', claimFocus);
 /* relative drag (touch) + mouse move; hold = fire */
 let dragId=null, lastPX=0;
 cv.addEventListener('pointerdown',e=>{
@@ -843,18 +885,7 @@ $('qrBtn').onclick=()=>{
     <p style="text-align:center">Scan to open the Future Ready hub — Galaga Reborn lives there with the whole game room.</p>`);
   try{ if(window.QRCode) QRCode.toCanvas($('qrCv'),'https://ready-future-hub-life.lovable.app/',{width:184,margin:1}); }catch(e){}
 };
-$('pauseBtn').onclick=()=>{
-  if(!G||!G.run) return;
-  G.paused=true;
-  openModal(`<h2>PAUSED</h2><p style="text-align:center">Stage ${G.stage} · Score ${G.score}</p>
-    <div class="rowBtns"><button class="modalClose" id="mResume">RESUME</button>
-    <button class="modalClose altBtn" id="mHow">HOW TO PLAY</button></div>
-    <button class="modalClose altBtn" id="mQuit">QUIT TO INTRO</button>`);
-  $('mClose').style.display='none';
-  $('mResume').onclick=closeModal;
-  $('mHow').onclick=()=>{ openModal(HOW_HTML); };
-  $('mQuit').onclick=()=>{ closeModal(); stopToIntro(); };
-};
+$('pauseBtn').onclick=()=>togglePause();
 function showGameOver(){
   openModal(`<h2>GAME OVER</h2><div class="bigScore">${G.score}</div>
     <p style="text-align:center">Hi-Score ${G.hi} · Reached Stage ${G.stage}</p>
@@ -877,6 +908,7 @@ function startGame(){
   G.lastTs=performance.now();
   if(rafId) cancelAnimationFrame(rafId);
   rafId=requestAnimationFrame(loop);
+  claimFocus();
 }
 $('startBtn').onclick=startGame;
 
@@ -896,6 +928,7 @@ window.__GALAGA = {
   }
 };
 G=newGame(); updateHUD();
+claimFocus();
 </script>
 </body>
 </html>
