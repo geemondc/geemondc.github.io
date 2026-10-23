@@ -55,31 +55,22 @@
       #takeoffBtn { bottom: 24vh; display: none; background: linear-gradient(135deg, #22c1a3, #2f9df0); box-shadow: 0 10px 30px rgba(34,193,163,.45), inset 0 2px 0 rgba(255,255,255,.35); }
       #takeoffBtn.show { display: block; }
 
-      /* ---------- the dot: the panel's only trace on the sky ---------- */
-      #dot {
-        display: none; position: fixed; z-index: 9; width: 17px; height: 17px; border-radius: 50%;
-        right: calc(15px + env(safe-area-inset-right)); bottom: calc(15px + env(safe-area-inset-bottom));
-        border: 2px solid rgba(255,255,255,.85); background: rgba(255,255,255,.30); cursor: pointer;
-        box-shadow: 0 2px 10px rgba(10,0,30,.4); opacity: .45; transition: opacity 1.2s ease, box-shadow .4s ease;
-        padding: 0;
-      }
-      body.flying #dot { display: block; }
-      #dot.faint { opacity: .14; }
-      #dot.glow { opacity: .95; box-shadow: 0 0 0 7px rgba(255,180,80,.30), 0 0 20px rgba(255,180,80,.85); }
-
-      /* ---------- creative panel: a summoned card over the flying world ---------- */
+      /* ---------- creative sidebar: slides in along the LEFT edge, under
+         the HUD cluster (z 11 < 12), every chip wrapped and readable —
+         no horizontal scrolling anywhere, vertical scroll only ---------- */
       #panel {
-        position: fixed; z-index: 10; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom));
-        width: min(720px, 94vw); transform: translate(-50%, 18px);
-        padding: 12px 14px 10px; border-radius: 22px;
-        background: linear-gradient(to top, rgba(12,6,30,.80), rgba(12,6,30,.62));
+        position: fixed; z-index: 11; left: 0; top: 0; bottom: 0;
+        width: min(260px, 75vw); transform: translateX(-110%);
+        padding: calc(max(12px, env(safe-area-inset-top)) + 104px) 14px calc(12px + env(safe-area-inset-bottom));
+        background: linear-gradient(to right, rgba(12,6,30,.90), rgba(12,6,30,.80));
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,.16); box-shadow: 0 22px 50px rgba(5,0,20,.45);
-        opacity: 0; visibility: hidden; pointer-events: none;
-        transition: opacity .35s ease, transform .35s ease, visibility .35s;
+        border-right: 1px solid rgba(255,255,255,.16); box-shadow: 22px 0 50px rgba(5,0,20,.45);
+        visibility: hidden; pointer-events: none;
+        transition: transform .35s ease, visibility .35s;
+        display: flex; flex-direction: column;
       }
-      #panel.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); }
-      #panelHead { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+      #panel.open { visibility: visible; pointer-events: auto; transform: translateX(0); }
+      #panelHead { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex: 0 0 auto; }
       #panelClose {
         margin-left: auto; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
         border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.10);
@@ -91,21 +82,35 @@
       #altBars i { display: block; width: 16px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.22); }
       #altBars i.on { background: #ffd166; box-shadow: 0 0 6px rgba(255,209,102,.8); }
       #rail {
-        display: flex; flex-direction: column; gap: 7px; overflow-y: auto; overflow-x: hidden;
-        max-height: 46vh; scrollbar-width: none; padding: 1px;
-        -webkit-overflow-scrolling: touch;
+        display: flex; flex-direction: column; gap: 14px; overflow-y: auto; overflow-x: hidden;
+        flex: 1 1 auto; min-height: 0;   /* shrink + scroll, never push the sound line off the panel */
+        scrollbar-width: none; padding: 1px;
+        -webkit-overflow-scrolling: touch; touch-action: pan-y;
       }
       #rail::-webkit-scrollbar { display: none; }
       #soundLine {
-        display: block; width: 100%; margin-top: 10px; padding: 9px 2px 1px;
+        display: block; width: 100%; margin-top: 10px; padding: 9px 2px 1px; flex: 0 0 auto;
         background: none; border: none; border-top: 1px solid rgba(255,255,255,.14);
         color: rgba(255,255,255,.88); font-family: inherit; font-size: 14px; font-weight: 700;
         text-align: left; cursor: pointer;
       }
-      .grp { display: flex; align-items: center; gap: 9px; }
-      .grp .glabel { flex: 0 0 52px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.6px; opacity: .65; margin: 0; }
-      .chips { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; padding: 2px 1px; touch-action: pan-x; }
-      .chips::-webkit-scrollbar { display: none; }
+      .grp { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+      .grp .glabel { font-size: 9.5px; font-weight: 800; letter-spacing: 1.6px; opacity: .65; margin: 0; }
+      .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 1px; }
+      /* the realm door: two big always-visible buttons atop the WORLD group */
+      #realmToggle { display: flex; gap: 6px; }
+      .grp.off { opacity: .38; pointer-events: none; }   /* WEATHER sleeps while submerged */
+      .realmBtn {
+        flex: 1 1 0; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.09); color: #fff;
+        font-family: inherit; font-weight: 800; font-size: 15px; letter-spacing: .4px; line-height: 1;
+        padding: 13px 4px; border-radius: 14px; cursor: pointer; white-space: nowrap;
+        transition: background .2s, transform .15s, box-shadow .2s;
+      }
+      .realmBtn:active { transform: scale(.96); }
+      .realmBtn.on {
+        background: linear-gradient(135deg, #22c1a3, #2f9df0); border-color: rgba(255,255,255,.55);
+        box-shadow: 0 4px 14px rgba(47,157,240,.5);
+      }
       .chip {
         border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.09); color: #fff;
         font-family: inherit; font-weight: 700; font-size: 12.5px; line-height: 1;
@@ -123,9 +128,19 @@
       #flightHud {
         display: none; position: fixed; z-index: 12;
         top: max(12px, env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left));
-        align-items: center; gap: 8px;
+        flex-direction: column; align-items: flex-start; gap: 8px;
       }
       body.flying #flightHud { display: flex; }
+      .hudRow { display: flex; align-items: center; gap: 8px; }
+      /* the labeled door to the sidebar, directly under EXIT */
+      #controlsBtn {
+        border: 1px solid rgba(255,255,255,.45); cursor: pointer; color: #fff; font-family: inherit;
+        font-weight: 800; letter-spacing: 1.2px; font-size: 12.5px; line-height: 1;
+        padding: 10px 14px; border-radius: 999px;
+        background: rgba(16,6,34,.66); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 6px 18px rgba(5,0,20,.45), inset 0 1px 0 rgba(255,255,255,.25);
+      }
+      #controlsBtn:active { transform: scale(.95); }
       #exitBtn {
         border: 1px solid rgba(255,255,255,.6); cursor: pointer; color: #fff; font-family: inherit;
         font-weight: 800; letter-spacing: 1.2px; font-size: 14px; line-height: 1;
@@ -142,6 +157,20 @@
       }
       #musicBtn:active { transform: scale(.95); }
       #musicBtn.on { background: linear-gradient(135deg, #ffb03a, #ff4f7b); border-color: rgba(255,255,255,.65); }
+      /* AUTO PILOT / MANUAL pill: same HUD row as EXIT · ♪, same height, so
+         the NOW PLAYING strip opening below never collides with it */
+      #pilotPill {
+        border: 1px solid rgba(255,255,255,.5); cursor: pointer; color: #fff; font-family: inherit;
+        font-weight: 800; letter-spacing: 1px; font-size: 13px; line-height: 1; white-space: nowrap;
+        padding: 12px 14px; border-radius: 999px;
+        background: rgba(16,6,34,.66); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 6px 18px rgba(5,0,20,.45), inset 0 1px 0 rgba(255,255,255,.25);
+      }
+      #pilotPill:active { transform: scale(.95); }
+      #pilotPill.on {
+        background: linear-gradient(135deg, #22c1a3, #2f9df0); border-color: rgba(255,255,255,.65);
+        box-shadow: 0 6px 18px rgba(34,193,163,.45), inset 0 1px 0 rgba(255,255,255,.25);
+      }
 
       /* ---------- Oasis Mix radio (YouTube, the Game Room's player) ---------- */
       #ytWrap { position: fixed; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: .01; pointer-events: none; z-index: 0; }
@@ -161,7 +190,7 @@
       }
       #flightStrip {
         position: fixed; z-index: 12; display: none;
-        top: calc(max(12px, env(safe-area-inset-top)) + 52px); left: calc(12px + env(safe-area-inset-left));
+        top: calc(max(12px, env(safe-area-inset-top)) + 100px); left: calc(12px + env(safe-area-inset-left));
         max-width: calc(100vw - 24px);
       }
       #flightStrip.open { display: flex; }
@@ -292,11 +321,14 @@
     <div id="biomeLabel"></div>
 
     <button id="takeoffBtn" class="bigAct">🚀 TAKE OFF</button>
-    <button id="dot" aria-label="Open the paint box"></button>
 
     <div id="flightHud">
-      <button id="exitBtn" aria-label="Exit flight and return to the introduction">✕ EXIT</button>
-      <button id="musicBtn" aria-label="Open the music player">♪</button>
+      <div class="hudRow">
+        <button id="exitBtn" aria-label="Exit flight and return to the introduction">✕ EXIT</button>
+        <button id="musicBtn" aria-label="Open the music player">♪</button>
+        <button id="pilotPill" class="on" aria-label="Flight mode indicator. When it reads MANUAL, tap to hand flying back to the AUTO PILOT tour.">✈ AUTO PILOT</button>
+      </div>
+      <button id="controlsBtn" aria-label="Open or close the controls sidebar">☰ CONTROLS</button>
     </div>
     <div id="flightStrip" class="radioUI">
       <button class="rPlay" aria-label="Play or pause the Oasis Mix"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="rPlayIcon">▶</span></button>
@@ -320,7 +352,13 @@
         <button id="panelClose" aria-label="Close panel">✕</button>
       </div>
         <div id="rail">
-          <div class="grp"><p class="glabel">WORLD</p><div class="chips" id="worldChips">
+          <div class="grp"><p class="glabel">WORLD</p>
+            <div id="realmToggle">
+              <button class="realmBtn on" data-realm="land">🌍 LAND</button>
+              <button class="realmBtn" data-realm="underwater">🫧 UNDERWATER</button>
+            </div>
+            <div class="chips" id="worldChips">
+            <button class="chip" data-world="tour">✈ FLY WITH ME</button>
             <button class="chip on" data-world="auto">🔀 Auto</button>
             <button class="chip" data-world="beach">🎸 Hard Rock</button>
             <button class="chip" data-world="city">🗽 New York</button>
@@ -340,6 +378,40 @@
             <button class="chip" data-time="day">☀️ Day</button>
             <button class="chip" data-time="sunset">🌇 Sunset</button>
             <button class="chip" data-time="night">🌙 Night</button>
+          </div></div>
+          <div class="grp"><p class="glabel">MOON</p>
+            <div class="chips" id="moonStateChips">
+              <button class="chip on" data-moon="full">🌕 Full</button>
+              <button class="chip" data-moon="half">🌗 Half</button>
+              <button class="chip" data-moon="crescent">🌙 Crescent</button>
+              <button class="chip" data-moon="new">🌑 New</button>
+            </div>
+            <div class="chips" id="moonColorChips">
+              <button class="chip on" data-mooncolor="silver">⚪ Silver</button>
+              <button class="chip" data-mooncolor="gold">🟡 Gold</button>
+              <button class="chip" data-mooncolor="rose">🌸 Rose</button>
+              <button class="chip" data-mooncolor="blue">🔵 Blue</button>
+            </div>
+          </div>
+          <div class="grp" id="wxGrp"><p class="glabel">WEATHER</p><div class="chips" id="wxChips">
+            <button class="chip on" data-wx="auto">🔀 Auto</button>
+            <button class="chip" data-wx="clear">☀️ Clear</button>
+            <button class="chip" data-wx="clouds">☁️ Clouds</button>
+            <button class="chip" data-wx="rain">🌧️ Rain</button>
+            <button class="chip" data-wx="snow">❄️ Snow</button>
+            <button class="chip" data-wx="fog">🌫️ Fog</button>
+          </div></div>
+          <div class="grp"><p class="glabel">TRAILS</p><div class="chips" id="trailChips">
+            <button class="chip on" data-trail="auto">🔀 Auto</button>
+            <button class="chip" data-trail="white">⚪ White</button>
+            <button class="chip" data-trail="rainbow">🌈 Rainbow</button>
+            <button class="chip" data-trail="gold">🟡 Gold</button>
+            <button class="chip" data-trail="neon">💠 Neon</button>
+          </div></div>
+          <div class="grp"><p class="glabel">SPEED</p><div class="chips" id="speedChips">
+            <button class="chip" data-speed="drift">🐢 Drift</button>
+            <button class="chip on" data-speed="cruise">✈️ Cruise</button>
+            <button class="chip" data-speed="zoom">🚀 Zoom</button>
           </div></div>
         </div>
         <button id="soundLine">Sound: On</button>
@@ -389,10 +461,11 @@
           <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light.</li>
           <li><b>🖱 Mouse:</b> move to steer — you bend toward your cursor, no click needed. <b>Hold the left button</b> for gas and just <b>point where you want to go</b>: up climbs — all the way into space — down dives, left and right turn. Eased and gentle, even with the cursor resting at the screen's edge. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
-          <li><b>The little dot</b> in the corner is your paint box: tap it for worlds and time of day. Weather and trails just happen on their own. Tap the sky to put it away.</li>
+          <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination, the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours.</li>
           <li><b>Climb high</b> through the clouds to change worlds. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
-          <li><b>Low is its own place:</b> descend with speed and you settle into a skim — flying fast just above the water, rooftops, dunes and Broadwalk. Touchdown is slow only: sink low with the gas off, let your speed settle (or hold <b>↓</b>), and the dot glows — LAND is waiting in the paint box. <b>↑</b> takes off again.</li>
+          <li><b>Low is its own place:</b> descend with speed and you settle into a skim — flying fast just above the water, rooftops, dunes and Broadwalk. Touchdown is slow only: sink low with the gas off, let your speed settle (or hold <b>↓</b>) — LAND is waiting in the paint box (☰ CONTROLS). <b>↑</b> takes off again.</li>
           <li>Drag with a <b>second finger</b> (or hold <b>L</b>) to look around — even back over your shoulder at your own trails. There's no score and no way to lose. Just fly.</li>
+          <li><b>✈ Hands off:</b> Do nothing and the FLY WITH ME tour flies for you — that's AUTO PILOT. Touch the sky or press any key to take over (MANUAL). Tap AUTO PILOT up top to hand it back.</li>
         </ul>
       </div>
     </div>
@@ -495,6 +568,8 @@ const S={
   mode:'intro',            // intro | fly | landing | landed | takeoff
   biome:'beach', biomeFrom:'beach', biomeBlend:1,
   worldMode:'auto',
+  pilot:true, ptourT:0,   /* FLY WITH ME autopilot tour: on at every flight start; any steering input turns it off for the rest of the flight */
+  moonPhase:'full', moonColor:'silver', trailMode:'auto', speedMode:'cruise',   /* MOON + TRAILS + SPEED sidebar picks, remembered for the flight */
   hour:18.9, timeMode:'auto',   // auto | manual | live | timelapse
   weatherMode:'auto', wx:{clear:1,clouds:0.25,rain:0,snow:0,fog:0}, wxTarget:{clear:1,clouds:0.25,rain:0,snow:0,fog:0},
   wxSeg:'clear', wxNext:'rain', wxSegT:30, wxSegLen:34,
@@ -1602,6 +1677,17 @@ function drawUwNear(RP,hy,cx,t){
 }
 
 /* ============================== main render ============================== */
+/* moon variations: phase shapes + color tints (sidebar MOON group).
+   A phase is a lit-region path: full disc, right half, a crescent sliver
+   between the limb and a squashed ellipse, or nothing (New — earthshine
+   ghost only). Tints wash disc, craters and halo together. */
+const MOON_TINTS={ silver:['#eef5ff','#8fa8cc','214,232,255'], gold:['#ffe9b0','#d8a860','255,214,130'], rose:['#ffd3dd','#d88ba0','255,170,190'], blue:['#cfe2ff','#7fa8e8','150,190,255'] };
+function moonLitPath(x,y,r,phase){
+  ctx.beginPath();
+  if(phase==='half'){ ctx.arc(x,y,r,-Math.PI/2,Math.PI/2); ctx.closePath(); }
+  else if(phase==='crescent'){ ctx.arc(x,y,r,-Math.PI/2,Math.PI/2); ctx.ellipse(x,y,r*0.55,r,0,Math.PI/2,-Math.PI/2,true); ctx.closePath(); }
+  else ctx.arc(x,y,r,0,TAU);
+}
 function render(){
   const RP=resolveRP();
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -1669,19 +1755,30 @@ function render(){
     const mR=H*(0.020+mBig*0.052);                  /* swells as you leave the air */
     const mx=cx-W*0.24 - S.pan*W*0.020 + S.lookYaw*W*0.085, my=hy-H*(0.34+mBig*0.05);
     const haloR=mR*(5.2-mBig*1.6);
+    const MT=MOON_TINTS[S.moonColor]||MOON_TINTS.silver;   /* the tint washes disc, craters and halo together */
     const mg=ctx.createRadialGradient(mx,my,0,mx,my,haloR);
-    mg.addColorStop(0,'rgba(214,232,255,'+(0.40*moonVis*(1+mBig*0.9))+')'); mg.addColorStop(1,'rgba(214,232,255,0)');
+    mg.addColorStop(0,'rgba('+MT[2]+','+(0.40*moonVis*(1+mBig*0.9))+')'); mg.addColorStop(1,'rgba('+MT[2]+',0)');
     ctx.fillStyle=mg; ctx.fillRect(mx-haloR,my-haloR,haloR*2,haloR*2);
-    ctx.fillStyle=mixCa('#eef5ff','#8fa8cc',0.1*(1-mBig*0.7),clamp(moonVis+mBig*0.5,0,1));
+    const discA=clamp(moonVis+mBig*0.5,0,1);
+    /* the unlit side never fully vanishes: a faint earthshine ghost of the
+       whole disc — at New it is all that shows, cradled in the halo */
+    ctx.fillStyle=mixCa(MT[1],'#0a1024',0.62,discA*0.45);
     ctx.beginPath(); ctx.arc(mx,my,mR,0,TAU); ctx.fill();
-    ctx.fillStyle='rgba(158,178,214,'+(0.5+mBig*0.2)+')';
-    ctx.beginPath();
-    ctx.arc(mx-mR*0.30,my-mR*0.20,mR*0.20,0,TAU); ctx.arc(mx+mR*0.34,my+mR*0.30,mR*0.15,0,TAU);
-    ctx.arc(mx+mR*0.10,my-mR*0.48,mR*0.11,0,TAU); ctx.arc(mx-mR*0.52,my+mR*0.38,mR*0.09,0,TAU);
-    ctx.fill();
-    if(mBig>0.03){ /* a hard bright limb against the black — no air to soften it */
-      ctx.strokeStyle='rgba(240,248,255,'+(0.5*mBig)+')'; ctx.lineWidth=Math.max(1,H*0.0022);
-      ctx.beginPath(); ctx.arc(mx,my,mR-ctx.lineWidth*0.5,0,TAU); ctx.stroke(); }
+    if(S.moonPhase!=='new'){
+      ctx.save();
+      moonLitPath(mx,my,mR,S.moonPhase); ctx.clip();
+      ctx.fillStyle=mixCa(MT[0],MT[1],0.1*(1-mBig*0.7),discA);
+      ctx.fillRect(mx-mR,my-mR,mR*2,mR*2);
+      ctx.fillStyle=mixCa(MT[1],'#546a94',0.35,0.5+mBig*0.2);
+      ctx.beginPath();
+      ctx.arc(mx-mR*0.30,my-mR*0.20,mR*0.20,0,TAU); ctx.arc(mx+mR*0.34,my+mR*0.30,mR*0.15,0,TAU);
+      ctx.arc(mx+mR*0.10,my-mR*0.48,mR*0.11,0,TAU); ctx.arc(mx-mR*0.52,my+mR*0.38,mR*0.09,0,TAU);
+      ctx.fill();
+      ctx.restore();
+      if(mBig>0.03){ /* a hard bright limb against the black — no air to soften it */
+        ctx.strokeStyle=mixCa(MT[0],'#ffffff',0.25,0.5*mBig); ctx.lineWidth=Math.max(1,H*0.0022);
+        moonLitPath(mx,my,mR-ctx.lineWidth*0.5,S.moonPhase); ctx.stroke(); }
+    }
   }
 
   /* ---- aurora: a garnish at the poles — but at the Aurora Horizon the whole
@@ -2031,7 +2128,7 @@ function altFog(){ return clamp((S.alt-0.55)*0.5,0,0.25)*(1-S.spaceF); }
 'use strict';
 /* ============================== DOM refs ============================== */
 const $=id=>document.getElementById(id);
-const panel=$('panel'), biomeLabel=$('biomeLabel'), landBtn=$('landBtn'), takeoffBtn=$('takeoffBtn'), dotEl=$('dot');
+const panel=$('panel'), biomeLabel=$('biomeLabel'), landBtn=$('landBtn'), takeoffBtn=$('takeoffBtn');
 let labelTO=null;
 function showLabel(txt){ biomeLabel.textContent=txt; biomeLabel.classList.add('show');
   clearTimeout(labelTO); labelTO=setTimeout(()=>biomeLabel.classList.remove('show'),2600); }
@@ -2043,6 +2140,13 @@ function syncChips(boxId,attr,val){ const box=$(boxId); if(!box)return;
 
 /* ============================== travel / weather machinery ============================== */
 function nextBiome(){ return CYCLE[(CYCLE.indexOf(S.biome)+1)%CYCLE.length]; }
+/* the effective trail: underwater is always bubbles; a manual TRAILS pick
+   overrides the per-world signature until Auto is chosen again */
+function applyTrail(){
+  S.trail = S.biome==='underwater' ? 'gold'
+    : S.trailMode==='auto' ? (TRAIL_FOR[S.biome]||'smoke')
+    : S.trailMode==='white' ? 'smoke' : S.trailMode;
+}
 /* Paris and the Aurora Horizon are night places: arriving sets the light to
    night (the player can still change it afterwards) */
 function arriveLight(b){
@@ -2063,7 +2167,7 @@ function startChange(b,viaCloud){
   S.tourT=0; S.highT=0;
   if(viaCloud){ S.gate=1; S.gatePhase='in'; S.pendingBiome=b;
     let n=0; for(const c of clouds){ if(n>=3)break; c.alt=S.alt+(rng()-0.5)*0.05; c.x=(rng()-0.5)*0.5; c.z=0.3+rng()*0.3; c.hit=false; n++; } }
-  else { S.biomeFrom=S.biome; S.biome=b; S.biomeBlend=0; S._blendSwapped=false; S.trail=TRAIL_FOR[b]||'smoke'; showLabel(BIOMES[b].label); arriveLight(b); }
+  else { S.biomeFrom=S.biome; S.biome=b; S.biomeBlend=0; S._blendSwapped=false; applyTrail(); showLabel(BIOMES[b].label); arriveLight(b); }
 }
 /* a WORLD tap is a ticket, not a suggestion: the destination changes NOW —
    ground, palette and props swap instantly, ridges crossfade fast behind,
@@ -2077,7 +2181,7 @@ function jumpTo(b){
   S.biomeFrom=S.biome; S.biome=b; S.biomeBlend=0; S._blendSwapped=false;
   for(const sp of sprites)spawnSprite(sp,true);
   resetLandmarks(b);
-  S.trail=TRAIL_FOR[b]||'smoke';
+  applyTrail();
   showLabel(BIOMES[b].label); arriveLight(b);
 }
 const WXSET={ clear:{clear:1,clouds:0.22,rain:0,snow:0,fog:0}, clouds:{clear:0.35,clouds:1,rain:0,snow:0,fog:0.05},
@@ -2090,10 +2194,19 @@ function pickNextWx(cur){
 }
 
 /* ============================== update ============================== */
-let landT=0, landFrom=0.42, emitAcc=0, lastBand='';
+let landT=0, landFrom=0.42, emitAcc=0, lastBand='', lastRealmUi=false;
+/* manual stick shaping (Amendment 3): a small deadzone swallows hand
+   jitter, then a soft curve — gentle at small inputs, full authority at
+   a committed push. Applied identically to touch, mouse and keys feel. */
+function shapeStick(v){ const a=Math.abs(v); if(a<=0.06)return 0; const s=clamp((a-0.06)/0.94,0,1); return Math.sign(v)*Math.pow(s,1.35); }
 const keys={};
 function update(dt){
   S.flyT+=dt; const t=S.flyT;
+  /* coffee mode, frame-loop clock: 10 untouched seconds on the intro
+     launch the tour (the wall-clock interval by startFlight is the twin) */
+  if(S.mode==='intro'){ if(!document.querySelector('.win.open')){ introIdleAcc+=dt;
+      if(introIdleAcc>10){ introIdleAcc=0; introIdleAt=performance.now(); startFlight(); } } }
+  else introIdleAcc=0;
   /* ---- time modes ---- */
   if(S.timeMode==='live'){ const d=new Date(); S.hour=d.getHours()+d.getMinutes()/60+d.getSeconds()/3600; }
   else if(S.timeMode==='timelapse'){ S.hour=(S.hour+dt*(24/240))%24; }
@@ -2111,15 +2224,23 @@ function update(dt){
      to let the spectator drift seize the flight 15s into a held push */
   let touchHeld=false; pointers.forEach(p=>{ if(p.type!=='mouse')touchHeld=true; });
   if(flying){ if(S.mouseGas||keys.gas||touchHeld)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
-  S.panelIdle+=dt; dotEl.classList.toggle('faint',S.panelIdle>4);
-  if(S.panelAuto&&S.flyT>S.panelAutoAt){ if(!S.panelPinned)closePanel(); S.panelAuto=false; }
+  S.panelIdle+=dt;
 
   /* ---- steering: the finger IS the flight ---- */
   const steerHeld=pointers.size>0&&steerId!==null;
   const spT=steerId!==null?pointers.get(steerId):null;
   const steerTouch=!!(spT&&spT.type!=='mouse');
   if(flying){
-    if(S.drift){
+    if(S.pilot){
+      /* FLY WITH ME tour steering: gentle scenic banking, and a pitch that
+         blends a slow wave with guidance toward a wandering altitude —
+         low→mid→high in the sky but always below the space band; in the
+         tank a dreamy MID/DEEP drift that never breaks the surface */
+      const altT=S.biome==='underwater' ? 0.32+0.18*Math.sin(t*0.05+0.7) : 0.45+0.30*Math.sin(t*0.045+1.0);
+      const pitchT=clamp(Math.sin(t*0.09+1.3)*0.20+(altT-S.alt)*1.15,-0.42,0.42);
+      S.bank=lerp(S.bank,Math.sin(t*0.11)*0.5,dt*0.9);
+      S.pitch=lerp(S.pitch,pitchT,dt*0.9);
+    } else if(S.drift){
       S.bank=lerp(S.bank,Math.sin(t*0.13)*0.55,dt*0.8);
       S.pitch=lerp(S.pitch,Math.sin(t*0.09+1.3)*0.34,dt*0.8);
     } else if(steerTouch){
@@ -2134,8 +2255,8 @@ function update(dt){
          hold = keep banking, ease back toward the landing spot = settle.
          The same offset distance is the throttle (see GAS below). */
       const R=Math.max(1,Math.min(W,H)*0.42);
-      const tx=clamp((spT.x-spT.sx)/R,-1,1), ty=clamp((spT.sy-spT.y)/R,-1,1);
-      const mr=dt*(2.6-1.1*S.warpF)*(1-S.warpF*0.45);
+      const tx=shapeStick(clamp((spT.x-spT.sx)/R,-1,1)), ty=shapeStick(clamp((spT.sy-spT.y)/R,-1,1));
+      const mr=dt*(1.9-0.8*S.warpF)*(1-S.warpF*0.45);   /* heavier damping: eases onto the target, never twitches past it */
       S.bank=lerp(S.bank,tx,mr); S.pitch=lerp(S.pitch,ty,mr);
     } else if(!steerHeld){
       if(S.mouseGas){ /* PRESS AND POINT: while the button is held, the last
@@ -2145,22 +2266,22 @@ function update(dt){
          2.5s and the flight stalled mid-hold (the reported freeze); the
          held state itself is the command now: top edge keeps climbing into
          space, side edges keep turning, until the button is released. */
-        const mr=dt*(2.6-1.1*S.warpF);
-        S.bank=lerp(S.bank,clamp(mouseTX,-1,1),mr); S.pitch=lerp(S.pitch,clamp(mouseTY,-1,1),mr); }
-      else if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,mouseTX,dt*2.4); S.pitch=lerp(S.pitch,mouseTY,dt*2.4); }
-      else { S.pitch=lerp(S.pitch,0,dt*0.55); S.bank=lerp(S.bank,0,dt*1.5); }
+        const mr=dt*(1.9-0.8*S.warpF);
+        S.bank=lerp(S.bank,shapeStick(clamp(mouseTX,-1,1)),mr); S.pitch=lerp(S.pitch,shapeStick(clamp(mouseTY,-1,1)),mr); }
+      else if(S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,shapeStick(mouseTX),dt*1.8); S.pitch=lerp(S.pitch,shapeStick(mouseTY),dt*1.8); }
+      else { S.pitch=lerp(S.pitch,0,dt*0.8); S.bank=lerp(S.bank,0,dt*1.1); }   /* released: the flight gently settles back toward level */
     }
-    if(keys.look){
+    if(!S.pilot){ if(keys.look){
       if(keys.left)S.lookYaw=clamp(S.lookYaw-dt*2.4,-3.05,3.05);
       if(keys.right)S.lookYaw=clamp(S.lookYaw+dt*2.4,-3.05,3.05);
       if(keys.up)S.lookPitch=clamp(S.lookPitch-dt*1.8,-1.1,1.1);
       if(keys.down)S.lookPitch=clamp(S.lookPitch+dt*1.8,-1.1,1.1);
     } else { const dr=dt*(1-S.warpF*0.45);   /* inside warp the keys turn soft and dreamy too */
-      if(keys.left)S.bank=clamp(S.bank-dr*1.5,-1,1);
-      if(keys.right)S.bank=clamp(S.bank+dr*1.5,-1,1);
-      if(keys.up)S.pitch=clamp(S.pitch+dr*1.2,-1,1);
-      if(keys.down)S.pitch=clamp(S.pitch-dr*1.2,-1,1);
-    }
+      if(keys.left)S.bank=clamp(S.bank-dr*1.15,-1,1);
+      if(keys.right)S.bank=clamp(S.bank+dr*1.15,-1,1);
+      if(keys.up)S.pitch=clamp(S.pitch+dr*0.92,-1,1);
+      if(keys.down)S.pitch=clamp(S.pitch-dr*0.92,-1,1);
+    } }
   }
   /* GAS — there is no pedal on the sky anymore; your hands ARE the pedal.
      SPACE or a held left mouse button floors it. On touch, the PUSH of the
@@ -2181,20 +2302,22 @@ function update(dt){
       gasTarget=clamp(Math.hypot(sp.x-sp.sx,sp.y-sp.sy)/(Math.min(W,H)*0.27),0,1); }
   pointers.forEach((p,id)=>{ if(id!==steerId&&p.type!=='mouse'&&!suppressed.has(id))gasTarget=1; });
   if(keys.gas||S.mouseGas)gasTarget=1;
-  const gasRate=(gasTarget>S.throttle?0.8:0.45)*dt;
+  if(S.pilot&&flying)gasTarget=Math.max(gasTarget,0.35);   /* the tour holds a comfortable cruise — never warp, never a landing crawl */
+  const gasRate=(gasTarget>S.throttle?0.8:0.45)*dt*(S.pilot?1:0.75);   /* manual throttle ramps smoother; the tour's cruise is unchanged */
   S.throttle=clamp(S.throttle+clamp(gasTarget-S.throttle,-gasRate,gasRate),0,1);
   let spdT=0;
   if(flying||S.mode==='takeoff'){ const base=lerp(0.42,1.02,S.throttle);
     spdT=base*(1+Math.max(0,-S.pitch)*0.85-Math.max(0,S.pitch)*0.16);
-    spdT*= (1-0.42*S.uwF);   /* underwater, everything moves slower and dreamier */ }
+    spdT*= (1-0.42*S.uwF);   /* underwater, everything moves slower and dreamier */
+    if(!S.pilot)spdT*= S.speedMode==='drift'?0.72 : S.speedMode==='zoom'?1.18 : 1;   /* the SPEED pick scales hand-flown pace; the tour keeps its own cruise */ }
   if(S.mode==='intro')spdT=0.3;
-  S.effSpeed=lerp(S.effSpeed,spdT,dt*1.9);
+  S.effSpeed=lerp(S.effSpeed,spdT,dt*(S.pilot?1.9:1.45));   /* manual speed settles in more smoothly; top speed itself is untouched */
   S.speedN=S.effSpeed;
 
   /* altitude from pitch */
   if(flying){
     const pv=S.alt;
-    S.altVel=S.pitch*(0.085+S.effSpeed*0.17)*(1-0.30*S.uwF);
+    S.altVel=S.pitch*(0.085+S.effSpeed*0.17)*(1-0.30*S.uwF)*(S.pilot?1:0.75);   /* hand-flown climbs/dives glide ~25% softer; the tour flies its own loop */
     /* ground effect: with speed on, a cushion of air holds you in a SKIM
        just above the ground/water — only slow flight settles to touchdown */
     const gFloor=0.03+0.028*sstep(0.55,0.95,S.effSpeed);
@@ -2228,8 +2351,9 @@ function update(dt){
   S.diveF=lerp(S.diveF,sstep(0.42,0.95,-S.pitch)*(flying?1:0),dt*2.4);
   /* the camera chases the controls through a soft spring — no robotic steps.
      Underwater the spring itself goes dreamy: slower, heavier, drifting. */
-  S.bankD=lerp(S.bankD,S.bank,Math.min(1,dt*(6.5-3.4*S.warpF)*(1-0.38*S.uwF)));
-  S.pitchD=lerp(S.pitchD,S.pitch,Math.min(1,dt*(6.5-3.4*S.warpF)*(1-0.38*S.uwF)));
+  const spr=(S.pilot?6.5:5.2)-(S.pilot?3.4:2.6)*S.warpF;   /* manual camera chase is damped heavier still — planted, never floaty-twitchy */
+  S.bankD=lerp(S.bankD,S.bank,Math.min(1,dt*spr*(1-0.38*S.uwF)));
+  S.pitchD=lerp(S.pitchD,S.pitch,Math.min(1,dt*spr*(1-0.38*S.uwF)));
   S.whooshT=Math.max(0,S.whooshT-dt);
   S.reentryT=Math.max(0,S.reentryT-dt);
   S.rainbowT=Math.max(0,S.rainbowT-dt);
@@ -2257,14 +2381,23 @@ function update(dt){
     if(S.biomeBlend>=0.5&&!S._blendSwapped){ S._blendSwapped=true; for(const sp of sprites)spawnSprite(sp,true); resetLandmarks(S.biome); } }
   if(S.gate&&S.gatePhase==='in'){ S.wash=Math.min(0.96,S.wash+dt/(S.gate===2?0.65:1.05));
     if(S.wash>=0.95){ S.biomeFrom=S.biome; S.biome=S.pendingBiome; S.biomeBlend=1;
-      for(const sp of sprites)spawnSprite(sp,true); resetLandmarks(S.biome); S.trail=TRAIL_FOR[S.biome]||'smoke';
+      for(const sp of sprites)spawnSprite(sp,true); resetLandmarks(S.biome); applyTrail();
       S.gatePhase='out'; showLabel(BIOMES[S.biome].label); arriveLight(S.biome); } }
   else if(S.gate&&S.gatePhase==='out'){ S.wash=Math.max(0,S.wash-dt/(S.gate===2?0.85:1.25)); if(S.wash<=0)S.gate=0; }
   else if(!S.gate){ S.wash=Math.max(0,S.wash-dt*0.85); }
-  if(flying&&S.worldMode==='auto'&&!S.gate){
+  if(flying&&!S.pilot&&S.worldMode==='auto'&&!S.gate){
     if(S.alt>=0.78&&S.alt<0.99){ S.highT+=dt; if(S.highT>2.6)startChange(nextBiome(),true); }
     else S.highT=0;
     S.tourT+=dt; if(S.tourT>75&&S.alt<0.9)startChange(nextBiome(),false);
+  }
+  /* FLY WITH ME tour travel: ~40 s a world, in CYCLE order from wherever
+     the flight is, through the same gates manual flight uses — startChange
+     routes the cloud gate between sky worlds and the SPLASH gate into and
+     out of the underwater world, so the tank gets its full stop too */
+  if(flying&&S.pilot&&!S.gate){
+    S.ptourT+=dt;
+    const dur=(typeof window.__tourDur==='number'&&window.__tourDur>0)?window.__tourDur:40;
+    if(S.ptourT>=dur){ S.ptourT=0; startChange(nextBiome(),true); }
   }
 
   /* ---- weather fronts ---- */
@@ -2365,8 +2498,11 @@ function update(dt){
   /* LAND appears when LOW and SLOW: no gas on, speed settled back down.
      Touchdown is a slow thing only — descend WITH speed and you skim.
      There is no landing in the water: the tank is flown, not parked. */
-  const landable=flying&&S.biome!=='underwater'&&S.throttle<0.2&&S.effSpeed<0.58&&S.alt<0.24;
-  landBtn.classList.toggle('show',landable); dotEl.classList.toggle('glow',landable);
+  const landable=flying&&!S.pilot&&S.biome!=='underwater'&&S.throttle<0.2&&S.effSpeed<0.58&&S.alt<0.24;
+  landBtn.classList.toggle('show',landable);
+  /* the realm toggle always matches the water: LAND lit over land,
+     UNDERWATER lit while submerged — however the flight got there */
+  const uwNow=S.biome==='underwater'; if(uwNow!==lastRealmUi){ lastRealmUi=uwNow; syncRealm(); syncPilotUI(); }
   /* holding DOWN while low, slow and settled sinks the last feet into a landing */
   if(flying&&keys.down&&landable&&S.alt<=0.09){ S.mode='landing'; landT=0; landFrom=S.alt; landBtn.classList.remove('show'); }
   /* UP from the ground is takeoff */
@@ -2396,14 +2532,15 @@ function update(dt){
 /* ============================== input: finger-follow flight ============================== */
 const pointers=new Map(); let steerId=null, lookHeld=false;
 let mouseTX=0, mouseTY=0, mouseFreshT=-9; const suppressed=new Set();
-function wake(){ S.idleT=0; S.drift=false; S.panelIdle=0; if(dotEl)dotEl.classList.remove('faint'); }
+function wake(){ S.idleT=0; S.drift=false; S.panelIdle=0; }
 window.addEventListener('pointerdown',e=>{
   wake(); audioInit();
   if(e.target.closest('#panel')){ S.panelPinned=true; return; }
   if(e.target.closest('#flightHud,#flightStrip'))return;
-  if(e.target.closest('#intro,.win,.bigAct,#dot'))return;
-  if(panel.classList.contains('open')){ closePanel(); suppressed.add(e.pointerId);
-    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType}); return; }
+  if(e.target.closest('#intro,.win,.bigAct'))return;
+  /* a tap on the sky while the sidebar is open is a sky tap like any other:
+     it steers (and takes over from the tour) — the sidebar stays as it is */
+  if(S.mode==='fly')disengagePilot();   /* a touch/drag on the sky is a takeover: MANUAL, instantly, for the rest of the flight */
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,type:e.pointerType});
   /* desktop: the left mouse button is GAS, and while it is held the cursor
      position IS the stick (press and point). Record the position at the
@@ -2460,6 +2597,8 @@ document.addEventListener('gesturestart',e=>{ e.preventDefault(); },{passive:fal
 document.addEventListener('mouseleave',()=>{ S.mouseGas=false; });
 window.addEventListener('keydown',e=>{
   const k=e.key;
+  /* steering keys are a takeover too — arrows, WASD, Space for gas */
+  if(S.mode==='fly'&&(k===' '||k.indexOf('Arrow')===0||'wasdWASD'.indexOf(k)>=0))disengagePilot();
   if(k==='Tab'){ e.preventDefault(); if(!e.repeat)togglePanel(); wake(); return; }
   if(k==='m'||k==='M'){ if(!e.repeat)togglePanel(); wake(); return; }
   if(k==='l'||k==='L')keys.look=true;
@@ -2489,12 +2628,27 @@ wireChips('timeChips',ch=>{ const v=ch.dataset.time;
   if(v==='auto')S.timeMode='auto';
   else if(v==='live')S.timeMode='live'; else if(v==='timelapse')S.timeMode='timelapse';
   else { S.timeMode='manual'; S.hour={dawn:6.9,day:11.2,sunset:18.9,night:23.2}[v]; } });
+wireChips('moonStateChips',ch=>{ S.moonPhase=ch.dataset.moon; });
+wireChips('moonColorChips',ch=>{ S.moonColor=ch.dataset.mooncolor; });
+wireChips('wxChips',ch=>{ const v=ch.dataset.wx;
+  if(v==='auto'){ S.weatherMode='auto'; S.wxSegT=Math.min(S.wxSegT,6); }   /* the fronts resume */
+  else { S.weatherMode='manual'; S.wxSeg=v; S.wxTarget=Object.assign({},WXSET[v]); } });   /* locked: crossfades in, stays */
+wireChips('trailChips',ch=>{ S.trailMode=ch.dataset.trail; applyTrail(); });
+wireChips('speedChips',ch=>{ S.speedMode=ch.dataset.speed; });
 wireChips('worldChips',ch=>{ const v=ch.dataset.world;
-  if(v==='auto'){ S.worldMode='auto'; S.tourT=0; }
-  else { S.worldMode='lock'; jumpTo(v); } });
+  if(v==='tour'){ engagePilot(); }   /* ✈ FLY WITH ME: the full autopilot tour — it steers AND travels */
+  else if(v==='auto'){ S.worldMode='auto'; S.tourT=0; disengagePilot(); syncPilotUI(); }   /* 🔀 Auto: worlds cycle while YOU steer */
+  else { S.worldMode='lock'; disengagePilot(); jumpTo(v); syncPilotUI(); } closePanel(); });
+/* the realm door: one tap through the splash gate, either way. LAND over
+   land is a deliberate no-op — the lit button already says where you are */
+document.querySelectorAll('.realmBtn').forEach(b=>b.addEventListener('click',()=>{ wake(); audioInit();
+  if(b.dataset.realm==='underwater'){ S.worldMode='lock'; disengagePilot(); if(S.biome!=='underwater')jumpTo('underwater'); syncPilotUI(); closePanel(); }
+  else if(S.biome==='underwater'){ S.worldMode='lock'; disengagePilot(); jumpTo(S.uwPrev||'beach'); syncPilotUI(); closePanel(); }
+}));
 function syncWindUI(){ $('soundBtn').classList.toggle('on',S.windOn); $('soundBtn').firstChild.textContent=S.windOn?'🔊':'🔇'; $('soundLine').textContent='Sound: '+(S.windOn?'On':'Off'); }
 $('soundLine').addEventListener('click',()=>{ wake(); audioInit(); S.windOn=!S.windOn; syncWindUI(); });
-dotEl.addEventListener('click',()=>{ wake(); audioInit(); togglePanel(); });
+$('controlsBtn').addEventListener('click',()=>{ wake(); audioInit(); togglePanel(); });
+$('pilotPill').addEventListener('click',()=>{ wake(); if(S.mode==='fly'&&!S.pilot)engagePilot(); });   /* the way back: tap MANUAL and the tour takes the sky again */
 $('panelClose').addEventListener('click',()=>{ wake(); closePanel(); });
 panel.addEventListener('pointerdown',()=>{ S.panelPinned=true; wake(); });
 landBtn.addEventListener('click',()=>{ wake(); audioInit();
@@ -2503,17 +2657,61 @@ takeoffBtn.addEventListener('click',()=>{ wake(); audioInit();
   if(S.mode==='landed'){ S.mode='takeoff'; landT=0; takeoffBtn.classList.remove('show'); } });
 
 /* ============================== intro wiring ============================== */
-$('flyBtn').addEventListener('click',()=>{ wake(); audioInit();
-  document.body.classList.add('flying');
-  const intro=$('intro'); intro.style.transition='opacity .6s ease'; intro.style.opacity='0';
-  setTimeout(()=>{ intro.style.display='none'; },620);
-  S.mode='fly'; showLabel(BIOMES[S.biome].label);
-  setTimeout(()=>{ if(S.mode==='fly'&&!S.panelPinned){ openPanel(); S.panelAuto=true; S.panelAutoAt=S.flyT+6; } },750); });
+$('flyBtn').addEventListener('click',()=>{ wake(); audioInit(); startFlight(); });
 $('soundBtn').addEventListener('click',()=>{ audioInit(); S.windOn=!S.windOn; syncWindUI(); });
 $('qrBtn').addEventListener('click',()=>$('winQR').classList.add('open'));
 $('howBtn').addEventListener('click',()=>$('winHow').classList.add('open'));
 document.querySelectorAll('.win').forEach(w=>{ w.addEventListener('click',e=>{ if(e.target===w)w.classList.remove('open'); }); });
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.win').classList.remove('open')));
+
+/* ============================== FLY WITH ME: the autopilot tour ==============================
+   Every flight starts on AUTO PILOT. The tour steers gently (update()),
+   rides Cruise, wanders low→mid→high below the space band, and travels
+   the CYCLE at ~40 s a world through the normal gates — splash in and out
+   of the tank included. Any steering input (sky touch/drag, arrows, WASD,
+   Space) or a specific world pick ends it instantly and for good; the
+   pill up top is the only way back. */
+function syncPilotUI(){
+  const pill=$('pilotPill'); if(pill){ pill.textContent=S.pilot?'✈ AUTO PILOT':'MANUAL'; pill.classList.toggle('on',!!S.pilot); }
+  const box=$('worldChips'); if(!box)return;
+  box.querySelectorAll('.chip').forEach(c=>{
+    const v=c.dataset.world;
+    if(v==='tour')c.classList.toggle('on',!!S.pilot);
+    else if(S.pilot)c.classList.remove('on');
+    else if(S.worldMode==='auto')c.classList.toggle('on',v==='auto');
+    else c.classList.toggle('on',v===(S.pendingBiome||S.biome));   /* locked: the destination (or the gate's target) is lit */
+  });
+}
+function syncRealm(){
+  const uw=S.biome==='underwater';
+  document.querySelectorAll('.realmBtn').forEach(b=>b.classList.toggle('on',(b.dataset.realm==='underwater')===uw));
+  const wg=$('wxGrp'); if(wg)wg.classList.toggle('off',uw);   /* no weather to pick under the water */
+}
+function engagePilot(){ S.pilot=true; S.worldMode='auto'; S.ptourT=0; S.tourT=0; S.drift=false; syncPilotUI(); }
+function disengagePilot(){ if(!S.pilot)return; S.pilot=false; syncPilotUI(); }
+function startFlight(){
+  document.body.classList.add('flying');
+  const intro=$('intro'); intro.style.transition='opacity .6s ease'; intro.style.opacity='0';
+  setTimeout(()=>{ intro.style.display='none'; },620);
+  S.mode='fly'; engagePilot(); showLabel(BIOMES[S.biome].label);
+}
+/* test hooks (verification only): the shipped tour pace is 40 s a world */
+window.__tourDur=40;
+window.__setTourDur=function(s){ const v=parseFloat(s); window.__tourDur=(v>0)?v:40; };
+window.__sdState=function(){ return { mode:S.mode, pilot:!!S.pilot, biome:S.biome, gate:S.gate, alt:S.alt,
+  bank:S.bank, pitch:S.pitch, throttle:S.throttle, effSpeed:S.effSpeed, uwF:S.uwF,
+  moonPhase:S.moonPhase, moonColor:S.moonColor, weatherMode:S.weatherMode, wxSeg:S.wxSeg, trail:S.trail, trailMode:S.trailMode, speedMode:S.speedMode,
+  pill:$('pilotPill')?$('pilotPill').textContent:'', panelOpen:panel.classList.contains('open') }; };
+/* coffee mode: an intro left untouched for 10 s launches the tour itself.
+   Two clocks watch for it: a wall-clock interval, and the frame loop's own
+   accumulated time (update() below) — whichever heartbeat the device keeps
+   running gets the launch. Any touch or key resets both. */
+let introIdleAt=performance.now(), introIdleAcc=0;
+['pointerdown','keydown'].forEach(ev=>window.addEventListener(ev,()=>{ introIdleAt=performance.now(); introIdleAcc=0; },true));
+setInterval(()=>{ if(S.mode!=='intro')return;
+  if(document.querySelector('.win.open')){ introIdleAt=performance.now(); return; }   /* reading a window is not idling — the 10 s restarts when it closes */
+  if(performance.now()-introIdleAt>10000){ introIdleAt=performance.now(); introIdleAcc=0; startFlight(); } },600);
+syncPilotUI(); syncRealm();
 
 /* ============================== ✕ EXIT: back to the intro, any time ============================== */
 function exitToIntro(){
@@ -2525,6 +2723,7 @@ function exitToIntro(){
   pointers.clear(); steerId=null;
   for(const k in keys)keys[k]=false;
   takeoffBtn.classList.remove('show'); landBtn.classList.remove('show');
+  introIdleAt=performance.now();   /* back on the intro, the 10-second coffee launch re-arms */
   const intro=$('intro'); intro.style.display='';
   requestAnimationFrame(()=>{ intro.style.opacity='1'; });
 }
