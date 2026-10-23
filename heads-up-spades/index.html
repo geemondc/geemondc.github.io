@@ -200,6 +200,7 @@
         font-size:20px;display:flex;align-items:center;justify-content:center;
         box-shadow:0 3px 8px rgba(0,0,0,.45);z-index:12;}
       #soundBtn{position:absolute;top:10px;right:10px;}
+      #homeBtn{position:absolute;top:64px;right:10px;font-size:21px;font-weight:900;}
       #howBtn{position:absolute;top:10px;left:10px;font-weight:900;font-size:19px;}
 
       /* your hand — inside the scene, along the table's near edge */
@@ -332,6 +333,7 @@
         <div id="pencil" aria-hidden="true"></div>
         <button class="iconbtn" id="howBtn" aria-label="How to play">?</button>
         <button class="iconbtn" id="soundBtn" aria-label="Toggle sound">🔊</button>
+        <button class="iconbtn" id="homeBtn" aria-label="Back to intro — reset the game">⌂</button>
         <div id="vignette"></div>
       </section>
 
@@ -726,11 +728,12 @@
     const sfx = {
       flip(){ noiseBurst(.07, 2400, .12); },
       snap(){ noiseBurst(.05, 3200, .22); setTimeout(()=>noiseBurst(.04, 1800, .1), 30); },
-      sweep(){ noiseBurst(.28, 700, .07, "lowpass"); },
-      trash(){ noiseBurst(.09, 1200, .1, "lowpass"); },
+      trash(){ noiseBurst(.06, 2600, .1); },
       chip(){ noiseBurst(.05, 4000, .08, "highpass"); }
     };
-    /* NO ambient/background sound of any kind — card sounds only (Gary's rule). */
+    /* CARD & DECK SOUNDS ONLY (Gary's rule) — short, dry clicks and flips.
+       NO ambient/background sound of any kind: no place/setting atmosphere,
+       and no lowpass noise washes (they read as ocean surf / waves). */
     function setSound(on){
       S.sound = on;
       $("soundBtn").textContent = on ? "🔊" : "🔇";
@@ -831,7 +834,11 @@
 
     /* ---------------- DRAFT ---------------- */
     let draftCard = null;
+    /* generation stamp — bumped on startMatch and on backToIntro, so any
+       pending timer/await from an abandoned game bails instead of playing on */
+    let GEN = 0;
     async function startMatch(){
+      GEN++;
       S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
       S.starter = Math.random() < .5 ? "you" : "ai";
       renderNotebook();
@@ -849,7 +856,9 @@
       status(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You peek first." : S.friend.name + " peeks first."}`);
       say(S.handNo === 1 ? S.friend.greet : pick(["Fresh deck. Same rules.","New hand — watch the trash.","The draft is where this is won."]), 3000);
       setExpr("idle");
+      const g = GEN;
       await wait(900);
+      if (g !== GEN || S.phase !== "draft") return;
       draftStep();
     }
     function draftStep(){
@@ -883,10 +892,13 @@
         status(`${S.friend.name} is peeking at the top card — private. You don't get to see it.`);
         setActions([]);
         setExpr("thinking");
-        setTimeout(() => draftDecide(aiDraftLikes(draftCard)), 1000 + Math.random() * 900 + (S.friend.id === "blond" ? 500 : 0));
+        const g = GEN;
+        setTimeout(() => { if (g === GEN && S.phase === "draft" && draftCard) draftDecide(aiDraftLikes(draftCard)); }, 1000 + Math.random() * 900 + (S.friend.id === "blond" ? 500 : 0));
       }
     }
     async function draftDecide(keep){
+      if (S.phase !== "draft" || !draftCard) return;
+      const g = GEN;
       const turn = S.draftTurn, card = draftCard; draftCard = null;
       setActions([]);
       $("flipCard").innerHTML = "";
@@ -918,6 +930,7 @@
       renderStage(); renderTally();
       S.draftTurn = turn === "you" ? "ai" : "you";
       await wait(turn === "you" ? 620 : 480);
+      if (g !== GEN || S.phase !== "draft") return;
       draftStep();
     }
     function cardDraftValue(c, hand){
@@ -970,7 +983,9 @@
       const first = S.starter === "you" ? "ai" : "you"; // non-starter bids first
       if (first === "ai"){
         S.bids.ai = aiChooseBid();
+        const g = GEN;
         setTimeout(() => {
+          if (g !== GEN || S.phase !== "bid") return;
           say(S.bids.ai === 0 ? "I'm going NIL. Laugh it up." : S.bids.ai >= 8 ? pick(GENERIC.bidHigh) : S.bids.ai <= 4 ? pick(GENERIC.bidLow) : `I'll take ${S.bids.ai}.`, 2600);
           setExpr(S.bids.ai === 0 ? "thinking" : "pleased");
           promptYourBid();
@@ -1049,7 +1064,8 @@
       if (S.leader === "ai"){
         status(`${S.friend.name} leads trick ${S.trickNo}.`);
         setExpr("playing");
-        setTimeout(aiPlay, 850 + Math.random() * 500);
+        const g = GEN;
+        setTimeout(() => { if (g === GEN) aiPlay(); }, 850 + Math.random() * 500);
       } else {
         status(`Your lead, trick ${S.trickNo}.${!S.spadesBroken ? " Spades aren't broken yet." : ""}`);
         renderHand(legalCards("you"));
@@ -1090,6 +1106,7 @@
       playCard("you", card);
     }
     async function playCard(who, card){
+      const g = GEN;
       const h = S.hand[who];
       h.splice(h.indexOf(card), 1);
       S.trick.push({ who, card });
@@ -1102,7 +1119,7 @@
         if (other === "ai"){
           status(`${S.friend.name} is thinking…`);
           setExpr("thinking");
-          setTimeout(aiPlay, 800 + Math.random() * 550);
+          setTimeout(() => { if (g === GEN) aiPlay(); }, 800 + Math.random() * 550);
         } else {
           status(`Follow ${SUITS[card.suit].name} if you can — your play.`);
           renderHand(legalCards("you"));
@@ -1110,6 +1127,7 @@
       } else {
         S.busy = true;
         await wait(950);
+        if (g !== GEN || S.phase !== "play") return;
         const winner = trickWinner();
         S.tricksWon[winner]++;
         const wEl = $(winner === "ai" ? "slotAi" : "slotYou");
@@ -1117,7 +1135,7 @@
         if ($("slotAi")) $("slotAi").style.transform = winner === "ai" ? "translateY(-26px)" : "translateY(10px)";
         if ($("slotYou")) $("slotYou").style.transform = winner === "you" ? "translateY(16px)" : "translateY(-8px)";
         [ $("slotAi"), $("slotYou") ].forEach(s => { if (s) s.style.opacity = ".15"; });
-        sfx.sweep();
+        sfx.snap();
         await wait(480);
         clearTrickZone();
         [ $("slotAi"), $("slotYou") ].forEach(s => { if (s){ s.style.transform = ""; s.style.opacity = ""; } });
@@ -1244,6 +1262,7 @@
       return { pts: -bid * 10, bags: 0, set: true };
     }
     async function endHand(){
+      const g = GEN;
       S.phase = "handEnd"; clearTrickZone(); renderHand(); setActions([]);
       const ry = scorePlayer(S.bids.you, S.tricksWon.you, "you");
       const ra = scorePlayer(S.bids.ai, S.tricksWon.ai, "ai");
@@ -1260,6 +1279,7 @@
       else if (ra.set) { setExpr("beaten"); say(pick(["Set. ME. Write it small, please.","Okay. That hand never happened. (It did. It's in the book.)"]), 3000); }
       else setExpr(S.score.you >= S.score.ai ? "worried" : "pleased");
       await wait(1500);
+      if (g !== GEN) return;
       $("pencil").classList.remove("writing");
       renderNotebook(true);
       sfx.chip();
@@ -1398,7 +1418,8 @@
       <p>Your bid — tap NIL, BOARD · 4, or a number.</p>
       <p>Tricks — tap one of your glowing cards to play it.</p>
       <p>Faces up top — tap 👏 😄 🤔 and your friend answers.</p>
-      <p>The notebook on the table — tap it any time for the full score sheet.</p>`;
+      <p>The notebook on the table — tap it any time for the full score sheet.</p>
+      <p>The ⌂ button under the sound toggle (top right) — back to the intro page. It resets the match: scores, hands and notebook all cleared.</p>`;
     }
     /* ---------------- QR ---------------- */
     const QR_ROWS = ["111111101111000010011101001111111","100000101100101011001001101000001","101110100100011000110001101011101","101110101110100100110101101011101","101110100110100011100111101011101","100000100010010110100101001000001","111111101010101010101010101111111","000000001011100111110000100000000","101101110011101111100101001001011","001100001010110011111001001101111","001110100011110000101111101111011","110101010100000011011110100101000","101010111011101010001111110111011","000001010110011001001001000100010","011011101100111001011000101011000","101001000101101100100101011101100","000001111010010000000110011010100","011100000011101100001011111011011","111011111110011110101100010110100","101011000101011111101011101010010","001001110111110110000010000101110","101010010100100111001111101000101","000100101011010100111101111111011","011010010000000100001001001010001","101100101101010001010000111110001","000000001110010100010101100011010","111111101010011001111101101010000","100000101000000011111001100011100","101110100111100111100011111110111","101110101011001011010111000101111","101110101000101110101011101101100","100000100110011001101000111110001","111111101111101011110101000011100"];
@@ -1438,12 +1459,24 @@
 
     /* ---------------- INTRO / WIRING ---------------- */
     function backToIntro(){
-      S.phase = "intro";
+      GEN++; // abandon the game — every pending timer/await from it now bails
+      S.phase = "intro"; S.busy = false;
+      /* full game reset: match, scores, hands and table all cleared */
+      S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
+      S.hand = { you: [], ai: [] }; S.deck = []; S.trashPassed = 0; S.trashDown = 0;
+      S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
+      S.trick = []; S.trickNo = 0; S.spadesBroken = false;
+      draftCard = null;
       $("app").classList.add("introOpen");
       $("intro").classList.remove("hidden");
-      showStage(false); clearTrickZone();
+      hideSheet(); $("qrOverlay").classList.add("hidden");
+      showStage(false); stageLabel(""); clearTrickZone();
       const z = $("trickZone"); if (z) z.classList.add("hidden");
-      setActions([]); renderHand(); $("tally").textContent = "";
+      $("flipCard").innerHTML = "";
+      $("bubble").classList.remove("show");
+      $("friendWrap").classList.remove("cel-bounce");
+      setActions([]); renderHand(); renderFriendFan(); renderNotebook();
+      $("tally").textContent = "";
       status("Pick your friend, pick your place — then take a seat.");
     }
     function buildIntro(){
@@ -1519,6 +1552,7 @@
     $("howBtn").addEventListener("click", () => showSheet(howToHTML()));
     $("howBtn2").addEventListener("click", () => showSheet(howToHTML()));
     $("controlsBtn").addEventListener("click", () => showSheet(controlsHTML()));
+    $("homeBtn").addEventListener("click", () => { sfx.chip(); backToIntro(); });
     $("soundBtn").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
     $("soundBtn2").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
     $("qrBtn").addEventListener("click", () => { drawQR(); $("qrOverlay").classList.remove("hidden"); });
