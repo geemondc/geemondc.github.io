@@ -456,11 +456,11 @@
         greet:"Shades on. Tell unreadable. Your move, whenever.",
         lines:{ win:["…","Yeah. That happened."], lose:["Cool. Literally don't care. (I care.)","One. Don't get used to it."],
           nil:["Nil. Watch me not sweat."], set:["Set. Behind the shades: pain."] } },
-      { id:"curls", name:"Curls", trait:"Remembers every flip",
+      { id:"curls", name:"Curls", trait:"Counts every discard",
         skin:"#a06838", hair:"#2e1a0e", hairStyle:"curls", shirt:"#7a4d8f",
         accessory:"moonEarrings", agg:0.4, draftKeep:0.6,
-        greet:"I remember every flip you've ever shown me. Every one.",
-        lines:{ win:["The flips told me that was coming.","Memory: 1, luck: 0."], lose:["I remembered it. I still lost it.","Recalculating… rude."],
+        greet:"I count every card that hits the trash. Every one.",
+        lines:{ win:["The trash count told me that was coming.","Memory: 1, luck: 0."], lose:["I counted it. I still lost it.","Recalculating… rude."],
           nil:["Nil. The moon and I have a plan."], set:["Set. My spreadsheet is crying."] } },
       { id:"dreads", name:"Dreads", trait:"Laid-back shark",
         skin:"#6f4526", hair:"#191008", hairStyle:"dreads", shirt:"#5d7040",
@@ -507,7 +507,6 @@
       leader: "you", trick: [], spadesBroken: false, trickNo: 0,
       score: { you: 0, ai: 0 }, bags: { you: 0, ai: 0 },
       history: [], handNo: 0, starter: "you",
-      seenKeptYou: [],           // first-flips Gary kept (public)
       sound: true, busy: false
     };
 
@@ -731,29 +730,11 @@
       trash(){ noiseBurst(.09, 1200, .1, "lowpass"); },
       chip(){ noiseBurst(.05, 4000, .08, "highpass"); }
     };
-    let ambientNodes = null;
-    function ambient(on){
-      const ac = audio(); if (!ac) return;
-      if (on && !ambientNodes && S.sound){
-        const n = ac.sampleRate * 2, buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0);
-        let last = 0; for (let i = 0; i < n; i++){ const w = Math.random() * 2 - 1; last = (last + .02 * w) / 1.02; ch[i] = last * 3.2; }
-        const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
-        const f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 320;
-        const g = ac.createGain(); g.gain.value = .028;
-        const lfo = ac.createOscillator(); lfo.frequency.value = .09;
-        const lg = ac.createGain(); lg.gain.value = .012; lfo.connect(lg); lg.connect(g.gain);
-        src.connect(f); f.connect(g); g.connect(ac.destination); src.start(); lfo.start();
-        ambientNodes = { src, g, lfo };
-      } else if (!on && ambientNodes){
-        try { ambientNodes.src.stop(); ambientNodes.lfo.stop(); } catch(e){}
-        ambientNodes = null;
-      }
-    }
+    /* NO ambient/background sound of any kind — card sounds only (Gary's rule). */
     function setSound(on){
       S.sound = on;
       $("soundBtn").textContent = on ? "🔊" : "🔇";
       $("soundBtn2").textContent = on ? "🔊 SOUND ON" : "🔇 SOUND OFF";
-      ambient(on && S.phase !== "intro");
     }
 
     /* ---------------- SPEECH / STATUS ---------------- */
@@ -853,7 +834,7 @@
     async function startMatch(){
       S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
       S.starter = Math.random() < .5 ? "you" : "ai";
-      renderNotebook(); ambient(S.sound);
+      renderNotebook();
       await startHand();
     }
     async function startHand(){
@@ -861,11 +842,11 @@
       S.deck = newDeck(); S.trashPassed = 0; S.trashDown = 0;
       S.hand = { you: [], ai: [] };
       S.bids = { you: null, ai: null }; S.tricksWon = { you: 0, ai: 0 };
-      S.trick = []; S.spadesBroken = false; S.trickNo = 0; S.seenKeptYou = [];
+      S.trick = []; S.spadesBroken = false; S.trickNo = 0;
       S.phase = "draft"; S.draftTurn = S.starter;
       showStage(true); renderStage(); renderHand(); renderFriendFan(); renderTally();
       $("flipCard").innerHTML = "";
-      status(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You flip first." : S.friend.name + " flips first."}`);
+      status(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You peek first." : S.friend.name + " peeks first."}`);
       say(S.handNo === 1 ? S.friend.greet : pick(["Fresh deck. Same rules.","New hand — watch the trash.","The draft is where this is won."]), 3000);
       setExpr("idle");
       await wait(900);
@@ -879,20 +860,27 @@
       sfx.flip();
       const flip = $("flipCard");
       flip.innerHTML = "";
-      const el = makeCardEl(draftCard, "flipIn"); el.style.setProperty("--cw", "92px");
-      flip.appendChild(el);
-      renderStage();
+      /* THE PEEK IS PRIVATE — there is no public face-up card in this game.
+         On your turn you alone see the card (it's your look, on your screen).
+         On your friend's turn the table shows only a card BACK, and nothing
+         anywhere names or reveals what they are looking at. */
       if (turn === "you"){
-        stageLabel("Your flip — take it or trash it?");
-        status(`You flipped the ${cardName(draftCard)}. Keep it, or trash it and take the next card blind?`);
+        const el = makeCardEl(draftCard, "flipIn"); el.style.setProperty("--cw", "92px");
+        flip.appendChild(el);
+        renderStage();
+        stageLabel("Your peek — only you see it. Take it or trash it?");
+        status(`You peeked at the ${cardName(draftCard)} — only you saw it. Keep it, or trash it and take the next card blind?`);
         setActions([
           { label: "KEEP ✓", cls: "primary", fn: () => draftDecide(true) },
           { label: "PASS ✕", cls: "pass", fn: () => draftDecide(false) }
         ]);
         setExpr("playing");
       } else {
-        stageLabel(`${S.friend.name} is eyeing the ${cardName(draftCard)}…`);
-        status(`${S.friend.name} flipped the ${cardName(draftCard)} and is deciding…`);
+        const el = makeBackEl("flipIn"); el.style.setProperty("--cw", "92px");
+        flip.appendChild(el);
+        renderStage();
+        stageLabel(`${S.friend.name} is peeking…`);
+        status(`${S.friend.name} is peeking at the top card — private. You don't get to see it.`);
         setActions([]);
         setExpr("thinking");
         setTimeout(() => draftDecide(aiDraftLikes(draftCard)), 1000 + Math.random() * 900 + (S.friend.id === "blond" ? 500 : 0));
@@ -904,14 +892,13 @@
       $("flipCard").innerHTML = "";
       if (keep){
         S.hand[turn].push(card); sortHand(S.hand[turn]);
-        if (turn === "you"){ S.seenKeptYou.push(card); }
         if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftKeep));
         const blind = S.deck.pop();
         S.trashDown++;
         sfx.trash();
         flyCard($("deckStack"), $("trashFan"), null, null);
         if (turn === "you") status(`Kept the ${cardName(card)}. The next card goes to the trash, unseen.`);
-        else status(`${S.friend.name} kept the ${cardName(card)}.`);
+        else status(`${S.friend.name} kept it. The next card goes to the trash, unseen by anyone.`);
       } else {
         /* PASS — the locked house rule, for you AND the AI alike: the flipped
            card A drops to the trash FACE-DOWN, and the very next card in the
@@ -925,7 +912,7 @@
         S.hand[turn].push(blindNext); sortHand(S.hand[turn]);
         flyCard($("flipCard"), $("trashFan"), null, null); // only A travels — face-down to the trash
         if (turn === "you") status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not.`);
-        else status(`${S.friend.name} passed on the ${cardName(card)} and took the next one blind.`);
+        else status(`${S.friend.name} passed — the peeked card went to the trash unseen, and the next card is theirs, blind.`);
       }
       if (turn === "you") renderHand(); else renderFriendFan();
       renderStage(); renderTally();
@@ -1148,7 +1135,9 @@
       if (winner === "ai"){ setExpr("pleased"); if (Math.random() < .5) say(pick(S.friend.lines.win.concat(GENERIC.winTrick)), 1700); }
       else { setExpr(Math.random() < .5 ? "worried" : "playing"); if (Math.random() < .4) say(pick(S.friend.lines.lose.concat(GENERIC.loseTrick)), 1700); }
     }
-    /* ---- AI card choice: only public info (own hand, played cards, public flips/keeps — never face-down trash) ---- */
+    /* ---- AI card choice: only info it could really have — its own hand and the
+       cards already played to tricks. NEVER Gary's private peeks or keeps,
+       and never the face-down trash. ---- */
     function aiPlay(){
       if (S.phase !== "play") return;
       const card = aiChooseCard();
@@ -1220,15 +1209,11 @@
         return lowest(legal.filter(c => !isSpade(c)).length ? legal.filter(c => !isSpade(c)) : legal);
       }
       if (youNil){
-        // lead low into suits where Gary was SEEN keeping high cards (public info)
+        // Gary's peeks are private — the AI knows nothing about his hand
+        // beyond the cards already played. Against a Nil it just leads low.
         const nonSpade = legal.filter(c => !isSpade(c));
         const pool = nonSpade.length ? nonSpade : legal;
-        let bestLead = null;
-        for (const c of pool){
-          const seenHigh = S.seenKeptYou.some(k => k.suit === c.suit && k.rank > c.rank);
-          if (seenHigh && c.rank <= 9){ bestLead = c; break; }
-        }
-        return bestLead || lowest(pool);
+        return lowest(pool);
       }
       if (need > 0){
         // lead an ace, or from longest suit; draw trump if broken & strong
@@ -1378,20 +1363,21 @@
       return `<h2>How We Play ♠</h2>
       <p style="margin-top:0">Heads-up Spades, Gary's house rules. Two players, one deck, no partners to hide behind.</p>
       <h3>🂡 The Draft Deal</h3>
-      <p>There's no regular deal and no stock to draw from. The shuffled deck sits face-down in the middle and you <b>draft</b> your hands, one decision at a time:</p>
+      <p>There's no regular deal and <b>no passing cards</b> — passing belongs to Hearts. The shuffled deck sits face-down in the middle and you <b>draft</b> your hands, one decision at a time:</p>
       <ul>
-        <li>On your turn, flip the top card so <b>both players see it</b>.</li>
-        <li><b>Like it?</b> Keep it — and the next card goes straight to the trash <i>face down, never seen by anyone</i>.</li>
-        <li><b>Don't like it?</b> It goes in the trash <i>face down</i> — and you <b>must</b> take the next card blind, no second thoughts.</li>
+        <li>On your turn, peek at the top card. The look is <b>private</b> — only you see it. There is no face-up card on the table, ever.</li>
+        <li><b>Like it?</b> Keep it — it's yours, and the next card goes straight to the trash <i>face down, never seen by anyone</i>. You never see a second card.</li>
+        <li><b>Don't like it?</b> It goes in the trash <i>face down, still hidden from your friend</i> — and you <b>must</b> take the next card. That second card is yours, sight unseen, no second thoughts.</li>
         <li>Back and forth until you both hold 13. The whole deck gets used: <b>26 kept, 26 trashed</b>.</li>
       </ul>
-      <p>The flip is the only look anyone gets. The moment a card hits the trash it lands <b>face down and stays hidden</b> — no peeking, no list, just the count. The only record of what's dead is your memory of the flips. Your friend plays by exactly the same blindness you do. Nothing up anyone's sleeve.</p>
+      <p>Every card in the trash stays <b>face down and secret from both players</b> — the hidden pile is the whole uncertainty of the game. Your friend peeks privately too; you never see their card, and they never see yours.</p>
       <h3>🎯 Bidding</h3>
-      <p>After the draft, bid how many tricks you'll take. The bid bar is <b>NIL · BOARD (4) · 5 · 6 · 7 · 8 · 9 · 10 · 11 · 12 · 13</b>. There are no 1, 2 or 3 bids — <b>lowest you can go is Board — 4</b>.</p>
+      <p>After the draft, bid how many tricks you'll take. The <b>non-dealer bids first</b>, then the dealer — and the deal rotates every hand. The bid bar is <b>NIL · BOARD (4) · 5 · 6 · 7 · 8 · 9 · 10 · 11 · 12 · 13</b>. There are no 1, 2 or 3 bids — <b>lowest you can go is Board — 4</b>. Both bids are written on the notebook line before a card is played.</p>
       <h3>🌙 Nil — the friendly way</h3>
       <p>Bid <b>Nil</b> instead of a number and you may take <b>up to 2 tricks</b> and still make it. The <b>3rd trick busts you</b>. Made Nil pays <b>+100</b>; busted Nil costs <b>−100</b>. Nil replaces your bid completely — those 0–2 tricks aren't bags and score nothing else. Your opponent scores their own bid as usual… and yes, they'll try to force that third trick on you.</p>
       <h3>🃏 Playing Tricks</h3>
       <ul>
+        <li>The <b>first bidder leads the first trick</b> — anything except a spade.</li>
         <li>Follow suit if you can. Can't? Trump with a spade or throw off junk.</li>
         <li><b>Spades can't be led until they're broken</b> — a spade has to hit the table on a trick first.</li>
         <li>Highest card of the led suit wins, unless a spade takes it. Trick winner leads next.</li>
@@ -1408,7 +1394,7 @@
     }
     function controlsHTML(){
       return `<h2>Controls 🎛</h2>
-      <p style="margin-top:0">Draft — tap KEEP ✓ to take the flipped card, PASS ✕ to trash it and take the next card blind.</p>
+      <p style="margin-top:0">Draft — peek at the top card (only you see it). Tap KEEP ✓ to take it, PASS ✕ to trash it unseen and take the next card blind.</p>
       <p>Your bid — tap NIL, BOARD · 4, or a number.</p>
       <p>Tricks — tap one of your glowing cards to play it.</p>
       <p>Faces up top — tap 👏 😄 🤔 and your friend answers.</p>
@@ -1459,7 +1445,6 @@
       const z = $("trickZone"); if (z) z.classList.add("hidden");
       setActions([]); renderHand(); $("tally").textContent = "";
       status("Pick your friend, pick your place — then take a seat.");
-      ambient(false);
     }
     function buildIntro(){
       const fp = $("friendPick"); fp.innerHTML = "";
