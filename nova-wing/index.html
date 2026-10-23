@@ -296,7 +296,7 @@ function startWave(n){
   G.wave = n;
   G.waveState = "banner"; G.waveTimer = 2.0;
   G.spawnQueue = 3 + n*2;                       /* wave 1 = 5 fighters */
-  G.spawnCd = 0.5;
+  G.spawnCd = 0;                                 /* first fighter appears the moment the banner drops */
   G.torpAmmo = Math.min(6, G.torpAmmo + 1);
   AudioSys.waveHorn();
   comms("CONTROL", "WAVE " + n + " — fighters inbound", "#37e6ff");
@@ -311,25 +311,29 @@ function waveComposition(n){
   if(r < spireP + lanceP) return "lance";
   return "dart";
 }
-function spawnEnemy(){
-  var key = waveComposition(G.wave);
-  var m = MODELS[key];
-  /* spawn on a sphere around the player: mostly ahead, some flanking/behind */
+/* a point in the cone ahead of the player — where fighters should appear
+   so the player actually SEES them coming, '83-style */
+function spawnPosAhead(dist){
   var bearing = rand(-Math.PI, Math.PI);
-  var frontBias = Math.random();
-  if(frontBias < 0.66) bearing = rand(-0.6, 0.6);
-  var elev = rand(-0.35, 0.35);
-  var dist = rand(140, 185);
+  if(Math.random() < 0.82) bearing = rand(-0.5, 0.5);   /* mostly dead ahead */
+  var elev = rand(-0.22, 0.22);
   var dir = v3(Math.sin(bearing)*Math.cos(elev), Math.sin(elev), -Math.cos(bearing)*Math.cos(elev));
   /* rotate dir by player yaw so "ahead" means player's ahead */
   var cy = Math.cos(G.player.yaw), sy = Math.sin(G.player.yaw);
   var worldDir = v3(dir.x*cy - dir.z*sy, dir.y, dir.x*sy + dir.z*cy);
-  var pos = vadd(G.player.pos, vscale(worldDir, dist));
+  return vadd(G.player.pos, vscale(worldDir, dist));
+}
+function spawnEnemy(){
+  var key = waveComposition(G.wave);
+  var m = MODELS[key];
+  /* close enough to read as a ship, not a speck: ~90 units out, big wireframe,
+     growing fast as it closes */
+  var pos = spawnPosAhead(rand(78, 112));
   G.enemies.push({
-    key:key, model:m, pos:pos,
+    key:key, model:m, pos:pos, size:1.9,
     heading: vnorm(vsub(G.player.pos, pos)),
     roll:0, hp:m.hp, speed: m.speed * rand(0.9,1.12) * (1 + G.wave*0.02),
-    state:"approach", stateT: rand(1.5,3.5), fireCd: rand(1.2,2.6),
+    state:"approach", stateT: rand(3,5), fireCd: rand(1.2,2.6),
     wob: rand(0, Math.PI*2), flash:0, strafeDir: Math.random()<0.5?-1:1
   });
 }
@@ -372,8 +376,9 @@ function shipWorldVerts(e){
   var U2 = vadd(vscale(U, cr), vscale(R, -sr));
   var out = [];
   var vs = e.model.verts;
+  var sc = e.size || 1;
   for(var i=0;i<vs.length;i++){
-    out.push(vadd(e.pos, vadd(vadd(vscale(R2, vs[i][0]), vscale(U2, vs[i][1])), vscale(Hh, vs[i][2]))));
+    out.push(vadd(e.pos, vadd(vadd(vscale(R2, vs[i][0]*sc), vscale(U2, vs[i][1]*sc)), vscale(Hh, vs[i][2]*sc))));
   }
   return out;
 }
@@ -429,7 +434,7 @@ function playerFire(){
     var e = G.enemies[i]; if(e.dead) continue;
     var pr = project(e.pos, basis); if(!pr) continue;
     var d = Math.hypot(pr.x-W/2, pr.y-H/2);
-    var hitR = clamp(pr.scale * e.model.radius * 0.95, 7, 90);
+    var hitR = clamp(pr.scale * e.model.radius * (e.size||1) * 0.95, 7, 110);
     if(d < hitR && d < bestD){ bestD = d; best = e; }
   }
   if(best){
@@ -531,20 +536,23 @@ function update(dt){
     var desired;
     e.stateT -= dt;
     if(e.state==="approach"){
-      /* dive at the player, with a modest wobble so the run isn't a rail */
+      /* dive at the player and HOLD the dive until the pass actually happens —
+         no veering off early, so the ship grows big in the player's face */
       var off = v3(Math.sin(e.wob)*4.5*e.strafeDir, Math.cos(e.wob*0.8)*3, 0);
       desired = vnorm(vadd(toPlayer, off));
-      if(dist < 20 || e.stateT<=0){ e.state="pass"; e.stateT = rand(0.9,1.6); }
+      if(dist < 16){ e.state="pass"; e.stateT = rand(0.8,1.3); }
     } else if(e.state==="pass"){
       desired = vnorm(vadd(e.heading, v3(e.strafeDir*0.9, 0.35*Math.sin(e.wob), 0)));
       if(e.stateT<=0){ e.state="return"; e.stateT = rand(1.4,2.2); }
-    } else { /* return: bank around and dive back in — never loiter */
-      var swing = vnorm(vadd(vscale(toPlayer, 0.85), v3(e.strafeDir*0.8, 0.25*Math.sin(e.wob), 0)));
-      desired = swing;
-      if(e.stateT<=0 || dist>200){ e.state="approach"; e.stateT = rand(2.5,4); }
+    } else { /* return: swing to a point AHEAD of the player, then dive back in
+                through the front of the view — never loiter behind */
+      var aimPt = vadd(p.pos, vscale(basis.F, 55));
+      var toAim = vsub(aimPt, e.pos);
+      desired = vnorm(vadd(vscale(toAim, 0.9), v3(e.strafeDir*0.5, 0.2*Math.sin(e.wob), 0)));
+      if(e.stateT<=0 || vlen(toAim) < 30){ e.state="approach"; e.stateT = rand(3,5); }
     }
     /* turn toward desired with a capped rate -> real 3D maneuvering */
-    var maxTurn = (e.key==="dart"?1.5 : e.key==="lance"?1.25 : 1.05) * dt;
+    var maxTurn = (e.key==="dart"?1.7 : e.key==="lance"?1.45 : 1.2) * dt;
     var cur = e.heading;
     var cross = vcross(cur, desired);
     var sinA = vlen(cross), cosA = clamp(vdot(cur, desired), -1, 1);
@@ -562,20 +570,26 @@ function update(dt){
     }
     e.pos = vadd(e.pos, vscale(e.heading, e.speed*dt));
 
-    /* enemy fire: only when the player is in their forward cone */
+    /* enemy fire: only when the player is in their forward cone AND the
+       fighter is in the player's forward hemisphere — no invisible back-shots */
     e.fireCd -= dt;
     var facing = vdot(e.heading, vnorm(toPlayer));
-    if(e.fireCd<=0 && facing > 0.86 && dist < 85 && dist > 9){
+    var inFront = vdot(basis.F, vnorm(vsub(e.pos, p.pos))) > 0.02;
+    if(e.fireCd<=0 && facing > 0.86 && dist < 85 && dist > 9 && inFront){
       enemyShoot(e);
       e.fireCd = rand(1.5, 2.7) * clamp(1.15 - G.wave*0.05, 0.6, 1.15);
     }
     /* collision */
-    if(dist < 3.2){
+    if(dist < 3.6){
       killEnemy(e, false);
       hurtPlayer(14);
     }
-    /* lost too far behind -> recycle as a fresh approach */
-    if(dist > 320){ e.pos = vadd(p.pos, vscale(vnorm(toPlayer), -190)); e.state="approach"; }
+    /* drifted too far off -> recycle as a fresh approach dead ahead */
+    if(dist > 170){
+      e.pos = spawnPosAhead(rand(85, 120));
+      e.heading = vnorm(vsub(p.pos, e.pos));
+      e.state = "approach"; e.stateT = rand(3,5);
+    }
   }
   G.enemies = G.enemies.filter(function(e){ return !e.dead; });
 
@@ -598,7 +612,7 @@ function update(dt){
     var en = G.enemies[k];
     var pr2 = project(en.pos, basis); if(!pr2) continue;
     var dd = Math.hypot(pr2.x-W/2, pr2.y-H/2);
-    var lr = clamp(pr2.scale*en.model.radius*1.25, 12, 110);
+    var lr = clamp(pr2.scale*en.model.radius*(en.size||1)*1.25, 12, 130);
     if(dd < lr && dd < lockD){ lockD = dd; lockCand = en; }
   }
   if(lockCand){
@@ -684,7 +698,7 @@ function drawShip(e, basis){
     pts.push(pr);
   }
   var color = e.flash>0 ? "#ffffff" : e.model.color;
-  var lw = clamp(pts[0].scale*0.028, 0.7, 2.6);
+  var lw = clamp(pts[0].scale*0.028, 1.0, 2.8);
   ctx.lineCap = "round";
   for(var j=0;j<e.model.edges.length;j++){
     var a = pts[e.model.edges[j][0]], b = pts[e.model.edges[j][1]];
@@ -696,6 +710,18 @@ function drawShip(e, basis){
     ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  /* distant-contact dot: a far fighter still reads as a glowing contact
+     growing out of the black instead of vanishing into it */
+  if(pts[0].z > 55){
+    var mx = 0, my = 0;
+    for(var q=0;q<pts.length;q++){ mx += pts[q].x; my += pts[q].y; }
+    mx /= pts.length; my /= pts.length;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = clamp(1.35 - pts[0].z/150, 0.25, 0.85);
+    ctx.shadowBlur = 9; ctx.shadowColor = color;
+    ctx.beginPath(); ctx.arc(mx, my, 2.3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
 }
 
 function drawHUD(basis){
@@ -781,7 +807,7 @@ function drawHUD(basis){
   if(G.lockTarget){
     var pr = project(G.lockTarget.pos, basis);
     if(pr){
-      var lr = clamp(pr.scale*G.lockTarget.model.radius*1.3, 14, 120);
+      var lr = clamp(pr.scale*G.lockTarget.model.radius*(G.lockTarget.size||1)*1.3, 14, 140);
       ctx.strokeStyle = chColor; ctx.lineWidth = 1.6;
       var c = 8;
       ctx.beginPath();
