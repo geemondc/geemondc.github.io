@@ -22,7 +22,7 @@
   /* ---------- stage / canvas ---------- */
   #stageWrap{ position:fixed; inset:0; z-index:0; background:#000; }
   body.playing #stageWrap{ top:44px; }
-  body.playing.touch #stageWrap{ bottom:118px; }
+  body.playing.touch #stageWrap{ bottom:128px; }
   #cv{ display:block; width:100%; height:100%; touch-action:none; }
   /* ---------- HUD ---------- */
   #hud{
@@ -119,7 +119,7 @@
   .statRow{ display:flex; justify-content:space-between; font-size:16px; padding:5px 2px; border-bottom:1px dashed #2c5a36; }
   /* ---------- touch deck ---------- */
   #deck{
-    position:fixed; left:0; right:0; bottom:0; height:118px; z-index:5; display:none;
+    position:fixed; left:0; right:0; bottom:0; height:128px; z-index:5; display:none;
     align-items:center; justify-content:space-between; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
     background:rgba(0,0,0,.88); border-top:1px solid var(--line);
   }
@@ -135,7 +135,22 @@
   .tbtn.fire{ border-color:#a33f35; background:#3a130e; width:74px; height:74px; }
   .tbtn.on{ background:#2c7a3d; border-color:var(--acc); }
   .tbtn.fire.on{ background:#8c2f24; }
-  @media (max-width:420px){ .tbtn{ width:58px; height:58px; } .tbtn.fire{ width:68px; height:68px; } }
+  #stick{
+    position:relative; width:106px; height:106px; border-radius:50%; flex:none;
+    border:2px solid var(--line); background:radial-gradient(circle at 50% 50%, #143d1f, #0d2b16);
+    touch-action:none; user-select:none; -webkit-user-select:none;
+  }
+  #stick.on{ border-color:var(--acc); box-shadow:0 0 14px rgba(182,255,94,.3); }
+  #stickKnob{
+    position:absolute; left:50%; top:50%; width:48px; height:48px; border-radius:50%;
+    background:#2c7a3d; border:2px solid var(--acc); box-shadow:0 0 12px rgba(182,255,94,.35);
+    transform:translate(-50%,-50%); pointer-events:none;
+  }
+  #stick small{
+    position:absolute; left:0; right:0; bottom:6px; text-align:center; pointer-events:none;
+    font-size:8.5px; letter-spacing:.14em; color:var(--dim);
+  }
+  @media (max-width:420px){ .tbtn{ width:58px; height:58px; } .tbtn.fire{ width:68px; height:68px; } #stick{ width:98px; height:98px; } }
 </style>
 </head>
 <body>
@@ -175,11 +190,9 @@
 
 <div id="deck">
   <div class="cluster">
-    <button class="tbtn" id="tLeft">&#9664;<small data-i18n="turn">TURN</small></button>
-    <button class="tbtn" id="tRight">&#9654;<small data-i18n="turn">TURN</small></button>
+    <div id="stick" role="button" aria-label="Joystick"><div id="stickKnob"></div><small data-i18n="stick">MOVE</small></div>
   </div>
   <div class="cluster">
-    <button class="tbtn" id="tThrust">&#9650;<small data-i18n="thrust">THRUST</small></button>
     <button class="tbtn fire" id="tFire">&#9679;<small data-i18n="fire">FIRE</small></button>
   </div>
 </div>
@@ -204,7 +217,8 @@
       <li data-i18n="hCity"></li>
       <li data-i18n="hTeam"></li>
     </ul>
-    <p><span class="k" data-i18n="hKeysLab"></span><br /><span data-i18n="hKeys"></span></p>
+    <p><span class="k" id="hKeysLabEl">KEYBOARD</span><br /><span id="hKeysEl"></span></p>
+    <p id="hMouseP"><span class="k" data-i18n="hMouseLab"></span><br /><span data-i18n="hMouse"></span></p>
     <p><span class="k" data-i18n="hTouchLab"></span><br /><span data-i18n="hTouch"></span></p>
     <p data-i18n="hEgg" style="color:var(--dim)"></p>
     <button class="closeBtn" data-close data-i18n="close">CLOSE</button>
@@ -240,7 +254,7 @@ en:{ tribute:"A tribute to the 1980 vector classic", tagline:"Neon ruins. Endles
   soloHi:"SOLO HIGH SCORE", teamHi:"TEAM HIGH SCORE", start:"START", howto:"HOW TO PLAY", close:"CLOSE",
   score:"SCORE", jeeps:"JEEPS LEFT", wave:"WAVE", paused:"PAUSED", resume:"RESUME", quit:"QUIT TO TITLE",
   gameover:"GAME OVER", best:"BEST", accuracy:"ACCURACY", again:"PLAY AGAIN", newBest:"NEW HIGH SCORE!",
-  turn:"TURN", thrust:"THRUST", fire:"FIRE", soundOn:"SOUND: ON", soundOff:"SOUND: OFF",
+  turn:"TURN", thrust:"THRUST", fire:"FIRE", stick:"MOVE", soundOn:"SOUND: ON", soundOff:"SOUND: OFF",
   heliWarn:"!! HELICOPTER INBOUND !!", waveTxt:"WAVE", bonus:"WAVE BONUS",
   hGoal:"You are the little glowing jeep — the plainest thing on the field, and the only one that matters. Survive endless waves of armor in a ruined vector city.",
   hJeep:"YOUR JEEP: fast and agile. Rotate, thrust, and fire rockets straight ahead. You start with 5 jeeps. Getting shot, bombed, or ramming a tank costs one.",
@@ -248,14 +262,16 @@ en:{ tribute:"A tribute to the 1980 vector classic", tagline:"Neon ruins. Endles
   hHeli:"The HELICOPTER flies over the rooftops and drops bombs on where you're headed. Park and you die. One rocket downs it: +500.",
   hCity:"Buildings are solid cover — they block jeeps, tanks, and shots. Use the streets, choke points, and corners.",
   hTeam:"2P CO-OP: two jeeps, one city, shared score and shared jeeps. FRIENDLY FIRE IS ON — watch your shots, you can blow up your teammate.",
-  hKeysLab:"KEYBOARD", hKeys:"P1: Arrow keys steer + thrust, SPACE fires. Solo, WASD works too. Fine aim: tap for small turns, hold SHIFT to turn slowly, or nudge with , and . keys. In 2P: P1 uses Arrows + ENTER to fire; P2 uses A/D to turn, W to thrust, F to fire. P pauses.",
-  hTouchLab:"TOUCH", hTouch:"Left buttons turn, right buttons thrust and fire. Hold FIRE to keep shooting. Big buttons, built for thumbs.",
+  hKeysLab:"KEYBOARD", hKeys:"SOLO: A turns left, D turns right, UP ARROW thrusts, SPACE fires — left hand drives, right hand stays free for the mouse. The arrow keys work too (LEFT/RIGHT also turn). Fine aim: tap for small turns, hold SHIFT to turn slowly, or nudge with the , and . keys. P pauses.",
+  hCoopLab:"2P CO-OP", hCoop:"PLAYER 1 — MOUSE only: point to steer, LEFT button fires, hold the RIGHT button to thrust. No keyboard needed. PLAYER 2 — ARROWS only: LEFT/RIGHT turn, UP thrusts, RIGHT SHIFT fires (ENTER works too). Nobody shares keys, nobody reaches across.",
+  hMouseLab:"MOUSE", hMouse:"Point to steer — the jeep spins fast to face your cursor. LEFT button fires. HOLD the RIGHT button to thrust. Mix freely: steer with the mouse while thrusting on the UP arrow, or hold SPACE to fire while the mouse aims. Mouse and keyboard are live at the same time.",
+  hTouchLab:"TOUCH", hTouch:"Left thumb on the JOYSTICK: push it the way you want to go — the jeep turns to that heading, and the farther you push, the harder it thrusts. A small push creeps; a full push flies. Right thumb: hold the big FIRE button to keep shooting.",
   hEgg:"Psst — leave the title screen running with sound on, and listen closely to the beeps. They're real Morse code… a salute to the original programmer." },
 es:{ tribute:"Un tributo al clásico vectorial de 1980", tagline:"Ruinas de neón. Blindados sin fin. No te detengas.",
   soloHi:"RÉCORD SOLO", teamHi:"RÉCORD EQUIPO", start:"JUGAR", howto:"CÓMO JUGAR", close:"CERRAR",
   score:"PUNTOS", jeeps:"JEEPS", wave:"OLEADA", paused:"PAUSA", resume:"SEGUIR", quit:"SALIR AL TÍTULO",
   gameover:"FIN DEL JUEGO", best:"RÉCORD", accuracy:"PUNTERÍA", again:"JUGAR OTRA VEZ", newBest:"¡NUEVO RÉCORD!",
-  turn:"GIRAR", thrust:"MOTOR", fire:"FUEGO", soundOn:"SONIDO: SÍ", soundOff:"SONIDO: NO",
+  turn:"GIRAR", thrust:"MOTOR", fire:"FUEGO", stick:"MOVER", soundOn:"SONIDO: SÍ", soundOff:"SONIDO: NO",
   heliWarn:"¡¡ LLEGA EL HELICÓPTERO !!", waveTxt:"OLEADA", bonus:"BONO DE OLEADA",
   hGoal:"Eres el pequeño jeep brillante: lo más sencillo del campo, y lo único que importa. Sobrevive oleadas infinitas de blindados en una ciudad vectorial en ruinas.",
   hJeep:"TU JEEP: rápido y ágil. Gira, acelera y dispara cohetes hacia adelante. Empiezas con 5 jeeps. Un disparo, una bomba o chocar con un tanque te cuesta uno.",
@@ -263,8 +279,10 @@ es:{ tribute:"Un tributo al clásico vectorial de 1980", tagline:"Ruinas de neó
   hHeli:"El HELICÓPTERO vuela sobre los tejados y suelta bombas hacia donde te diriges. Si te estacionas, mueres. Un cohete lo derriba: +500.",
   hCity:"Los edificios son cobertura sólida: bloquean jeeps, tanques y disparos. Usa las calles, los cuellos de botella y las esquinas.",
   hTeam:"CO-OP 2P: dos jeeps, una ciudad, puntos y jeeps compartidos. EL FUEGO AMIGO ESTÁ ACTIVADO: cuidado, puedes volar a tu compañero.",
-  hKeysLab:"TECLADO", hKeys:"P1: flechas para girar y acelerar, ESPACIO para disparar. En solitario, WASD también funciona. Puntería fina: toques cortos para giros pequeños, SHIFT para girar lento, o ajusta con las teclas , y . En 2P: P1 usa flechas + ENTER; P2 usa A/D para girar, W para acelerar, F para disparar. P pausa.",
-  hTouchLab:"TÁCTIL", hTouch:"Botones de la izquierda para girar; de la derecha para acelerar y disparar. Mantén FUEGO para disparar sin parar. Botones grandes, hechos para los pulgares.",
+  hKeysLab:"TECLADO", hKeys:"SOLO: A gira a la izquierda, D a la derecha, la FLECHA ARRIBA acelera, ESPACIO dispara: la mano izquierda conduce y la derecha queda libre para el ratón. Las flechas también sirven (IZQUIERDA/DERECHA también giran). Puntería fina: toques cortos para giros pequeños, SHIFT para girar lento, o ajusta con las teclas , y . P pausa.",
+  hCoopLab:"CO-OP 2P", hCoop:"JUGADOR 1 — solo el RATÓN: apunta para guiar, el botón IZQUIERDO dispara, mantén el botón DERECHO para acelerar. No necesita teclado. JUGADOR 2 — solo las FLECHAS: IZQUIERDA/DERECHA giran, ARRIBA acelera, SHIFT DERECHO dispara (ENTER también sirve). Nadie comparte teclas, nadie cruza los brazos.",
+  hMouseLab:"RATÓN", hMouse:"Apunta para guiar: el jeep gira rápido para mirar hacia tu cursor. El botón IZQUIERDO dispara. MANTÉN el botón DERECHO para acelerar. Combina a tu gusto: guía con el ratón mientras aceleras con la flecha ARRIBA, o mantén ESPACIO para disparar mientras el ratón apunta. Ratón y teclado funcionan a la vez.",
+  hTouchLab:"TÁCTIL", hTouch:"Pulgar izquierdo en la PALANCA: empújala hacia donde quieres ir: el jeep gira hacia esa dirección, y cuanto más la empujes, más fuerte acelera. Un toque suave avanza lento; a fondo, vuela. Pulgar derecho: mantén el botón grande de FUEGO para disparar sin parar.",
   hEgg:"Psst: deja la pantalla de título con el sonido activado y escucha los pitidos. Son código Morse de verdad… un saludo al programador original." }
 };
 var lang = "en";
@@ -275,6 +293,7 @@ function applyLang(){
   document.getElementById("togSound").textContent = soundOn ? T("soundOn") : T("soundOff");
   document.getElementById("togMode").textContent = neonMode ? "NEON" : "PURE VECTOR";
   document.getElementById("btn2P").textContent = (lang === "en") ? "2P CO-OP" : "2P CO-OP";
+  if(typeof refreshHelp === "function") refreshHelp();
 }
 
 /* ============================== STORAGE ============================== */
@@ -457,6 +476,7 @@ function startWave(n){
 }
 function startGame(){
   score = 0; jeepsLeft = 5; shotsFired = 0; shotsHit = 0; runTime = 0; shake = 0;
+  mouse.fire = false; mouse.thrust = false; stick.active = false; stick.mag = 0;
   jeeps = [makeJeep(0)]; if(twoPlayer) jeeps.push(makeJeep(1));
   tanks = []; bullets = []; shells = []; bombs = []; parts = []; rings = []; heli = null;
   gateIdx = Math.floor(Math.random() * 4);
@@ -504,11 +524,15 @@ function showBanner(txt, warn, ms){
 }
 
 /* ============================== INPUT ============================== */
-var keys = {}, touch = { left: false, right: false, thrust: false, fire: false };
+var keys = {}, touch = { fire: false };
+var mouse = { seen: false, steer: false, cx: 0, cy: 0, fire: false, thrust: false };
+var stick = { active: false, id: null, ang: 0, mag: 0 };
 var fineL = 0, fineR = 0;
 window.addEventListener("keydown", function(e){
   var k = e.key;
   if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].indexOf(k) >= 0) e.preventDefault();
+  if(!twoPlayer && (k === "ArrowLeft" || k === "ArrowRight" || k === "a" || k === "d" || k === "A" || k === "D")) mouse.steer = false;
+  if(e.code) keys[e.code] = true;
   if(!e.repeat){
     if(k === ",") fineL++;
     if(k === ".") fineR++;
@@ -517,7 +541,7 @@ window.addEventListener("keydown", function(e){
   }
   keys[k.length === 1 ? k.toLowerCase() : k] = true;
 });
-window.addEventListener("keyup", function(e){ keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+window.addEventListener("keyup", function(e){ keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; if(e.code) keys[e.code] = false; });
 window.addEventListener("blur", function(){ if(state === "playing") pauseGame(); });
 function bindBtn(id, prop){
   var el = document.getElementById(id);
@@ -527,7 +551,48 @@ function bindBtn(id, prop){
   el.addEventListener("pointerup", off); el.addEventListener("pointercancel", off); el.addEventListener("pointerleave", off);
   el.addEventListener("contextmenu", function(e){ e.preventDefault(); });
 }
-bindBtn("tLeft", "left"); bindBtn("tRight", "right"); bindBtn("tThrust", "thrust"); bindBtn("tFire", "fire");
+bindBtn("tFire", "fire");
+/* ---- mouse: pointer steers, LEFT button fires, hold RIGHT button to thrust ---- */
+var cvEl = document.getElementById("cv");
+cvEl.addEventListener("pointermove", function(e){
+  if(e.pointerType && e.pointerType !== "mouse") return;
+  mouse.cx = e.clientX; mouse.cy = e.clientY; mouse.seen = true; mouse.steer = true;
+});
+cvEl.addEventListener("pointerdown", function(e){
+  if(e.pointerType && e.pointerType !== "mouse") return;
+  if(e.button === 0) mouse.fire = true;
+  if(e.button === 2) mouse.thrust = true;
+});
+window.addEventListener("pointerup", function(e){
+  if(e.button === 0) mouse.fire = false;
+  if(e.button === 2) mouse.thrust = false;
+});
+document.getElementById("stageWrap").addEventListener("contextmenu", function(e){ e.preventDefault(); });
+/* ---- touch joystick: push direction = heading, push distance = thrust ---- */
+var stickEl = document.getElementById("stick"), knobEl = document.getElementById("stickKnob");
+function stickMove(e){
+  var r = stickEl.getBoundingClientRect();
+  var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  var max = r.width / 2 - 6, d = Math.hypot(dx, dy);
+  if(d > max){ dx *= max / d; dy *= max / d; d = max; }
+  knobEl.style.transform = "translate(-50%,-50%) translate(" + dx + "px," + dy + "px)";
+  stick.ang = Math.atan2(dy, dx); stick.mag = max > 0 ? d / max : 0;
+}
+stickEl.addEventListener("pointerdown", function(e){
+  e.preventDefault(); audio();
+  stick.active = true; stick.id = e.pointerId;
+  try{ stickEl.setPointerCapture(e.pointerId); }catch(err){}
+  stickEl.classList.add("on"); stickMove(e);
+});
+stickEl.addEventListener("pointermove", function(e){ if(stick.active && e.pointerId === stick.id) stickMove(e); });
+function stickEnd(e){
+  if(e.pointerId !== stick.id) return;
+  stick.active = false; stick.id = null; stick.mag = 0;
+  stickEl.classList.remove("on"); knobEl.style.transform = "translate(-50%,-50%)";
+}
+stickEl.addEventListener("pointerup", stickEnd);
+stickEl.addEventListener("pointercancel", stickEnd);
+stickEl.addEventListener("contextmenu", function(e){ e.preventDefault(); });
 function detectTouch(){ if((window.matchMedia && matchMedia("(pointer:coarse)").matches) || "ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0 || window.innerWidth <= 900) document.body.classList.add("touch"); }
 detectTouch();
 window.addEventListener("touchstart", detectTouch, { passive: true });
@@ -535,30 +600,40 @@ window.addEventListener("resize", detectTouch);
 function pauseGame(){ if(state !== "playing") return; state = "paused"; document.getElementById("pauseOverlay").classList.add("open"); }
 function resumeGame(){ if(state !== "paused") return; state = "playing"; document.getElementById("pauseOverlay").classList.remove("open"); }
 
-/* controls per player: returns {turn:-1..1, thrust:bool, fire:bool, fine:bool} */
+/* controls per player: returns {turn, thrust, fire, fine, aim (rad|null), thrustAmt (0..1|null)} */
 function controlsFor(j){
-  var c = { turn: 0, thrust: false, fire: false, fine: false };
+  var c = { turn: 0, thrust: false, fire: false, fine: false, aim: null, thrustAmt: null };
   if(j.demo) return c;
   if(state !== "playing") return c;
   if(j.id === 0){
     if(twoPlayer){
-      if(keys["ArrowLeft"]) c.turn -= 1; if(keys["ArrowRight"]) c.turn += 1;
-      if(keys["ArrowUp"]) c.thrust = true;
-      if(keys["Enter"] || keys["/"]) c.fire = true;
-      if(keys["Shift"]) c.fine = true;
+      /* co-op P1 is MOUSE ONLY — no keyboard (the mouse scheme below drives this jeep) */
     } else {
       if(keys["ArrowLeft"] || keys["a"]) c.turn -= 1;
       if(keys["ArrowRight"] || keys["d"]) c.turn += 1;
-      if(keys["ArrowUp"] || keys["w"]) c.thrust = true;
+      if(keys["ArrowUp"]) c.thrust = true;
       if(keys[" "] || keys["Enter"]) c.fire = true;
       if(keys["Shift"]) c.fine = true;
-      if(touch.left) c.turn -= 1; if(touch.right) c.turn += 1;
-      if(touch.thrust) c.thrust = true; if(touch.fire) c.fire = true;
+      if(touch.fire) c.fire = true;
+    }
+    /* mouse scheme (P1, both modes): pointer steers, left fires, right thrusts — mixed freely with keys */
+    if(mouse.fire) c.fire = true;
+    if(mouse.thrust) c.thrust = true;
+    if(mouse.steer && mouse.seen){
+      var rect = cvEl.getBoundingClientRect();
+      var wx = (mouse.cx - rect.left - view.ox) / view.s, wy = (mouse.cy - rect.top - view.oy) / view.s;
+      var mdx = wx - j.x, mdy = wy - j.y;
+      if(mdx * mdx + mdy * mdy > 36) c.aim = Math.atan2(mdy, mdx);
+    }
+    /* touch joystick (solo): heading + proportional thrust override the aim */
+    if(!twoPlayer && stick.active && stick.mag > 0.15){
+      c.aim = stick.ang; c.thrust = true; c.thrustAmt = stick.mag;
     }
   } else {
-    if(keys["a"]) c.turn -= 1; if(keys["d"]) c.turn += 1;
-    if(keys["w"]) c.thrust = true; if(keys["f"] || keys["g"]) c.fire = true;
-    if(keys["q"]) c.fine = true;
+    /* co-op P2 is ARROWS ONLY: turn + thrust + RIGHT SHIFT (or ENTER) to fire */
+    if(keys["ArrowLeft"]) c.turn -= 1; if(keys["ArrowRight"]) c.turn += 1;
+    if(keys["ArrowUp"]) c.thrust = true;
+    if(keys["ShiftRight"] || keys["Enter"]) c.fire = true;
   }
   return c;
 }
@@ -623,7 +698,7 @@ function updateJeep(j, dt){
   if(j.invuln > 0) j.invuln -= dt;
   var c;
   if(j.demo){
-    c = { turn: 0, thrust: false, fire: false, fine: false };
+    c = { turn: 0, thrust: false, fire: false, fine: false, aim: null, thrustAmt: null };
     var wp = LOOP[j.wp % LOOP.length], dx = wp.x - j.x, dy = wp.y - j.y, dist = Math.hypot(dx, dy);
     if(dist < 26) j.wp++;
     var want = Math.atan2(dy, dx), diff = angDiff(want, j.a);
@@ -632,8 +707,14 @@ function updateJeep(j, dt){
   if(j.id === 0 && fineL){ j.a -= 0.085 * fineL; fineL = 0; }
   if(j.id === 0 && fineR){ j.a += 0.085 * fineR; fineR = 0; }
   var turnRate = c.fine ? 1.25 : 3.4;
-  j.a += c.turn * turnRate * dt;
-  if(c.thrust){ j.vx += Math.cos(j.a) * 350 * dt; j.vy += Math.sin(j.a) * 350 * dt; j.thrustVis = 1; }
+  if(c.aim !== null && c.aim !== undefined){
+    var dAim = angDiff(c.aim, j.a), maxTurn = 11 * dt; /* fast, spinner-like snap toward the pointer / stick */
+    j.a += Math.max(-maxTurn, Math.min(maxTurn, dAim));
+  } else {
+    j.a += c.turn * turnRate * dt;
+  }
+  var thAmt = c.thrust ? (c.thrustAmt !== null && c.thrustAmt !== undefined ? c.thrustAmt : 1) : 0;
+  if(thAmt > 0){ j.vx += Math.cos(j.a) * 350 * thAmt * dt; j.vy += Math.sin(j.a) * 350 * thAmt * dt; j.thrustVis = thAmt; }
   else j.thrustVis = Math.max(0, j.thrustVis - dt * 6);
   var drag = Math.exp(-1.7 * dt); j.vx *= drag; j.vy *= drag;
   var sp = Math.hypot(j.vx, j.vy), max = 238;
@@ -973,8 +1054,15 @@ function frame(ts){
 }
 /* ============================== UI WIRING ============================== */
 function $(id){ return document.getElementById(id); }
-$("btn1P").addEventListener("click", function(){ twoPlayer = false; $("btn1P").classList.add("sel"); $("btn2P").classList.remove("sel"); audio(); });
-$("btn2P").addEventListener("click", function(){ twoPlayer = true; $("btn2P").classList.add("sel"); $("btn1P").classList.remove("sel"); audio(); });
+/* help overlay control map: solo shows keyboard + mouse sections; 2P shows the co-op map instead */
+function refreshHelp(){
+  var labEl = $("hKeysLabEl"), txtEl = $("hKeysEl"), mP = $("hMouseP");
+  if(!labEl || !txtEl || !mP) return;
+  if(twoPlayer){ labEl.textContent = T("hCoopLab"); txtEl.textContent = T("hCoop"); mP.style.display = "none"; }
+  else { labEl.textContent = T("hKeysLab"); txtEl.textContent = T("hKeys"); mP.style.display = ""; }
+}
+$("btn1P").addEventListener("click", function(){ twoPlayer = false; $("btn1P").classList.add("sel"); $("btn2P").classList.remove("sel"); audio(); refreshHelp(); });
+$("btn2P").addEventListener("click", function(){ twoPlayer = true; $("btn2P").classList.add("sel"); $("btn1P").classList.remove("sel"); audio(); refreshHelp(); });
 $("startBtn").addEventListener("click", function(){ audio(); startGame(); });
 $("togLang").addEventListener("click", function(){ lang = lang === "en" ? "es" : "en"; store("vs_lang", lang); applyLang(); });
 $("togSound").addEventListener("click", function(){ soundOn = !soundOn; store("vs_sound", soundOn ? "on" : "off"); applyLang(); if(soundOn){ audio(); morseStart(); } else morseStop(); });
