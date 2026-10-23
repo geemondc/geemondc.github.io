@@ -176,6 +176,27 @@
       .tg-btn .tg-ico { font-size: 17px; line-height: 1; }
       .tg-btn:active { background: #0a3550; }
       .tg-btn.off { color: rgba(126,230,255,.45); }
+      /* ---------- Control-mode toggle (intro + controls window) ---------- */
+      #modeLbl { margin-top: 12px; font-size: 10px; letter-spacing: 2px; color: #5fd4ff; }
+      .mode-row { display: flex; gap: 8px; margin-top: 6px; }
+      .sheet-card .mode-row { margin: 0 0 14px; }
+      .mode-btn {
+        flex: 1; height: 46px; border-radius: 8px; cursor: pointer;
+        background: #02141f; color: #7ee6ff; border: 1px solid #1d7fa8;
+        font-family: inherit; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+      }
+      .mode-btn.on { color: #ffd23c; border: 2px solid #ffd23c; box-shadow: 0 0 12px rgba(255,210,60,.35); }
+      .mode-btn:active { background: #0a3550; }
+      /* In MOUSE mode the on-screen draw deck is not how you draw — show it off */
+      #touchbar.deck-off .draw-btn { opacity: .35; pointer-events: none; }
+      #keysHint.deck-off { opacity: .35; }
+      /* ---------- Controls window: big plain sections ---------- */
+      #controlsSheet .sheet-body { font-size: 16.5px; line-height: 1.6; color: #eafaff; }
+      .ctl-sec {
+        font-size: 17px; font-weight: bold; letter-spacing: 3px; color: #ffd23c;
+        margin: 16px 0 6px;
+      }
+      .ctl-sec:first-child { margin-top: 0; }
       /* ---------- Intro windows (opened by the toggles) ---------- */
       .sheet {
         position: fixed; inset: 0; z-index: 60;
@@ -252,7 +273,7 @@
         <button class="draw-btn" id="btnSlow">SLOW</button>
         <button class="draw-btn" id="btnFast">FAST</button>
       </div>
-      <div id="keysHint" style="display:none">ARROWS / WASD move &nbsp;•&nbsp; hold Z = SLOW draw &nbsp;•&nbsp; hold X = FAST draw &nbsp;•&nbsp; P pause &nbsp;•&nbsp; M mute</div>
+      <div id="keysHint" style="display:none">ARROWS / WASD move &nbsp;•&nbsp; hold SPACE = draw &nbsp;•&nbsp; mouse: move = steer, hold LEFT CLICK = draw &nbsp;•&nbsp; Z slow / X fast &nbsp;•&nbsp; P pause &nbsp;•&nbsp; M mute</div>
     </div>
 
     <!-- ============ INTRO: big picture + toggles + START ============ -->
@@ -273,6 +294,12 @@
           <button class="tg-btn" id="tgSound"><span class="tg-ico">♪</span><span id="tgSoundLbl">SOUND ON</span></button>
           <button class="tg-btn" id="tgQR"><span class="tg-ico">▦</span>QR</button>
         </div>
+        <div id="modeLbl">CONTROL MODE</div>
+        <div class="mode-row" id="modeRow">
+          <button class="mode-btn" data-mode="keyboard">KEYBOARD</button>
+          <button class="mode-btn on" data-mode="both">BOTH</button>
+          <button class="mode-btn" data-mode="mouse">MOUSE</button>
+        </div>
       </div>
     </div>
 
@@ -292,12 +319,25 @@
     <div class="sheet" id="controlsSheet" role="dialog" aria-label="Controls">
       <div class="sheet-card">
         <div class="sheet-title">CONTROLS</div>
+        <div class="mode-row">
+          <button class="mode-btn" data-mode="keyboard">KEYBOARD</button>
+          <button class="mode-btn on" data-mode="both">BOTH</button>
+          <button class="mode-btn" data-mode="mouse">MOUSE</button>
+        </div>
         <div class="sheet-body">
-          <div class="ctl-row"><div class="ctl-key">MOVE</div><div class="ctl-desc">Drag on the board, arrow keys, or WASD.</div></div>
-          <div class="ctl-row"><div class="ctl-key">SLOW</div><div class="ctl-desc">Hold <b>Z</b>, or tap the blue SLOW button, then move.</div></div>
-          <div class="ctl-row"><div class="ctl-key">FAST</div><div class="ctl-desc">Hold <b>X</b>, or tap the orange FAST button, then move.</div></div>
-          <div class="ctl-row"><div class="ctl-key">PAUSE</div><div class="ctl-desc"><b>P</b> or the ❚❚ button up top.</div></div>
-          <div class="ctl-row"><div class="ctl-key">SOUND</div><div class="ctl-desc"><b>M</b> or the ♪ button up top.</div></div>
+          <div class="ctl-sec">CONTROL MODE</div>
+          <p>Pick <b>KEYBOARD</b>, <b>MOUSE</b>, or <b>BOTH</b> above — only the controls you pick are live. The same switch sits on the start screen.</p>
+          <div class="ctl-sec">KEYBOARD</div>
+          <p><b>Move:</b> the arrow keys, or <b>W</b> up, <b>S</b> down, <b>A</b> left, <b>D</b> right.<br />
+          <b>Draw:</b> hold the <b>SPACE BAR</b> while you move into open space.<br />
+          Hold <b>Z</b> instead for a slow draw, or <b>X</b> for a fast draw (double points).</p>
+          <div class="ctl-sec">MOUSE</div>
+          <p><b>Move:</b> just move the mouse — the marker steers toward it.<br />
+          <b>Draw:</b> press and hold the <b>LEFT mouse button</b> while you steer into open space.</p>
+          <div class="ctl-sec">TOUCH</div>
+          <p><b>Move:</b> drag on the board.<br />
+          <b>Draw:</b> tap the blue <b>SLOW</b> or orange <b>FAST</b> button to arm it, then drag into open space.</p>
+          <p><b>P</b> pauses the game. <b>M</b> turns the sound on and off.</p>
         </div>
         <button class="sheet-close" data-close="controlsSheet">CLOSE</button>
       </div>
@@ -658,10 +698,19 @@
       }
 
       // ---------- input ----------
+      // controlMode: "keyboard" | "mouse" | "both" — gates which inputs are live.
+      var controlMode = "both";
       var modeKey = null, touchMode = null, keyStack = [], touchWant = null;
-      function effectiveMode() { return modeKey || touchMode; }
+      var spaceHeld = false, clickHeld = false, mouseWant = null;
+      function actionHeld() { return spaceHeld || clickHeld; }
+      // SPACE / left-click is the draw trigger (a slow draw unless Z/X or a
+      // SLOW/FAST button picked the speed).
+      function effectiveMode() { return modeKey || touchMode || (actionHeld() ? "slow" : null); }
       function refreshWant() {
-        P.want = keyStack.length ? keyStack[keyStack.length - 1] : touchWant;
+        var k = keyStack.length ? keyStack[keyStack.length - 1] : null;
+        if (controlMode === "mouse") P.want = mouseWant || touchWant;
+        else if (controlMode === "keyboard") P.want = k || touchWant;
+        else P.want = k || mouseWant || touchWant;
       }
       var btnSlow = document.getElementById("btnSlow"), btnFast = document.getElementById("btnFast");
       function refreshModeButtons() {
@@ -669,18 +718,37 @@
         btnSlow.classList.toggle("armed", m === "slow");
         btnFast.classList.toggle("armed", m === "fast");
       }
+      function setControlMode(m) {
+        controlMode = m;
+        keyStack = []; spaceHeld = false; clickHeld = false; mouseWant = null;
+        var btns = document.querySelectorAll(".mode-btn");
+        for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("on", btns[i].getAttribute("data-mode") === m);
+        document.getElementById("touchbar").classList.toggle("deck-off", m === "mouse");
+        document.getElementById("keysHint").classList.toggle("deck-off", m === "mouse");
+        refreshWant(); refreshModeButtons();
+      }
+      var modeBtns = document.querySelectorAll(".mode-btn");
+      for (var mb = 0; mb < modeBtns.length; mb++) {
+        modeBtns[mb].addEventListener("click", function () { audioInit(); setControlMode(this.getAttribute("data-mode")); });
+      }
       function startTap() {
         if (S.state === "intro") return; // the intro's START button is the only way in
         if (S.state === "ready" || S.state === "gameover") startGame();
       }
+      // Keyboard is bound on the WINDOW in the CAPTURE phase: arrows / WASD /
+      // SPACE work no matter where the mouse is parked or what has focus in
+      // the page, and the first keystroke after an alt-tab re-engages at once.
       window.addEventListener("keydown", function (e) {
         var c = e.code;
         if (c === "ArrowUp" || c === "ArrowDown" || c === "ArrowLeft" || c === "ArrowRight" || c === "Space") e.preventDefault();
+        var keysLive = controlMode !== "mouse";
         if (S.state === "intro") {
+          if (!keysLive) return; // MOUSE mode: the on-screen buttons do the work
           if (c === "Enter" || c === "Space") { e.preventDefault(); beginGame(); }
           else if (c === "KeyM") { audioInit(); toggleMute(); }
           return;
         }
+        if (!keysLive) return; // MOUSE mode: keys do nothing — on-screen buttons still work
         audioInit();
         if (c === "KeyP") { togglePause(); return; }
         if (c === "KeyM") { toggleMute(); return; }
@@ -691,21 +759,29 @@
           if (keyStack.indexOf(d) < 0) keyStack.push(d);
           refreshWant();
         }
+        if (c === "Space" && !spaceHeld) { spaceHeld = true; refreshModeButtons(); }
         if (c === "KeyZ") { modeKey = "slow"; refreshModeButtons(); }
         if (c === "KeyX") { modeKey = "fast"; refreshModeButtons(); }
-      });
+      }, true);
       window.addEventListener("keyup", function (e) {
         var c = e.code;
+        if (c === "Space") e.preventDefault();
+        if (c === "Space" && spaceHeld) { spaceHeld = false; refreshModeButtons(); }
         var d = c === "ArrowUp" || c === "KeyW" ? "up" : c === "ArrowDown" || c === "KeyS" ? "down"
               : c === "ArrowLeft" || c === "KeyA" ? "left" : c === "ArrowRight" || c === "KeyD" ? "right" : null;
         if (d) { var i = keyStack.indexOf(d); if (i >= 0) keyStack.splice(i, 1); refreshWant(); }
         if (c === "KeyZ" && modeKey === "slow") { modeKey = null; refreshModeButtons(); }
         if (c === "KeyX" && modeKey === "fast") { modeKey = null; refreshModeButtons(); }
-      });
-      // drag steering
+      }, true);
+      // drag steering (touch / pen); the mouse steers by position, below
       var dragId = null, dragX = 0, dragY = 0;
       canvas.addEventListener("pointerdown", function (e) {
         audioInit(); startTap();
+        if (e.pointerType === "mouse") {
+          // left button held = the draw action, same as holding SPACE
+          if (e.button === 0 && controlMode !== "keyboard") { clickHeld = true; refreshModeButtons(); }
+          return;
+        }
         dragId = e.pointerId; dragX = e.clientX; dragY = e.clientY;
       });
       canvas.addEventListener("pointermove", function (e) {
@@ -729,7 +805,37 @@
         btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
       }
       bindDrawBtn(btnSlow, "slow"); bindDrawBtn(btnFast, "fast");
-      document.addEventListener("pointerdown", function () { audioInit(); }, { passive: true });
+      // ---------- mouse control: move = direction, left click = draw ----------
+      // The marker's heading follows the pointer: whichever side of the marker
+      // the pointer sits on (dominant axis) is the way it travels.
+      window.addEventListener("pointermove", function (e) {
+        if (e.pointerType && e.pointerType !== "mouse") return;
+        if (controlMode === "keyboard") {
+          if (mouseWant) { mouseWant = null; refreshWant(); }
+          return;
+        }
+        var r = canvas.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        var mx = (e.clientX - r.left) / r.width * W, my = (e.clientY - r.top) / r.height * H;
+        var dx = mx - P.px * CELL, dy = my - P.py * CELL;
+        var nw = null;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > 12) {
+          nw = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+        }
+        if (nw !== mouseWant) { mouseWant = nw; refreshWant(); }
+      });
+      window.addEventListener("pointerup", function (e) {
+        if (e.pointerType && e.pointerType !== "mouse") return;
+        if (clickHeld) { clickHeld = false; refreshModeButtons(); }
+      });
+      window.addEventListener("blur", function () {
+        keyStack = []; spaceHeld = false; clickHeld = false; mouseWant = null;
+        refreshWant(); refreshModeButtons();
+      });
+      document.addEventListener("pointerdown", function () {
+        audioInit();
+        try { window.focus(); } catch (e) {} // re-claim focus so the keys stay live
+      }, { passive: true });
 
       // pause / mute
       var pauseBtn = document.getElementById("pauseBtn"), muteBtn = document.getElementById("muteBtn");
@@ -776,6 +882,7 @@
       var appEl = document.getElementById("app");
       function beginGame() {
         audioInit();
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         if (introEl) introEl.style.display = "none";
         fit();
         startGame();
@@ -1335,6 +1442,7 @@
         document.getElementById("touchbar").classList.add("show");
         document.getElementById("keysHint").style.display = "none";
       }
+      try { window.focus(); } catch (e) {} // claim focus on load so the keys are live immediately
       S.claimed = newGrid();
       setupLevel();
       S.state = "intro"; // picture-first intro screen until START; the opaque intro covers the game screen
@@ -1350,8 +1458,10 @@
                    claimed: S.claimedCount, drawing: P.drawing, drawFast: P.drawFast,
                    px: P.px, py: P.py, lastDeath: S.lastDeath, fuseActive: fuse.active,
                    qixCount: QIXES.length, sparxCount: SPARX.length, paused: S.paused,
-                   bonus: S.clearInfo ? S.clearInfo.bonus : null, hi: S.hi };
+                   bonus: S.clearInfo ? S.clearInfo.bonus : null, hi: S.hi,
+                   controlMode: controlMode, want: P.want, spaceHeld: spaceHeld, clickHeld: clickHeld };
         },
+        setControlMode: function (m) { setControlMode(m); },
         start: function () { audioInit(); if (S.state === "intro") beginGame(); else startTap(); },
         want: function (d) { touchWant = d; refreshWant(); },
         clearWant: function () { touchWant = null; keyStack = []; refreshWant(); },
