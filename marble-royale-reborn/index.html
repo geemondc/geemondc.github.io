@@ -93,8 +93,8 @@
       .frow{ display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:var(--panel); border:2.5px solid var(--line); border-radius:12px; padding:5px 11px; color:var(--ink); position:relative; }
       .frow:active{ transform:scale(.99); }
       .frow.picked{ border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset; }
-      .mdot{ width:30px; height:30px; border-radius:50%; flex:none; position:relative; box-shadow:inset -5px -7px 10px rgba(0,0,0,.35), inset 3px 4px 7px rgba(255,255,255,.55), 0 3px 5px rgba(0,0,0,.25); }
-      .mdot::after{ content:""; position:absolute; left:7px; top:6px; width:11px; height:8px; border-radius:50%; background:rgba(255,255,255,.85); transform:rotate(-24deg); }
+      .mdot{ width:15px; height:15px; border-radius:50%; flex:none; position:relative; box-shadow:inset -2px -3px 5px rgba(0,0,0,.35), inset 2px 2px 3px rgba(255,255,255,.55), 0 1px 2px rgba(0,0,0,.25); }
+      .mdot::after{ content:""; position:absolute; left:3px; top:3px; width:6px; height:4px; border-radius:50%; background:rgba(255,255,255,.85); transform:rotate(-24deg); }
       .fname{ flex:1; min-width:0; }
       .fname .n{ font-family:"Baloo 2",sans-serif; font-weight:800; font-size:15.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       .fname .f{ font-size:11px; font-weight:900; color:var(--muted); letter-spacing:.5px; }
@@ -127,7 +127,7 @@
       .tchip.sel .td{ color:#ffe1cd; }
       .ticketline{ margin-top:12px; font-weight:900; font-size:16px; min-height:24px; }
       .ticketline .cdot{ margin:0 1px; }
-      .cdot{ display:inline-block; width:14px; height:14px; border-radius:50%; vertical-align:-2px; box-shadow:inset -2px -3px 4px rgba(0,0,0,.4), inset 2px 2px 3px rgba(255,255,255,.6); }
+      .cdot{ display:inline-block; width:7px; height:7px; border-radius:50%; vertical-align:-2px; box-shadow:inset -2px -3px 4px rgba(0,0,0,.4), inset 2px 2px 3px rgba(255,255,255,.6); }
       .betrow{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:center; }
       .betbtn{ border:3px solid var(--line); background:var(--panel2); color:var(--ink); border-radius:14px; font-family:"Baloo 2",sans-serif; font-weight:800; font-size:21px; padding:8px 24px; }
       .betbtn.sel{ border-color:var(--accent); background:var(--accent); color:#fff; box-shadow:0 4px 0 var(--accent-d); }
@@ -266,7 +266,7 @@
       .orderlist.on{ display:block; }
       .orow{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px; padding:2.5px 4px; }
       .orow .rk{ width:24px; text-align:right; font-family:"Baloo 2",sans-serif; }
-      .cdot.striped{ background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.92) 0 3.5px, rgba(255,255,255,0) 3.5px 7px) !important; }
+      .cdot.striped{ background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.95) 0 2.5px, rgba(255,255,255,0) 2.5px 5px) !important; }
 
       /* ---------- HISTORY overlay ---------- */
       #histScrim{ position:fixed; inset:0; z-index:57; background:rgba(15,8,2,.45); display:none; }
@@ -1432,7 +1432,10 @@ function spawnRacers(){
     const pos=course.atDist(-(16+row*30), lat);
     return {
       mi, x:pos.x, y:pos.y, dist:-(16+row*30), lat, lane:lat,
-      r:17, spin:Math.random()*TAU,
+      r:8.5, spin:Math.random()*TAU,
+      vel:0, latVel:0, laneVis:lat, bank:0, heading:0, rollLat:0,
+      mass:(a.id==="heavy"?1.6:a.id==="steady"?1.15:a.id==="sprinter"?0.85:1.0),
+      noiseFreq:0.55+Math.random()*0.45,
       day: def.danger==="CHILL" ? rand(0.955,1.045) : rand(0.925,1.075), wildMode:null, noise:Math.random()*TAU,
       stumbleT:0, stumbled:false, stumbleCd:0, stumbleCount:0,
       surgeT:0, surgeCd:rand(1.5,4), lungeUsed:false, rainHit:{}, slideT:0, rankNow:0, chargeCalled:false,
@@ -1780,7 +1783,7 @@ function physStep(dt){
   let lead=-1e9; for(const r of G.racers) if(!r.eliminated&&r.dist>lead) lead=r.dist;
   for(const r of G.racers){
     if(r.finished||r.eliminated){ continue; }
-    r.noise+=dt*rand(0.6,1.6);
+    r.noise+=dt*(r.noiseFreq||0.8); // fixed per-marble phase rate — smooth, never a per-frame random jump
     const prog=clamp(r.dist/total,0,1);
     let target=racerSpeed(r,prog);
     // draft: tucked in right behind another marble, you roll quicker — the
@@ -1840,11 +1843,26 @@ function physStep(dt){
     }
     // AIRBORNE: no rolling friction, pure send — this is how rivals get passed mid-air
     if(r.airT>0) target*= r.airKind==="mega"?1.15:1.11;
-    // momentum: speed eases toward target — no instant floaty changes, gravity-feel on release
-    if(!r.spdSm) r.spdSm=target*0.55; // gate-release burst builds from the start burst
-    r.spdSm=lerp(r.spdSm, target, 1-Math.exp(-dt*3.2));
+    // MOMENTUM — true velocity, integrated every frame: accelerates out
+    // of the gate, brakes into curves, carries speed out of them. The
+    // target pace (traits / odds logic above) is unchanged — only HOW a
+    // marble reaches that pace is physical now. No jumps, ever: the
+    // per-step change is capped, so boosts and stumbles shove the speed,
+    // they never teleport it.
+    if(r.vel==null) r.vel=target*0.30; // gate release: rolling from a near-stop
+    let curveEase=1;
+    if(r.si!=null&&course.pts&&course.pts.length>12){
+      const pA=course.pts[clamp(r.si,0,course.pts.length-1)], pB=course.pts[clamp(r.si+9,0,course.pts.length-1)];
+      curveEase=1-clamp(Math.acos(clamp(pA.tx*pB.tx+pA.ty*pB.ty,-1,1))*0.62,0,0.30);
+    }
+    const want=target*curveEase;
+    const dv=want-r.vel;
+    const maxStep=(dv>0?235:320)*dt; // px/s per second: launch vs braking
+    r.vel+=clamp(dv*(1-Math.exp(-dt*2.7)),-maxStep,maxStep);
+    if(r.vel<0) r.vel=0;
+    r.spdSm=r.vel; // hazards / audio / air all read spdSm — it IS the velocity now
     const prevDist=r.dist;
-    r.dist+=r.spdSm*dt;
+    r.dist+=r.vel*dt;
     // feature triggers (crossing the feature's distance)
     (G.features||[]).forEach((f,fi)=>{
       if(!r.hitFeat[fi] && r.airT<=0 && prevDist<f.dist && r.dist>=f.dist-6){
@@ -1995,14 +2013,40 @@ function physStep(dt){
       r.lane+=rand(-1,1)*dt*110;
       if(Math.random()<dt*0.9) r.boostT=Math.max(r.boostT,0.35);
     }
-    r.lane=clamp(r.lane,-def.halfW+20,def.halfW-20);
-    if(r.stumbleT>0||r.stuckT>0) r.lane+=Math.sin(G.raceT*26)*2.2; // visible wobble
-    const pos=course.atDist(clamp(r.dist,-260,total), r.lane);
+    // walls fit the half-size marble now: it can run edge to edge
+    const laneLim=def.halfW-r.r-3;
+    r.lane=clamp(r.lane,-laneLim,laneLim);
+    if(r.stumbleT>0||r.stuckT>0) r.lane+=Math.sin(G.raceT*26)*2.2; // logical wobble — the spring below smooths it
+    // VISUAL LANE — a spring with its own lateral velocity rides behind the
+    // logical lane, so every dodge, shove and slide GLIDES sideways instead
+    // of teleporting. Race logic above is untouched; only the render moves.
+    if(r.laneVis==null) r.laneVis=r.lane;
+    if(r.latVel==null) r.latVel=0;
+    r.latVel+=((r.lane-r.laneVis)*110-r.latVel*13)*dt;
+    r.laneVis+=r.latVel*dt;
+    const pos=course.atDist(clamp(r.dist,-260,total), r.laneVis);
     r.x=pos.x; r.y=pos.y; r.si=pos.i;
+    // BANKING + HEADING: the marble faces along the track and rides UP the
+    // bank on curves — outward, and more the faster it is travelling.
+    { const pp=pos.p; r.heading=Math.atan2(pp.ty,pp.tx);
+      let bankWant=0;
+      if(course.pts&&course.pts.length>12){
+        const pB=course.pts[clamp(pos.i+9,0,course.pts.length-1)];
+        const cross=pp.tx*pB.ty-pp.ty*pB.tx;
+        const curveAmt=Math.acos(clamp(pp.tx*pB.tx+pp.ty*pB.ty,-1,1));
+        bankWant=-Math.sign(cross||0)*clamp(curveAmt*34,0,9)*clamp((r.vel||0)/135,0,1.25);
+      }
+      r.bank=lerp(r.bank||0, bankWant, 1-Math.exp(-dt*5));
+      r.x+=pp.nx*r.bank; r.y+=pp.ny*r.bank;
+    }
     // motion trail (world coords) for the hypnotic flow look
     r.trail=r.trail||[]; r.trail.push({x:r.x,y:r.y});
     if(r.trail.length>11) r.trail.shift();
-    r.spin += (r.spdSm*dt)/Math.max(9,r.r);
+    // TRUE ROLL: the surface turns at v/r — rolling without slipping, so
+    // the stripes and swirls sweep past exactly as fast as the marble
+    // travels. A sideways glide rolls it sideways a little too.
+    r.spin += ((r.vel||0)*dt)/r.r;
+    r.rollLat=(r.rollLat||0)+(r.latVel*dt)/r.r;
     if(r.dist>=total&&!r.finished){
       r.finished=true; r.place=G.finishOrder.length+1;
       G.finishOrder.push(r.mi);
@@ -2010,6 +2054,36 @@ function physStep(dt){
         AudioSys.crowd(); AudioSys.pop(); G.finishFlash=1;
         let second=-1e9; for(const o of G.racers) if(o!==r&&o.dist>second) second=o.dist;
         G.winMargin=Math.max(0,total-second); G.photoFinish=G.winMargin<70;
+      }
+    }
+  }
+  // MARBLE CONTACTS — momentum-weighted nudges in (dist, lane) space.
+  // A faster marble arriving on a slower one SHOVES it: the separation
+  // and the pace transfer split by mass (the Heavyweight shoves hardest),
+  // restitution is a whisper (0.14) — weight, never bounce chaos — and no
+  // two marbles ever pass through each other.
+  {
+    const dia=17; // contact distance = two half-size radii
+    for(let ii=0;ii<G.racers.length;ii++) for(let jj=ii+1;jj<G.racers.length;jj++){
+      const A=G.racers[ii], B=G.racers[jj];
+      if(A.finished||B.finished||A.eliminated||B.eliminated) continue;
+      const dd=B.dist-A.dist, dl=B.lane-A.lane;
+      if(Math.abs(dd)>=dia||Math.abs(dl)>=dia) continue;
+      const d2=dd*dd+dl*dl;
+      if(d2>=dia*dia||d2<0.04) continue;
+      const d=Math.sqrt(d2), nx=dd/d, ny=dl/d;
+      const mA=A.mass||1, mB=B.mass||1, mT=mA+mB;
+      const push=Math.min(dia-d,1.6); // capped per step — a nudge, never a pop
+      A.dist-=nx*push*(mB/mT); B.dist+=nx*push*(mA/mT);
+      A.lane-=ny*push*(mB/mT); B.lane+=ny*push*(mA/mT);
+      const rvn=((B.vel||0)-(A.vel||0))*nx+((B.latVel||0)-(A.latVel||0))*ny;
+      if(rvn<0){
+        const jimp=(-rvn*1.14)/(1/mA+1/mB);
+        A.vel-=jimp/mA*nx; B.vel+=jimp/mB*nx;
+        A.latVel-=jimp/mA*ny*0.6; B.latVel+=jimp/mB*ny*0.6;
+        if(A.vel<0)A.vel=0; if(B.vel<0)B.vel=0;
+        A.spdSm=A.vel; B.spdSm=B.vel;
+        if(Math.random()<0.3) AudioSys.clack(240+Math.abs(rvn)*6);
       }
     }
   }
@@ -2067,7 +2141,7 @@ function physStep(dt){
         G.seeker.dist += ((lr2.spdSm||110)+95)*dt;
         if(G.seeker.dist>=lr2.dist-8){
           const cn4=COLORWAYS[G.marbles[lr2.mi].colorIdx].name;
-          lr2.stumbleT=Math.max(lr2.stumbleT,1.3); lr2.spdSm*=0.2; lr2.spinOutT=1.0;
+          lr2.stumbleT=Math.max(lr2.stumbleT,1.3); if(lr2.vel!=null){ lr2.vel*=0.2; lr2.spdSm=lr2.vel; } else lr2.spdSm*=0.2; lr2.spinOutT=1.0;
           G.shake=Math.min(15,(G.shake||0)+8);
           spawnBurst(lr2.x,lr2.y,G.marbles[lr2.mi].colorIdx,20,190);
           callout("🎯", "THE SEEKER GOT "+cn4.split(" ")[0].toUpperCase()+"!", "out");
@@ -2108,7 +2182,7 @@ function physStep(dt){
   if(Math.random()<dt*7) AudioSys.clack(rand(150,420));
 }
 function drawMarble(r,camX,camY){
-  if((r.x-camX)<-44||(r.y-camY)<-44||(r.x-camX)>G.viewW+44||(r.y-camY)>G.viewH+44) return;
+  if((r.x-camX)<-26||(r.y-camY)<-26||(r.x-camX)>G.viewW+26||(r.y-camY)>G.viewH+26) return;
   const m=G.marbles[r.mi], c=COLORWAYS[m.colorIdx];
   if(r.eliminated){
     // the ghost beat: a shrinking ✕ where the marble went out, then gone
@@ -2117,23 +2191,23 @@ function drawMarble(r,camX,camY){
     ctx.save(); ctx.globalAlpha=f*0.85;
     ctx.fillStyle=marbleColor(c);
     ctx.beginPath(); ctx.arc(r.x,r.y,r.r*(0.35+0.65*f),0,TAU); ctx.fill();
-    ctx.fillStyle="#fff"; ctx.font="900 15px 'Nunito',sans-serif"; ctx.textAlign="center";
-    ctx.fillText("✕",r.x,r.y+5);
+    ctx.fillStyle="#fff"; ctx.font="900 11px 'Nunito',sans-serif"; ctx.textAlign="center";
+    ctx.fillText("✕",r.x,r.y+4);
     ctx.restore(); return;
   }
-  const wob=r.stumbleT>0?Math.sin(G.raceT*30)*3:(r.slideT>0?Math.sin(G.raceT*22)*2:0);
+  const wob=r.stumbleT>0?Math.sin(G.raceT*22)*1.4:(r.slideT>0?Math.sin(G.raceT*18)*1:0);
   const jf=r.jumpT>0?Math.sin(clamp(1-r.jumpT/0.55,0,1)*Math.PI):0; // small hop arc
   // CATCHING AIR: real hang time — the marble rises and GROWS while its shadow
   // stays on the ground, shrinking and fading the higher it flies
   const airF=r.airT>0?Math.sin(clamp(1-r.airT/(r.airDur||0.7),0,1)*Math.PI):0;
-  const lift=jf*17+airF*(r.airH||26);
+  const lift=jf*9+airF*(r.airH||26);
   const x=r.x+wob, y=r.y-lift;
   const rad=r.r*(1+jf*0.16+airF*0.20);
   ctx.save();
   const shF=clamp(1-lift/85,0.45,1);
   ctx.globalAlpha=0.35*shF;
   ctx.fillStyle="#140800";
-  ctx.beginPath(); ctx.ellipse(x+3,r.y+rad*0.75,rad*0.95*shF,rad*0.42*shF,0,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+2,r.y+rad*0.75,rad*0.95*shF,rad*0.42*shF,0,0,TAU); ctx.fill();
   ctx.globalAlpha=1;
   const grad=ctx.createRadialGradient(x-rad*0.35,y-rad*0.4,rad*0.15,x,y,rad*1.05);
   grad.addColorStop(0,"hsl("+c.hue+","+c.sat+"%,"+Math.min(88,c.li+30)+"%)");
@@ -2141,42 +2215,51 @@ function drawMarble(r,camX,camY){
   grad.addColorStop(1,"hsl("+c.hue+","+c.sat+"%,"+Math.max(12,c.li-17)+"%)");
   ctx.fillStyle=grad;
   ctx.beginPath(); ctx.arc(x,y,rad,0,TAU); ctx.fill();
+  const heading=r.heading||0;
   if(isStriped(m.colorIdx)){
-    // white diagonal bands that roll with the marble — stripes you can SEE racing
+    // white bands that ROLL with the marble — bolder at half size so
+    // stripes vs solids still reads at a glance. The band angle is the
+    // heading plus the roll, so the pattern turns into every curve and
+    // sweeps as the ball rolls: a rolling ball, not a sliding puck.
     ctx.save();
     ctx.beginPath(); ctx.arc(x,y,rad,0,TAU); ctx.clip();
-    ctx.translate(x,y); ctx.rotate(r.spin*0.85);
-    ctx.fillStyle="rgba(255,255,255,.88)";
-    for(let sx=-rad*1.7; sx<rad*1.7; sx+=rad*0.62) ctx.fillRect(sx,-rad*1.3,rad*0.30,rad*2.6);
+    ctx.translate(x,y); ctx.rotate(heading*0.55+r.spin*0.85+(r.rollLat||0)*0.4);
+    ctx.fillStyle="rgba(255,255,255,.92)";
+    for(let sx=-rad*1.7; sx<rad*1.7; sx+=rad*0.68) ctx.fillRect(sx,-rad*1.3,rad*0.40,rad*2.6);
     ctx.restore();
   }
-  ctx.strokeStyle="hsla("+((c.hue+40)%360)+","+c.sat+"%,88%,.75)";
-  ctx.lineWidth=Math.max(2,rad*0.22); ctx.lineCap="round";
-  ctx.beginPath(); ctx.arc(x,y,rad*0.52,r.spin,(r.spin)+3.6); ctx.stroke();
-  ctx.strokeStyle="hsla("+c.hue+",90%,96%,.5)"; ctx.lineWidth=Math.max(1.4,rad*0.1);
-  ctx.beginPath(); ctx.arc(x,y,rad*0.72,(r.spin)+2.4,(r.spin)+4.4); ctx.stroke();
+  ctx.strokeStyle="hsla("+((c.hue+40)%360)+","+c.sat+"%,88%,.8)";
+  ctx.lineWidth=Math.max(1.6,rad*0.24); ctx.lineCap="round";
+  ctx.beginPath(); ctx.arc(x,y,rad*0.52,heading+r.spin,(heading+r.spin)+3.6); ctx.stroke();
+  ctx.strokeStyle="hsla("+c.hue+",90%,96%,.55)"; ctx.lineWidth=Math.max(1.2,rad*0.12);
+  ctx.beginPath(); ctx.arc(x,y,rad*0.72,heading+r.spin+2.4,heading+r.spin+4.4); ctx.stroke();
+  // rolling spot: a pale fleck fixed on the surface — it orbits as the
+  // marble rolls, so the eye can SEE the ball turning over
+  { const ra=heading+r.spin*1.0+(r.rollLat||0)*0.5, rx=x+Math.cos(ra)*rad*0.48, ry=y+Math.sin(ra)*rad*0.48;
+    ctx.fillStyle="rgba(255,255,255,.5)";
+    ctx.beginPath(); ctx.arc(rx,ry,Math.max(1.1,rad*0.17),0,TAU); ctx.fill(); }
   ctx.fillStyle="rgba(255,255,255,.92)";
   ctx.beginPath(); ctx.ellipse(x-rad*0.36,y-rad*0.44,rad*0.24,rad*0.15,-0.6,0,TAU); ctx.fill();
   // gate-power dressing: shield bubble, star-dash sparkle ring, spin-out stars
   if(r.shield){
-    ctx.beginPath(); ctx.arc(x,y,rad+5,0,TAU);
+    ctx.beginPath(); ctx.arc(x,y,rad+3,0,TAU);
     ctx.fillStyle="rgba(140,210,255,.13)"; ctx.fill();
     ctx.strokeStyle="rgba(110,200,255,.85)"; ctx.lineWidth=2.5; ctx.stroke();
   }
   if(r.starT>0){
     ctx.strokeStyle="rgba(255,210,62,.95)"; ctx.lineWidth=2.5; ctx.lineCap="round";
     for(let k=0;k<4;k++){
-      const an=G.raceT*7+k*Math.PI/2, sx=x+Math.cos(an)*(rad+7), sy=y+Math.sin(an)*(rad+7);
-      ctx.beginPath(); ctx.moveTo(sx-3.5,sy); ctx.lineTo(sx+3.5,sy); ctx.moveTo(sx,sy-3.5); ctx.lineTo(sx,sy+3.5); ctx.stroke();
+      const an=G.raceT*7+k*Math.PI/2, sx=x+Math.cos(an)*(rad+4.5), sy=y+Math.sin(an)*(rad+4.5);
+      ctx.beginPath(); ctx.moveTo(sx-2.5,sy); ctx.lineTo(sx+2.5,sy); ctx.moveTo(sx,sy-2.5); ctx.lineTo(sx,sy+2.5); ctx.stroke();
     }
   }
-  if(r.spinOutT>0){ ctx.font="14px serif"; ctx.textAlign="center"; ctx.fillText("💫",x,y-rad-9); }
+  if(r.spinOutT>0){ ctx.font="14px serif"; ctx.textAlign="center"; ctx.fillText("💫",x,y-rad-7); }
   // rooting markers: avatar chips of players who backed this marble
   const backers=G.backed&&G.backed[m.colorIdx];
   if(backers&&backers.length&&G.state==="race"){
     backers.forEach((pi,k)=>{
       const a=AVATARS[G.players[pi].ava];
-      const bx=x+(k-(backers.length-1)/2)*22, by=y-rad-15;
+      const bx=x+(k-(backers.length-1)/2)*19, by=y-rad-11;
       ctx.beginPath(); ctx.fillStyle=a.color; ctx.arc(bx,by,9.5,0,TAU); ctx.fill();
       ctx.lineWidth=2; ctx.strokeStyle="#fff"; ctx.stroke();
       ctx.fillStyle="#fff"; ctx.font="800 10px 'Baloo 2',sans-serif"; ctx.textAlign="center";
@@ -2187,7 +2270,7 @@ function drawMarble(r,camX,camY){
     ctx.font="900 13px 'Nunito',sans-serif"; ctx.textAlign="center";
     ctx.lineWidth=4; ctx.strokeStyle="rgba(20,8,0,.75)";
     const lbl=fmtPlace(r.place);
-    ctx.strokeText(lbl,x,y-rad-26); ctx.fillStyle="#ffd23e"; ctx.fillText(lbl,x,y-rad-26);
+    ctx.strokeText(lbl,x,y-rad-19); ctx.fillStyle="#ffd23e"; ctx.fillText(lbl,x,y-rad-19);
   }
   ctx.restore();
 }
@@ -2204,10 +2287,11 @@ function render(){
     const focusX=leadR.x*0.68+cx*0.32, focusY=leadR.y*0.68+cy*0.32;
     const prog=G.course?clamp(leadR.dist/G.course.total,0,1):0;
     const targetZoom=(G.state==="race"&&prog>0.82)?1.13:1.0;
-    G.zoom=lerp(G.zoom||1, targetZoom, 0.03);
+    G.zoom=lerp(G.zoom||1, targetZoom, 1-Math.exp(-(G.frameDt||0.016)*1.9));
     const vw=G.viewW/G.zoom, vh=G.viewH/G.zoom;
-    G.camX=lerp(G.camX, clamp(focusX-vw*0.56,0,Math.max(0,WORLD_W-vw)), 0.055);
-    G.camY=lerp(G.camY, clamp(focusY-vh/2,0,Math.max(0,WORLD_H-vh)), 0.055);
+    const camK=1-Math.exp(-(G.frameDt||0.016)*3.6); // dt-based: same glide at any refresh rate
+    G.camX=lerp(G.camX, clamp(focusX-vw*0.56,0,Math.max(0,WORLD_W-vw)), camK);
+    G.camY=lerp(G.camY, clamp(focusY-vh/2,0,Math.max(0,WORLD_H-vh)), camK);
     G._vw=vw; G._vh=vh;
   }
   const s=baseS*(G.zoom||1);
@@ -2388,7 +2472,7 @@ function render(){
     const p=G.course.pts[clamp(r.si,0,G.course.pts.length-1)];
     ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=2; ctx.lineCap="round";
     for(let k=-1;k<=1;k++){
-      const off=k*9, L2=(r.spdSm||100)*0.16;
+      const off=k*5, L2=(r.spdSm||100)*0.16;
       ctx.beginPath();
       ctx.moveTo(r.x-p.nx*off, r.y-p.ny*off);
       ctx.lineTo(r.x-p.nx*off-p.tx*L2, r.y-p.ny*off-p.ty*L2);
@@ -2405,8 +2489,8 @@ function render(){
       grd.addColorStop(0,"rgba(12,6,0,0)"); grd.addColorStop(0.35,"rgba(12,6,0,.12)"); grd.addColorStop(1,"rgba(12,6,0,.55)");
       ctx.fillStyle=grd; ctx.fillRect(G.camX-10,G.camY-10,(G._vw||G.viewW)+20,(G._vh||G.viewH)+20);
       ctx.strokeStyle="#ffd23e"; ctx.lineWidth=3.5;
-      ctx.beginPath(); ctx.arc(w.x,w.y,w.r+7+Math.sin(performance.now()/160)*2.5,0,TAU); ctx.stroke();
-      ctx.font="900 22px 'Nunito',sans-serif"; ctx.textAlign="center"; ctx.fillText("👑",w.x,w.y-w.r-34);
+      ctx.beginPath(); ctx.arc(w.x,w.y,w.r+4+Math.sin(performance.now()/160)*2,0,TAU); ctx.stroke();
+      ctx.font="900 22px 'Nunito',sans-serif"; ctx.textAlign="center"; ctx.fillText("👑",w.x,w.y-w.r-22);
     }
   }
   // photo-finish flash
@@ -2557,7 +2641,7 @@ function wpsUnits(){ return isWpsType(G.curType)?(G.curLegs||["WIN"]).length:1; 
 function marbleDotBg(ci){
   const c=COLORWAYS[ci];
   const base='radial-gradient(circle at 32% 28%, hsl('+c.hue+','+c.sat+'%,'+Math.min(96,c.li+22)+'% ), hsl('+c.hue+','+c.sat+'%,'+c.li+'%) 55%, hsl('+c.hue+','+c.sat+'%,'+Math.max(6,c.li-16)+'%))';
-  return (isStriped(ci)?'repeating-linear-gradient(45deg, rgba(255,255,255,.92) 0 6px, rgba(255,255,255,0) 6px 13px), ':'')+base;
+  return (isStriped(ci)?'repeating-linear-gradient(45deg, rgba(255,255,255,.94) 0 4px, rgba(255,255,255,0) 4px 8px), ':'')+base;
 }
 function pickFinishTxt(bet,order){
   if(!order.length) return "no marble finished!";
@@ -2698,7 +2782,7 @@ function settleRace(){
   /* ---- 🏅 THE PODIUM — real marbles on real steps, posted WIN odds ---- */
   const pstep=(k,cls,medal)=>{
     if(order[k]==null) return '<div class="pstep"></div>';
-    const ci=order[k], c=COLORWAYS[ci], sz=k===0?56:46;
+    const ci=order[k], c=COLORWAYS[ci], sz=k===0?28:23;
     return '<div class="pstep"><div class="pball" style="width:'+sz+'px;height:'+sz+'px;background:'+marbleDotBg(ci)+'"></div>'
       +'<div class="pname">'+medal+' '+c.name+'</div><div class="podds">WIN odds '+fracOdds(G.marbles[ci].oddsDec)+'</div>'
       +'<div class="pblock '+cls+'">'+(k+1)+'</div></div>';
@@ -3289,7 +3373,7 @@ function showFinal(){
   el("revealList").innerHTML=G.marbles.map(m=>{
     const c=COLORWAYS[m.colorIdx];
     const surfNote=m.arch.id==="specialist"?" Favorite surface: "+m.favSurf+".":"";
-    return '<div class="revcard"><div class="rn"><span class="cdot" style="background:'+marbleColor(c)+';width:18px;height:18px"></span>'+c.name+' was…</div><div class="ra">'+m.arch.name+'!</div><div class="rs">'+m.arch.secret+surfNote+'</div></div>';
+    return '<div class="revcard"><div class="rn"><span class="cdot" style="background:'+marbleColor(c)+';width:9px;height:9px"></span>'+c.name+' was…</div><div class="ra">'+m.arch.name+'!</div><div class="rs">'+m.arch.secret+surfNote+'</div></div>';
   }).join("");
   showScreen("scr-final");
   if(champ) AudioSys.fanfare();
