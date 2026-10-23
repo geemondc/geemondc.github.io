@@ -107,7 +107,7 @@
       @keyframes bowlNudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px) rotate(2deg)}}
 
       /* notebook on the felt */
-      #notebook{position:absolute;z-index:7;right:3.5%;bottom:23.5%;width:132px;height:96px;
+      #notebook{position:absolute;z-index:7;right:3.5%;bottom:23.5%;width:132px;min-height:96px;
         background:var(--paper);border-radius:4px 10px 10px 4px;color:var(--ink);
         box-shadow:0 6px 14px rgba(0,0,0,.5), inset 0 0 0 2px var(--paper-edge);
         padding:8px 8px 6px 17px;text-align:left;transform:rotate(-3deg);}
@@ -115,7 +115,7 @@
         background-image:radial-gradient(rgba(190,110,95,.85) 1.6px, transparent 2.3px);
         background-size:4px 8px;background-repeat:repeat-y;}
       #notebook .nb-title{font-family:var(--hand-font);font-size:12px;color:#8a4b2a;letter-spacing:.4px;}
-      #notebook .nb-lines{font-family:var(--hand-font);font-size:13.5px;line-height:1.5;margin-top:1px;white-space:nowrap;}
+      #notebook .nb-lines{font-family:var(--hand-font);font-size:13.5px;line-height:1.5;margin-top:1px;}
       #notebook .nb-total{font-family:var(--hand-font);font-size:14.5px;font-weight:700;border-top:1.5px solid #b9a888;margin-top:2px;padding-top:1px;}
       #pencil{position:absolute;z-index:8;right:17.5%;bottom:36.8%;width:64px;height:11px;transform:rotate(24deg);
         pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4));}
@@ -1009,6 +1009,10 @@
       }
       setActions([]);
       status(`Bids are in — You: ${bidLabel(b)} · ${S.friend.name}: ${bidLabel(S.bids.ai)}. Play!`);
+      /* the scorekeeper writes both bids on this hand's notebook line — before a card is played */
+      $("pencil").classList.add("writing");
+      renderNotebook(true);
+      setTimeout(() => $("pencil").classList.remove("writing"), 900);
       if (b === 0) say(pick(GENERIC.yourNil), 3000);
       S.leader = S.starter === "you" ? "ai" : "you"; // non-starter leads trick 1
       beginPlay();
@@ -1311,21 +1315,37 @@
       for (let i = 0; i < rem; i++) s += "|";
       return s.trim();
     }
+    function fmtPts(n){ return (n >= 0 ? "+" : "") + n; }
+    /* both bids are in and this hand hasn't been scored yet — its line carries bids only */
+    function bidLinePending(){
+      return S.bids.you !== null && S.bids.ai !== null && !S.history.some(h => h.n === S.handNo);
+    }
     function renderNotebook(pop){
-      const last = S.history[S.history.length - 1];
-      $("nbLines").textContent = last
-        ? `H${last.n}: you ${last.yTot} · ${S.friend.name.toLowerCase()} ${last.aTot}`
-        : "no hands yet";
+      let line;
+      if (bidLinePending()){
+        /* the bids, written on this hand's line the moment bidding ended */
+        line = `H${S.handNo} — You ${bidLabel(S.bids.you)} · ${S.friend.name} ${bidLabel(S.bids.ai)}`;
+      } else {
+        const last = S.history[S.history.length - 1];
+        line = last
+          ? `H${last.n} — You ${bidLabel(last.yb)}→${last.yt} ${fmtPts(last.yp)} · ${S.friend.name} ${bidLabel(last.ab)}→${last.at} ${fmtPts(last.ap)}`
+          : "no hands yet";
+      }
+      $("nbLines").textContent = line;
       $("nbTotal").textContent = `You ${S.score.you} · ${S.friend.name} ${S.score.ai}`;
       if (pop){ const nb = $("notebook"); nb.style.transform = "rotate(-3deg) scale(1.12)"; setTimeout(() => nb.style.transform = "rotate(-3deg)", 350); }
     }
     function scoreSheetHTML(){
-      if (!S.history.length) return `<h2>The Notebook</h2><p>No hands yet — the pencil is sharp and waiting.</p>
+      if (!S.history.length && !bidLinePending()) return `<h2>The Notebook</h2><p>No hands yet — the pencil is sharp and waiting.</p>
         <p>Match to <b>${S.target}</b>. Bags so far — you: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
       const rows = S.history.map(h => `<tr><td>Hand ${h.n}</td>
         <td>${bidLabel(h.yb)} → ${h.yt}<br>${h.yp >= 0 ? "+" : ""}${h.yp}</td>
         <td>${bidLabel(h.ab)} → ${h.at}<br>${h.ap >= 0 ? "+" : ""}${h.ap}</td>
-        <td><b>${h.yTot}</b></td><td><b>${h.aTot}</b></td></tr>`).join("");
+        <td><b>${h.yTot}</b></td><td><b>${h.aTot}</b></td></tr>`).join("")
+        + (bidLinePending() ? `<tr><td>Hand ${S.handNo}</td>
+        <td>${bidLabel(S.bids.you)} → ${S.tricksWon.you}<br>playing…</td>
+        <td>${bidLabel(S.bids.ai)} → ${S.tricksWon.ai}<br>playing…</td>
+        <td><b>${S.score.you}</b></td><td><b>${S.score.ai}</b></td></tr>` : "");
       return `<h2>The Notebook 📓</h2>
         <p style="margin-top:0">Match to <b>${S.target}</b> vs <b>${S.friend.name}</b>. Bid → tricks taken, then points.</p>
         <table class="scoreTable"><tr><th></th><th>You</th><th>${S.friend.name}</th><th>You Σ</th><th>${S.friend.name} Σ</th></tr>
