@@ -20,8 +20,6 @@
         --orange-hi: #ffa64d;
         --purple: #7a48be;
         --rowline: rgba(255, 255, 255, 0.08);
-        --sat: env(safe-area-inset-top, 0px);
-        --sab: env(safe-area-inset-bottom, 0px);
       }
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
       html, body { height: 100%; }
@@ -34,88 +32,182 @@
         color: var(--ink);
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
         touch-action: manipulation;
         user-select: none;
         -webkit-user-select: none;
       }
 
-      /* ============ HANDHELD SHELL (wide screens only) ============ */
-      .shell { height: 100%; display: flex; align-items: center; justify-content: center; }
-      .device { display: flex; align-items: stretch; width: 100%; height: 100%; }
-      .grip { display: none; }
-      .screen-wrap {
-        flex: 1; min-width: 0; height: 100%;
-        position: relative; overflow: hidden;
-        background: #0b1035;
+      /* ============ FIT WRAPPER + DEVICE STAGE (1160 x 600, scaled by JS) ============ */
+      .fit { position: relative; flex: none; }
+      .device {
+        position: absolute; left: 0; top: 0;
+        width: 1160px; height: 600px;
+        transform-origin: 0 0;
+        border-radius: 64px 64px 124px 124px / 56px 56px 100px 100px;
+        background:
+          radial-gradient(620px 320px at 16% 112%, rgba(30, 10, 70, 0.38), transparent 60%),
+          radial-gradient(620px 320px at 84% 112%, rgba(30, 10, 70, 0.38), transparent 60%),
+          radial-gradient(520px 260px at 85% -6%, rgba(255, 255, 255, 0.16), transparent 55%),
+          linear-gradient(155deg, rgba(178, 134, 248, 0.62), rgba(122, 74, 208, 0.55) 45%, rgba(82, 45, 158, 0.62));
+        border: 2px solid rgba(216, 188, 255, 0.4);
+        box-shadow:
+          0 44px 90px rgba(0, 0, 0, 0.7),
+          inset 0 2px 3px rgba(255, 255, 255, 0.4),
+          inset 0 -20px 36px rgba(22, 5, 52, 0.5),
+          inset 0 0 0 2px rgba(226, 200, 255, 0.14),
+          inset 0 0 90px rgba(96, 44, 180, 0.35);
       }
-      @media (min-width: 980px) {
-        .shell { padding: 26px 10px; }
-        .device {
-          width: min(1060px, 97vw);
-          height: min(880px, 94vh);
-          background: linear-gradient(155deg, rgba(150, 100, 230, 0.5), rgba(96, 52, 168, 0.55) 45%, rgba(62, 30, 118, 0.6));
-          border: 2px solid rgba(210, 180, 255, 0.35);
-          border-radius: 64px;
-          box-shadow: 0 40px 90px rgba(0, 0, 0, 0.65), inset 0 2px 0 rgba(255, 255, 255, 0.25), inset 0 -14px 34px rgba(20, 6, 48, 0.45);
-          backdrop-filter: blur(6px);
-          padding: 34px 12px 40px;
-          position: relative;
-        }
-        .device::after {
-          content: "GEE ARC";
-          position: absolute; left: 0; right: 0; bottom: 9px;
-          text-align: center; font-weight: 800; font-size: 13px;
-          letter-spacing: 0.55em; text-indent: 0.55em;
-          color: rgba(240, 228, 255, 0.5);
-        }
-        .grip {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          width: 128px; flex: none; gap: 18px;
-        }
-        .screen-wrap {
-          border-radius: 26px;
-          border: 3px solid rgba(10, 4, 26, 0.85);
-          box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06), inset 0 0 60px rgba(0, 0, 0, 0.45);
-          height: auto;
-        }
-        .dpad { position: relative; width: 96px; height: 96px; opacity: 0.9; }
-        .dpad::before, .dpad::after {
-          content: ""; position: absolute;
-          background: linear-gradient(160deg, #2c1c52, #180d33);
-          border: 1px solid rgba(220, 195, 255, 0.35);
-          border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-        }
-        .dpad::before { left: 31px; top: 0; width: 34px; height: 96px; }
-        .dpad::after { left: 0; top: 31px; width: 96px; height: 34px; }
-        .stick {
-          width: 44px; height: 44px; border-radius: 50%;
-          background: radial-gradient(circle at 35% 30%, #4b2f86, #1c1038 70%);
-          border: 1px solid rgba(220, 195, 255, 0.3);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-        }
-        .abxy { position: relative; width: 108px; height: 108px; }
-        .abxy span {
-          position: absolute; width: 40px; height: 40px; border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 800; font-size: 14px; color: #f4ecff;
-          border: 1px solid rgba(255, 255, 255, 0.35);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 2px 3px rgba(255, 255, 255, 0.35);
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-        .abxy .b-x { left: 34px; top: 0;    background: radial-gradient(circle at 35% 30%, #6d8dff, #2c46b8 75%); }
-        .abxy .b-y { left: 0;   top: 34px;  background: radial-gradient(circle at 35% 30%, #57d98a, #1d8a47 75%); }
-        .abxy .b-a { right: 0;  top: 34px;  background: radial-gradient(circle at 35% 30%, #ff7a6b, #c93a2a 75%); }
-        .abxy .b-b { left: 34px; bottom: 0; background: radial-gradient(circle at 35% 30%, #ffd94d, #d99a12 75%); }
-        .pill-btn {
-          width: 52px; height: 14px; border-radius: 8px;
-          background: linear-gradient(180deg, #3a2566, #1c1038);
-          border: 1px solid rgba(220, 195, 255, 0.3);
-          box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
-        }
-        .grip-label { font-size: 10px; letter-spacing: 0.3em; color: rgba(240, 228, 255, 0.55); font-weight: 700; }
+      .device::before { /* gloss sweep */
+        content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 1;
+        background: linear-gradient(115deg, rgba(255, 255, 255, 0.20), transparent 32%, transparent 68%, rgba(255, 255, 255, 0.07));
+        pointer-events: none;
+      }
+      .innards { /* faint components glowing through the translucent shell */
+        position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
+        background:
+          radial-gradient(230px 150px at 11% 76%, rgba(24, 7, 56, 0.42), transparent 70%),
+          radial-gradient(250px 160px at 89% 76%, rgba(24, 7, 56, 0.42), transparent 70%),
+          radial-gradient(320px 190px at 50% 118%, rgba(24, 7, 56, 0.36), transparent 70%),
+          radial-gradient(150px 110px at 8% 22%, rgba(24, 7, 56, 0.28), transparent 70%),
+          radial-gradient(150px 110px at 92% 20%, rgba(24, 7, 56, 0.28), transparent 70%);
+      }
+      .screw {
+        position: absolute; width: 15px; height: 15px; border-radius: 50%; z-index: 2; pointer-events: none;
+        background: radial-gradient(circle at 38% 32%, rgba(240, 228, 255, 0.5), rgba(52, 26, 100, 0.55) 70%);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(255, 255, 255, 0.18);
+      }
+      .screw::after {
+        content: ""; position: absolute; left: 2px; right: 2px; top: 6.5px; height: 2px;
+        background: rgba(18, 6, 40, 0.6); border-radius: 1px; transform: rotate(38deg);
+      }
+      .brand {
+        position: absolute; left: 0; right: 0; bottom: 7px; z-index: 2; pointer-events: none;
+        text-align: center; font-weight: 800; font-size: 13px;
+        letter-spacing: 0.55em; text-indent: 0.55em;
+        color: rgba(240, 228, 255, 0.5);
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
       }
 
-      /* ============ SYNTHWAVE SCENE ============ */
+      /* ============ SCREEN BEZEL + WINDOW (stage 640 x 480) ============ */
+      .bezel {
+        position: absolute; left: 240px; top: 30px; width: 680px; height: 540px; z-index: 3;
+        border-radius: 26px;
+        background: linear-gradient(165deg, #17171c, #060608 60%, #101014);
+        border: 2px solid rgba(0, 0, 0, 0.85);
+        box-shadow:
+          inset 0 2px 4px rgba(255, 255, 255, 0.14),
+          inset 0 -3px 8px rgba(0, 0, 0, 0.8),
+          0 6px 18px rgba(10, 2, 30, 0.45);
+      }
+      .screen {
+        position: absolute; left: 18px; top: 28px; width: 640px; height: 480px;
+        border-radius: 8px; overflow: hidden;
+        background: #0b1035;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05), inset 0 0 60px rgba(0, 0, 0, 0.45);
+      }
+
+      /* ============ FUNCTION PILLS + POWER LED ============ */
+      .pill {
+        position: absolute; z-index: 5; width: 56px; height: 19px; border-radius: 10px;
+        appearance: none; cursor: pointer; padding: 0;
+        background: linear-gradient(180deg, #43317a, #211440);
+        border: 1px solid rgba(224, 200, 255, 0.4);
+        box-shadow: 0 3px 7px rgba(0, 0, 0, 0.5), inset 0 2px 3px rgba(255, 255, 255, 0.3);
+        touch-action: none;
+        transition: transform 0.05s ease, filter 0.05s ease, box-shadow 0.05s ease;
+      }
+      .pill.pressed, .pill:active {
+        transform: scale(0.9); filter: brightness(0.8);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 2px 5px rgba(0, 0, 0, 0.55);
+      }
+      .pill-label {
+        position: absolute; z-index: 5; width: 56px; text-align: center; pointer-events: none;
+        font-size: 8.5px; font-weight: 700; letter-spacing: 0.24em; text-indent: 0.24em;
+        color: rgba(240, 228, 255, 0.62); text-shadow: 0 1px 2px rgba(20, 4, 48, 0.6);
+      }
+      .led {
+        position: absolute; left: 1092px; top: 88px; z-index: 5; pointer-events: none;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: radial-gradient(circle at 38% 32%, #c9ffd9, #3fe07a 55%, #129a46);
+        box-shadow: 0 0 10px 2px rgba(63, 224, 122, 0.55), inset 0 -1px 2px rgba(0, 60, 25, 0.5);
+      }
+      .led-label {
+        position: absolute; left: 1078px; top: 106px; z-index: 5; width: 41px; text-align: center; pointer-events: none;
+        font-size: 8px; font-weight: 700; letter-spacing: 0.22em; text-indent: 0.22em;
+        color: rgba(240, 228, 255, 0.55);
+      }
+
+      /* ============ D-PAD (left grip) ============ */
+      .dpad { position: absolute; left: 30px; top: 176px; width: 176px; height: 176px; z-index: 5; }
+      .dish {
+        position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+        background: radial-gradient(circle, rgba(22, 9, 50, 0.34) 52%, rgba(22, 9, 50, 0.16) 68%, rgba(255, 255, 255, 0.06) 76%, transparent 82%);
+        box-shadow: inset 0 4px 14px rgba(12, 3, 34, 0.5), inset 0 -3px 8px rgba(255, 255, 255, 0.10);
+      }
+      .crosswrap { position: absolute; inset: 0; pointer-events: none; transition: transform 0.06s ease; }
+      .cross-v, .cross-h {
+        position: absolute;
+        background: linear-gradient(160deg, #2e1d55, #170c31);
+        border: 1px solid rgba(222, 198, 255, 0.32);
+        border-radius: 9px;
+        box-shadow: 0 5px 12px rgba(0, 0, 0, 0.55), inset 0 2px 3px rgba(255, 255, 255, 0.16);
+      }
+      .cross-v { left: 60px; top: 13px; width: 56px; height: 150px; }
+      .cross-h { left: 13px; top: 60px; width: 150px; height: 56px; }
+      .cross-c {
+        position: absolute; left: 57px; top: 57px; width: 62px; height: 62px; border-radius: 50%;
+        background: radial-gradient(circle at 42% 36%, #3a2568, #1a0e36 72%);
+        border: 1px solid rgba(222, 198, 255, 0.25);
+        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+      }
+      .dzone {
+        position: absolute; width: 66px; height: 66px; z-index: 6;
+        appearance: none; border: 0; background: transparent; padding: 0; cursor: pointer;
+        border-radius: 14px; touch-action: none;
+      }
+      .dzone.pressed { background: radial-gradient(circle, rgba(255, 255, 255, 0.16), transparent 70%); }
+      .dz-up    { left: 55px; top: 2px; }
+      .dz-down  { left: 55px; top: 108px; }
+      .dz-left  { left: 2px;  top: 55px; }
+      .dz-right { left: 108px; top: 55px; }
+
+      /* ============ FACE BUTTONS (right grip, diamond) ============ */
+      .abxy { position: absolute; left: 930px; top: 158px; width: 220px; height: 220px; z-index: 5; }
+      .abtn {
+        position: absolute; width: 58px; height: 58px; border-radius: 50%;
+        appearance: none; cursor: pointer; padding: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-family: inherit; font-weight: 800; font-size: 20px; color: rgba(255, 255, 255, 0.88);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        box-shadow: 0 5px 11px rgba(0, 0, 0, 0.5), inset 0 3px 5px rgba(255, 255, 255, 0.4), inset 0 -4px 7px rgba(0, 0, 0, 0.3);
+        touch-action: none;
+        transition: transform 0.05s ease, filter 0.05s ease, box-shadow 0.05s ease;
+      }
+      .abtn.pressed, .abtn:active {
+        transform: scale(0.88); filter: brightness(0.82);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 3px 8px rgba(0, 0, 0, 0.45);
+      }
+      .b-x { left: 81px;  top: 25px;  background: radial-gradient(circle at 35% 30%, #b4bac2, #7e858f 78%); }
+      .b-y { left: 25px;  top: 81px;  background: radial-gradient(circle at 35% 30%, #8ec79c, #4d8a5f 78%); }
+      .b-a { left: 137px; top: 81px;  background: radial-gradient(circle at 35% 30%, #7d7099, #463d59 78%); }
+      .b-b { left: 81px;  top: 137px; background: radial-gradient(circle at 35% 30%, #ecd06a, #c39a2e 78%); color: #4a3805; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
+
+      /* ============ SPEAKER GRILLES ============ */
+      .speaker {
+        position: absolute; top: 472px; width: 86px; height: 58px; z-index: 2; pointer-events: none;
+        border-radius: 50%;
+        background-image: radial-gradient(circle, rgba(18, 6, 42, 0.6) 2.7px, transparent 3.4px);
+        background-size: 13px 13px; background-position: center;
+        opacity: 0.85;
+        -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+        mask-image: radial-gradient(ellipse at center, #000 55%, transparent 78%);
+      }
+      .spk-l { left: 32px; }
+      .spk-r { left: 1042px; }
+
+      /* ============ SYNTHWAVE SCENE (inside screen) ============ */
       .scene { position: absolute; inset: 0; z-index: 0; }
       .scene svg { width: 100%; height: 100%; display: block; }
       .scene-dim {
@@ -126,31 +218,31 @@
       }
       .scene-dim.on { opacity: 1; }
 
-      /* ============ TOP BAR ============ */
+      /* ============ TOP BAR (inside screen) ============ */
       .topbar {
         position: absolute; top: 0; left: 0; right: 0; z-index: 10;
         display: flex; align-items: flex-start; justify-content: space-between;
-        padding: calc(10px + var(--sat)) 16px 0;
+        padding: 10px 14px 0;
         pointer-events: none;
       }
       .topbar > * { pointer-events: auto; }
       .icon-btn {
-        appearance: none; border: 0; cursor: pointer;
-        width: 42px; height: 42px; border-radius: 50%;
+        appearance: none; cursor: pointer;
+        width: 38px; height: 38px; border-radius: 50%;
         background: rgba(10, 6, 30, 0.45);
         border: 1.5px solid rgba(255, 255, 255, 0.25);
         display: flex; align-items: center; justify-content: center;
-        color: #fff;
+        color: #fff; padding: 0;
       }
       .icon-btn:active { background: rgba(60, 30, 120, 0.6); }
-      .icon-btn svg { width: 22px; height: 22px; }
+      .icon-btn svg { width: 20px; height: 20px; }
       .icon-btn .waves { transition: opacity 0.15s; }
       .icon-btn.muted .waves { opacity: 0; }
       .icon-btn .slash { opacity: 0; transition: opacity 0.15s; }
       .icon-btn.muted .slash { opacity: 1; }
       .wordmark {
         font-weight: 900; font-style: italic;
-        font-size: clamp(30px, 6.5vw, 52px);
+        font-size: 38px;
         letter-spacing: 0.04em; line-height: 1;
         background: linear-gradient(180deg, #ffe45c 0%, #ffb02e 45%, #ff7a1e 78%, #f95d0a 100%);
         -webkit-background-clip: text; background-clip: text;
@@ -162,7 +254,7 @@
       }
       .battery { display: none; align-items: center; gap: 6px; padding-top: 8px; }
       .battery.show { display: flex; }
-      .battery .pct { font-size: 14px; font-weight: 800; color: #eaf6ff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+      .battery .pct { font-size: 13px; font-weight: 800; color: #eaf6ff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
       .batt-body {
         width: 28px; height: 14px;
         border: 2px solid #eaf6ff; border-radius: 4px; position: relative;
@@ -177,13 +269,12 @@
         background: #57d98a; border-radius: 1.5px; max-width: calc(100% - 3px);
       }
       .batt-fill.low { background: #ff5a4d; }
-      .batt-spacer { width: 42px; flex: none; }
-      .batt-wrap { min-width: 42px; display: flex; justify-content: flex-end; }
+      .batt-wrap { min-width: 38px; display: flex; justify-content: flex-end; }
 
-      /* ============ CAROUSEL ============ */
+      /* ============ CAROUSEL (inside screen) ============ */
       .carousel {
         position: absolute; left: 0; right: 0; z-index: 6;
-        top: 15%; bottom: 24%;
+        top: 14%; bottom: 23%;
         perspective: 900px;
         touch-action: pan-y;
         cursor: grab;
@@ -191,7 +282,7 @@
       .carousel:active { cursor: grabbing; }
       .cicon {
         position: absolute; left: 50%; bottom: 6%;
-        width: clamp(104px, 27vmin, 196px);
+        width: 148px;
         aspect-ratio: 1 / 1;
         appearance: none; border: 0; background: transparent; padding: 0;
         cursor: pointer;
@@ -209,12 +300,12 @@
         pointer-events: none;
       }
       .floor-name {
-        position: absolute; left: 50%; top: 71%; z-index: 5;
+        position: absolute; left: 50%; top: 70%; z-index: 5;
         transform: translateX(-50%) perspective(340px) rotateX(50deg);
         transform-origin: 50% 100%;
         font-family: "Segoe Script", "Bradley Hand", "Brush Script MT", "Comic Sans MS", cursive;
         font-weight: 700; font-style: italic;
-        font-size: clamp(42px, 10vw, 92px);
+        font-size: 58px;
         letter-spacing: 0.06em; white-space: nowrap;
         color: #ffffff;
         text-shadow: 0 0 18px rgba(160, 200, 255, 0.55), 0 2px 6px rgba(20, 0, 60, 0.6);
@@ -222,16 +313,16 @@
       }
       .carousel.hidden, .floor-name.hidden { display: none; }
 
-      /* ============ BOTTOM HINT BAR ============ */
+      /* ============ BOTTOM HINT BAR (inside screen) ============ */
       .hintbar {
         position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
         display: flex; align-items: flex-end; justify-content: space-between;
-        padding: 0 18px calc(12px + var(--sab));
+        padding: 0 16px 10px 20px;
         pointer-events: none;
       }
       .hints {
-        font-size: clamp(11px, 2.5vw, 15px);
-        font-weight: 700; letter-spacing: 0.14em;
+        font-size: 13px;
+        font-weight: 700; letter-spacing: 0.12em;
         color: rgba(235, 240, 255, 0.62);
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
         white-space: nowrap;
@@ -241,16 +332,16 @@
         letter-spacing: inherit; cursor: pointer; padding: 6px 2px; pointer-events: auto;
       }
       .hints .hbtn:active { color: #fff; }
-      .hints .sep { margin: 0 7px; opacity: 0.6; }
+      .hints .sep { margin: 0 6px; opacity: 0.6; }
       .hint-clock {
-        font-size: clamp(16px, 3.4vw, 24px);
+        font-size: 20px;
         font-weight: 800; letter-spacing: 0.05em;
         font-variant-numeric: tabular-nums;
         color: rgba(240, 244, 255, 0.92);
         text-shadow: 0 1px 5px rgba(0, 0, 0, 0.7);
       }
 
-      /* ============ SHELF (LIST OVER SCENE) ============ */
+      /* ============ SHELF (LIST OVER SCENE, inside screen) ============ */
       .shelf {
         position: absolute; inset: 0; z-index: 20;
         display: none; flex-direction: column;
@@ -259,24 +350,24 @@
       .shelf.show { display: flex; }
       .shelf-head {
         flex: none; display: flex; align-items: center; gap: 12px;
-        padding: calc(12px + var(--sat)) 16px 10px;
+        padding: 12px 14px 10px;
         border-bottom: 1px solid var(--rowline);
       }
       .back-btn {
         appearance: none; font: inherit; cursor: pointer;
         font-weight: 800; letter-spacing: 0.08em;
-        font-size: clamp(14px, 3vw, 17px);
+        font-size: 15px;
         color: var(--ink);
         background: rgba(122, 72, 190, 0.35);
         border: 2px solid var(--purple);
-        border-radius: 12px; padding: 10px 16px;
+        border-radius: 12px; padding: 9px 14px;
       }
       .back-btn:active { background: rgba(122, 72, 190, 0.6); }
       .shelf-title {
-        font-size: clamp(20px, 4.6vw, 30px); font-weight: 900; letter-spacing: 0.06em;
+        font-size: 24px; font-weight: 900; letter-spacing: 0.06em;
         flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       }
-      .shelf-count { font-size: 13px; font-weight: 800; color: var(--faint); letter-spacing: 0.12em; flex: none; }
+      .shelf-count { font-size: 12px; font-weight: 800; color: var(--faint); letter-spacing: 0.12em; flex: none; }
       .list {
         flex: 1; overflow-y: auto; overscroll-behavior: contain;
         padding: 6px 0 10px; scrollbar-width: none; touch-action: pan-y;
@@ -285,22 +376,22 @@
       .list::-webkit-scrollbar { display: none; }
       .row {
         display: flex; align-items: center; gap: 12px;
-        width: 100%; padding: 13px 18px;
+        width: 100%; padding: 12px 16px;
         cursor: pointer; border-bottom: 1px solid var(--rowline);
         color: var(--ink);
       }
       .chip {
-        flex: none; width: 20px; height: 20px; border-radius: 6px;
+        flex: none; width: 18px; height: 18px; border-radius: 6px;
         border: 1.5px solid rgba(255, 255, 255, 0.35);
         box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.35), 0 2px 5px rgba(0, 0, 0, 0.4);
       }
       .row .gname {
-        font-size: clamp(19px, 4.2vw, 26px); font-weight: 700; letter-spacing: 0.01em;
+        font-size: 20px; font-weight: 700; letter-spacing: 0.01em;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         flex: 1; min-width: 0;
       }
       .tag {
-        flex: none; font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+        flex: none; font-size: 10px; font-weight: 800; letter-spacing: 0.14em;
         padding: 4px 8px 3px; border-radius: 6px;
         border: 1.5px solid var(--faint); color: var(--dim);
       }
@@ -317,44 +408,43 @@
       .row.sel .chip { border-color: rgba(34, 16, 10, 0.45); }
       .preview {
         flex: none; display: flex; align-items: center; gap: 12px;
-        margin: 8px 14px 0; padding: 11px 14px;
+        margin: 8px 12px 0; padding: 10px 12px;
         border-radius: 14px;
         background: rgba(255, 255, 255, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        min-height: 62px;
+        min-height: 58px;
       }
-      .preview .pswatch { flex: none; width: 40px; height: 40px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.3); }
+      .preview .pswatch { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.3); }
       .preview .ptext { min-width: 0; }
-      .preview .pname { font-size: clamp(16px, 3.4vw, 21px); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .preview .pblurb { font-size: clamp(13px, 2.7vw, 15.5px); color: var(--dim); line-height: 1.3; }
+      .preview .pname { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .preview .pblurb { font-size: 13px; color: var(--dim); line-height: 1.3; }
       .shelf-foot {
         flex: none; display: flex; align-items: center; gap: 10px;
-        padding: 10px 14px calc(12px + var(--sab));
+        padding: 10px 12px 12px;
       }
       .fbtn {
         appearance: none; font: inherit; font-weight: 800; letter-spacing: 0.1em;
-        border-radius: 12px; padding: 13px 18px;
-        font-size: clamp(14px, 3vw, 17px); cursor: pointer; flex: none;
+        border-radius: 12px; padding: 12px 16px;
+        font-size: 15px; cursor: pointer; flex: none;
       }
-      .fbtn.random { background: transparent; color: var(--ink); border: 2px solid var(--purple); }
+      .fbtn.random { background: transparent; color: var(--ink); border: 2px solid var(--purple); flex: 1; }
       .fbtn.random:active { background: rgba(122, 72, 190, 0.35); }
       .fbtn.launch {
         background: linear-gradient(180deg, var(--orange-hi), var(--orange));
-        color: #22100a; border: 0; flex: 1;
-        box-shadow: 0 5px 16px rgba(255, 138, 30, 0.4); padding: 13px 26px;
+        color: #22100a; border: 0; flex: 1.4;
+        box-shadow: 0 5px 16px rgba(255, 138, 30, 0.4); padding: 12px 20px;
       }
       .fbtn.launch:active { transform: translateY(1px); }
-      @media (max-width: 560px) { .fbtn.random { flex: 1; } .fbtn.launch { flex: 1.4; } }
 
-      /* ============ BOOT SPLASH ============ */
+      /* ============ BOOT SPLASH (inside screen) ============ */
       .boot {
-        position: fixed; inset: 0; background: #07040f; z-index: 50;
+        position: absolute; inset: 0; background: #07040f; z-index: 50;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         gap: 14px; transition: opacity 0.45s ease; cursor: pointer;
       }
       .boot.hide { opacity: 0; pointer-events: none; }
       .boot .bword {
-        font-size: clamp(52px, 13vw, 96px); font-weight: 900; font-style: italic; letter-spacing: 0.05em;
+        font-size: 84px; font-weight: 900; font-style: italic; letter-spacing: 0.05em;
         background: linear-gradient(180deg, #ffe45c 0%, #ffb02e 45%, #ff7a1e 78%, #f95d0a 100%);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent; color: transparent;
@@ -362,12 +452,12 @@
         filter: drop-shadow(0 4px 0 rgba(24, 2, 38, 0.85)) drop-shadow(0 0 34px rgba(255, 138, 30, 0.45));
       }
       .boot .sub {
-        font-size: clamp(12px, 2.6vw, 15px); letter-spacing: 0.5em; text-indent: 0.5em;
+        font-size: 13px; letter-spacing: 0.5em; text-indent: 0.5em;
         color: var(--faint); font-weight: 700; animation: pulse 1.1s ease-in-out infinite;
       }
       @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
-      /* ============ RANDOM OVERLAY ============ */
+      /* ============ RANDOM OVERLAY (inside screen) ============ */
       .slot {
         position: absolute; inset: 0; z-index: 40;
         background: rgba(7, 4, 15, 0.9);
@@ -375,8 +465,8 @@
         gap: 16px; padding: 24px; text-align: center;
       }
       .slot.show { display: flex; }
-      .slot .slot-label { font-size: 13px; font-weight: 800; letter-spacing: 0.4em; text-indent: 0.4em; color: var(--faint); }
-      .slot .slot-name { font-size: clamp(34px, 8.5vw, 58px); font-weight: 900; line-height: 1.1; color: var(--ink); }
+      .slot .slot-label { font-size: 12px; font-weight: 800; letter-spacing: 0.4em; text-indent: 0.4em; color: var(--faint); }
+      .slot .slot-name { font-size: 44px; font-weight: 900; line-height: 1.1; color: var(--ink); }
       .slot.landed .slot-name { color: var(--orange); text-shadow: 0 0 30px rgba(255, 138, 30, 0.55); }
 
       .vignette {
@@ -390,158 +480,202 @@
     </style>
   </head>
   <body>
-    <!-- BOOT -->
-    <div class="boot" id="boot" role="presentation">
-      <div class="bword">GEE ARC</div>
-      <div class="sub">POWERING ON</div>
-    </div>
+    <div class="fit" id="fitWrap">
+      <div class="device" id="deviceStage">
+        <div class="innards" aria-hidden="true"></div>
+        <span class="screw" style="left:20px; top:20px;" aria-hidden="true"></span>
+        <span class="screw" style="right:20px; top:20px;" aria-hidden="true"></span>
+        <span class="screw" style="left:34px; bottom:40px;" aria-hidden="true"></span>
+        <span class="screw" style="right:34px; bottom:40px;" aria-hidden="true"></span>
 
-    <div class="shell">
-      <div class="device">
-        <div class="grip" aria-hidden="true">
-          <div class="dpad"></div>
-          <div class="stick"></div>
-          <div class="pill-btn"></div>
-          <div class="grip-label">SELECT</div>
-        </div>
+        <!-- FUNCTION PILLS flanking the top of the screen -->
+        <button class="pill" id="pillSelect" type="button" style="left:163px; top:38px;" aria-label="Select button (menu / back)"></button>
+        <div class="pill-label" style="left:163px; top:61px;">SELECT</div>
+        <button class="pill" id="pillStart" type="button" style="left:941px; top:38px;" aria-label="Start button (select)"></button>
+        <div class="pill-label" style="left:941px; top:61px;">START</div>
 
-        <div class="screen-wrap" id="screenWrap">
-          <!-- SYNTHWAVE SCENE -->
-          <div class="scene" aria-hidden="true">
-            <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" focusable="false">
-              <defs>
-                <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#060a2e" />
-                  <stop offset="0.55" stop-color="#12245e" />
-                  <stop offset="1" stop-color="#2a2a72" />
-                </linearGradient>
-                <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#3b1163" />
-                  <stop offset="0.35" stop-color="#2a0a4e" />
-                  <stop offset="1" stop-color="#1a0533" />
-                </linearGradient>
-                <linearGradient id="horizonGlow" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0" stop-color="#d07bff" stop-opacity="0" />
-                  <stop offset="0.5" stop-color="#e9b8ff" stop-opacity="0.95" />
-                  <stop offset="1" stop-color="#d07bff" stop-opacity="0" />
-                </linearGradient>
-              </defs>
-              <!-- sky -->
-              <rect x="0" y="0" width="1200" height="388" fill="url(#skyGrad)" />
-              <g fill="#cfe0ff">
-                <circle cx="90" cy="60" r="1.8" opacity="0.7" /><circle cx="230" cy="130" r="1.3" opacity="0.5" />
-                <circle cx="380" cy="45" r="1.6" opacity="0.6" /><circle cx="520" cy="110" r="1.2" opacity="0.45" />
-                <circle cx="700" cy="60" r="1.7" opacity="0.65" /><circle cx="860" cy="140" r="1.3" opacity="0.5" />
-                <circle cx="1010" cy="55" r="1.8" opacity="0.7" /><circle cx="1120" cy="150" r="1.2" opacity="0.45" />
-                <circle cx="160" cy="200" r="1.2" opacity="0.4" /><circle cx="640" cy="180" r="1.2" opacity="0.4" />
-                <circle cx="960" cy="210" r="1.3" opacity="0.4" /><circle cx="450" cy="215" r="1.1" opacity="0.35" />
-              </g>
-              <!-- wireframe mountains: back range -->
-              <polygon points="0,385 90,318 170,352 260,288 350,340 430,306 520,352 610,300 700,348 790,312 880,356 970,302 1060,344 1150,318 1200,342 1200,385"
-                fill="rgba(24,36,92,0.5)" stroke="#7fa8ff" stroke-width="1.6" stroke-linejoin="round" opacity="0.65" />
-              <!-- wireframe mountains: front range -->
-              <polygon points="0,385 70,342 150,368 235,318 320,362 405,330 495,370 585,326 675,366 760,334 850,372 935,330 1025,368 1110,340 1200,366 1200,385"
-                fill="rgba(13,16,48,0.72)" stroke="#d6e6ff" stroke-width="2" stroke-linejoin="round" opacity="0.92" />
-              <g stroke="#9db9e8" stroke-width="1" opacity="0.4">
-                <line x1="235" y1="318" x2="262" y2="385" /><line x1="585" y1="326" x2="610" y2="385" />
-                <line x1="935" y1="330" x2="962" y2="385" /><line x1="70" y1="342" x2="92" y2="385" />
-              </g>
-              <!-- grid floor -->
-              <rect x="0" y="385" width="1200" height="315" fill="url(#floorGrad)" />
-              <g stroke="#c05cff" stroke-width="2" opacity="0.85">
-                <line x1="600" y1="385" x2="-840" y2="700" /><line x1="600" y1="385" x2="-600" y2="700" />
-                <line x1="600" y1="385" x2="-380" y2="700" /><line x1="600" y1="385" x2="-190" y2="700" />
-                <line x1="600" y1="385" x2="-30" y2="700" /><line x1="600" y1="385" x2="110" y2="700" />
-                <line x1="600" y1="385" x2="240" y2="700" /><line x1="600" y1="385" x2="365" y2="700" />
-                <line x1="600" y1="385" x2="480" y2="700" /><line x1="600" y1="385" x2="600" y2="700" />
-                <line x1="600" y1="385" x2="720" y2="700" /><line x1="600" y1="385" x2="835" y2="700" />
-                <line x1="600" y1="385" x2="960" y2="700" /><line x1="600" y1="385" x2="1090" y2="700" />
-                <line x1="600" y1="385" x2="1230" y2="700" /><line x1="600" y1="385" x2="1390" y2="700" />
-                <line x1="600" y1="385" x2="1580" y2="700" /><line x1="600" y1="385" x2="1800" y2="700" />
-                <line x1="600" y1="385" x2="2040" y2="700" />
-              </g>
-              <g stroke="#d98cff" stroke-width="2" opacity="0.8">
-                <line x1="0" y1="392" x2="1200" y2="392" /><line x1="0" y1="403" x2="1200" y2="403" />
-                <line x1="0" y1="419" x2="1200" y2="419" /><line x1="0" y1="442" x2="1200" y2="442" />
-                <line x1="0" y1="474" x2="1200" y2="474" /><line x1="0" y1="518" x2="1200" y2="518" />
-                <line x1="0" y1="578" x2="1200" y2="578" /><line x1="0" y1="656" x2="1200" y2="656" />
-              </g>
-              <rect x="0" y="382" width="1200" height="5" fill="url(#horizonGlow)" />
-            </svg>
-          </div>
-          <div class="scene-dim" id="sceneDim"></div>
-          <div class="vignette"></div>
+        <!-- POWER LED -->
+        <div class="led" aria-hidden="true"></div>
+        <div class="led-label" aria-hidden="true">POWER</div>
 
-          <!-- TOP BAR -->
-          <div class="topbar">
-            <button class="icon-btn" id="btnMute" type="button" aria-label="Toggle sound">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" stroke="none" />
-                <g class="waves"><path d="M15 9.2a4 4 0 0 1 0 5.6" /><path d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4" /></g>
-                <line class="slash" x1="4.5" y1="4.5" x2="19.5" y2="19.5" stroke="#ff8a8a" stroke-width="2.4" />
+        <!-- SCREEN -->
+        <div class="bezel">
+          <div class="screen" id="screenEl">
+            <!-- BOOT -->
+            <div class="boot" id="boot" role="presentation">
+              <div class="bword">GEE ARC</div>
+              <div class="sub">POWERING ON</div>
+            </div>
+
+            <!-- SYNTHWAVE SCENE -->
+            <div class="scene" aria-hidden="true">
+              <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <defs>
+                  <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#060a2e" />
+                    <stop offset="0.55" stop-color="#12245e" />
+                    <stop offset="1" stop-color="#2a2a72" />
+                  </linearGradient>
+                  <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#3b1163" />
+                    <stop offset="0.35" stop-color="#2a0a4e" />
+                    <stop offset="1" stop-color="#1a0533" />
+                  </linearGradient>
+                  <linearGradient id="horizonGlow" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stop-color="#d07bff" stop-opacity="0" />
+                    <stop offset="0.5" stop-color="#e9b8ff" stop-opacity="0.95" />
+                    <stop offset="1" stop-color="#d07bff" stop-opacity="0" />
+                  </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="1200" height="388" fill="url(#skyGrad)" />
+                <g fill="#cfe0ff">
+                  <circle cx="90" cy="60" r="1.8" opacity="0.7" /><circle cx="230" cy="130" r="1.3" opacity="0.5" />
+                  <circle cx="380" cy="45" r="1.6" opacity="0.6" /><circle cx="520" cy="110" r="1.2" opacity="0.45" />
+                  <circle cx="700" cy="60" r="1.7" opacity="0.65" /><circle cx="860" cy="140" r="1.3" opacity="0.5" />
+                  <circle cx="1010" cy="55" r="1.8" opacity="0.7" /><circle cx="1120" cy="150" r="1.2" opacity="0.45" />
+                  <circle cx="160" cy="200" r="1.2" opacity="0.4" /><circle cx="640" cy="180" r="1.2" opacity="0.4" />
+                  <circle cx="960" cy="210" r="1.3" opacity="0.4" /><circle cx="450" cy="215" r="1.1" opacity="0.35" />
+                </g>
+                <polygon points="0,385 90,318 170,352 260,288 350,340 430,306 520,352 610,300 700,348 790,312 880,356 970,302 1060,344 1150,318 1200,342 1200,385"
+                  fill="rgba(24,36,92,0.5)" stroke="#7fa8ff" stroke-width="1.6" stroke-linejoin="round" opacity="0.65" />
+                <polygon points="0,385 70,342 150,368 235,318 320,362 405,330 495,370 585,326 675,366 760,334 850,372 935,330 1025,368 1110,340 1200,366 1200,385"
+                  fill="rgba(13,16,48,0.72)" stroke="#d6e6ff" stroke-width="2" stroke-linejoin="round" opacity="0.92" />
+                <g stroke="#9db9e8" stroke-width="1" opacity="0.4">
+                  <line x1="235" y1="318" x2="262" y2="385" /><line x1="585" y1="326" x2="610" y2="385" />
+                  <line x1="935" y1="330" x2="962" y2="385" /><line x1="70" y1="342" x2="92" y2="385" />
+                </g>
+                <rect x="0" y="385" width="1200" height="315" fill="url(#floorGrad)" />
+                <g stroke="#c05cff" stroke-width="2" opacity="0.85">
+                  <line x1="600" y1="385" x2="-840" y2="700" /><line x1="600" y1="385" x2="-600" y2="700" />
+                  <line x1="600" y1="385" x2="-380" y2="700" /><line x1="600" y1="385" x2="-190" y2="700" />
+                  <line x1="600" y1="385" x2="-30" y2="700" /><line x1="600" y1="385" x2="110" y2="700" />
+                  <line x1="600" y1="385" x2="240" y2="700" /><line x1="600" y1="385" x2="365" y2="700" />
+                  <line x1="600" y1="385" x2="480" y2="700" /><line x1="600" y1="385" x2="600" y2="700" />
+                  <line x1="600" y1="385" x2="720" y2="700" /><line x1="600" y1="385" x2="835" y2="700" />
+                  <line x1="600" y1="385" x2="960" y2="700" /><line x1="600" y1="385" x2="1090" y2="700" />
+                  <line x1="600" y1="385" x2="1230" y2="700" /><line x1="600" y1="385" x2="1390" y2="700" />
+                  <line x1="600" y1="385" x2="1580" y2="700" /><line x1="600" y1="385" x2="1800" y2="700" />
+                  <line x1="600" y1="385" x2="2040" y2="700" />
+                </g>
+                <g stroke="#d98cff" stroke-width="2" opacity="0.8">
+                  <line x1="0" y1="392" x2="1200" y2="392" /><line x1="0" y1="403" x2="1200" y2="403" />
+                  <line x1="0" y1="419" x2="1200" y2="419" /><line x1="0" y1="442" x2="1200" y2="442" />
+                  <line x1="0" y1="474" x2="1200" y2="474" /><line x1="0" y1="518" x2="1200" y2="518" />
+                  <line x1="0" y1="578" x2="1200" y2="578" /><line x1="0" y1="656" x2="1200" y2="656" />
+                </g>
+                <rect x="0" y="382" width="1200" height="5" fill="url(#horizonGlow)" />
               </svg>
-            </button>
-            <div class="wordmark" aria-label="Gee Arc">GEE ARC</div>
-            <div class="batt-wrap">
-              <div class="battery" id="battery" aria-hidden="true">
-                <span class="pct" id="battPct"></span>
-                <span class="batt-body"><span class="batt-fill" id="battFill"></span></span>
+            </div>
+            <div class="scene-dim" id="sceneDim"></div>
+            <div class="vignette"></div>
+
+            <!-- TOP BAR -->
+            <div class="topbar">
+              <button class="icon-btn" id="btnMute" type="button" aria-label="Toggle sound">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor" stroke="none" />
+                  <g class="waves"><path d="M15 9.2a4 4 0 0 1 0 5.6" /><path d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4" /></g>
+                  <line class="slash" x1="4.5" y1="4.5" x2="19.5" y2="19.5" stroke="#ff8a8a" stroke-width="2.4" />
+                </svg>
+              </button>
+              <div class="wordmark" aria-label="Gee Arc">GEE ARC</div>
+              <div class="batt-wrap">
+                <div class="battery" id="battery" aria-hidden="true">
+                  <span class="pct" id="battPct"></span>
+                  <span class="batt-body"><span class="batt-fill" id="battFill"></span></span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- CAROUSEL -->
-          <div class="carousel" id="carousel" role="listbox" aria-label="Shelves"></div>
-          <div class="floor-name" id="floorName">FAVORITES</div>
+            <!-- CAROUSEL -->
+            <div class="carousel" id="carousel" role="listbox" aria-label="Shelves"></div>
+            <div class="floor-name" id="floorName">FAVORITES</div>
 
-          <!-- BOTTOM HINT BAR -->
-          <div class="hintbar">
-            <div class="hints">
-              <button class="hbtn" id="hintMenu" type="button">&#8801; MENU</button><span class="sep">&middot;</span><button class="hbtn" id="hintRandom" type="button">&#10568; RANDOM</button><span class="sep">&middot;</span><span>&#9398; SELECT</span><span class="sep">&middot;</span><span>&#10012; CHOOSE</span>
+            <!-- BOTTOM HINT BAR -->
+            <div class="hintbar">
+              <div class="hints">
+                <button class="hbtn" id="hintMenu" type="button">&#8801; MENU</button><span class="sep">&middot;</span><button class="hbtn" id="hintRandom" type="button">&#10568; RANDOM</button><span class="sep">&middot;</span><span>&#9398; SELECT</span><span class="sep">&middot;</span><span>&#10012; CHOOSE</span>
+              </div>
+              <div class="hint-clock" id="clock">--:--</div>
             </div>
-            <div class="hint-clock" id="clock">--:--</div>
-          </div>
 
-          <!-- SHELF OVERLAY -->
-          <div class="shelf" id="shelfView">
-            <div class="shelf-head">
-              <button class="back-btn" id="btnBack" type="button">&#8249; BACK</button>
-              <div class="shelf-title" id="shelfTitle">FAVORITES</div>
-              <div class="shelf-count" id="shelfCount"></div>
-            </div>
-            <div class="list" id="list" role="listbox" aria-label="Games"></div>
-            <div class="preview" id="preview">
-              <div class="pswatch" id="pSwatch"></div>
-              <div class="ptext">
-                <div class="pname" id="pName">—</div>
-                <div class="pblurb" id="pBlurb">—</div>
+            <!-- SHELF OVERLAY -->
+            <div class="shelf" id="shelfView">
+              <div class="shelf-head">
+                <button class="back-btn" id="btnBack" type="button">&#8249; BACK</button>
+                <div class="shelf-title" id="shelfTitle">FAVORITES</div>
+                <div class="shelf-count" id="shelfCount"></div>
+              </div>
+              <div class="list" id="list" role="listbox" aria-label="Games"></div>
+              <div class="preview" id="preview">
+                <div class="pswatch" id="pSwatch"></div>
+                <div class="ptext">
+                  <div class="pname" id="pName">—</div>
+                  <div class="pblurb" id="pBlurb">—</div>
+                </div>
+              </div>
+              <div class="shelf-foot">
+                <button class="fbtn random" id="btnRandom" type="button">RANDOM</button>
+                <button class="fbtn launch" id="btnLaunch" type="button">LAUNCH &#9654;</button>
               </div>
             </div>
-            <div class="shelf-foot">
-              <button class="fbtn random" id="btnRandom" type="button">RANDOM</button>
-              <button class="fbtn launch" id="btnLaunch" type="button">LAUNCH &#9654;</button>
-            </div>
-          </div>
 
-          <!-- RANDOM OVERLAY -->
-          <div class="slot" id="slot">
-            <div class="slot-label">RANDOM PICK</div>
-            <div class="slot-name" id="slotName">?</div>
+            <!-- RANDOM OVERLAY -->
+            <div class="slot" id="slot">
+              <div class="slot-label">RANDOM PICK</div>
+              <div class="slot-name" id="slotName">?</div>
+            </div>
           </div>
         </div>
 
-        <div class="grip" aria-hidden="true">
-          <div class="abxy">
-            <span class="b-x">X</span><span class="b-y">Y</span><span class="b-a">A</span><span class="b-b">B</span>
+        <!-- D-PAD (left grip) -->
+        <div class="dpad" id="dpadEl">
+          <div class="dish" aria-hidden="true"></div>
+          <div class="crosswrap" id="crossWrap" aria-hidden="true">
+            <div class="cross-v"></div>
+            <div class="cross-h"></div>
+            <div class="cross-c"></div>
           </div>
-          <div class="pill-btn"></div>
-          <div class="grip-label">START</div>
+          <button class="dzone dz-up" id="dzUp" type="button" aria-label="D-pad up"></button>
+          <button class="dzone dz-down" id="dzDown" type="button" aria-label="D-pad down"></button>
+          <button class="dzone dz-left" id="dzLeft" type="button" aria-label="D-pad left"></button>
+          <button class="dzone dz-right" id="dzRight" type="button" aria-label="D-pad right"></button>
         </div>
+
+        <!-- SPEAKER GRILLES -->
+        <div class="speaker spk-l" aria-hidden="true"></div>
+        <div class="speaker spk-r" aria-hidden="true"></div>
+
+        <!-- FACE BUTTONS (right grip) -->
+        <div class="abxy">
+          <button class="abtn b-x" id="btnX" type="button" aria-label="X button (random)">X</button>
+          <button class="abtn b-y" id="btnY" type="button" aria-label="Y button (next)">Y</button>
+          <button class="abtn b-a" id="btnA" type="button" aria-label="A button (select)">A</button>
+          <button class="abtn b-b" id="btnB" type="button" aria-label="B button (back)">B</button>
+        </div>
+
+        <div class="brand" aria-hidden="true">GEE ARC</div>
       </div>
     </div>
 
     <script>
       "use strict";
+
+      /* ---------- device fit: scale the whole unit to the viewport, never cropped ---------- */
+      var DW = 1160, DH = 600;
+      var fitWrap = document.getElementById("fitWrap");
+      var deviceStage = document.getElementById("deviceStage");
+      function fit() {
+        var s = Math.min(window.innerWidth / DW, window.innerHeight / DH);
+        if (!(s > 0)) s = 1;
+        fitWrap.style.width = (DW * s) + "px";
+        fitWrap.style.height = (DH * s) + "px";
+        deviceStage.style.transform = "scale(" + s + ")";
+      }
+      fit();
+      window.addEventListener("resize", fit);
+      window.addEventListener("orientationchange", fit);
+
       var BASE = "https://geemondc.github.io/";
       // name, path, lane, accent, blurb  (44 games)
       var G = [
@@ -712,7 +846,6 @@
         b.setAttribute("role", "option");
         b.setAttribute("aria-label", s.name);
         b.innerHTML = ICONS[s.key];
-        b.addEventListener("click", function () { /* handled by pointer logic below */ });
         carouselEl.appendChild(b);
         iconEls.push(b);
       });
@@ -726,7 +859,7 @@
       function selStop() { var n = STOPS.length; return ((Math.round(pos) % n) + n) % n; }
       function spacingFor(w) { return Math.max(84, Math.min(w * 0.30, 210)); }
       function layout() {
-        var w = carouselEl.clientWidth || window.innerWidth;
+        var w = carouselEl.clientWidth || 640;
         var s = spacingFor(w);
         for (var i = 0; i < iconEls.length; i++) {
           var d = wrapD(i - pos);
@@ -775,7 +908,7 @@
       layout();
       window.addEventListener("resize", layout);
 
-      // drag / swipe + tap on the carousel
+      // drag / swipe + tap directly on the screen's carousel
       var drag = null;
       carouselEl.addEventListener("pointerdown", function (ev) {
         drag = { x: ev.clientX, startPos: pos, moved: 0, t: Date.now(), target: ev.target };
@@ -786,7 +919,7 @@
         if (!drag) return;
         var dx = ev.clientX - drag.x;
         drag.moved = Math.max(drag.moved, Math.abs(dx));
-        var w = carouselEl.clientWidth || window.innerWidth;
+        var w = carouselEl.clientWidth || 640;
         pos = drag.startPos - dx / (spacingFor(w) * 0.82);
         layout();
       });
@@ -876,6 +1009,13 @@
         if (sound) blip();
       }
       function moveRow(d) { selectRow(selIdx[shelfKey] + d, true); }
+      function pageRow(d) {
+        var games = shelfGames();
+        var i = selIdx[shelfKey] + d * 6;
+        if (i < 0) i = 0;
+        if (i > games.length - 1) i = games.length - 1;
+        selectRow(i, true);
+      }
 
       function openShelf(stopIdx) {
         shelfKey = STOPS[stopIdx].key;
@@ -944,21 +1084,127 @@
         frame();
       }
 
-      /* ---------- keyboard ---------- */
+      /* ---------- the device's own controls ---------- */
+      var crossWrap = document.getElementById("crossWrap");
+      var dzUp = document.getElementById("dzUp");
+      var dzDown = document.getElementById("dzDown");
+      var dzLeft = document.getElementById("dzLeft");
+      var dzRight = document.getElementById("dzRight");
+      var btnA = document.getElementById("btnA");
+      var btnB = document.getElementById("btnB");
+      var btnX = document.getElementById("btnX");
+      var btnY = document.getElementById("btnY");
+      var pillStart = document.getElementById("pillStart");
+      var pillSelect = document.getElementById("pillSelect");
+
+      function tilt(dir) {
+        var t = "";
+        if (dir === "left") t = "translate(-2px, 0) rotate(-3deg)";
+        else if (dir === "right") t = "translate(2px, 0) rotate(3deg)";
+        else if (dir === "up") t = "translate(0, -2px)";
+        else if (dir === "down") t = "translate(0, 2px)";
+        crossWrap.style.transform = t;
+      }
+      function dpadDir(dir) {
+        if (spinning) return;
+        if (view === "home") {
+          if (dir === "left" || dir === "up") goToDelta(-1, true);
+          else goToDelta(1, true);
+        } else {
+          if (dir === "up") moveRow(-1);
+          else if (dir === "down") moveRow(1);
+          else if (dir === "left") pageRow(-1);
+          else pageRow(1);
+        }
+      }
+      function bindHold(el, dir) {
+        var t1 = null, t2 = null;
+        function start(ev) {
+          ev.preventDefault();
+          el.classList.add("pressed");
+          tilt(dir);
+          dpadDir(dir);
+          t1 = setTimeout(function () { t2 = setInterval(function () { dpadDir(dir); }, 110); }, 380);
+        }
+        function end() {
+          el.classList.remove("pressed");
+          tilt(null);
+          if (t1) { clearTimeout(t1); t1 = null; }
+          if (t2) { clearInterval(t2); t2 = null; }
+        }
+        el.addEventListener("pointerdown", start);
+        el.addEventListener("pointerup", end);
+        el.addEventListener("pointerleave", end);
+        el.addEventListener("pointercancel", end);
+        el.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+      }
+      bindHold(dzUp, "up");
+      bindHold(dzDown, "down");
+      bindHold(dzLeft, "left");
+      bindHold(dzRight, "right");
+
+      function actA() { // SELECT
+        if (spinning) return;
+        if (view === "home") openShelf(selStop());
+        else launch(selectedGame());
+      }
+      function actB() { // BACK
+        if (spinning) return;
+        if (view === "shelf") closeShelf();
+      }
+      function actX() { randomPick(); } // RANDOM
+      function actY() { // step / move down
+        if (spinning) return;
+        if (view === "home") goToDelta(1, true);
+        else moveRow(1);
+      }
+      function bindTap(el, fn) {
+        el.addEventListener("pointerdown", function (ev) {
+          ev.preventDefault();
+          el.classList.add("pressed");
+          fn();
+        });
+        function end() { el.classList.remove("pressed"); }
+        el.addEventListener("pointerup", end);
+        el.addEventListener("pointerleave", end);
+        el.addEventListener("pointercancel", end);
+        el.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+      }
+      bindTap(btnA, actA);
+      bindTap(btnB, actB);
+      bindTap(btnX, actX);
+      bindTap(btnY, actY);
+      bindTap(pillStart, actA);
+      bindTap(pillSelect, actB);
+
+      function flash(el) {
+        el.classList.add("pressed");
+        setTimeout(function () { el.classList.remove("pressed"); }, 150);
+      }
+      function flashDir(dir) {
+        flash(dir === "left" ? dzLeft : dir === "right" ? dzRight : dir === "up" ? dzUp : dzDown);
+        tilt(dir);
+        setTimeout(function () { tilt(null); }, 150);
+      }
+
+      /* ---------- keyboard (also lights the matching rendered button) ---------- */
       document.addEventListener("keydown", function (ev) {
         if (spinning) return;
-        if (ev.key === "r" || ev.key === "R") { randomPick(); return; }
+        if (ev.key === "r" || ev.key === "R") { flash(btnX); randomPick(); return; }
         if (view === "home") {
-          if (ev.key === "ArrowRight") { ev.preventDefault(); goToDelta(1, true); }
-          else if (ev.key === "ArrowLeft") { ev.preventDefault(); goToDelta(-1, true); }
-          else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openShelf(selStop()); }
+          if (ev.key === "ArrowRight") { ev.preventDefault(); flashDir("right"); goToDelta(1, true); }
+          else if (ev.key === "ArrowLeft") { ev.preventDefault(); flashDir("left"); goToDelta(-1, true); }
+          else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); flash(btnA); openShelf(selStop()); }
+          else if (ev.key === "Escape") { flash(btnB); }
         } else {
-          if (ev.key === "ArrowDown") { ev.preventDefault(); moveRow(1); }
-          else if (ev.key === "ArrowUp") { ev.preventDefault(); moveRow(-1); }
-          else if (ev.key === "PageDown") { ev.preventDefault(); for (var a = 0; a < 6; a++) moveRow(1); }
-          else if (ev.key === "PageUp") { ev.preventDefault(); for (var b = 0; b < 6; b++) moveRow(-1); }
-          else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); launch(selectedGame()); }
-          else if (ev.key === "Escape") { ev.preventDefault(); closeShelf(); }
+          if (ev.key === "ArrowDown") { ev.preventDefault(); flashDir("down"); moveRow(1); }
+          else if (ev.key === "ArrowUp") { ev.preventDefault(); flashDir("up"); moveRow(-1); }
+          else if (ev.key === "ArrowRight") { ev.preventDefault(); flashDir("right"); pageRow(1); }
+          else if (ev.key === "ArrowLeft") { ev.preventDefault(); flashDir("left"); pageRow(-1); }
+          else if (ev.key === "PageDown") { ev.preventDefault(); flashDir("down"); pageRow(1); }
+          else if (ev.key === "PageUp") { ev.preventDefault(); flashDir("up"); pageRow(-1); }
+          else if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); flash(btnA); launch(selectedGame()); }
+          else if (ev.key === "Escape") { ev.preventDefault(); flash(btnB); closeShelf(); }
         }
       });
 
