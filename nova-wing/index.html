@@ -26,7 +26,7 @@
       /* ---------- fire / torp thumb buttons ---------- */
       .thumbBtn{
         position:fixed; z-index:6; width:92px; height:92px; border-radius:50%;
-        background:rgba(0,20,10,.35); border:2px solid var(--cyan); color:var(--cyan);
+        background:rgba(0,20,10,.20); border:2px solid var(--cyan); color:var(--cyan);
         font-family:"Orbitron",sans-serif; font-weight:700; font-size:15px; letter-spacing:.12em;
         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
         text-shadow:0 0 8px var(--cyan); box-shadow:0 0 18px rgba(55,230,255,.35), inset 0 0 18px rgba(55,230,255,.18);
@@ -328,20 +328,17 @@ var MODELS = {
 /* ---------------- game state ---------------- */
 var cv = document.getElementById("game"), ctx = cv.getContext("2d");
 var W=0, H=0, DPR=1;
-/* cockpit layout: windshield view on top, instrument console below —
-   the radar scope and the thumb controls live in the console band */
-var viewH=0, consoleH=0, VCX=0, VCY=0;
+/* cockpit layout: FULL-SCREEN play field, edge to edge — space, ships
+   and fire render everywhere. The instruments (SENSOR scope, gauges,
+   torp pips, FIRE/TORP buttons) float transparently over the sky. */
+var viewH=0, VCX=0, VCY=0;
 function resize(){
   DPR = Math.min(window.devicePixelRatio||1, 2);
   W = window.innerWidth; H = window.innerHeight;
   cv.width = Math.floor(W*DPR); cv.height = Math.floor(H*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0);
-  consoleH = Math.round(clamp(H*0.33, 118, 320));
-  viewH = H - consoleH;
-  VCX = W/2; VCY = viewH/2;
-  var fb = document.getElementById("fireBtn"), tb = document.getElementById("torpBtn");
-  if(fb) fb.style.bottom = Math.max(10, Math.round(consoleH/2 - 46)) + "px";
-  if(tb) tb.style.bottom = Math.max(10, Math.round(consoleH/2 - 38)) + "px";
+  viewH = H;
+  VCX = W/2; VCY = H/2;
 }
 window.addEventListener("resize", resize); resize();
 
@@ -385,10 +382,10 @@ var STR = {
     startLine:"All yours, Nova Wing. Light 'em up.",
     reachedWave:function(w,k){ return "YOU REACHED WAVE " + w + " — " + k + " KILLS"; },
     bestSession:"BEST THIS SESSION: ",
-    how1:'<span class="k">STEER</span> — touch and hold on the view: your ship turns toward your thumb — above center climbs, below dives, sides bank. Or drag a thumb in the lower console and push from where it lands. Hold the turn and she accelerates.',
+    how1:'<span class="k">STEER</span> — touch and hold anywhere on the sky: your ship turns toward your thumb — above center climbs, below dives, sides bank. The whole screen is your windshield now. Hold the turn and she accelerates.',
     how2:'<span class="k">FIRE</span> — hold the FIRE button with your right thumb (or mouse / spacebar). Line the crosshair up and let them have it.',
     how3:'<span class="k">TORPEDO</span> — hold your crosshair on a fighter until it locks, then hit TORP. One shot, one kill.',
-    how4:'<span class="k">RADAR</span> — the big scope in the lower console shows every fighter around you. Blips at the edge are behind you — swing around and hunt. Arrows at the rim of the view point to hostiles off-screen.',
+    how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through: fighters and fire show right through it, even the ones diving in from below. Blips at the edge are behind you — swing around and hunt. Arrows at the rim of the view point to hostiles off-screen.',
     how5:'<span class="k">SURVIVE</span> — enemy fire eats your shield first, then your hull. Clear the wave, earn shield back. Hull gone, run over.',
     how6:'<span class="k">THE ACE</span> — the curved-wing ACE is worth 500. Fast and mean — lock a torpedo on him.' },
   es:{ subtitle:"DUELO ESPACIAL VECTORIAL", start:"INICIAR", sound:"SONIDO", on:"SÍ", off:"NO", how:"CÓMO VOLAR", gotit:"ENTENDIDO",
@@ -404,10 +401,10 @@ var STR = {
     startLine:"Todo tuyo, Nova Wing. ¡A por ellos!",
     reachedWave:function(w,k){ return "LLEGASTE A LA OLEADA " + w + " — " + k + " BAJAS"; },
     bestSession:"RÉCORD DE LA SESIÓN: ",
-    how1:'<span class="k">PILOTAR</span> — toca y mantén en la vista: tu nave gira hacia tu pulgar — arriba sube, abajo baja, a los lados se inclina. O arrastra un pulgar en la consola inferior y empuja desde donde cae. Mantén el giro y acelera.',
+    how1:'<span class="k">PILOTAR</span> — toca y mantén en cualquier parte del cielo: tu nave gira hacia tu pulgar — arriba sube, abajo baja, a los lados se inclina. Ahora toda la pantalla es tu cabina. Mantén el giro y acelera.',
     how2:'<span class="k">FUEGO</span> — mantén el botón FUEGO con el pulgar derecho (o el ratón / barra espaciadora). Alinea la mira y dales.',
     how3:'<span class="k">TORPEDO</span> — mantén la mira sobre un caza hasta fijarlo y pulsa TORP. Un disparo, una baja.',
-    how4:'<span class="k">RADAR</span> — la gran mira de la consola inferior muestra todos los cazas a tu alrededor. Los puntos en el borde están detrás de ti: gira y a cazar. Las flechas en el borde de la vista señalan a los enemigos fuera de pantalla.',
+    how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente: los cazas y el fuego se ven a través de él, incluso los que suben desde abajo. Los puntos en el borde están detrás de ti: gira y a cazar. Las flechas en el borde de la vista señalan a los enemigos fuera de pantalla.',
     how5:'<span class="k">SOBREVIVE</span> — el fuego enemigo consume primero tu escudo y luego el casco. Supera la oleada y recuperas escudo. Si el casco llega a cero, se acabó.',
     how6:'<span class="k">EL AS</span> — el AS de alas curvas vale 500. Rápido y peligroso: fíjale un torpedo.' }
 };
@@ -433,7 +430,7 @@ function crewSay(kind){
 function startWave(n){
   G.wave = n;
   G.waveState = "banner"; G.waveTimer = 2.0;
-  G.spawnQueue = 3 + n*2;                       /* wave 1 = 5 fighters */
+  G.spawnQueue = 5 + n*3;                       /* wave 1 = 8 fighters, and it only gets busier */
   G.spawnCd = 0;                                 /* first fighter appears the moment the banner drops */
   G.torpAmmo = Math.min(6, G.torpAmmo + 1);
   AudioSys.waveHorn();
@@ -453,8 +450,8 @@ function waveComposition(){
    so the player actually SEES them coming, '83-style */
 function spawnPosAhead(dist){
   var bearing = rand(-Math.PI, Math.PI);
-  if(Math.random() < 0.85) bearing = rand(-0.42, 0.42);   /* mostly dead ahead */
-  var elev = rand(-0.18, 0.18);
+  if(Math.random() < 0.85) bearing = rand(-0.55, 0.55);   /* mostly dead ahead */
+  var elev = rand(-0.48, 0.34);   /* full height: plenty come in LOW, up from below the nose */
   var dir = v3(Math.sin(bearing)*Math.cos(elev), Math.sin(elev), -Math.cos(bearing)*Math.cos(elev));
   /* rotate dir by player yaw so "ahead" means player's ahead */
   var cy = Math.cos(G.player.yaw), sy = Math.sin(G.player.yaw);
@@ -660,7 +657,7 @@ function update(dt){
   } else if(G.waveState==="fight"){
     if(G.spawnQueue>0){
       G.spawnCd -= dt;
-      if(G.spawnCd<=0 && G.enemies.length < 8){ spawnEnemy(); G.spawnQueue--; G.spawnCd = rand(0.35,0.85); }
+      if(G.spawnCd<=0 && G.enemies.length < 14){ spawnEnemy(); G.spawnQueue--; G.spawnCd = rand(0.22,0.55); }
     } else if(G.enemies.length===0){
       G.waveState = "clear"; G.waveTimer = 2.4;
       G.shield = Math.min(100, G.shield + 25);
@@ -926,15 +923,8 @@ function drawPlayerGuns(){
       ctx.shadowBlur = 0;
     })(s);
   }
-  /* nose at bottom center */
-  ctx.strokeStyle = "#ff2a2a"; ctx.lineWidth = 2;
-  ctx.shadowBlur = 9; ctx.shadowColor = "#ff2a2a";
-  ctx.beginPath();
-  ctx.moveTo(VCX-36, viewH); ctx.lineTo(VCX-15, viewH-22); ctx.lineTo(VCX+15, viewH-22); ctx.lineTo(VCX+36, viewH);
-  ctx.stroke();
-  ctx.strokeStyle = "#3b8bff"; ctx.lineWidth = 2.5; ctx.shadowColor = "#3b8bff";
-  ctx.beginPath(); ctx.moveTo(VCX-15, viewH-22); ctx.lineTo(VCX+15, viewH-22); ctx.stroke();
-  ctx.shadowBlur = 0;
+  /* (no nose fin at bottom center anymore — the transparent SENSOR
+     scope floats there now, over open sky) */
 }
 
 /* ---------------- off-screen hostile arrows ----------------
@@ -972,68 +962,6 @@ function drawHostileArrows(basis){
     ctx.restore();
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-}
-
-/* ---------------- lower instrument console ----------------
-   The TikTok-cockpit band: framed panel, big radar scope in the
-   middle (drawn by drawHUD), segmented shield/hull bar gauges
-   flanking it, torpedo pips on the right when there's room. */
-function drawConsole(){
-  var top = viewH, ch = consoleH;
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "rgba(3,16,8,.95)";
-  ctx.fillRect(0, top, W, ch);
-  /* top rail */
-  ctx.strokeStyle = "rgba(57,255,106,.85)"; ctx.lineWidth = 2;
-  ctx.shadowBlur = 10; ctx.shadowColor = "#39ff6a";
-  ctx.beginPath(); ctx.moveTo(0, top+1); ctx.lineTo(W, top+1); ctx.stroke();
-  ctx.shadowBlur = 0;
-  /* inner frame + corner bolts */
-  ctx.strokeStyle = "rgba(57,255,106,.25)"; ctx.lineWidth = 1;
-  ctx.strokeRect(9.5, top+9.5, W-19, ch-19);
-  ctx.fillStyle = "rgba(125,255,176,.7)";
-  var bolts = [[17,top+17],[W-17,top+17],[17,top+ch-17],[W-17,top+ch-17]];
-  for(var bi=0;bi<bolts.length;bi++){
-    ctx.beginPath(); ctx.arc(bolts[bi][0], bolts[bi][1], 2.2, 0, Math.PI*2); ctx.fill();
-  }
-  /* segmented vertical bar gauge */
-  function vbar(x, y0, h, frac, color, label){
-    var segs = 12, lit = Math.round(clamp(frac,0,1)*segs), segH = h/segs;
-    for(var i=0;i<segs;i++){
-      var yy = y0 + h - (i+1)*segH + 1;
-      ctx.fillStyle = color;
-      if(i < lit){ ctx.globalAlpha = 0.95; ctx.shadowBlur = 6; ctx.shadowColor = color; }
-      else { ctx.globalAlpha = 0.15; ctx.shadowBlur = 0; }
-      ctx.fillRect(x, yy, 12, Math.max(2, segH-2.5));
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.font = "500 9px Orbitron, sans-serif"; ctx.fillStyle = "rgba(190,255,215,.85)";
-    ctx.textAlign = "center"; ctx.fillText(label, x+6, y0+h+6);
-  }
-  var rr = clamp(Math.min(ch/2 - 20, W*0.15), 36, 104);
-  var rcx = W/2, rcy = top + ch/2;
-  var barH = ch - 56, barY = top + 15;
-  vbar(rcx - rr - 34, barY, barH, G.shield/100, G.shield>30 ? "#39ff6a" : "#ff3b5c", S().shd);
-  vbar(rcx - rr - 60, barY, barH, G.hull/100, G.hull>35 ? "#ffb02e" : "#ff3b5c", S().hul);
-  /* torpedo pips, right of the scope, when the band is wide enough */
-  if(rcx + rr + 118 < W - 104){
-    var px = rcx + rr + 26, py = rcy;
-    ctx.textAlign = "left"; ctx.font = "700 11px Orbitron, sans-serif";
-    ctx.fillStyle = "#ffb02e"; ctx.shadowBlur = 6; ctx.shadowColor = "#ffb02e";
-    ctx.fillText("TORP", px, py - 24);
-    ctx.shadowBlur = 0;
-    for(var pi=0;pi<6;pi++){
-      ctx.beginPath(); ctx.arc(px + 8 + pi*17, py + 2, 5.5, 0, Math.PI*2);
-      if(pi < G.torpAmmo){
-        ctx.fillStyle = "#ffb02e"; ctx.shadowBlur = 8; ctx.shadowColor = "#ffb02e"; ctx.fill();
-      } else {
-        ctx.strokeStyle = "rgba(255,176,46,.4)"; ctx.lineWidth = 1.2; ctx.stroke();
-      }
-      ctx.shadowBlur = 0;
-    }
-    ctx.font = "500 10px 'Share Tech Mono', monospace"; ctx.fillStyle = "rgba(255,209,140,.85)";
-    ctx.fillText(S().torpNote, px, py + 18);
-  }
 }
 
 function drawHUD(basis){
@@ -1094,14 +1022,7 @@ function drawHUD(basis){
   ctx.font = "700 13px Orbitron, sans-serif";
   ctx.fillStyle = G.shield>30 ? "#baffd2" : "#ff8296";
   ctx.fillText(S().shield + " " + Math.ceil(G.shield), W/2, gy+11);
-  /* HULL thin bar below gauge */
-  var hw = gw*0.72, hx = W/2-hw/2, hy = gy+gh+6;
-  ctx.strokeStyle = "rgba(255,176,46,.75)"; ctx.lineWidth = 1.2;
-  ctx.strokeRect(hx, hy, hw, 6);
-  ctx.fillStyle = G.hull>35 ? "#ffb02e" : "#ff3b5c";
-  ctx.fillRect(hx+1, hy+1, (hw-2)*clamp(G.hull/100,0,1), 4);
-  ctx.font = "500 9px Orbitron, sans-serif"; ctx.fillStyle = "rgba(255,209,140,.9)";
-  ctx.fillText(S().hull, W/2, hy+9);
+  /* (HULL now lives as a slim floating bar beside the SENSOR scope) */
 
   /* crosshair */
   var cxp = VCX, cyp = VCY;
@@ -1138,9 +1059,11 @@ function drawHUD(basis){
     }
   }
 
-  /* radar scope — centerpiece of the lower console */
-  var rr = clamp(Math.min(consoleH/2 - 20, W*0.15), 36, 104);
-  var rcx = W/2, rcy = viewH + consoleH/2;
+  /* SENSOR scope — transparent wireframe floating low over the action,
+     about a third of the screen tall. Rings, sweep and blips only:
+     NO filled panel, so fighters and fire show right through it. */
+  var rr = clamp(H/6, 44, 168);
+  var rcx = W/2, rcy = H - rr - 24;
   ctx.beginPath(); ctx.arc(rcx, rcy, rr, 0, Math.PI*2);
   ctx.strokeStyle = "rgba(57,255,106,.85)"; ctx.lineWidth = 1.6;
   ctx.shadowBlur = 8; ctx.shadowColor = "#39ff6a"; ctx.stroke(); ctx.shadowBlur = 0;
@@ -1177,7 +1100,53 @@ function drawHUD(basis){
     ctx.shadowBlur = 0;
   }
   ctx.font = "500 9px Orbitron, sans-serif"; ctx.fillStyle = "rgba(125,255,176,.8)";
-  ctx.textAlign = "center"; ctx.fillText(S().sensor, rcx, rcy+rr+3);
+  ctx.textAlign = "center"; ctx.fillText(S().sensor, rcx, rcy+rr+4);
+
+  /* slim SHD / HUL bars floating beside the scope — translucent track,
+     glowing fill, nothing opaque over the sky */
+  function slimBar(x, y, w, frac, color, label){
+    ctx.fillStyle = "rgba(160,255,200,.13)";
+    ctx.fillRect(x, y, w, 8);
+    ctx.strokeStyle = "rgba(190,255,215,.35)"; ctx.lineWidth = 1;
+    ctx.strokeRect(x+0.5, y+0.5, w-1, 7);
+    if(frac > 0){
+      ctx.fillStyle = color; ctx.globalAlpha = 0.9;
+      ctx.shadowBlur = 7; ctx.shadowColor = color;
+      ctx.fillRect(x+1, y+1, (w-2)*clamp(frac,0,1), 6);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+    ctx.font = "500 9px Orbitron, sans-serif"; ctx.fillStyle = "rgba(190,255,215,.9)";
+    ctx.textAlign = "left"; ctx.fillText(label, x, y-11);
+  }
+  var barW = clamp(W*0.17, 86, 150);
+  if(rcx - rr - barW - 20 >= 8){
+    var bx = rcx - rr - barW - 20;
+    slimBar(bx, rcy - 24, barW, G.shield/100, G.shield>30 ? "#39ff6a" : "#ff3b5c", S().shd);
+    slimBar(bx, rcy + 14, barW, G.hull/100, G.hull>35 ? "#ffb02e" : "#ff3b5c", S().hul);
+  } else {
+    /* narrow screen: the pair floats just above the scope instead */
+    slimBar(rcx - barW - 6, rcy - rr - 30, barW, G.shield/100, G.shield>30 ? "#39ff6a" : "#ff3b5c", S().shd);
+    slimBar(rcx + 6, rcy - rr - 30, barW, G.hull/100, G.hull>35 ? "#ffb02e" : "#ff3b5c", S().hul);
+  }
+  /* torpedo pips floating right of the scope, when there's room */
+  if(rcx + rr + 150 < W - 96){
+    var px = rcx + rr + 24, py = rcy;
+    ctx.textAlign = "left"; ctx.font = "700 11px Orbitron, sans-serif";
+    ctx.fillStyle = "#ffb02e"; ctx.shadowBlur = 6; ctx.shadowColor = "#ffb02e";
+    ctx.fillText("TORP", px, py - 24);
+    ctx.shadowBlur = 0;
+    for(var pi=0;pi<6;pi++){
+      ctx.beginPath(); ctx.arc(px + 8 + pi*17, py + 2, 5.5, 0, Math.PI*2);
+      if(pi < G.torpAmmo){
+        ctx.fillStyle = "#ffb02e"; ctx.shadowBlur = 8; ctx.shadowColor = "#ffb02e"; ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(255,176,46,.4)"; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+    ctx.font = "500 10px 'Share Tech Mono', monospace"; ctx.fillStyle = "rgba(255,209,140,.85)";
+    ctx.fillText(S().torpNote, px, py + 18);
+  }
 
   /* wave banner */
   if(G.waveState==="banner"){
@@ -1202,9 +1171,9 @@ function drawHUD(basis){
   }
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 
-  /* comms — bottom-left, above the torp button */
+  /* comms — bottom-left, floating above the TORP button */
   ctx.textAlign = "left"; ctx.font = "13px 'Share Tech Mono', monospace";
-  var baseY = viewH - 18;
+  var baseY = H - 126;
   for(var m=0;m<G.comms.length;m++){
     var cm = G.comms[G.comms.length-1-m];
     ctx.globalAlpha = clamp(cm.ttl/1.2, 0, 1) * (m===0?1:0.75);
@@ -1230,8 +1199,8 @@ function render(){
   var basis = camBasis();
   ctx.save();
   if(G.shake>0.2) ctx.translate(rand(-G.shake,G.shake)*0.5, rand(-G.shake,G.shake)*0.5);
-  /* the 3D world lives in the windshield only — nothing draws over the console */
-  ctx.beginPath(); ctx.rect(0, 0, W, viewH); ctx.clip();
+  /* the 3D world fills the WHOLE screen — top to bottom, edge to edge */
+  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
 
   drawStars(basis);
 
@@ -1363,7 +1332,6 @@ function render(){
     ctx.fillStyle = gr; ctx.fillRect(0,0,W,H);
   }
 
-  drawConsole();
   drawHUD(basis);
   drawHostileArrows(basis);
 }
@@ -1415,25 +1383,17 @@ function startGame(){
 }
 
 /* ---------------- input: compass steering ---------------- */
-var steerOrigin = null, steerFloat = false;
 function setSteerFromPoint(x, y){
-  if(steerFloat && steerOrigin){
-    /* console stick: push from where the thumb landed in the lower band */
-    G.steer.x = clamp((x - steerOrigin.x) / 90, -1.2, 1.2);
-    G.steer.y = clamp((y - steerOrigin.y) / 90, -1.2, 1.2);
-  } else {
-    /* windshield compass: offset from the view center steers */
-    G.steer.x = clamp((x - VCX) / (W*0.36), -1.2, 1.2);
-    G.steer.y = clamp((y - VCY) / (viewH*0.36), -1.2, 1.2);
-  }
+  /* full-screen compass: offset from screen center steers — a thumb
+     low on the screen dives toward fighters coming in from below */
+  G.steer.x = clamp((x - VCX) / (W*0.36), -1.2, 1.2);
+  G.steer.y = clamp((y - VCY) / (H*0.36), -1.2, 1.2);
   G.steer.active = true;
 }
 cv.addEventListener("pointerdown", function(ev){
   AudioSys.ensure();
   if(!G) return;
   cv.setPointerCapture(ev.pointerId);
-  steerFloat = (ev.pointerType!=="mouse" && ev.clientY >= viewH);
-  steerOrigin = { x: ev.clientX, y: ev.clientY };
   setSteerFromPoint(ev.clientX, ev.clientY);
   if(ev.pointerType==="mouse") G.fireHeld = true;
 });
@@ -1445,7 +1405,6 @@ function endPointer(ev){
   if(!G) return;
   if(ev.pointerType==="mouse"){ G.fireHeld = fireBtn.classList.contains("held"); }
   G.steer.active = false; G.steer.x = 0; G.steer.y = 0;
-  steerFloat = false; steerOrigin = null;
 }
 cv.addEventListener("pointerup", endPointer);
 cv.addEventListener("pointercancel", endPointer);
