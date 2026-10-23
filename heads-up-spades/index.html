@@ -101,16 +101,34 @@
       #nilBust.pop .nb-sub{animation-name:bustSubPop;}
       @keyframes bustSubPop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
 
-      /* BID BADGES — one beside each avatar. While that player hasn't bid yet the
-         frame flashes a light color to call the eye (the badge shows only a dash —
-         no bid ever leaks early). The moment the bid is recorded the light goes
-         OUT and the bid itself stands there in red for the whole hand. */
+      /* STATUS CLUSTERS — one beside each player's name/avatar, live for the
+         whole hand (draft, bid, play). Top to bottom: the NAME, wearing a lit
+         gold TURN SQUARE while the game is waiting on that player; the BID in
+         red (a dash until it's locked — no bid ever leaks early; while a bid
+         is still owed in the bid phase the frame flashes to call the eye);
+         then TRICKS taken and BAGS banked this hand, side by side. */
       .bidBadge{position:absolute;z-index:14;display:flex;flex-direction:column;align-items:center;
         background:rgba(12,26,18,.9);border:2px solid rgba(255,233,176,.35);border-radius:12px;
-        padding:4px 12px 5px;color:var(--cream);pointer-events:none;min-width:62px;text-align:center;
+        padding:5px 11px 6px;color:var(--cream);pointer-events:none;min-width:80px;text-align:center;
         box-shadow:0 4px 12px rgba(0,0,0,.45);}
-      .bidBadge .bb-name{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#ffe9b0;}
+      .bidBadge .bb-name{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:#ffe9b0;
+        padding:2px 8px;border-radius:5px;}
+      /* the TURN SQUARE — a highlighted square around the name of whoever's
+         turn it is; it jumps to the other name the instant the turn passes */
+      .bidBadge .bb-name.turn{background:rgba(255,225,77,.18);color:#fff3c4;
+        box-shadow:0 0 0 2.5px #ffe14d, 0 0 16px 4px rgba(255,225,77,.55);
+        animation:turnPulse 1.5s ease-in-out infinite;}
+      @keyframes turnPulse{
+        0%,100%{box-shadow:0 0 0 2.5px #ffe14d, 0 0 10px 2px rgba(255,225,77,.4);}
+        50%{box-shadow:0 0 0 3px #ffe14d, 0 0 20px 7px rgba(255,225,77,.75);}}
       .bidBadge .bb-bid{font-family:var(--hand-font);font-size:21px;font-weight:900;color:#ff4038;line-height:1.15;}
+      .bidBadge .bb-stats{display:flex;gap:13px;margin-top:3px;padding-top:4px;
+        border-top:1px solid rgba(255,233,176,.28);}
+      .bidBadge .bb-stat{display:flex;flex-direction:column;align-items:center;}
+      .bidBadge .bb-lab{font-size:8.5px;font-weight:800;letter-spacing:1.2px;color:#ffe9b0;line-height:1.1;}
+      .bidBadge .bb-tricks{font-size:23px;font-weight:900;color:#ff4038;line-height:1.1;
+        text-shadow:0 2px 5px rgba(0,0,0,.6);}
+      .bidBadge .bb-bags{font-size:16.5px;font-weight:900;color:var(--cream);line-height:1.28;}
       .bidBadge.waiting .bb-bid{color:#ffe9b0;}
       .bidBadge.waiting{animation:bidFlash 1s ease-in-out infinite;}
       @keyframes bidFlash{
@@ -119,7 +137,9 @@
       /* scene-anchored beside the portrait's shoulder, just above the table line —
          the portrait wrap's own bottom sits behind the table, so the badge can't live there */
       #badgeAi{left:calc(50% + min(25vw, 158px));bottom:calc(60% + 4px);}
-      #badgeYou{right:3.5%;bottom:calc(23.5% - 56px);}
+      /* the cluster is taller than the old badge — its bottom drops so its top
+         edge stays in the same spot, tucked just under the notebook */
+      #badgeYou{right:3.5%;bottom:calc(23.5% - 82px);}
 
       /* the one big first-person table */
       #table{position:absolute;left:0;right:0;bottom:0;height:60%;z-index:6;
@@ -173,13 +193,11 @@
 
       /* BOOKS — won tricks stacked in front of each player, the real-table way:
          first pair flat, each next pair laid perpendicular on top, alternating
-         into a staircase you can count at a glance — plus a big red counter */
+         into a staircase you can count at a glance (the numeric counter
+         itself lives in the status cluster beside each player's name) */
       .booksZone{position:absolute;z-index:8;width:118px;pointer-events:none;}
       #booksAi{left:10px;top:38.5%;}
       #booksYou{left:10px;bottom:23.5%;}
-      .bkLabel{display:flex;align-items:baseline;gap:7px;text-shadow:0 1px 4px rgba(0,0,0,.85);}
-      .bkName{font-size:12px;font-weight:800;letter-spacing:1.2px;color:#ffe9b0;}
-      .bkCount{font-size:31px;font-weight:900;color:#ff4038;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,.65);}
       .bkStack{position:relative;height:92px;margin-top:2px;}
       .book{position:absolute;width:58px;height:46px;transform-origin:50% 50%;}
       .book .card{position:absolute;top:2px;}
@@ -394,7 +412,7 @@
           </div></div></div></div>
         </div>
         <div id="bubble" role="status"></div>
-        <div class="bidBadge hidden" id="badgeAi" aria-hidden="true"><span class="bb-name" id="bbNameAi">—</span><span class="bb-bid" id="bbBidAi">—</span></div>
+        <div class="bidBadge hidden" id="badgeAi" aria-hidden="true"><span class="bb-name" id="bbNameAi">—</span><span class="bb-bid" id="bbBidAi">—</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab">TRICKS</span><span class="bb-tricks" id="bbTricksAi">0</span></span><span class="bb-stat"><span class="bb-lab">BAGS</span><span class="bb-bags" id="bbBagsAi">0</span></span></span></div>
         <div id="nilBust" class="hidden" aria-hidden="true">
           <div class="nb-bang">NIL BUSTED!!!!</div>
           <div class="nb-sub" id="nilBustSub"></div>
@@ -417,14 +435,12 @@
         </button>
         <div id="pencil" aria-hidden="true"></div>
         <div class="booksZone hidden" id="booksAi" aria-hidden="true">
-          <div class="bkLabel"><span class="bkName" id="bkNameAi">—</span><span class="bkCount" id="bkCountAi">0</span></div>
           <div class="bkStack" id="bkStackAi"></div>
         </div>
         <div class="booksZone hidden" id="booksYou" aria-hidden="true">
-          <div class="bkLabel"><span class="bkName">GARY</span><span class="bkCount" id="bkCountYou">0</span></div>
           <div class="bkStack" id="bkStackYou"></div>
         </div>
-        <div class="bidBadge hidden" id="badgeYou" aria-hidden="true"><span class="bb-name">GARY</span><span class="bb-bid" id="bbBidYou">—</span></div>
+        <div class="bidBadge hidden" id="badgeYou" aria-hidden="true"><span class="bb-name" id="bbNameYou">GARY</span><span class="bb-bid" id="bbBidYou">—</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab">TRICKS</span><span class="bb-tricks" id="bbTricksYou">0</span></span><span class="bb-stat"><span class="bb-lab">BAGS</span><span class="bb-bags" id="bbBagsYou">0</span></span></span></div>
         <button class="iconbtn" id="howBtn" aria-label="How to play">?</button>
         <button class="iconbtn" id="soundBtn" aria-label="Toggle sound">🔊</button>
         <button class="iconbtn" id="homeBtn" aria-label="Back to intro — reset the game">⌂</button>
@@ -873,21 +889,49 @@
       } else t.textContent = "";
       renderBidBadges();
     }
-    /* the bid badges ride along with every tally update — flashing beside a
-       player who still owes a bid, steady red once the bid is on record */
+    /* bags banked so far THIS hand: tricks taken past the bid, 0 until then
+       (and 0 before any bid exists) */
+    function bagsNow(who){
+      const b = S.bids[who];
+      return b === null ? 0 : Math.max(0, S.tricksWon[who] - b);
+    }
+    /* whose action the game is waiting on right now — null in the beats
+       between actions (a trick resolving, the hand being written up) */
+    function turnNow(){
+      if (S.phase === "draft") return S.draftTurn;
+      if (S.phase === "bid"){
+        if (S.bids.you === null && S.bids.ai === null) return S.starter;
+        if (S.bids.you === null) return "you";
+        if (S.bids.ai === null) return "ai";
+        return null;
+      }
+      if (S.phase === "play"){
+        if (S.busy || S.trick.length >= 2) return null;
+        if (S.trick.length === 0) return S.leader;
+        return S.trick[0].who === "you" ? "ai" : "you";
+      }
+      return null;
+    }
+    /* the status clusters ride along with every tally update, so the turn
+       square, the red bid, the trick count and the bag count beside each
+       name are never a beat behind the game */
     function renderBidBadges(){
-      const show = S.phase === "bid" || S.phase === "play";
-      const set = (badge, nameEl, bidEl, who) => {
+      const show = S.phase === "draft" || S.phase === "bid" || S.phase === "play";
+      const turn = show ? turnNow() : null;
+      const set = (badge, nameEl, bidEl, tricksEl, bagsEl, who) => {
         const b = $(badge); if (!b) return;
         b.classList.toggle("hidden", !show);
         if (!show) return;
-        if (nameEl) $(nameEl).textContent = S.friend.name.toUpperCase();
+        $(nameEl).textContent = who === "ai" ? S.friend.name.toUpperCase() : "GARY";
+        $(nameEl).classList.toggle("turn", turn === who);
         const bid = S.bids[who];
         $(bidEl).textContent = bid === null ? "—" : padBid(bid);
-        b.classList.toggle("waiting", bid === null);
+        $(tricksEl).textContent = S.tricksWon[who];
+        $(bagsEl).textContent = bagsNow(who);
+        b.classList.toggle("waiting", S.phase === "bid" && bid === null);
       };
-      set("badgeAi", "bbNameAi", "bbBidAi", "ai");
-      set("badgeYou", null, "bbBidYou", "you");
+      set("badgeAi", "bbNameAi", "bbBidAi", "bbTricksAi", "bbBagsAi", "ai");
+      set("badgeYou", "bbNameYou", "bbBidYou", "bbTricksYou", "bbBagsYou", "you");
     }
     function bidLabel(b){ if (b === null || b === undefined) return "…"; return b === 0 ? "NIL" : b === 4 ? "BOARD·4" : String(b); }
 
@@ -1079,6 +1123,7 @@
       if (turn === "you") renderHand(); else renderFriendFan();
       renderStage(); renderTally();
       S.draftTurn = turn === "you" ? "ai" : "you";
+      renderTally(); // the turn square jumps to the next name the instant the turn passes
       await wait(turn === "you" ? 620 : 480);
       if (g !== GEN || S.phase !== "draft") return;
       draftStep();
@@ -1217,15 +1262,13 @@
     }
     /* BOOKS — every won trick is laid in front of its winner as a pair of cards:
        first pair flat, the next perpendicular, alternating up the staircase.
-       The big red number beside each name is the same count, unmissable. */
+       The count itself lives in the status cluster beside each name now —
+       these piles are the same tricks, stacked the real-table way. */
     function renderBooks(){
       const show = S.phase === "play";
       $("booksAi").classList.toggle("hidden", !show);
       $("booksYou").classList.toggle("hidden", !show);
       if (!show) return;
-      $("bkNameAi").textContent = S.friend.name.toUpperCase();
-      $("bkCountAi").textContent = S.books.ai;
-      $("bkCountYou").textContent = S.books.you;
       const fill = (id, n) => {
         const st = $(id); st.innerHTML = "";
         for (let i = 0; i < n; i++){
