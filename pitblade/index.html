@@ -93,27 +93,37 @@
   #menuBtn2{background:#071018;border:1px solid var(--line);color:var(--ink);font-size:15px;
     letter-spacing:.14em;padding:12px 22px;border-radius:10px;}
 
-  /* ============ TOUCH DECK ============ */
+  /* ============ TOUCH DECK — one joystick + one ATTACK button per player ============ */
   #touchDeck{flex:0 0 auto;display:none;border-top:1px solid var(--line);}
   body.touch #touchDeck{display:flex;}
-  .half{flex:1;display:flex;align-items:center;justify-content:space-between;padding:8px 10px;gap:6px;}
+  @media (pointer:coarse){ #touchDeck{display:flex;} }
+  #game.mode1p #touchDeck .half.p2h{display:none;}
+  #game.mode1p #touchDeck .half.p1h{border-right:0;}
+  .half{flex:1;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;gap:8px;}
   .half.p1h{border-right:1px solid var(--line);}
-  .dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px;}
-  .dpad button{background:#0a141f;border:1px solid var(--line);color:#bfe3f5;border-radius:8px;font-size:17px;
-    display:flex;align-items:center;justify-content:center;touch-action:none;user-select:none;-webkit-user-select:none;}
-  .dpad button.held{background:#17394d;border-color:var(--cyan);}
-  .dpad .up{grid-area:1/2;} .dpad .left{grid-area:2/1;} .dpad .right{grid-area:2/3;} .dpad .down{grid-area:3/2;}
-  .stanceBtn{width:86px;height:86px;border-radius:50%;font-size:12px;font-weight:800;letter-spacing:.08em;
+  .joy{position:relative;width:118px;height:118px;border-radius:50%;flex:0 0 auto;
+    background:radial-gradient(circle at 50% 50%, #0d1c2a 0 34%, #081320 62%, #050b12 100%);
+    border:2px solid var(--line);box-shadow:inset 0 0 18px rgba(0,0,0,.8),0 0 10px rgba(63,217,255,.12);
+    touch-action:none;user-select:none;-webkit-user-select:none;}
+  .joy::before,.joy::after{content:'';position:absolute;background:rgba(159,198,218,.18);}
+  .joy::before{left:50%;top:8px;bottom:8px;width:1px;}
+  .joy::after{top:50%;left:8px;right:8px;height:1px;}
+  .joyKnob{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
+    transform:translate(-50%,-50%);pointer-events:none;
+    background:radial-gradient(circle at 38% 32%, #2b4a61, #122636 70%);
+    border:2px solid #3d6a86;box-shadow:0 3px 8px rgba(0,0,0,.6);}
+  .joy.p1j .joyKnob{border-color:var(--cyan);box-shadow:0 0 12px rgba(63,217,255,.45);}
+  .joy.p2j .joyKnob{border-color:var(--green);box-shadow:0 0 12px rgba(82,255,116,.45);}
+  .attackBtn{width:96px;height:96px;border-radius:50%;font-size:13px;font-weight:800;letter-spacing:.08em;flex:0 0 auto;
     touch-action:none;user-select:none;-webkit-user-select:none;line-height:1.35;padding:6px;}
-  .stanceBtn.p1b{background:#06222e;border:2px solid var(--cyan);color:#dff6ff;box-shadow:0 0 12px rgba(63,217,255,.35);}
-  .stanceBtn.p2b{background:#0a240c;border:2px solid var(--green);color:#eaffea;box-shadow:0 0 12px rgba(82,255,116,.35);}
-  .stanceBtn.held{filter:brightness(1.7);}
-  @media (max-height:520px){ .dpad{grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);} .stanceBtn{width:70px;height:70px;} }
+  .attackBtn.p1b{background:#06222e;border:2px solid var(--cyan);color:#dff6ff;box-shadow:0 0 12px rgba(63,217,255,.35);}
+  .attackBtn.p2b{background:#0a240c;border:2px solid var(--green);color:#eaffea;box-shadow:0 0 12px rgba(82,255,116,.35);}
+  .attackBtn.held{filter:brightness(1.7);}
+  @media (max-height:520px){ .joy{width:92px;height:92px;} .joyKnob{width:42px;height:42px;} .attackBtn{width:78px;height:78px;} }
   @media (max-width:600px){
-    .half{padding:6px;gap:4px;}
-    .dpad{grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,34px);gap:2px;}
-    .dpad button{font-size:14px;border-radius:6px;}
-    .stanceBtn{width:66px;height:66px;font-size:10px;}
+    .half{padding:8px 10px;gap:6px;}
+    .joy{width:96px;height:96px;} .joyKnob{width:44px;height:44px;}
+    .attackBtn{width:80px;height:80px;font-size:11px;}
   }
   body.touch #arenaWrap{align-items:flex-start;padding-top:8px;}
 </style>
@@ -126,7 +136,16 @@
   <div class="intro-body">
     <h1 class="title">PITBLADE</h1>
     <div class="subtitle" data-i18n="subtitle">Face your rival. Guard your footing.</div>
-    <div class="tribute" data-i18n="tribute">A two-player vector duel in tribute to the pioneering 1979 arcade original designed by Tim Skelly — the first one-on-one fighting game.</div>
+    <div class="tribute" data-i18n="tribute">A vector duel in tribute to the pioneering 1979 arcade original designed by Tim Skelly — the first one-on-one fighting game. One player against the computer by default, with a two-player versus option.</div>
+
+    <div class="target-row">
+      <span class="lbl" data-i18n="players">PLAYERS</span>
+      <div class="seg" id="modeSeg">
+        <button data-m="1P" class="on" data-i18n="mode1">1 PLAYER</button>
+        <button data-m="2P" data-i18n="mode2">2 PLAYERS</button>
+      </div>
+      <span class="lbl" id="modeDesc" data-i18n="modeDesc">VS THE COMPUTER</span>
+    </div>
 
     <div class="target-row">
       <span class="lbl" data-i18n="firstTo">FIRST TO</span>
@@ -148,9 +167,8 @@
     </div>
 
     <div class="controls-note" data-i18n-html="controlsNote">
-      <b>BLUE</b> — WASD move · hold <b>SPACE</b> for sword stance &nbsp;|&nbsp;
-      <b>GREEN</b> — Arrow keys move · hold <b>ENTER</b> for sword stance<br>
-      On a phone, each side of the screen is one knight's controls.
+      Two controls per knight — that's it. <b>Joystick</b> moves. Hold <b>ATTACK</b> to plant your feet, and the same joystick swings your sword.<br>
+      Desktop: <b>BLUE (left)</b> — WASD stick · <b>SPACE</b> attack &nbsp;|&nbsp; <b>GREEN (right, 2P)</b> — Arrow stick · <b>ENTER</b> attack.
     </div>
   </div>
 </section>
@@ -182,7 +200,7 @@
     <div class="hud-mid"><span data-i18n="firstTo">FIRST TO</span> <span class="tgt" id="hudTarget">5</span></div>
     <button class="hud-btn" id="hudSound">♪ ON</button>
     <button class="hud-btn" id="hudHome" data-i18n="menu">MENU</button>
-    <div class="scorebox s2"><span id="score2">0</span><span class="nm" data-i18n="green">GREEN</span></div>
+    <div class="scorebox s2"><span id="score2">0</span><span class="nm" id="name2">CPU</span></div>
   </div>
   <div id="arenaWrap">
     <canvas id="arena" width="900" height="600"></canvas>
@@ -198,22 +216,12 @@
   </div>
   <div id="touchDeck">
     <div class="half p1h">
-      <div class="dpad" id="pad1">
-        <button class="up" data-p="1" data-d="up">▲</button>
-        <button class="left" data-p="1" data-d="left">◀</button>
-        <button class="right" data-p="1" data-d="right">▶</button>
-        <button class="down" data-p="1" data-d="down">▼</button>
-      </div>
-      <button class="stanceBtn p1b" id="st1">STANCE<br>⚔</button>
+      <div class="joy p1j" id="joy1" aria-label="Player 1 joystick"><div class="joyKnob"></div></div>
+      <button class="attackBtn p1b" id="atk1">ATTACK<br>⚔</button>
     </div>
     <div class="half p2h">
-      <button class="stanceBtn p2b" id="st2">STANCE<br>⚔</button>
-      <div class="dpad" id="pad2">
-        <button class="up" data-p="2" data-d="up">▲</button>
-        <button class="left" data-p="2" data-d="left">◀</button>
-        <button class="right" data-p="2" data-d="right">▶</button>
-        <button class="down" data-p="2" data-d="down">▼</button>
-      </div>
+      <button class="attackBtn p2b" id="atk2">ATTACK<br>⚔</button>
+      <div class="joy p2j" id="joy2" aria-label="Player 2 joystick"><div class="joyKnob"></div></div>
     </div>
   </div>
 </section>
@@ -224,48 +232,54 @@
 var STR = {
 en:{
   subtitle:'Face your rival. Guard your footing.',
-  tribute:'A two-player vector duel in tribute to the pioneering 1979 arcade original designed by Tim Skelly — the first one-on-one fighting game.',
+  tribute:'A vector duel in tribute to the pioneering 1979 arcade original designed by Tim Skelly — the first one-on-one fighting game. One player against the computer by default, with a two-player versus option.',
+  players:'PLAYERS', mode1:'1 PLAYER', mode2:'2 PLAYERS',
+  modeDesc1:'VS THE COMPUTER', modeDesc2:'TWO PLAYERS, ONE SCREEN',
   firstTo:'FIRST TO', winsMatch:'WINS THE MATCH', start:'START DUEL', howto:'HOW TO PLAY',
   close:'CLOSE', qrTitle:'SCAN TO PLAY', qrTap:'Tap the code to enlarge it.',
-  howTitle:'HOW TO PLAY', blue:'BLUE', green:'GREEN', menu:'MENU', rematch:'REMATCH',
+  howTitle:'HOW TO PLAY', blue:'BLUE', green:'GREEN', cpu:'CPU', menu:'MENU', rematch:'REMATCH',
+  attack:'ATTACK',
   soundOn:'SOUND: ON', soundOff:'SOUND: OFF',
-  pointBlue:'POINT — BLUE', pointGreen:'POINT — GREEN',
-  fallBlue:'BLUE FALLS!', fallGreen:'GREEN FALLS!',
-  winsBlue:'BLUE WINS THE MATCH', winsGreen:'GREEN WINS THE MATCH',
-  controlsNote:'<b>BLUE</b> — WASD move · hold <b>SPACE</b> for sword stance &nbsp;|&nbsp; <b>GREEN</b> — Arrow keys move · hold <b>ENTER</b> for sword stance<br>On a phone, each side of the screen is one knight\u2019s controls.',
+  pointBlue:'POINT — BLUE', pointGreen:'POINT — GREEN', pointCpu:'POINT — CPU',
+  fallBlue:'BLUE FALLS!', fallGreen:'GREEN FALLS!', fallCpu:'CPU FALLS!',
+  winsBlue:'BLUE WINS THE MATCH', winsGreen:'GREEN WINS THE MATCH', winsCpu:'CPU WINS THE MATCH',
+  controlsNote:'Two controls per knight — that\u2019s it. <b>Joystick</b> moves. Hold <b>ATTACK</b> to plant your feet, and the same joystick swings your sword.<br>Desktop: <b>BLUE (left)</b> — WASD stick · <b>SPACE</b> attack &nbsp;|&nbsp; <b>GREEN (right, 2P)</b> — Arrow stick · <b>ENTER</b> attack.',
   how:[
-   '<p><span class="p1c">BLUE</span> and <span class="p2c">GREEN</span> duel in a pit arena. Your knights <b>always face each other automatically</b> — you never aim your body. The skill is position, spacing, and stance.</p>',
+   '<p><b>One player by default:</b> you are <span class="p1c">BLUE, always the knight on the left</span>, dueling the <span class="p2c">COMPUTER</span> knight on the right. He moves, plants, swings, and shoves by the same rules you do — and he can be hit, shoved, and pitted just like you. Prefer a human rival? Pick <b>2 PLAYERS</b> on the intro screen and GREEN becomes Player 2, still starting on the right.</p>',
+   '<p>Your knights <b>always face each other automatically</b> — you never aim your body. And there are only <b>two controls</b> to learn:</p>',
    '<ul>',
-   '<li><b>Move</b> to work your footwork around the arena.</li>',
-   '<li><b>Hold your STANCE button</b> and your feet plant — now the same directional controls <b>angle and swing your sword</b> instead of moving you. Move <i>or</i> sword, never both.</li>',
-   '<li>Release the stance button and your sword snaps back to guard and you can move again.</li>',
+   '<li><b>JOYSTICK</b> — push it to move your knight around the arena.</li>',
+   '<li><b>ATTACK</b> — hold it down and your feet plant. Now the <b>same joystick angles and swings your sword</b> instead of moving you. Let go of ATTACK and your sword snaps back to guard and the joystick moves you again.</li>',
    '</ul>',
+   '<p>That\u2019s the whole game: <b>stick moves, hold ATTACK to swing with the stick.</b></p>',
    '<p><b>Scoring:</b> touch your rival with your blade while planted = a point. Bodies <b>bounce</b> off each other — shove your rival into a <span class="pitc">pit</span> and he falls = a point. Step in a pit yourself and you fall just the same. First to the target score wins the match.</p>',
-   '<p class="keys"><span class="p1c">BLUE:</span> WASD move · hold SPACE for stance<br><span class="p2c">GREEN:</span> Arrow keys move · hold ENTER or RIGHT SHIFT for stance<br>On a phone, each half of the screen is one knight: a move pad plus a big STANCE button.</p>',
-   '<p>Pitblade is a two-player duel for two people sharing one screen — just like its 1979 inspiration, there is no computer opponent. Grab a rival and fight.</p>'
+   '<p class="keys">On a phone: <b>1 PLAYER</b> — one joystick on the left, one big ATTACK button on the right. <b>2 PLAYERS</b> — each half of the screen carries that player\u2019s own joystick + ATTACK button.<br>On a desktop: <span class="p1c">BLUE</span> — WASD is the stick, hold SPACE to attack. <span class="p2c">GREEN (2P)</span> — Arrow keys are the stick, hold ENTER or RIGHT SHIFT to attack.</p>'
   ].join('')
 },
 es:{
   subtitle:'Enfrenta a tu rival. Cuida tus pasos.',
-  tribute:'Un duelo vectorial para dos jugadores en homenaje al pionero original de arcade de 1979 diseñado por Tim Skelly — el primer juego de lucha uno contra uno.',
+  tribute:'Un duelo vectorial en homenaje al pionero original de arcade de 1979 diseñado por Tim Skelly — el primer juego de lucha uno contra uno. Un jugador contra la computadora por defecto, con opción de versus para dos jugadores.',
+  players:'JUGADORES', mode1:'1 JUGADOR', mode2:'2 JUGADORES',
+  modeDesc1:'CONTRA LA COMPUTADORA', modeDesc2:'DOS JUGADORES, UNA PANTALLA',
   firstTo:'EL PRIMERO EN', winsMatch:'GANA EL COMBATE', start:'¡A LUCHAR!', howto:'CÓMO JUGAR',
   close:'CERRAR', qrTitle:'ESCANEA PARA JUGAR', qrTap:'Toca el código para agrandarlo.',
-  howTitle:'CÓMO JUGAR', blue:'AZUL', green:'VERDE', menu:'MENÚ', rematch:'REVANCHA',
+  howTitle:'CÓMO JUGAR', blue:'AZUL', green:'VERDE', cpu:'CPU', menu:'MENÚ', rematch:'REVANCHA',
+  attack:'ATACAR',
   soundOn:'SONIDO: SÍ', soundOff:'SONIDO: NO',
-  pointBlue:'PUNTO — AZUL', pointGreen:'PUNTO — VERDE',
-  fallBlue:'¡AZUL CAE!', fallGreen:'¡VERDE CAE!',
-  winsBlue:'AZUL GANA EL COMBATE', winsGreen:'VERDE GANA EL COMBATE',
-  controlsNote:'<b>AZUL</b> — WASD para moverse · mantén <b>ESPACIO</b> para la postura de espada &nbsp;|&nbsp; <b>VERDE</b> — Flechas para moverse · mantén <b>ENTER</b> para la postura<br>En el teléfono, cada lado de la pantalla controla a un caballero.',
+  pointBlue:'PUNTO — AZUL', pointGreen:'PUNTO — VERDE', pointCpu:'PUNTO — CPU',
+  fallBlue:'¡AZUL CAE!', fallGreen:'¡VERDE CAE!', fallCpu:'¡CPU CAE!',
+  winsBlue:'AZUL GANA EL COMBATE', winsGreen:'VERDE GANA EL COMBATE', winsCpu:'CPU GANA EL COMBATE',
+  controlsNote:'Dos controles por caballero — nada más. La <b>palanca</b> mueve. Mantén <b>ATACAR</b> para plantar los pies, y la misma palanca blande tu espada.<br>En computadora: <b>AZUL (izquierda)</b> — WASD es la palanca · <b>ESPACIO</b> para atacar &nbsp;|&nbsp; <b>VERDE (derecha, 2J)</b> — Flechas · <b>ENTER</b> para atacar.',
   how:[
-   '<p><span class="p1c">AZUL</span> y <span class="p2c">VERDE</span> se enfrentan en una arena con fosos. Los caballeros <b>siempre se miran el uno al otro automáticamente</b> — nunca apuntas el cuerpo. La habilidad está en la posición, la distancia y la postura.</p>',
+   '<p><b>Un jugador por defecto:</b> tú eres <span class="p1c">AZUL, siempre el caballero de la izquierda</span>, en duelo contra el caballero de la <span class="p2c">COMPUTADORA</span> a la derecha. Él se mueve, se planta, blande y empuja con las mismas reglas que tú — y puede ser golpeado, empujado y arrojado al foso igual que tú. ¿Prefieres un rival humano? Elige <b>2 JUGADORES</b> en la pantalla inicial y VERDE pasa a ser el Jugador 2, siempre empezando a la derecha.</p>',
+   '<p>Los caballeros <b>siempre se miran el uno al otro automáticamente</b> — nunca apuntas el cuerpo. Y solo hay <b>dos controles</b> que aprender:</p>',
    '<ul>',
-   '<li><b>Muévete</b> para trabajar el juego de pies por la arena.</li>',
-   '<li><b>Mantén tu botón de POSTURA</b> y tus pies se plantan — ahora los mismos controles direccionales <b>inclinan y blanden tu espada</b> en vez de moverte. Movimiento <i>o</i> espada, nunca ambos.</li>',
-   '<li>Suelta el botón de postura y tu espada vuelve a la guardia y puedes moverte otra vez.</li>',
+   '<li><b>PALANCA</b> — empújala para mover a tu caballero por la arena.</li>',
+   '<li><b>ATACAR</b> — manténlo presionado y tus pies se plantan. Ahora la <b>misma palanca inclina y blande tu espada</b> en vez de moverte. Suelta ATACAR y tu espada vuelve a la guardia y la palanca te mueve otra vez.</li>',
    '</ul>',
+   '<p>Eso es todo el juego: <b>la palanca mueve, mantén ATACAR para blandir con la palanca.</b></p>',
    '<p><b>Puntos:</b> toca a tu rival con la espada mientras estás plantado = un punto. Los cuerpos <b>rebotan</b> entre sí — empuja a tu rival a un <span class="pitc">foso</span> y caerá = un punto. Si pisas un foso tú, caes igual. El primero en llegar a la puntuación objetivo gana el combate.</p>',
-   '<p class="keys"><span class="p1c">AZUL:</span> WASD para moverse · mantén ESPACIO para la postura<br><span class="p2c">VERDE:</span> Flechas para moverse · mantén ENTER o SHIFT DERECHO para la postura<br>En el teléfono, cada mitad de la pantalla es un caballero: un pad de movimiento y un gran botón de POSTURA.</p>',
-   '<p>Pitblade es un duelo para dos personas compartiendo una pantalla — igual que su inspiración de 1979, no hay oponente por computadora. Busca un rival y a luchar.</p>'
+   '<p class="keys">En el teléfono: <b>1 JUGADOR</b> — una palanca a la izquierda y un gran botón de ATACAR a la derecha. <b>2 JUGADORES</b> — cada mitad de la pantalla lleva la palanca y el botón de ATACAR de ese jugador.<br>En computadora: <span class="p1c">AZUL</span> — WASD es la palanca, mantén ESPACIO para atacar. <span class="p2c">VERDE (2J)</span> — las flechas son la palanca, mantén ENTER o SHIFT DERECHO para atacar.</p>'
   ].join('')
 }};
 var lang='en';
@@ -281,7 +295,10 @@ function applyLang(){
   document.getElementById('langBtn').textContent = lang==='en' ? 'ESPAÑOL' : 'ENGLISH';
   document.getElementById('soundBtn').textContent = soundOn ? d.soundOn : d.soundOff;
   document.getElementById('hudSound').textContent = soundOn ? '♪ ON' : '♪ OFF';
-  document.querySelectorAll('.stanceBtn').forEach(function(b){ b.innerHTML=(lang==='en'?'STANCE':'POSTURA')+'<br>⚔'; });
+  var is1p = (typeof gameMode==='undefined') || gameMode==='1P';
+  document.getElementById('modeDesc').textContent = is1p ? d.modeDesc1 : d.modeDesc2;
+  document.getElementById('name2').textContent = is1p ? d.cpu : d.green;
+  document.querySelectorAll('.attackBtn').forEach(function(b){ b.innerHTML=d.attack+'<br>⚔'; });
 }
 
 /* ================= SOUND (one-shots only) ================= */
@@ -318,15 +335,17 @@ var sfx={
 <script>
 'use strict';
 /* ================= GAME ================= */
-var VW=900, VH=600, MARG=26, BODY_R=15, SPEED=235, KNOCK=620;
-var PITS=[ {x:450-118, y:300, s:92}, {x:450+118, y:300, s:92} ]; /* centers, s = side */
+var VW=900, VH=600, MARG=26, SCALE=3, BODY_R=15*SCALE, SPEED=285, KNOCK=620;
+var PITS=[ {x:450-118, y:300, s:92}, {x:450+118, y:300, s:92} ]; /* centers, s = side — unchanged arena */
 var canvas=document.getElementById('arena'), ctx=canvas.getContext('2d');
 var state='idle'; /* idle | fight | freeze | fall | over */
 var target=5, score=[0,0];
+var gameMode='1P'; /* DEFAULT: 1 player vs the computer. '2P' is the intro option. */
 var freezeT=0, bannerT=0, lastTs=0, timeNow=0, pointSerial=0;
 var sparks=[], embers=[];
 var keys={};
-var touchIn=[ {up:0,down:0,left:0,right:0,stance:0}, {up:0,down:0,left:0,right:0,stance:0} ];
+/* touch joystick state per player: analog dx/dy (-1..1) + attack (the old stance) */
+var touchIn=[ {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0}, {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0} ];
 
 function mkKnight(x,y,color,glow){
   return { x:x,y:y, sx:x,sy:y, vx:0,vy:0, face:0, sword:0, stance:false,
@@ -353,24 +372,105 @@ function showBanner(txt,color,hold){
   bannerT=hold||0.9;
 }
 
-/* ---------- input ---------- */
+/* ---------- input: ONE joystick + ONE attack button per player ----------
+   Desktop: the directional keys ARE the stick (WASD = P1, arrows = P2);
+   SPACE (P1) / ENTER or RIGHT SHIFT (P2) is the ATTACK button.
+   Holding ATTACK plants the feet — the same stick then swings the sword. */
 function readInput(i){
   var dx=0, dy=0, stance=false, t=touchIn[i];
   if(i===0){
-    if(keys['KeyA']||t.left) dx-=1;
-    if(keys['KeyD']||t.right) dx+=1;
-    if(keys['KeyW']||t.up) dy-=1;
-    if(keys['KeyS']||t.down) dy+=1;
-    stance = !!keys['Space'] || !!t.stance;
+    if(keys['KeyA']) dx-=1;
+    if(keys['KeyD']) dx+=1;
+    if(keys['KeyW']) dy-=1;
+    if(keys['KeyS']) dy+=1;
+    stance = !!keys['Space'];
   }else{
-    if(keys['ArrowLeft']||t.left) dx-=1;
-    if(keys['ArrowRight']||t.right) dx+=1;
-    if(keys['ArrowUp']||t.up) dy-=1;
-    if(keys['ArrowDown']||t.down) dy+=1;
-    stance = !!keys['Enter'] || !!keys['ShiftRight'] || !!t.stance;
+    if(keys['ArrowLeft']) dx-=1;
+    if(keys['ArrowRight']) dx+=1;
+    if(keys['ArrowUp']) dy-=1;
+    if(keys['ArrowDown']) dy+=1;
+    stance = !!keys['Enter'] || !!keys['ShiftRight'];
   }
-  var m=Math.hypot(dx,dy); if(m>0){ dx/=m; dy/=m; }
-  return {dx:dx, dy:dy, stance:stance, active:(dx!==0||dy!==0)};
+  /* merge the touch joystick (analog) + its ATTACK button, plus any legacy dpad flags */
+  dx += t.dx + (t.left?-1:0) + (t.right?1:0);
+  dy += t.dy + (t.up?-1:0) + (t.down?1:0);
+  stance = stance || !!t.stance;
+  var m=Math.hypot(dx,dy); if(m>1){ dx/=m; dy/=m; }
+  return {dx:dx, dy:dy, stance:stance, active:(Math.abs(dx)>0.01||Math.abs(dy)>0.01)};
+}
+
+/* ---------- computer opponent (plays the right knight in 1P) ----------
+   Identical rules: he reads as an input source, nothing more. He moves for
+   position, works to the far side of the human so his shoves point at a pit,
+   plants + swings when in sword range, and charges a shove when the human
+   is near a pit. Human-like mistakes: aim error, hesitation, occasional
+   whiffed stance and imperfect pit sense — dangerous, never perfect. */
+var ai={ think:0, dx:0, dy:0, stance:false, aimErr:0, side:-1 };
+function aiReset(){ ai.think=0; ai.dx=0; ai.dy=0; ai.stance=false; ai.aimErr=0; ai.side=Math.random()<0.5?-1:1; }
+function aiInput(dt){
+  var me=K[1], opp=K[0];
+  ai.think-=dt;
+  if(ai.think<=0){
+    ai.think=0.13+Math.random()*0.12; /* human-ish reaction cadence */
+    var dx=opp.x-me.x, dy=opp.y-me.y, dist=Math.hypot(dx,dy)||1;
+    /* pit the human is nearest — the one the CPU wants to shove him into */
+    var pit=PITS[0], d0=Math.hypot(opp.x-PITS[0].x,opp.y-PITS[0].y), d1=Math.hypot(opp.x-PITS[1].x,opp.y-PITS[1].y);
+    if(d1<d0) pit=PITS[1];
+    var pitDist=Math.min(d0,d1);
+    var r=Math.random();
+    if(pitDist<130 && dist<210 && r>0.18){
+      /* human is near a pit: charge the shove, no stance */
+      ai.dx=dx/dist; ai.dy=dy/dist; ai.stance=false;
+    }else if(dist>185){
+      /* close the distance, favouring the side away from the target pit so
+         body contact pushes the human toward it */
+      var sx=pit.x-opp.x, sy=pit.y-opp.y, sm=Math.hypot(sx,sy)||1;
+      var tx=opp.x-sx/sm*BODY_R*2.1, ty=opp.y-sy/sm*BODY_R*2.1;
+      /* route around any pit blocking the straight line: aim at a waypoint
+         above/below the pit instead of walking through it */
+      for(var pi=0;pi<2;pi++){ var pp=PITS[pi];
+        var vx=tx-me.x, vy=ty-me.y, vv=vx*vx+vy*vy||1;
+        var tt=Math.max(0,Math.min(1,((pp.x-me.x)*vx+(pp.y-me.y)*vy)/vv));
+        var cx=me.x+vx*tt, cy=me.y+vy*tt;
+        if(Math.hypot(pp.x-cx,pp.y-cy)<pp.s/2+BODY_R*0.8 && Math.hypot(tx-me.x,ty-me.y)>30){
+          tx=pp.x; ty=pp.y+ai.side*(pp.s/2+BODY_R+24);
+        }
+      }
+      var mx=tx-me.x, my=ty-me.y, mm=Math.hypot(mx,my)||1;
+      if(mm<24){ ai.dx=dx/dist; ai.dy=dy/dist; } else { ai.dx=mx/mm; ai.dy=my/mm; }
+      ai.stance=false;
+      if(r<0.07){ ai.dx=0; ai.dy=0; } /* hesitation mistake */
+    }else{
+      /* in sword range: mostly plant and swing at the human… */
+      if(r<0.68){
+        ai.stance=true;
+        ai.aimErr=(Math.random()-0.5)*0.5 + (Math.random()<0.14?(Math.random()-0.5)*0.9:0); /* aim error, sometimes big */
+        /* aim from the sword HAND (offset to one side), not the body centre,
+           or a straight-on swing passes beside the rival */
+        var fc=Math.cos(me.face), fs=Math.sin(me.face);
+        var hx=me.x+fs*11*SCALE+fc*4*SCALE, hy=me.y-fc*11*SCALE+fs*4*SCALE;
+        var base=Math.atan2(opp.y-hy,opp.x-hx)+ai.aimErr;
+        ai.dx=Math.cos(base); ai.dy=Math.sin(base);
+      }else if(r<0.82){
+        ai.stance=false; ai.dx=dx/dist; ai.dy=dy/dist; /* step in for a shove instead */
+      }else{
+        ai.stance=false; ai.dx=-dy/dist*0.7+dx/dist*0.3; ai.dy=dx/dist*0.7+dy/dist*0.3; /* reposition / whiff */
+        var nm=Math.hypot(ai.dx,ai.dy)||1; ai.dx/=nm; ai.dy/=nm;
+      }
+    }
+  }
+  /* per-frame pit guard: a stale decision must never carry him into a pit.
+     Near a pit lip, cancel the inward part of his movement and push out. */
+  for(var gi=0;gi<2;gi++){ var gp=PITS[gi], gx=me.x-gp.x, gy=me.y-gp.y, lim=gp.s/2+BODY_R*0.55;
+    if(Math.abs(gx)<lim && Math.abs(gy)<lim){
+      var rl=Math.hypot(gx,gy)||1, ux=gx/rl, uy=gy/rl;
+      var inward=ai.dx*ux+ai.dy*uy;
+      if(inward<0){ ai.dx-=inward*ux; ai.dy-=inward*uy; }
+      ai.dx+=ux*0.85; ai.dy+=uy*0.85; ai.stance=false;
+      var gm=Math.hypot(ai.dx,ai.dy); if(gm>1){ ai.dx/=gm; ai.dy/=gm; }
+    }
+  }
+  return {dx:ai.dx, dy:ai.dy, stance:ai.stance, active:(ai.dx!==0||ai.dy!==0)};
 }
 window.addEventListener('keydown',function(e){
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].indexOf(e.code)>=0) e.preventDefault();
@@ -394,13 +494,13 @@ function segSegDist(p1,p2,p3,p4){
                    ptSeg(p3.x,p3.y,p1.x,p1.y,p2.x,p2.y), ptSeg(p4.x,p4.y,p1.x,p1.y,p2.x,p2.y) );
 }
 function bodySeg(k){
-  var c=Math.cos(k.face), s=Math.sin(k.face);
-  return [ {x:k.x-c*13, y:k.y-s*13}, {x:k.x+c*13, y:k.y+s*13} ];
+  var c=Math.cos(k.face), s=Math.sin(k.face), h=13*SCALE; /* torso segment, 3× */
+  return [ {x:k.x-c*h, y:k.y-s*h}, {x:k.x+c*h, y:k.y+s*h} ];
 }
 function swordSeg(k){
   var c=Math.cos(k.face), s=Math.sin(k.face);
-  var hx=k.x + (-s)*(-11) + c*4, hy=k.y + c*(-11) + s*4; /* hand at right side */
-  var L = k.stance?46:30;
+  var hx=k.x + (-s)*(-11*SCALE) + c*4*SCALE, hy=k.y + c*(-11*SCALE) + s*4*SCALE; /* hand at right side, 3× */
+  var L = (k.stance?46:30)*SCALE; /* sword length, 3× */
   return [ {x:hx, y:hy}, {x:hx+Math.cos(k.sword)*L, y:hy+Math.sin(k.sword)*L} ];
 }
 function burst(x,y,color,n){
@@ -409,18 +509,16 @@ function burst(x,y,color,n){
 }
 
 /* ---------- scoring ---------- */
+function pointTxt(w){ var d=STR[lang]; return w===0?d.pointBlue:(gameMode==='1P'?d.pointCpu:d.pointGreen); }
+function winTxt(w){ var d=STR[lang]; return w===0?d.winsBlue:(gameMode==='1P'?d.winsCpu:d.winsGreen); }
+function fallTxt(i){ var d=STR[lang]; return i===0?d.fallBlue:(gameMode==='1P'?d.fallCpu:d.fallGreen); }
 function awardPoint(winner, loserK, kind){
   score[winner]++; updateHUD();
-  var d=STR[lang];
-  if(kind==='pit'){
-    showBanner(winner===0?d.pointBlue:d.pointGreen, K[winner].color, 1.15);
-  }else{
-    showBanner(winner===0?d.pointBlue:d.pointGreen, K[winner].color, 0.95);
-  }
+  showBanner(pointTxt(winner), K[winner].color, kind==='pit'?1.15:0.95);
   sfx.chime();
   if(score[winner]>=target){
     state='over';
-    document.getElementById('winnerTxt').textContent = winner===0?d.winsBlue:d.winsGreen;
+    document.getElementById('winnerTxt').textContent = winTxt(winner);
     document.getElementById('winnerTxt').style.color = K[winner].color;
     document.getElementById('finalScore').textContent = score[0]+' — '+score[1];
     setTimeout(function(){ document.getElementById('matchOver').classList.add('show'); }, 850);
@@ -433,7 +531,7 @@ function awardPoint(winner, loserK, kind){
 function startFall(k, pit){
   k.fallPit=pit; k.fallT=0.0001; state='fall';
   sfx.sting();
-  showBanner(K.indexOf(k)===0?STR[lang].fallBlue:STR[lang].fallGreen,'#ffb59d',0.8);
+  showBanner(fallTxt(K.indexOf(k)),'#ffb59d',0.8);
 }
 
 /* ---------- update ---------- */
@@ -461,7 +559,7 @@ function step(dt){
   }
   if(state!=='fight') return;
 
-  var inp=[readInput(0), readInput(1)];
+  var inp=[readInput(0), gameMode==='1P' ? aiInput(dt) : readInput(1)];
   for(var n=0;n<2;n++){
     var k=K[n], o=K[1-n], inpN=inp[n];
     k.face=guardAngle(k,o); /* AUTO-FACE: always toward the rival */
@@ -516,7 +614,7 @@ function step(dt){
   for(var t=0;t<2;t++){ var atk=K[t], def=K[1-t];
     if(!atk.stance) continue;
     var ss=swordSeg(atk), bs=bodySeg(def);
-    if(segSegDist(ss[0],ss[1],bs[0],bs[1])<8.5){
+    if(segSegDist(ss[0],ss[1],bs[0],bs[1])<8.5*SCALE){
       var tip=ss[1];
       burst(tip.x,tip.y,def.color,20); burst(tip.x,tip.y,'#ffffff',8);
       sfx.zap(); window._hitWinner=t; state='freeze'; freezeT=0.30;
@@ -542,9 +640,9 @@ function drawArena(){
   ctx.strokeStyle='rgba(63,217,255,0.85)'; ctx.lineWidth=2; ctx.shadowColor='#3fd9ff'; ctx.shadowBlur=10;
   ctx.strokeRect(MARG,MARG,VW-MARG*2,VH-MARG*2);
   ctx.shadowBlur=0;
-  /* start marks */
+  /* start marks — P1 (BLUE) always on the left mark, opponent always on the right */
   ctx.strokeStyle='rgba(255,255,255,0.16)'; ctx.lineWidth=1.5;
-  [215,685].forEach(function(x){ ctx.beginPath(); ctx.arc(x,300,26,0,Math.PI*2); ctx.stroke(); });
+  [215,685].forEach(function(x){ ctx.beginPath(); ctx.arc(x,300,26*SCALE,0,Math.PI*2); ctx.stroke(); });
 }
 function drawPits(){
   for(var i=0;i<2;i++){ var p=PITS[i], h=p.s/2;
@@ -573,6 +671,7 @@ function drawKnight(k){
   ctx.save();
   ctx.translate(k.x,k.y);
   if(k.fallT>0){ ctx.rotate(k.spin); ctx.scale(k.scale,k.scale); ctx.globalAlpha=Math.max(0.15,1-k.fallT*1.1); }
+  ctx.scale(SCALE,SCALE); /* warriors at 3× — all local drawing below is the original figure, scaled */
   var f=k.face, c=Math.cos(f), s=Math.sin(f);
   ctx.strokeStyle=k.color; ctx.fillStyle=k.color;
   ctx.shadowColor=k.color; ctx.shadowBlur=13; ctx.lineCap='round';
@@ -582,7 +681,7 @@ function drawKnight(k){
     var px=-s, py=c; /* perpendicular */
     line(px*15-c*7, py*15-s*7, px*15+c*2, py*15+s*2);
     line(-px*15-c*7, -py*15-s*7, -px*15+c*2, -py*15+s*2);
-    ctx.beginPath(); ctx.arc(0,0,BODY_R+6,0,Math.PI*2);
+    ctx.beginPath(); ctx.arc(0,0,15+6,0,Math.PI*2);
     ctx.strokeStyle=k.glow+'0.35)'; ctx.lineWidth=1.4; ctx.stroke();
     ctx.strokeStyle=k.color;
   }
@@ -607,11 +706,11 @@ function drawKnight(k){
   var ss=swordSeg(k);
   ctx.save();
   ctx.strokeStyle=k.color; ctx.shadowColor=k.color; ctx.shadowBlur=k.stance?18:10; ctx.lineCap='round';
-  ctx.lineWidth=k.stance?3.4:2.6;
+  ctx.lineWidth=(k.stance?3.4:2.6)*SCALE;
   line(ss[0].x,ss[0].y,ss[1].x,ss[1].y);
-  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.1; ctx.shadowBlur=4;
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.1*SCALE; ctx.shadowBlur=4;
   line(ss[0].x,ss[0].y,ss[1].x,ss[1].y);
-  if(k.stance){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(ss[1].x,ss[1].y,2.4,0,Math.PI*2); ctx.fill(); }
+  if(k.stance){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(ss[1].x,ss[1].y,2.4*SCALE,0,Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
 function draw(){
@@ -644,10 +743,13 @@ window.addEventListener('resize',fitCanvas);
 
 /* ---------- flow / UI wiring ---------- */
 function startMatch(){
-  pointSerial++; score=[0,0]; updateHUD();
+  pointSerial++; score=[0,0]; updateHUD(); aiReset();
   document.getElementById('matchOver').classList.remove('show');
   document.getElementById('intro').classList.add('hidden');
-  document.getElementById('game').classList.add('on');
+  var g=document.getElementById('game');
+  g.classList.add('on');
+  g.classList.toggle('mode1p', gameMode==='1P');
+  g.classList.toggle('mode2p', gameMode==='2P');
   resetPositions(); state='fight';
   fitCanvas(); ac();
 }
@@ -661,6 +763,11 @@ document.getElementById('startBtn').addEventListener('click',startMatch);
 document.getElementById('rematchBtn').addEventListener('click',startMatch);
 document.getElementById('menuBtn2').addEventListener('click',toIntro);
 document.getElementById('hudHome').addEventListener('click',toIntro);
+document.getElementById('modeSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  this.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+  b.classList.add('on'); gameMode=b.getAttribute('data-m'); applyLang();
+});
 document.getElementById('targetSeg').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
   this.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
@@ -680,7 +787,7 @@ document.getElementById('soundBtn').addEventListener('click',toggleSound);
 document.getElementById('hudSound').addEventListener('click',toggleSound);
 document.getElementById('langBtn').addEventListener('click',function(){ lang=(lang==='en')?'es':'en'; applyLang(); });
 
-/* ---------- touch deck ---------- */
+/* ---------- touch deck: one joystick + one ATTACK button per player ---------- */
 if(('ontouchstart' in window) || (navigator.maxTouchPoints>0)) document.body.classList.add('touch');
 function bindHold(el, fn){
   function on(e){ e.preventDefault(); el.classList.add('held'); fn(true); }
@@ -691,18 +798,38 @@ function bindHold(el, fn){
   el.addEventListener('pointerleave',off);
   el.addEventListener('contextmenu',function(e){ e.preventDefault(); });
 }
-document.querySelectorAll('.dpad button').forEach(function(b){
-  var p=parseInt(b.getAttribute('data-p'),10)-1, d=b.getAttribute('data-d');
-  bindHold(b,function(v){ touchIn[p][d]=v?1:0; });
-});
-bindHold(document.getElementById('st1'),function(v){ touchIn[0].stance=v?1:0; });
-bindHold(document.getElementById('st2'),function(v){ touchIn[1].stance=v?1:0; });
+function bindJoystick(el, idx){
+  var knob=el.querySelector('.joyKnob'), pid=null, R=34;
+  function setFromEvent(e){
+    var r=el.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+    var ox=e.clientX-cx, oy=e.clientY-cy, m=Math.hypot(ox,oy);
+    if(m>R){ ox=ox/m*R; oy=oy/m*R; }
+    knob.style.transform='translate(calc(-50% + '+ox+'px), calc(-50% + '+oy+'px))';
+    var dz=0.16, vx=ox/R, vy=oy/R;
+    touchIn[idx].dx = Math.abs(vx)<dz?0:vx;
+    touchIn[idx].dy = Math.abs(vy)<dz?0:vy;
+  }
+  function reset(){ pid=null; knob.style.transform='translate(-50%,-50%)'; touchIn[idx].dx=0; touchIn[idx].dy=0; }
+  el.addEventListener('pointerdown',function(e){ e.preventDefault(); pid=e.pointerId; try{el.setPointerCapture(pid);}catch(err){} setFromEvent(e); ac(); });
+  el.addEventListener('pointermove',function(e){ if(pid!==null && e.pointerId===pid) setFromEvent(e); });
+  el.addEventListener('pointerup',function(e){ if(e.pointerId===pid) reset(); });
+  el.addEventListener('pointercancel',reset);
+  el.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+}
+bindJoystick(document.getElementById('joy1'),0);
+bindJoystick(document.getElementById('joy2'),1);
+bindHold(document.getElementById('atk1'),function(v){ touchIn[0].stance=v?1:0; });
+bindHold(document.getElementById('atk2'),function(v){ touchIn[1].stance=v?1:0; });
 
 applyLang(); updateHUD(); resetPositions();
 /* test hooks for driven verification */
 window.__pb={ K:K, PITS:PITS, state:function(){return state;}, score:function(){return score.slice();},
   keys:keys, touchIn:touchIn, startMatch:startMatch, resetPositions:resetPositions,
-  swordSeg:swordSeg, bodySeg:bodySeg, segSegDist:segSegDist,
+  swordSeg:swordSeg, bodySeg:bodySeg, segSegDist:segSegDist, BODY_R:BODY_R, SCALE:SCALE,
+  mode:function(){ return gameMode; },
+  setMode:function(m){ gameMode=(m==='2P')?'2P':'1P';
+    document.querySelectorAll('#modeSeg button').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-m')===gameMode); });
+    applyLang(); },
   setTarget:function(t){ target=t; } };
 </script>
 </body>
