@@ -1839,6 +1839,44 @@ function drawCityVista(RP,hy,cx){
   ],RP,hy);
   CITY_G=g;
 }
+/* ---- SAN JOSÉ · COSTA RICA: the layered-stack SLOTS for the M12–M15
+   paintings, wired Oct 24 so the art drops straight in when it lands.
+   Until at least one image below is assigned, crStackReady() is false
+   and San José renders exactly as before (the code-drawn cordillera) —
+   nothing about today's world changes. When the paintings arrive
+   (briefs M12–M15 in ~/workspace/sky-drifter-scenery-briefs.md), assign
+   one line each:
+     crImgs.far.src  = M12 — the far cordillera vista (rides high)
+     crImgs.mid.src  = M13 — the cloud-forest valley (the middle band)
+     crImgs.near.src = M14 — the living jungle near layer (the hint)
+     crImgs.sea.src  = M15 — mountains running down to the Pacific
+   The continuum mirrors the beach: sea at the very bottom, jungle
+   near-life low, the valley mid, the cordillera far on top — the
+   weights renormalize inside drawVistaStack, so a partial drop-in
+   (even one painting) still seats correctly. */
+const crImgs={ far:new Image(), mid:new Image(), near:new Image(), sea:new Image() };
+let CR_W={far:0,mid:1,near:0,sea:0}, CR_G=null;
+function crStackReady(){ for(const k in crImgs){ const im=crImgs[k];
+  if(im.complete&&im.naturalWidth>0)return true; } return false; }
+function crWeights(){
+  const alt=S.alt;
+  const wFar=sstep(0.55,0.78,alt);
+  const wSea=1-sstep(0.14,0.30,alt);
+  const wNear=sstep(0.18,0.34,alt)*(1-sstep(0.42,0.58,alt));
+  const wMid=Math.max(0,1-wFar-wSea-wNear);
+  CR_W={far:wFar,mid:wMid,near:wNear,sea:wSea};
+  return CR_W;
+}
+function drawCRVista(RP,hy,cx){
+  if(!crStackReady()){ CR_G=null; return; }
+  const B=crWeights();
+  CR_G=drawVistaStack([
+    {img:crImgs.far,  w:B.far,  anch:0.50, scale:1.00, asp:imgAsp(crImgs.far,ASP_169)},
+    {img:crImgs.mid,  w:B.mid,  anch:0.66, scale:1.03, asp:ASP_169},
+    {img:crImgs.near, w:B.near, anch:0.72, scale:1.08, asp:ASP_169},
+    {img:crImgs.sea,  w:B.sea,  anch:0.70, scale:1.12, asp:ASP_169}
+  ],RP,hy);
+}
 /* the harbor's living layer, drawn late over the ground: light running
    on the painting's visible water and the ferries on their crossings */
 function drawCityLife(RP,hy,cx){
@@ -2572,6 +2610,7 @@ function render(){
   if(S.biome==='jungle'&&inSpace<0.5)drawFallsVista(RP,hy,cx);
   if(S.biome==='beach'&&inSpace<0.5)drawBeachVista(RP,hy,cx);
   if(S.biome==='city'&&inSpace<0.5)drawCityVista(RP,hy,cx);
+  if(S.biome==='sanjose'&&inSpace<0.5)drawCRVista(RP,hy,cx);
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].mid,RP,hy,H*0.045,0.22,mixCa(RP.mid,RP.hazeC,0.3,S.biomeBlend));
 
@@ -3585,13 +3624,13 @@ function musicCreate(idx){
     M.loading=true; syncMusicUI();
     if(!M.waitIv){ let n=0; M.waitIv=setInterval(()=>{ n++;
       if(window.YT&&YT.Player){ clearInterval(M.waitIv); M.waitIv=null; musicCreate(M.pendingIdx); }
-      else if(n>30){ clearInterval(M.waitIv); M.waitIv=null; M.loading=false; syncMusicUI(); } },400); }
+      else if(n>30){ clearInterval(M.waitIv); M.waitIv=null; M.loading=false; syncMusicUI(); musicWarn("⚠ The music player couldn't load in this viewer. Open this page in Safari or Chrome, then press play."); } },400); }
     return; }
   M.loading=true; syncMusicUI();
   M.player=new YT.Player('ytPlayer',{ width:1, height:1,
     playerVars:{ autoplay:1, controls:0, playsinline:1, rel:0 },
     events:{
-      onReady:e=>{ if(MQ.mode==='yours'&&MQ.qi>=0){ playQueueAt(MQ.qi); } else { M.plMode='playlist'; e.target.loadPlaylist(TRACKS.map(t=>t[2]), M.pendingIdx); } },
+      onReady:e=>{ try{ e.target.unMute(); e.target.setVolume(100); }catch(err){} if(MQ.mode==='yours'&&MQ.qi>=0){ playQueueAt(MQ.qi); } else { M.plMode='playlist'; e.target.loadPlaylist(TRACKS.map(t=>t[2]), M.pendingIdx); } },
       onStateChange:onMusicState,
       onError:e=>{ onMusicError(e.data); }
     }});
@@ -3613,13 +3652,14 @@ function musicToggle(){
     if(q&&q.kind==='mp3'){ if(mp3El.paused){ mp3El.play().catch(()=>{}); } else mp3El.pause(); return; } }
   if(!M.player){ musicCreate(M.idx); return; }
   if(M.playing)M.player.pauseVideo();
-  else { M.loading=true; syncMusicUI(); M.player.playVideo(); }
+  else { M.loading=true; syncMusicUI(); try{ M.player.unMute(); M.player.setVolume(100); }catch(err){} M.player.playVideo(); }
 }
 function musicPlayAt(i){
   M.idx=i; MQ.mode='oasis';
   try{ mp3El.pause(); }catch(e){}
   if(!M.player){ musicCreate(i); return; }
   M.loading=true; syncMusicUI();
+  try{ M.player.unMute(); M.player.setVolume(100); }catch(err){}
   if(M.plMode!=='playlist'){ M.plMode='playlist'; M.player.loadPlaylist(TRACKS.map(t=>t[2]), i); }
   else M.player.playVideoAt(i);
 }
@@ -3735,6 +3775,7 @@ function playQueueAt(i){
   try{ mp3El.pause(); }catch(e){}
   if(!M.player){ M.loading=true; syncMusicUI(); musicCreate(0); return; }
   M.loading=true; syncMusicUI();
+  try{ M.player.unMute(); M.player.setVolume(100); }catch(err){}
   if(q.kind==='list'){ M.plMode='list'; M.player.loadPlaylist({listType:'playlist', list:q.id, index:0}); }
   else { M.plMode='single'; M.player.loadVideoById(q.id); }
 }
