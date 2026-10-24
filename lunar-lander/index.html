@@ -660,18 +660,25 @@ function update(dt){
     p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
     if (p.life <= 0) S.parts.splice(j, 1);
   }
-  // contact: feet at y-11 in craft frame; test body + both feet points
-  var c = Math.cos(S.ang), s = Math.sin(S.ang);
+  // contact — CALIBRATED TO THE DRAWN CRAFT (Gary, Oct 24: it was landing on
+  // air, a little above the ground). One source of truth: the test points are
+  // the craft's DRAWN feet and belly (local (±8.5,-11) and (0,-11)), rotated
+  // by the DRAWING angle (ang - PI/2 — the same angle drawCraft uses), with
+  // craft-local units converted to world units by u = (the craft's on-screen
+  // scale) / (the world zoom). On contact the craft SETTLES: the touching
+  // foot is placed exactly on the surface before the verdict — landing
+  // happens when it MEETS the ground.
+  var thC = S.ang - Math.PI / 2, cC = Math.cos(thC), sC = Math.sin(thC), uC = craftU();
   var testPts = [
-    { x: S.x, y: S.y - 11 },
-    { x: S.x + (-8 * c - (-11) * s), y: S.y + (-8 * s + (-11) * c) },
-    { x: S.x + ( 8 * c - (-11) * s), y: S.y + ( 8 * s + (-11) * c) },
+    { x: S.x + (0 * cC - (-11) * sC) * uC, y: S.y + (0 * sC + (-11) * cC) * uC },
+    { x: S.x + (-8.5 * cC - (-11) * sC) * uC, y: S.y + (-8.5 * sC + (-11) * cC) * uC },
+    { x: S.x + ( 8.5 * cC - (-11) * sC) * uC, y: S.y + ( 8.5 * sC + (-11) * cC) * uC },
     { x: S.x, y: S.y }
   ];
   for (var k = 0; k < testPts.length; k++){
     var tp = testPts[k];
-    if (tp.y <= terrainYat(tp.x) + 1){
-      // settle onto feet before judging
+    if (tp.y <= terrainYat(tp.x)){
+      S.y += terrainYat(tp.x) - tp.y;
       touchdown();
       break;
     }
@@ -682,7 +689,7 @@ function update(dt){
 /* ---------- THE ZOOM — the 1979 signature ---------- */
 function updateCamera(dt){
   var groundY = terrainYat(S.x);
-  var alt = Math.max(0, (S.y - 11) - groundY);
+  var alt = Math.max(0, (S.y - 11 * craftU()) - groundY);
   var zt = 3.1 / (1 + alt / 240);            // ~3.1x at the surface, ~0.55x high up
   zt = Math.max(0.5, Math.min(3.2, zt));
   var k = 1 - Math.exp(-dt * 2.6);
@@ -1050,9 +1057,17 @@ function drawHUD(v){
   arrow(rx - fs * 0.85, pad + lh * 2 + fs * 0.42, S.vy >= 0 ? 1 : -1, false, fs);
   cx.restore();
 }
+/* world units per craft-local unit at the current zoom — the craft is drawn
+   at a screen scale of clamp(zoom*0.62, 0.55, 1.7) px per local unit while
+   the world draws at zoom px per world unit; physics and gauges use this so
+   the DRAWN feet are the colliding feet */
+function craftU(){
+  var sc = Math.max(0.55, Math.min(1.7, S.zoom * 0.62));
+  return sc / S.zoom;
+}
 function altitude(){
   if (!S) return 0;
-  return Math.max(0, (S.y - 11) - terrainYat(S.x));
+  return Math.max(0, (S.y - 11 * craftU()) - terrainYat(S.x));
 }
 function arrow(x, y, dir, horiz, fs){
   var L = fs * 0.62;
