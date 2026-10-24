@@ -766,7 +766,7 @@ function step(dt){
   /* pit check */
   for(var m=0;m<2;m++){ var kk=K[m];
     for(var pi=0;pi<2;pi++){ var pit=PITS[pi], h=pit.s/2;
-      if(Math.abs(kk.x-pit.x)<h && Math.abs(kk.y-pit.y)<h){ startFall(kk,pit); return; }
+      if(Math.hypot(kk.x-pit.x,kk.y-pit.y)<h){ startFall(kk,pit); return; }
     }
   }
   /* blade hits — attacker must be planted (blade committed). The hit lands
@@ -846,11 +846,18 @@ function drawArena(){
   ctx.shadowBlur=0;
 }
 function drawPits(){
-  /* two big PLAIN BLACK squares — bottomless. No rim, no ticks, no border:
-     the tick-mark blueprint frame was an invention and is gone. */
-  ctx.fillStyle='#000';
+  /* two big bottomless CIRCLES (Gary, Oct 24: circles, not squares, with a
+     little layering) — a soft seat ring where the hole meets the floor, a
+     radial falloff into pure black at the center so it reads DEEP, and one
+     faint lip line. Restrained: no ticks, no frame, no decoration. */
   for(var i=0;i<2;i++){ var p=PITS[i], h=p.s/2;
-    ctx.fillRect(p.x-h,p.y-h,p.s,p.s);
+    ctx.beginPath(); ctx.arc(p.x,p.y,h+6,0,Math.PI*2);
+    ctx.strokeStyle='rgba(120,160,200,0.10)'; ctx.lineWidth=11; ctx.stroke();
+    var g=ctx.createRadialGradient(p.x,p.y,h*0.25,p.x,p.y,h);
+    g.addColorStop(0,'#000000'); g.addColorStop(0.82,'#000000'); g.addColorStop(1,'#0a0e16');
+    ctx.beginPath(); ctx.arc(p.x,p.y,h,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x,p.y,h-1.5,0,Math.PI*2);
+    ctx.strokeStyle='rgba(150,190,230,0.15)'; ctx.lineWidth=2; ctx.stroke();
   }
 }
 function drawKnight(k){
