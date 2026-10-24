@@ -330,7 +330,13 @@ var sfx={
   sting:function(){ tone('sawtooth',320,38,0,0.55,0.24); tone('square',160,30,0.05,0.5,0.12); },
   chime:function(){ tone('sine',1318,1318,0,0.12,0.20); tone('sine',1760,1760,0.11,0.22,0.20); },
   whoosh:function(){ noiseBurst(0.16,500,2400,0.10); },
-  clink:function(){ tone('square',2600,1400,0,0.05,0.07); tone('square',3400,2000,0.02,0.04,0.05); }
+  clink:function(){ tone('square',2600,1400,0,0.05,0.07); tone('square',3400,2000,0.02,0.04,0.05); },
+  /* the blade-on-blade CLANG (Gary, Oct 24: "any time swords touch there
+     is a noise") — two detuned partials + a tick of noise, pitch jittered
+     so no two clashes sound identical */
+  clang:function(){ var j=0.92+Math.random()*0.16;
+    tone('triangle',1900*j,880*j,0,0.075,0.17); tone('square',2950*j,1500*j,0.008,0.05,0.08);
+    noiseBurst(0.045,4200,1700,0.10); }
 };
 </script>
 <script>
@@ -488,10 +494,9 @@ function aiInput(dt){
       if(r<0.68){
         ai.stance=true;
         ai.aimErr=(Math.random()-0.5)*0.5 + (Math.random()<0.14?(Math.random()-0.5)*0.9:0); /* aim error, sometimes big */
-        /* aim from the sword HAND (offset to one side), not the body centre,
-           or a straight-on swing passes beside the rival */
-        var fc=Math.cos(me.face), fs=Math.sin(me.face);
-        var hx=me.x+fs*5*SCALE+fc*5*SCALE, hy=me.y-fc*5*SCALE+fs*5*SCALE;
+        /* aim from the sword HAND (the grip rides with the blade), not the
+           body centre, or a straight-on swing passes beside the rival */
+        var hs=swordSeg(me), hx=hs[0].x, hy=hs[0].y;
         var base=Math.atan2(opp.y-hy,opp.x-hx)+ai.aimErr;
         ai.baseAim=base; /* the per-frame sweep below works the blade around this aim line */
         ai.dx=Math.cos(base); ai.dy=Math.sin(base);
@@ -559,8 +564,13 @@ function bodySeg(k){
 }
 function swordSeg(k){ return swordSegAt(k, k.sword); }
 function swordSegAt(k, ang){
+  /* the HANDS ride with the blade (Gary, Oct 24): the grip sits out along
+     the SWORD's own direction, blended with a little of the old side
+     offset — so when the sword sweeps sideways the hands travel with it
+     and the arms must bend to follow, instead of the blade pivoting on
+     a fixed point while the arms point stiffly forward. */
   var c=Math.cos(k.face), s=Math.sin(k.face);
-  var hx=k.x + (-s)*(-5*SCALE) + c*5*SCALE, hy=k.y + c*(-5*SCALE) + s*5*SCALE; /* lance base at the front of the thicket, 3× */
+  var hx=k.x + Math.cos(ang)*5.5*SCALE + (-s)*(-1.75*SCALE), hy=k.y + Math.sin(ang)*5.5*SCALE + c*(-1.75*SCALE);
   var L = (k.stance?50:44)*SCALE; /* sword ≈ 55–60% of the whole figure, body ≈ 40–45% — per Gary's traced frames */
   return [ {x:hx, y:hy}, {x:hx+Math.cos(ang)*L, y:hy+Math.sin(ang)*L} ];
 }
@@ -591,6 +601,40 @@ function bladeCross(a, b){
 function burst(x,y,color,n){
   for(var i=0;i<(n||16);i++){ var a=Math.random()*Math.PI*2, sp=90+Math.random()*260;
     sparks.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.32+Math.random()*0.25,color:color}); }
+}
+/* closest approach between two segments — the original's blades react to
+   CONTACT, not just to a literal crossing */
+function segClosest(p1,p2,p3,p4){
+  function clPt(px,py,ax,ay,bx,by){ var dx=bx-ax, dy=by-ay, L=dx*dx+dy*dy, t=0;
+    if(L>0) t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L));
+    return {x:ax+t*dx, y:ay+t*dy}; }
+  var inter=segInt(p1,p2,p3,p4); if(inter) return {d:0,x:inter.x,y:inter.y};
+  var src=[p1,p2,p3,p4];
+  var cands=[ clPt(p1.x,p1.y,p3.x,p3.y,p4.x,p4.y), clPt(p2.x,p2.y,p3.x,p3.y,p4.x,p4.y),
+              clPt(p3.x,p3.y,p1.x,p1.y,p2.x,p2.y), clPt(p4.x,p4.y,p1.x,p1.y,p2.x,p2.y) ];
+  var best=null, bd=1e18;
+  for(var i=0;i<4;i++){ var c=cands[i], s=src[i], d=Math.hypot(s.x-c.x,s.y-c.y);
+    if(d<bd){ bd=d; best={d:d, x:(s.x+c.x)/2, y:(s.y+c.y)/2}; } }
+  return best;
+}
+/* do the blades TOUCH this frame? a's current blade plus every swept
+   position of a swinging blade, against b's blade */
+function bladeTouch(a,b){
+  var bs=swordSeg(b), best=null;
+  function test(ang){ var ss=swordSegAt(a,ang), r=segClosest(ss[0],ss[1],bs[0],bs[1]);
+    if(r&&(!best||r.d<best.d)) best=r; }
+  test(a.sword);
+  if(a.stance){ var dAng=((a.sword-a.prevSword+Math.PI*3)%(Math.PI*2))-Math.PI;
+    var steps=Math.max(1,Math.ceil(Math.abs(dAng)/0.10));
+    for(var i=1;i<=steps;i++) test(a.prevSword+dAng*(i/steps)); }
+  return (best&&best.d<=2.0*SCALE)? best : null;
+}
+/* the original's impact DOTS (Gary, Oct 24): a little cluster of white
+   specks thrown at the exact touch point — dots, not streaks */
+function burstDots(x,y,n){
+  for(var i=0;i<n;i++){ var a=Math.random()*Math.PI*2, sp=26+Math.random()*110;
+    sparks.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.30+Math.random()*0.22,
+      color:Math.random()<0.62?'#ffffff':(Math.random()<0.5?K[0].color:K[1].color), dot:1}); }
 }
 
 /* ---------- scoring ---------- */
@@ -736,19 +780,23 @@ function step(dt){
       return;
     }
   }
-  /* blade clash — when the two blades cross (including mid-swing), they spark
-     at the crossing point, and a swinging blade knocks the rival's sword aside */
+  /* blade clash — ANY time the swords touch (Gary, Oct 24, from the
+     original: contact throws a little burst of spark DOTS at the touch
+     point, there is a clang, and the blades react — the committed blade
+     knocks the other aside and recoils a touch itself) */
   if(clashCd>0) clashCd-=dt;
-  var cross=bladeCross(K[0],K[1]) || bladeCross(K[1],K[0]);
-  if(cross && clashCd<=0){
-    burst(cross.x,cross.y,'#ffffff',6); burst(cross.x,cross.y,K[0].color,3); burst(cross.x,cross.y,K[1].color,3);
-    sfx.clink(); clashCd=0.28;
+  var touch=bladeTouch(K[0],K[1]) || bladeTouch(K[1],K[0]);
+  if(touch && clashCd<=0){
+    burstDots(touch.x,touch.y,9);
+    sfx.clang(); clashCd=0.18;
     var fast=Math.abs(K[0].swingVel)>=Math.abs(K[1].swingVel)?K[0]:K[1];
     if(Math.abs(fast.swingVel)>1.5){
       var defl=K[1-K.indexOf(fast)];
       var relD=((defl.sword-fast.sword+Math.PI*3)%(Math.PI*2))-Math.PI;
       defl.sword+=(relD>=0?1:-1)*0.38; /* knocked aside */
       defl.prevSword=defl.sword;
+      fast.sword-=(relD>=0?1:-1)*0.10; /* and the winner's blade gives a little too */
+      fast.prevSword=fast.sword;
     }
   }
 }
@@ -847,11 +895,32 @@ function drawKnight(k){
   ctx.lineWidth=0.45;
   L([-5,-7.2, 0,-5.4]); L([-5,7.2, 0,5.4]);          /* taper chords */
   L([0,-5.4, 4,-3.6]);  L([0,5.4, 4,3.6]);
-  /* ARMS — two lines running forward from the torso's front corners,
-     converging to grip the sword base at the hand (5,-5) */
+  /* ARMS — SEGMENTED, and they BEND (Gary, Oct 24, from the original's
+     frames: "see arms have 3-4 segments so they bend"). Each arm is a
+     3-segment chain — shoulder → elbow → forearm → hand — reaching from
+     the torso's front corner to wherever the sword's grip actually is
+     this frame. The grip rides with the blade (see swordSegAt), so as
+     the sword sweeps sideways the chains travel sideways with it, the
+     elbows bowing outward, harder the wider the swing. The arm on the
+     swing's side reaches across and bends most. */
+  var gSeg=swordSeg(k);
+  var gdx=gSeg[0].x-k.x, gdy=gSeg[0].y-k.y, cf=Math.cos(k.face), sf=Math.sin(k.face);
+  var glx=(cf*gdx+sf*gdy)/SCALE, gly=(-sf*gdx+cf*gdy)/SCALE; /* grip, figure-local */
+  var dev=((k.sword-k.face+Math.PI*3)%(Math.PI*2))-Math.PI;  /* sword deviation from the heading */
+  function armChain(sx,sy,sideSign){
+    var dx=glx-sx, dy=gly-sy, len=Math.hypot(dx,dy)||1;
+    var pxv=-dy/len, pyv=dx/len;
+    if(pyv*sideSign<0){ pxv=-pxv; pyv=-pyv; }                /* bow to the arm's own side */
+    var reach=(sideSign===(dev>=0?1:-1))?1.35:0.85;          /* the reaching arm bends most */
+    var bow=(1.5+Math.abs(dev)*4.4)*reach;
+    return [ sx,sy,
+      sx+dx*0.36+pxv*bow*0.55, sy+dy*0.36+pyv*bow*0.55,
+      sx+dx*0.70+pxv*bow,      sy+dy*0.70+pyv*bow,
+      glx,gly ];
+  }
   ctx.lineWidth=0.55;
-  L([-4,-7.5, 5,-5]);
-  L([-4,7.5, 5,-5]);
+  L(armChain(-4,-7.5,-1));
+  L(armChain(-4, 7.5, 1));
   ctx.restore();
   /* ===== THE SWORD — two long THIN lines from the grip converging to a
      sharp tip (a very thin triangle), 2 short cross-ties near the base
@@ -883,6 +952,9 @@ function draw(){
   drawKnight(K[0]); drawKnight(K[1]);
   /* sparks */
   for(var i=0;i<sparks.length;i++){ var sp=sparks[i];
+    if(sp.dot){ /* clash dots: tiny specks that hang and fade, as in the original */
+      ctx.fillStyle=sp.color; ctx.globalAlpha=Math.max(0,Math.min(1,sp.life*2.8)); ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.arc(sp.x,sp.y,1.9,0,Math.PI*2); ctx.fill(); continue; }
     ctx.strokeStyle=sp.color; ctx.globalAlpha=Math.max(0,sp.life*2.6); ctx.lineWidth=2;
     ctx.shadowColor=sp.color; ctx.shadowBlur=8;
     line(sp.x,sp.y,sp.x-sp.vx*0.03,sp.y-sp.vy*0.03);
