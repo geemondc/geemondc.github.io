@@ -96,6 +96,28 @@
       }
       .grp { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
       .grp .glabel { font-size: 9.5px; font-weight: 800; letter-spacing: 1.6px; opacity: .65; margin: 0; }
+      /* YOUR MUSIC — the paste-a-link queue at the bottom of the paint box */
+      #ymRow { display: flex; gap: 5px; }
+      #ymInput { flex: 1; min-width: 0; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18);
+        border-radius: 10px; color: #fff; font-family: inherit; font-size: 12.5px; padding: 8px 9px; outline: none; }
+      #ymInput::placeholder { color: rgba(255,255,255,.45); }
+      #ymQueue { display: flex; flex-direction: column; gap: 4px; }
+      .ymItem { display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,.07);
+        border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 6px 9px; color: #fff;
+        font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; width: 100%; }
+      .ymItem .ymName { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ymItem.on { background: linear-gradient(135deg, #ffb03a, #ff4f7b); border-color: rgba(255,255,255,.5); }
+      .ymItem.blocked { opacity: .45; }
+      .ymItem .ymX { opacity: .75; font-weight: 900; padding: 0 2px; }
+      .ymEmpty { font-size: 11.5px; opacity: .5; margin: 0; }
+      #ymHint { font-size: 10.5px; line-height: 1.45; opacity: .55; margin: 0; }
+      /* the music warning — shown when a pasted song cannot play in the sky */
+      #musicToast { position: fixed; left: 50%; bottom: 108px; transform: translate(-50%, 16px); z-index: 80;
+        max-width: min(92vw, 440px); background: rgba(20,16,28,.93); border: 1px solid rgba(255,176,58,.65);
+        color: #ffe9b0; font-size: 13px; font-weight: 700; line-height: 1.45; padding: 10px 14px;
+        border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.5); opacity: 0; pointer-events: none;
+        transition: opacity .3s, transform .3s; text-align: center; }
+      #musicToast.show { opacity: 1; transform: translate(-50%, 0); }
       .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 1px; }
       /* the realm door: two big always-visible buttons atop the WORLD group */
       #realmToggle { display: flex; gap: 6px; }
@@ -341,6 +363,8 @@
     </div>
 
     <div id="ytWrap" aria-hidden="true"><div id="ytPlayer"></div></div>
+    <audio id="mp3Player" preload="auto" style="display:none"></audio>
+    <div id="musicToast" role="status" aria-live="polite"></div>
 
     <div id="panel">
       <div id="panelHead">
@@ -413,6 +437,14 @@
             <button class="chip on" data-speed="cruise">✈️ Cruise</button>
             <button class="chip" data-speed="zoom">🚀 Zoom</button>
           </div></div>
+          <div class="grp" id="yourMusicGrp"><p class="glabel">YOUR MUSIC</p>
+            <div id="ymRow">
+              <input id="ymInput" type="url" inputmode="url" autocomplete="off" placeholder="Paste a YouTube link…">
+              <button id="ymAdd" class="chip">＋ ADD</button>
+            </div>
+            <div id="ymQueue"></div>
+            <p id="ymHint">Your songs, your sky — tap one to fly to it. Some videos won't play inside other pages (their owners block it): if that happens, the sky will tell you and skip to the next.</p>
+          </div>
         </div>
         <button id="soundLine">Sound: On</button>
     </div>
@@ -461,7 +493,7 @@
           <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed up in the sky — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light. (Underwater, full speed stays water and light.)</li>
           <li><b>🖱 Mouse:</b> the screen is a compass around its center — <b>point where you want to go</b>, no click needed. Above center climbs, below dives, the sides turn, the corners blend both — and the further from center you point, the stronger it answers. Dead center flies straight and level. <b>Hold the left button</b> for gas — and keep holding it pointed somewhere and the flight keeps <b>accelerating</b> that way: hold high underwater and you'll pitch up toward the light, burst out of the surface, and keep climbing through the air into space, one unbroken push. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
-          <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination, the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours.</li>
+          <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination, the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours. YOUR MUSIC at the very bottom takes your own YouTube links — paste one, tap it, and fly to your own soundtrack.</li>
           <li><b>Climb high</b> through the clouds to change worlds. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
           <li><b>Low is its own place:</b> descend with speed and you settle into a skim — flying fast just above the water, rooftops, dunes and Broadwalk. Touchdown is slow only: sink low with the gas off, let your speed settle (or hold <b>↓</b>) — LAND is waiting in the paint box (☰ CONTROLS). <b>↑</b> takes off again.</li>
           <li>Drag with a <b>second finger</b> (or hold <b>L</b>) to look around — even back over your shoulder at your own trails. There's no score and no way to lose. Just fly.</li>
@@ -3467,7 +3499,11 @@ const TRACKS=[
   ['One Way or Another','Blondie','EtrRcp-Rb8c'],
   ['Stand On It','Bruce Springsteen','p4bTYzLHknM']
 ];
-const M={player:null,playing:false,loading:false,started:false,idx:0,pendingIdx:0,waitIv:null};
+const M={player:null,playing:false,loading:false,started:false,idx:0,pendingIdx:0,waitIv:null,plMode:'playlist'};
+/* YOUR MUSIC shared state — declared ahead of the radio because
+   syncMusicUI reads it; the engine itself lives below the radio */
+var MQ={mode:'oasis', qi:-1, errRun:0};
+var YMQ=[];
 window.onYouTubeIframeAPIReady=function(){ if(M.waitIv){ clearInterval(M.waitIv); M.waitIv=null; musicCreate(M.pendingIdx); } };
 (function(){ const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; s.async=true; document.head.appendChild(s); })();
 function musicCreate(idx){
@@ -3483,37 +3519,48 @@ function musicCreate(idx){
   M.player=new YT.Player('ytPlayer',{ width:1, height:1,
     playerVars:{ autoplay:1, controls:0, playsinline:1, rel:0 },
     events:{
-      onReady:e=>{ e.target.loadPlaylist(TRACKS.map(t=>t[2]), M.pendingIdx); },
-      onStateChange:onMusicState
+      onReady:e=>{ if(MQ.mode==='yours'&&MQ.qi>=0){ playQueueAt(MQ.qi); } else { M.plMode='playlist'; e.target.loadPlaylist(TRACKS.map(t=>t[2]), M.pendingIdx); } },
+      onStateChange:onMusicState,
+      onError:e=>{ onMusicError(e.data); }
     }});
 }
 function onMusicState(e){
   if(!window.YT)return;
-  if(e.data===YT.PlayerState.PLAYING){ M.playing=true; M.loading=false; M.started=true; }
+  if(e.data===YT.PlayerState.PLAYING){ M.playing=true; M.loading=false; M.started=true; MQ.errRun=0;
+    if(MQ.mode==='yours'){ const q=YMQ[MQ.qi];
+      if(q&&q.kind==='yt'){ try{ const vd=M.player.getVideoData(); if(vd&&vd.title&&q.title!==vd.title){ q.title=vd.title; ymSave(); renderYmQueue(); } }catch(err){} } } }
   else if(e.data===YT.PlayerState.PAUSED){ M.playing=false; M.loading=false; }
   else if(e.data===YT.PlayerState.BUFFERING){ M.loading=true; }
+  else if(e.data===YT.PlayerState.ENDED){ if(MQ.mode==='yours'&&M.plMode==='single') queueStep(1); }
   if(M.player&&(e.data===YT.PlayerState.PLAYING||e.data===YT.PlayerState.PAUSED)){
     try{ const ix=M.player.getPlaylistIndex(); if(typeof ix==='number'&&ix>=0)M.idx=ix; }catch(err){} }
   syncMusicUI();
 }
 function musicToggle(){
+  if(MQ.mode==='yours'){ const q=YMQ[MQ.qi];
+    if(q&&q.kind==='mp3'){ if(mp3El.paused){ mp3El.play().catch(()=>{}); } else mp3El.pause(); return; } }
   if(!M.player){ musicCreate(M.idx); return; }
   if(M.playing)M.player.pauseVideo();
   else { M.loading=true; syncMusicUI(); M.player.playVideo(); }
 }
 function musicPlayAt(i){
-  M.idx=i;
+  M.idx=i; MQ.mode='oasis';
+  try{ mp3El.pause(); }catch(e){}
   if(!M.player){ musicCreate(i); return; }
-  M.loading=true; syncMusicUI(); M.player.playVideoAt(i);
+  M.loading=true; syncMusicUI();
+  if(M.plMode!=='playlist'){ M.plMode='playlist'; M.player.loadPlaylist(TRACKS.map(t=>t[2]), i); }
+  else M.player.playVideoAt(i);
 }
-function musicStep(d){ if(!M.player)return; M.loading=true; syncMusicUI();
+function musicStep(d){
+  if(MQ.mode==='yours'){ const q=YMQ[MQ.qi]; if(q&&q.kind!=='list'){ queueStep(d); return; } }
+  if(!M.player)return; M.loading=true; syncMusicUI();
   if(d>0)M.player.nextVideo(); else M.player.previousVideo(); }
 function syncMusicUI(){
   document.querySelectorAll('.radioUI').forEach(ui=>{
     ui.classList.toggle('playing',M.playing);
     ui.classList.toggle('ready',!!M.player);
-    ui.querySelector('.rState').textContent = M.loading? 'TUNING…' : (M.playing? 'NOW PLAYING' : 'OASIS MIX');
-    ui.querySelector('.rTrack').textContent = (M.started||M.player)? (TRACKS[M.idx][0]+' · '+TRACKS[M.idx][1]) : 'Ready Player One';
+    ui.querySelector('.rState').textContent = M.loading? 'TUNING…' : (M.playing? 'NOW PLAYING' : (MQ.mode==='yours'? 'YOUR MUSIC' : 'OASIS MIX'));
+    ui.querySelector('.rTrack').textContent = (MQ.mode==='yours'&&YMQ[MQ.qi])? YMQ[MQ.qi].title : ((M.started||M.player)? (TRACKS[M.idx][0]+' · '+TRACKS[M.idx][1]) : 'Ready Player One');
     ui.querySelectorAll('.rItem').forEach((it,i)=>it.classList.toggle('on', i===M.idx&&(M.started||!!M.player)));
   });
   $('musicBtn').classList.toggle('on',M.playing);
@@ -3546,6 +3593,114 @@ document.querySelector('#flightStrip .rClose').addEventListener('click',()=>{
   document.querySelectorAll('.rList.open').forEach(l=>l.classList.remove('open'));
 });
 syncMusicUI();
+
+/* ============================== YOUR MUSIC ==============================
+   Gary (Oct 24): a paste-a-link box at the bottom of the paint box —
+   your own songs in a queue, VibeDesk-style, saved on this device,
+   flying through the same hidden player as the Oasis Mix. A direct
+   .mp3 link plays on a plain audio element. Some owners block their
+   videos from playing inside other pages: when that happens the sky
+   WARNS the flyer — Gary: "just give that warning to users" — marks
+   the song, and skips ahead instead of sitting silent. */
+const YM_KEY='sdYourMusicV1';
+function loadYm(){ try{ const r=JSON.parse(localStorage.getItem(YM_KEY)||'[]');
+  if(Array.isArray(r)) return r.filter(q=>q&&(q.kind==='yt'||q.kind==='list'||q.kind==='mp3')); }catch(e){} return []; }
+YMQ=loadYm();
+const mp3El=$('mp3Player');
+let ymToastT=null;
+function ymSave(){ try{ localStorage.setItem(YM_KEY, JSON.stringify(YMQ)); }catch(e){} }
+function musicWarn(msg){
+  const t=$('musicToast'); if(!t)return;
+  t.textContent=msg; t.classList.add('show');
+  if(ymToastT)clearTimeout(ymToastT);
+  ymToastT=setTimeout(()=>t.classList.remove('show'), 4600);
+}
+function parseMusicLink(raw){
+  const s=(raw||'').trim(); if(!s)return null;
+  if(/^https?:\/\/\S+\.mp3(\?\S*)?$/i.test(s)) return {kind:'mp3', url:s, title:'Your audio link'};
+  if(!/youtu/i.test(s)) return null;
+  let m=s.match(/[?&]list=([A-Za-z0-9_-]{12,})/);
+  if(m) return {kind:'list', id:m[1], title:'Your playlist'};
+  m=s.match(/[?&]v=([A-Za-z0-9_-]{11})/)||s.match(/youtu\.be\/([A-Za-z0-9_-]{11})/)||s.match(/\/(?:shorts|live|embed|v)\/([A-Za-z0-9_-]{11})/);
+  if(m) return {kind:'yt', id:m[1], title:'Your song'};
+  return null;
+}
+function renderYmQueue(){
+  const box=$('ymQueue'); if(!box)return; box.innerHTML='';
+  if(!YMQ.length){ const p=document.createElement('p'); p.className='ymEmpty'; p.textContent='No songs yet — paste a link above.'; box.appendChild(p); return; }
+  YMQ.forEach((q,i)=>{
+    const b=document.createElement('button'); b.className='ymItem'+(MQ.mode==='yours'&&MQ.qi===i?' on':'')+(q.blocked?' blocked':'');
+    const nm=document.createElement('span'); nm.className='ymName'; nm.textContent=(i+1)+'. '+q.title;
+    const x=document.createElement('span'); x.className='ymX'; x.textContent='✕'; x.title='Remove';
+    b.appendChild(nm); b.appendChild(x);
+    b.addEventListener('click',()=>{ wake(); playQueueAt(i); });
+    x.addEventListener('click',ev=>{ ev.stopPropagation(); ymRemove(i); });
+    box.appendChild(b);
+  });
+}
+function ymRemove(i){
+  const wasCurrent = MQ.mode==='yours'&&MQ.qi===i;
+  YMQ.splice(i,1); ymSave();
+  if(MQ.qi>i) MQ.qi--;
+  if(wasCurrent){ MQ.qi=-1; MQ.mode='oasis';
+    try{ mp3El.pause(); }catch(e){}
+    if(M.player){ try{ M.player.stopVideo(); }catch(e){} }
+    M.playing=false; M.loading=false;
+  }
+  renderYmQueue(); syncMusicUI();
+}
+function playQueueAt(i){
+  if(i<0||i>=YMQ.length)return;
+  MQ.mode='yours'; MQ.qi=i; const q=YMQ[i];
+  renderYmQueue();
+  if(q.kind==='mp3'){
+    if(M.player&&M.playing){ try{ M.player.pauseVideo(); }catch(e){} }
+    M.loading=false; M.playing=true; M.started=true; syncMusicUI();
+    mp3El.src=q.url;
+    mp3El.play().catch(()=>{ onMusicError(-1); });
+    return;
+  }
+  try{ mp3El.pause(); }catch(e){}
+  if(!M.player){ M.loading=true; syncMusicUI(); musicCreate(0); return; }
+  M.loading=true; syncMusicUI();
+  if(q.kind==='list'){ M.plMode='list'; M.player.loadPlaylist({listType:'playlist', list:q.id, index:0}); }
+  else { M.plMode='single'; M.player.loadVideoById(q.id); }
+}
+function queueStep(d){
+  if(!YMQ.length)return;
+  let n=MQ.qi+d; if(n<0)n=YMQ.length-1; if(n>=YMQ.length)n=0;
+  playQueueAt(n);
+}
+function onMusicError(code){
+  M.loading=false;
+  if(MQ.mode==='yours'){
+    const q=YMQ[MQ.qi]; if(q){ q.blocked=true; ymSave(); }
+    MQ.errRun++;
+    if(code===101||code===150) musicWarn("⚠ That song's owner won't let it play inside other pages — skipping to the next one.");
+    else if(code===100) musicWarn("⚠ That video couldn't be found — it may be private or removed. Skipping to the next one.");
+    else musicWarn("⚠ That link wouldn't play — skipping to the next one.");
+    renderYmQueue(); syncMusicUI();
+    if(YMQ.length&&MQ.errRun<YMQ.length) setTimeout(()=>queueStep(1),700);
+    else if(YMQ.length) musicWarn("⚠ None of your queue would play here — the Oasis Mix is still on the radio.");
+    return;
+  }
+  if(code===101||code===150) musicWarn("⚠ That song's owner won't let it play inside other pages — skipping.");
+  if(M.player) setTimeout(()=>{ try{ M.player.nextVideo(); }catch(e){} },700);
+  syncMusicUI();
+}
+mp3El.addEventListener('ended',()=>{ if(MQ.mode==='yours') queueStep(1); });
+mp3El.addEventListener('playing',()=>{ M.playing=true; MQ.errRun=0; syncMusicUI(); });
+mp3El.addEventListener('pause',()=>{ if(MQ.mode==='yours'){ const q=YMQ[MQ.qi]; if(q&&q.kind==='mp3'){ M.playing=false; syncMusicUI(); } } });
+function ymAddFromInput(){
+  const inp=$('ymInput'); const parsed=parseMusicLink(inp.value);
+  if(!parsed){ musicWarn("That doesn't look like a YouTube link — paste the whole link from the address bar."); return; }
+  YMQ.push(parsed); ymSave(); inp.value='';
+  renderYmQueue();
+  playQueueAt(YMQ.length-1);
+}
+$('ymAdd').addEventListener('click',()=>{ wake(); ymAddFromInput(); });
+$('ymInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ymAddFromInput(); } });
+renderYmQueue();
 
 /* ============================== boot ============================== */
 window.addEventListener('resize',()=>{ resize(); });
