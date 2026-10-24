@@ -66,6 +66,12 @@
       .lid{position:absolute;border-radius:50%;transform:scaleY(0);pointer-events:none;aspect-ratio:1/.78;
         border-bottom:2.5px solid rgba(70,40,20,.5);}
       .lid.blink{animation:lidBlink .28s ease-in-out;}
+      /* the smile — one soft arc over the mouth, same overlay family as the
+         lids. Invisible at rest; fades in ONLY on pleased / celebrating. */
+      #smileSvg{position:absolute;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+        transition:opacity .45s ease;overflow:visible;}
+      #smileSvg path{fill:none;stroke:rgba(96,52,26,.5);stroke-width:6;stroke-linecap:round;}
+      #friendWrap.expr-pleased #smileSvg,#friendWrap.expr-celebrating #smileSvg{opacity:1;}
       @keyframes lidBlink{0%{transform:scaleY(0)}38%,62%{transform:scaleY(1)}100%{transform:scaleY(0)}}
       #friendWrap.expr-thinking .exprLayer{transform:rotate(-4deg) translateY(2px);}
       #friendWrap.expr-pleased .exprLayer{transform:scale(1.03) translateY(1px);}
@@ -97,7 +103,14 @@
         text-shadow:0 3px 0 #b23a2a, 0 6px 0 rgba(120,20,10,.55), 0 12px 30px rgba(0,0,0,.6);}
       #nilBust .nb-sub{font-family:var(--hand-font);color:#fff;font-size:clamp(17px,4.6vw,24px);
         margin-top:10px;text-shadow:0 2px 8px rgba(0,0,0,.85);}
-      #nilBust.pop .nb-bang{animation:bustPop .45s cubic-bezier(.2,1.6,.4,1);}
+      /* the banner doesn't just pop and sit — it PULSES for the whole
+         2-second party, over a warm glow that breathes with it */
+      #nilBust.pop::before{content:"";position:absolute;inset:0;pointer-events:none;
+        background:radial-gradient(ellipse 62% 46% at 50% 50%, rgba(255,210,62,.30), rgba(255,120,60,.12) 55%, transparent 72%);
+        animation:bustGlow .5s ease-in-out infinite alternate;}
+      @keyframes bustGlow{from{opacity:.55}to{opacity:1}}
+      #nilBust.pop .nb-bang{animation:bustPop .45s cubic-bezier(.2,1.6,.4,1), bustPulse .46s .45s ease-in-out infinite alternate;}
+      @keyframes bustPulse{from{transform:scale(1) rotate(-3deg)}to{transform:scale(1.07) rotate(-1.6deg)}}
       #nilBust.pop .nb-sub{animation:bustPop .45s .06s cubic-bezier(.2,1.6,.4,1) backwards;}
       @keyframes bustPop{0%{transform:scale(.3) rotate(4deg);opacity:0}100%{transform:scale(1) rotate(-3deg);opacity:1}}
       #nilBust.pop .nb-sub{animation-name:bustSubPop;}
@@ -240,16 +253,19 @@
          first pair flat, each next pair laid perpendicular on top, alternating
          into a staircase you can count at a glance (the numeric counter
          itself lives in the status cluster beside each player's name) */
-      .booksZone{position:absolute;z-index:8;width:118px;pointer-events:none;}
+      .booksZone{position:absolute;z-index:8;pointer-events:none;}
       /* Gary (Oct 24): the books sit IN FRONT of each player — hers on the
          felt before her seat, his before his — never exiled to the screen edge */
-      #booksAi{left:calc(50% + 96px);top:41%;}
-      #booksYou{left:calc(50% - 268px);bottom:23.5%;}
-      .bkStack{position:relative;margin-top:2px;}
-      .book{position:absolute;width:58px;height:46px;transform-origin:50% 50%;}
-      .book .card{position:absolute;top:2px;}
-      .book .card:first-child{left:0;}
-      .book .card:last-child{left:22px;top:5px;}
+      #booksAi{left:calc(50% + 112px);top:366px;}
+      #booksYou{left:20px;bottom:148px;}
+      .bkStack{position:relative;}
+      /* ONE book = ONE cross: the trick's two cards stacked on the SAME
+         center point — one portrait, one turned exactly 90° — at full
+         table-card size, face down. Never side-by-side twins. */
+      .book{position:absolute;}
+      .book .card{position:absolute;left:50%;top:50%;--cw:84px;transform:translate(-50%,-50%);
+        box-shadow:0 2px 5px rgba(0,0,0,.4);}
+      .book .card:last-child{transform:translate(-50%,-50%) rotate(90deg);}
 
       /* draft stage on the felt */
       #stageArea{position:absolute;z-index:8;left:50%;bottom:34.5%;transform:translateX(-50%);
@@ -376,7 +392,13 @@
       .friendChip .fname{font-size:13px;font-weight:700;margin-top:3px;}
       .friendChip .ftrait{font-size:10.5px;color:#a9cbb6;line-height:1.15;}
       .friendChip.sel{box-shadow:inset 0 0 0 2.5px var(--gold);background:#22482f;}
-      #placePick,#scorePick{display:flex;gap:8px;flex-wrap:wrap;}
+      #placePick{display:flex;gap:8px;flex-wrap:wrap;}
+      /* the EN | ES toggle — segmented, same chip family as the picks */
+      #langPick{display:flex;gap:0;border:2px solid rgba(233,180,76,.55);border-radius:12px;overflow:hidden;width:max-content;max-width:100%;}
+      #langPick button{background:rgba(10,25,18,.35);color:var(--cream);border:0;padding:9px 16px;
+        font:800 13px/1 inherit;letter-spacing:.6px;cursor:pointer;}
+      #langPick button.sel{background:var(--gold);color:#241703;}
+      #langBtn{position:absolute;top:118px;right:10px;font-size:13px;font-weight:900;letter-spacing:.5px;}
       .chip{flex:1 1 0;min-width:96px;min-height:48px;border-radius:13px;background:rgba(14,32,23,.9);
         font-size:15px;font-weight:700;padding:9px 8px;box-shadow:inset 0 0 0 2px transparent;line-height:1.25;}
       .chip small{display:block;font-size:11.5px;color:#a9cbb6;font-weight:600;}
@@ -393,6 +415,60 @@
       /* ============ MODALS ============ */
       .overlay{position:absolute;inset:0;z-index:60;background:rgba(4,10,7,.66);
         display:flex;align-items:center;justify-content:center;padding:16px;}
+      /* ================= TABLE CHAT ================= */
+      #chatBtn{position:absolute;top:172px;right:10px;}
+      #rescueBtn{position:absolute;top:226px;right:10px;}
+      #continueBtn{display:block;width:100%;margin:0 0 10px;padding:14px 16px;border-radius:14px;border:none;
+        background:linear-gradient(180deg,#f3cd6b,#d9a83e);color:#23180a;font-weight:900;font-size:16.5px;
+        box-shadow:0 4px 14px rgba(0,0,0,.35);cursor:pointer;}
+      #rescueToast{position:absolute;left:50%;bottom:158px;transform:translateX(-50%) translateY(8px);z-index:40;
+        background:rgba(10,25,18,.92);color:var(--cream);padding:9px 16px;border-radius:999px;font-size:14.5px;
+        font-weight:700;opacity:0;transition:opacity .25s, transform .25s;pointer-events:none;white-space:nowrap;
+        box-shadow:0 4px 14px rgba(0,0,0,.45);}
+      #rescueToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+      #chatDot{position:absolute;top:1px;right:1px;width:13px;height:13px;border-radius:50%;
+        background:#e23b3b;border:2px solid #0b141a;pointer-events:none;}
+      #chatOverlay{justify-content:flex-end;align-items:stretch;padding:0;background:rgba(4,10,7,.45);z-index:70;}
+      #chatPanel{width:min(390px,100vw);height:100%;background:#0b141a;display:flex;flex-direction:column;
+        box-shadow:-10px 0 34px rgba(0,0,0,.55);font-family:inherit;}
+      #chatHead{background:#123332;display:flex;gap:10px;align-items:center;padding:10px 12px;color:#e9edef;
+        box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:2;}
+      #chatAva{width:42px;height:42px;border-radius:50%;object-fit:cover;object-position:top;background:#2a3942;flex:0 0 auto;}
+      .ch-meta{flex:1;min-width:0;}
+      #chatName{font-weight:800;font-size:16.5px;line-height:1.15;}
+      #chatStatus{font-size:12.5px;color:#9fd8c0;line-height:1.2;}
+      #chatClose{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.08);color:#e9edef;
+        font-size:17px;flex:0 0 auto;}
+      #chatThread{flex:1;overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:6px;
+        background-color:#0b141a;background-image:radial-gradient(rgba(255,255,255,.045) 1px, transparent 1.4px);
+        background-size:18px 18px;touch-action:pan-y;}
+      .cmsg{max-width:84%;padding:7px 10px;border-radius:10px;font-size:14.5px;line-height:1.38;color:#e9edef;
+        position:relative;overflow-wrap:break-word;box-shadow:0 1px 2px rgba(0,0,0,.35);}
+      .cmsg.her{align-self:flex-start;background:#1f2c34;border-top-left-radius:2px;margin-left:36px;}
+      .cmsg.her .cava{position:absolute;left:-36px;top:0;width:29px;height:29px;border-radius:50%;
+        object-fit:cover;object-position:top;background:#2a3942;}
+      .cmsg.you{align-self:flex-end;background:#005c4b;border-top-right-radius:2px;}
+      .cmsg.typing{align-self:flex-start;background:#1f2c34;margin-left:36px;display:flex;gap:4px;padding:11px 12px;}
+      .cmsg.typing span{width:7px;height:7px;border-radius:50%;background:#8fa5b0;animation:ctdot 1.1s infinite;}
+      .cmsg.typing span:nth-child(2){animation-delay:.18s;}
+      .cmsg.typing span:nth-child(3){animation-delay:.36s;}
+      @keyframes ctdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+      #chatChips{display:flex;gap:6px;overflow-x:auto;padding:8px 10px 2px;background:#0b141a;scrollbar-width:none;}
+      #chatChips::-webkit-scrollbar{display:none;}
+      .cchip{flex:0 0 auto;background:#1f2c34;color:#e9edef;border:1px solid #2a3942;border-radius:999px;
+        padding:6px 11px;font-size:13px;}
+      .cchip:active{background:#2a3942;}
+      #chatInputRow{display:flex;gap:8px;padding:9px 10px calc(9px + env(safe-area-inset-bottom));background:#0b141a;align-items:center;}
+      #chatInput{flex:1;background:#1f2c34;border:none;border-radius:999px;padding:11px 15px;color:#e9edef;
+        font-size:15px;outline:none;min-width:0;}
+      #chatInput::placeholder{color:#7d8f99;}
+      #chatSend{width:45px;height:45px;border-radius:50%;background:#00a884;color:#06382b;font-size:18px;flex:0 0 auto;
+        box-shadow:0 2px 6px rgba(0,0,0,.4);}
+      @media (max-width:640px){
+        #chatOverlay{align-items:flex-end;}
+        #chatPanel{width:100vw;height:84dvh;border-radius:16px 16px 0 0;}
+      }
+
       .paperSheet{background:var(--paper);color:var(--ink);border-radius:8px 16px 16px 8px;
         width:min(94vw,520px);max-height:88%;overflow-y:auto;touch-action:pan-y;
         padding:22px 22px 18px 30px;position:relative;
@@ -435,6 +511,7 @@
       #matchBanner .big{font-family:var(--hand-font);font-size:31px;color:#5d3a1f;margin:2px 0;}
       .confetti{position:absolute;width:9px;height:14px;z-index:70;border-radius:2px;pointer-events:none;
         animation:confFall 1.6s ease-in forwards;}
+      .confetti.streamer{width:5px;height:26px;border-radius:3px;}
       @keyframes confFall{to{transform:translateY(105dvh) rotate(560deg);opacity:.9;}}
 
       .fly{position:absolute;z-index:30;pointer-events:none;transition:transform .5s cubic-bezier(.3,.7,.4,1), opacity .5s;}
@@ -475,7 +552,10 @@
         .wallPic{display:none;}
         #friendFan{width:72px;height:32px;}
         #friendFan .card{--cw:17px;}
-        #bubble{left:29%;top:31%;max-width:55%;font-size:13.5px;padding:7px 10px;border-radius:13px;}
+        /* right:auto — the base rule's right: offset is still live on the
+           phone and was squeezing the bubble into a vertical sliver
+           between the two offsets (pre-existing; found in this pass) */
+        #bubble{left:29%;right:auto;top:31%;max-width:55%;font-size:13.5px;padding:7px 10px;border-radius:13px;}
         /* STATUS BARS — one slim horizontal bar per player: name chip with
            the gold turn frame, PICKED n/13 or the bid, state, then TRICKS
            and BAGS pushed to the right end */
@@ -525,11 +605,14 @@
         .trick-slot{width:76px;height:104px;}
         .trick-slot .card{--cw:68px !important;}
         .trick-slot .who{margin-top:98px;font-size:10px;}
-        /* books keep their criss-cross, just scaled to phone size */
-        #booksAi{left:auto;right:12px;top:38.5%;}
-        #booksAi .bkStack{transform:scale(.72);transform-origin:0 0;}
-        #booksYou{left:12px;bottom:26.5%;}
-        #booksYou .bkStack{transform:scale(.72);transform-origin:0 100%;}
+        /* books: full phone table-card size, NO shrink — his staircase
+           climbs from the near-left felt, hers steps down at the right */
+        #booksAi{left:auto;right:4px;top:324px;}
+        #booksYou{left:8px;bottom:27.5%;}
+        .book .card{--cw:68px;}
+        /* the in-game language button joins the top row on the phone —
+           the right-corner stack would collide with her badge */
+        #langBtn{top:10px;right:58px;font-size:11px;}
         /* bidding: the pad and the ARE YOU SURE bar fit the phone width */
         #actionStrip:has(.bidbtn) #actions{max-width:calc(100vw - 12px);}
         #actions.confirming{max-width:calc(100vw - 12px);}
@@ -555,13 +638,14 @@
             <img id="bustImg" alt="" />
             <div class="lid" id="lidL"></div>
             <div class="lid" id="lidR"></div>
+            <svg id="smileSvg" viewBox="0 0 100 44" aria-hidden="true"><path d="M6,14 Q50,40 94,14"/></svg>
             <div id="friendFan"></div>
           </div></div></div></div>
         </div>
         <div id="bubble" role="status"></div>
-        <div class="bidBadge hidden" id="badgeAi" aria-hidden="true"><span class="bb-name" id="bbNameAi">—</span><span class="bb-bid" id="bbBidAi">—</span><span class="bb-picked" id="bbPickedAi">PICKED 0/13</span><span class="bb-state" id="bbStateAi"></span><span class="bb-busted" id="bbBustedAi">NIL BUSTED THIS HAND!!!</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab">TRICKS</span><span class="bb-tricks" id="bbTricksAi">0</span></span><span class="bb-stat"><span class="bb-lab">BAGS</span><span class="bb-bags" id="bbBagsAi">0</span></span></span></div>
+        <div class="bidBadge hidden" id="badgeAi" aria-hidden="true"><span class="bb-name" id="bbNameAi">—</span><span class="bb-bid" id="bbBidAi">—</span><span class="bb-picked" id="bbPickedAi">PICKED 0/13</span><span class="bb-state" id="bbStateAi"></span><span class="bb-busted" id="bbBustedAi">NIL BUSTED THIS HAND!!!</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab" id="labTricksAi">TRICKS</span><span class="bb-tricks" id="bbTricksAi">0</span></span><span class="bb-stat"><span class="bb-lab" id="labBagsAi">BAGS</span><span class="bb-bags" id="bbBagsAi">0</span></span></span></div>
         <div id="nilBust" class="hidden" aria-hidden="true">
-          <div class="nb-bang">NIL BUSTED!!!!</div>
+          <div class="nb-bang" id="nbBang">NIL BUSTED!!!!</div>
           <div class="nb-sub" id="nilBustSub"></div>
         </div>
         <div id="kabooseTrain" class="hidden" aria-hidden="true">
@@ -626,10 +710,14 @@
         <div class="booksZone hidden" id="booksYou" aria-hidden="true">
           <div class="bkStack" id="bkStackYou"></div>
         </div>
-        <div class="bidBadge hidden" id="badgeYou" aria-hidden="true"><span class="bb-name" id="bbNameYou">GARY</span><span class="bb-bid" id="bbBidYou">—</span><span class="bb-picked" id="bbPickedYou">PICKED 0/13</span><span class="bb-state" id="bbStateYou"></span><span class="bb-busted" id="bbBustedYou">NIL BUSTED THIS HAND!!!</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab">TRICKS</span><span class="bb-tricks" id="bbTricksYou">0</span></span><span class="bb-stat"><span class="bb-lab">BAGS</span><span class="bb-bags" id="bbBagsYou">0</span></span></span></div>
+        <div class="bidBadge hidden" id="badgeYou" aria-hidden="true"><span class="bb-name" id="bbNameYou">GARY</span><span class="bb-bid" id="bbBidYou">—</span><span class="bb-picked" id="bbPickedYou">PICKED 0/13</span><span class="bb-state" id="bbStateYou"></span><span class="bb-busted" id="bbBustedYou">NIL BUSTED THIS HAND!!!</span><span class="bb-stats"><span class="bb-stat"><span class="bb-lab" id="labTricksYou">TRICKS</span><span class="bb-tricks" id="bbTricksYou">0</span></span><span class="bb-stat"><span class="bb-lab" id="labBagsYou">BAGS</span><span class="bb-bags" id="bbBagsYou">0</span></span></span></div>
         <button class="iconbtn" id="howBtn" aria-label="How to play">?</button>
         <button class="iconbtn" id="soundBtn" aria-label="Toggle sound">🔊</button>
         <button class="iconbtn" id="homeBtn" aria-label="Back to intro — reset the game">⌂</button>
+        <button class="iconbtn" id="langBtn" aria-label="Language / Idioma">ES</button>
+        <button class="iconbtn" id="chatBtn" aria-label="Chat with your opponent / Chatea con tu oponente">💬<span id="chatDot" class="hidden"></span></button>
+        <button class="iconbtn" id="rescueBtn" aria-label="Reset this step — your match is safe / Reinicia este paso — tu partida está a salvo">🔧</button>
+        <div id="rescueToast" class="hidden"></div>
         <div id="vignette"></div>
       </section>
 
@@ -651,12 +739,13 @@
           <img id="introHero" alt="All eight friends playing Spades around the table" />
           <h1>Heads-Up <span class="spadeGlyph">♠</span> Spades</h1>
           <p id="tagline">One friend, one deck, your house rules.</p>
-          <div class="pickLabel">WHO'S ACROSS THE TABLE?</div>
+          <div class="pickLabel" id="plFriend">WHO'S ACROSS THE TABLE?</div>
           <div id="friendPick"></div>
-          <div class="pickLabel">WHERE ARE YOU PLAYING?</div>
+          <div class="pickLabel" id="plPlace">WHERE ARE YOU PLAYING?</div>
           <div id="placePick"></div>
-          <div class="pickLabel">MATCH — FIRST TO…</div>
-          <div id="scorePick"></div>
+          <div class="pickLabel">LANGUAGE · IDIOMA</div>
+          <div id="langPick"><button type="button" id="langEn">EN · ENGLISH</button><button type="button" id="langEs">ES · ESPAÑOL</button></div>
+          <button id="continueBtn" class="hidden"></button>
           <button id="startBtn">TAKE YOUR SEAT ♠</button>
           <div id="introBtns">
             <button class="introBtn" id="qrBtn">▦ QR</button>
@@ -671,9 +760,24 @@
       <div class="overlay hidden" id="sheetOverlay">
         <div class="paperSheet" id="sheetBody"></div>
       </div>
+      <div class="overlay hidden" id="chatOverlay">
+        <div id="chatPanel">
+          <div id="chatHead">
+            <img id="chatAva" alt="" />
+            <div class="ch-meta"><div id="chatName">—</div><div id="chatStatus">at the table</div></div>
+            <button id="chatClose" aria-label="Close chat / Cerrar chat">✕</button>
+          </div>
+          <div id="chatThread"></div>
+          <div id="chatChips"></div>
+          <div id="chatInputRow">
+            <input id="chatInput" type="text" autocomplete="off" />
+            <button id="chatSend" aria-label="Send / Enviar">➤</button>
+          </div>
+        </div>
+      </div>
       <div class="overlay hidden" id="qrOverlay">
         <div id="qrSheet">
-          <h2>Take this table anywhere</h2>
+          <h2 id="qrH">Take this table anywhere</h2>
           <p>https://geemondc.github.io/heads-up-spades/</p>
           <canvas id="qrCanvas" width="33" height="33"></canvas>
           <div class="closeRow"><button class="paperBtn" id="qrClose">DONE</button></div>
@@ -722,72 +826,271 @@
         skin:"#f2c49b", hair:"#4a2e1c", hairStyle:"bob", shirt:"#f6f1e7", overalls:"#ef7fa5",
         accessory:"glasses", agg:0.45, draftKeep:0.52,
         greet:"House rules, your draft deal. I respect it. Mostly.",
-        lines:{ win:["Counted that one coming.","Steady does it."], lose:["Hm. Noted.","That one stings a little."],
-          nil:["Nil? Bold. I like it."], set:["Set. The notebook doesn't lie."] } },
+        greetEs:"Reglas de la casa, tu reparto. Lo respeto. Más o menos.",
+        lines:{ win:["Counted that one coming.","Steady does it.","There it is.","Arithmetic, not luck.","Mm. Mine."],
+          lose:["Hm. Noted.","That one stings a little.","A wrinkle. It'll iron out.","Logged and learned.","One for you. Enjoy the footnote."],
+          nil:["Nil? Bold. I like it.","Zero is a number too.","Watch the ducking."],
+          set:["Set. The notebook doesn't lie.","Set. Even the notebook winced.","Fine. Recalibrating."],
+          keep:["Keeping. Obviously.","That one has a future.","Into the hand it goes."],
+          pass:["Trash. Next.","Not at that price.","Declined. Politely."],
+          bigBid:["I bid tall. The math agreed.","Numbers don't bluff."],
+          broken:["Spades are live. Noted.","There's the first spade. Clock it."],
+          late:["Three tricks. Everything's loud now.","Endgame. Play it clean."],
+          matchPt:["Match point. Steady… steady…","One hand from the door."] },
+        linesEs:{ win:["Lo conté venir.","Con calma se llega.","Ahí está.","Aritmética, no suerte.","Mmm. Mía."],
+          lose:["Hmm. Anotado.","Esa dolió un poquito.","Una arruga. Se plancha.","Anotado y aprendido.","Una para ti. Disfruta la nota al pie."],
+          nil:["¿Nil? Audaz. Me gusta.","El cero también es número.","Miren cómo esquivo."],
+          set:["Anulado. El cuaderno no miente.","Anulado. Hasta el cuaderno hizo una mueca.","Bien. A recalibrar."],
+          keep:["Me la quedo. Obviamente.","Esa tiene futuro.","A la mano va."],
+          pass:["Basura. Siguiente.","No a ese precio.","Rechazada. Cortésmente."],
+          bigBid:["Canto alto. Las cuentas estuvieron de acuerdo.","Los números no farolean."],
+          broken:["Picas en juego. Anotado.","La primera pica. Marca el momento."],
+          late:["Tres bazas. Todo suena más fuerte ahora.","Final de mano. Juega limpio."],
+          matchPt:["Punto de partido. Calma… calma…","A una mano de la puerta."] } },
       { id:"goggles", name:"Goggles", trait:"Fast & fearless",
         skin:"#c98a5e", hair:"#201812", hairStyle:"spiky", shirt:"#e8712c", jacket:true,
         accessory:"goggles", agg:0.85, draftKeep:0.42,
         greet:"No safety net, no mercy — let's FLY through this deck.",
-        lines:{ win:["TOO fast for you!","Woo! Did you see that?"], lose:["Okay okay, ONE for you.","Crash landing. Fine."],
-          nil:["Nil?! HA. I live for this."], set:["You SET me? Rematch energy."] } },
+        greetEs:"¡Sin red de seguridad ni piedad — a VOLAR con esta baraja!",
+        lines:{ win:["TOO fast for you!","Woo! Did you see that?","ZOOM! Mine!","Did the table just shake? That was me.","Fastest hand in the west!"],
+          lose:["Okay okay, ONE for you.","Crash landing. Fine.","Whoa whoa whoa. Turbulence!","Enjoy ONE. Savor the altitude.","Emergency landing. Nobody saw that."],
+          nil:["Nil?! HA. I live for this.","Zero tricks at Mach 2!","Ducking at full speed!"],
+          set:["You SET me? Rematch energy.","SET?! Ground control, we have a problem.","Crashed the whole hand. Walked away though."],
+          keep:["MINE. Dibs. Forever.","Yoink! At record speed!","That card was breaking the sound barrier."],
+          pass:["Too slow. NEXT.","Hard pass. It was basically parked.","Nope nope nope. Moving!"],
+          bigBid:["BIG bid energy! Buckle up!","I'm bidding like I stole it!"],
+          broken:["SPADES ARE OUT! It's raining trump!","First spade! The sky is OPEN!"],
+          late:["Final approach! Three tricks to glory!","Landing gear down. This is TIGHT."],
+          matchPt:["MATCH POINT. I can see the trophy from this altitude!","One hand! ONE. HAND."] },
+        linesEs:{ win:["¡DEMASIADO rápido para ti!","¡Woo! ¿Viste eso?","¡ZUM! ¡Mía!","¿Tembló la mesa? Fui yo.","¡La mano más rápida del oeste!"],
+          lose:["Vale, vale, UNA para ti.","Aterrizaje forzoso. Bien.","¡Uf, turbulencia!","Te doy UNA. Saborea la altitud.","Aterrizaje de emergencia. Nadie vio nada."],
+          nil:["¿¡Nil?! ¡JA! ¡Vivo para esto!","¡Cero bazas a Mach 2!","¡Esquivando a toda velocidad!"],
+          set:["¿¡Anulado!? ¡Energía de revancha!","¡¿Anulado?! Torre de control, tenemos un problema.","Estrellé la mano entera. Pero salí caminando."],
+          keep:["¡MÍA! ¡Apartada para siempre!","¡Zas! ¡A velocidad récord!","¡Esa carta rompía la barrera del sonido!"],
+          pass:["Muy lenta. ¡SIGUIENTE!","Pase duro. Estaba prácticamente aparcada.","No, no, no. ¡A moverse!"],
+          bigBid:["¡Energía de canto grande! ¡Abróchense!","¡Canto como si lo hubiera robado!"],
+          broken:["¡PICAS FUERA! ¡Llueve triunfo!","¡Primera pica! ¡El cielo está ABIERTO!"],
+          late:["¡Aproximación final! ¡Tres bazas para la gloria!","Tren de aterrizaje abajo. Esto está APRETADO."],
+          matchPt:["¡PUNTO DE PARTIDO! ¡Veo el trofeo desde esta altura!","¡Una mano! ¡UNA. MANO!"] } },
       { id:"braids", name:"Braids", trait:"Sweet, then ruthless",
         skin:"#f6cfa9", hair:"#c33d21", hairStyle:"braids", shirt:"#2e8f86",
         accessory:"heartEarrings", agg:0.6, draftKeep:0.5,
         greet:"Hi hi! I brought snacks and absolutely no mercy.",
-        lines:{ win:["Oops. Did I do that? ♡","Sweet, right?"], lose:["Aww. Okay, that was good.","You earned that one."],
-          nil:["Nil is just a puzzle. Watch me."], set:["Set?! But I was so nice…"] } },
+        greetEs:"¡Hola, hola! Traje snacks y absolutamente cero piedad.",
+        lines:{ win:["Oops. Did I do that? ♡","Sweet, right?","Whoopsie. Mine again. ♡","Bless your heart. That's my trick.","Sweetie, I needed that one."],
+          lose:["Aww. Okay, that was good.","You earned that one.","Well, aren't you just full of surprises.","Okay, that one was actually pretty.","You can have that one. I insist. ♡"],
+          nil:["Nil is just a puzzle. Watch me.","Zero tricks, all sugar.","Watch me tiptoe through this."],
+          set:["Set?! But I was so nice…","Set?! I baked snacks for this table!","Oh, the notebook is getting a talking-to."],
+          keep:["Oh, she's coming home with me.","Yes please. Manners AND cards.","Keeping this cutie."],
+          pass:["Trash, bless its heart.","No thank you. Next, sweetie.","That one can go right back."],
+          bigBid:["I'm bidding big, sugar. Hold my lemonade.","Tall bid. Taller smile."],
+          broken:["First spade. Things just got spicy. ♡","Spades are broken! Careful now."],
+          late:["Three tricks left. Smile's still on. Mostly.","Endgame, sweetie. No more nice."],
+          matchPt:["Match point! I might even stop smiling.","One hand for everything, sugar."] },
+        linesEs:{ win:["Ups. ¿Hice yo eso? ♡","Dulce, ¿verdad?","Ay, perdón. Mía otra vez. ♡","Bendito sea tu corazón. Esa baza es mía.","Cariño, necesitaba esa."],
+          lose:["Ay. Vale, esa estuvo buena.","Te la ganaste.","Bueno, sí que vienes lleno de sorpresas.","Vale, esa fue bonita de verdad.","Quédate esa. Insisto. ♡"],
+          nil:["Nil es solo un rompecabezas. Mírame.","Cero bazas, todo azúcar.","Miren cómo paso de puntitas."],
+          set:["¿¡Anulada?! ¡Pero si fui tan buena…","¿¡Anulada?! ¡Traje snacks para esta mesa!","Ay, el cuaderno va a recibir una queja."],
+          keep:["Ay, esta se viene a casa conmigo.","Sí, por favor. Modales Y cartas.","Me quedo esta preciosidad."],
+          pass:["Basura, que Dios la bendiga.","No, gracias. Siguiente, cariño.","Esa puede volver por donde vino."],
+          bigBid:["Canto grande, cariño. Sujétame la limonada.","Canto alto. Sonrisa más alta."],
+          broken:["Primera pica. Esto se puso picante. ♡","¡Picas rotas! Cuidado ahora."],
+          late:["Tres bazas. La sonrisa sigue puesta. Más o menos.","Final de mano, cariño. Se acabó lo dulce."],
+          matchPt:["¡Punto de partido! Hasta puede que deje de sonreír.","Una mano para todo, cariño."] } },
       { id:"phones", name:"Phones", trait:"Reads every card",
         skin:"#8a5a34", hair:"#14100c", hairStyle:"buzz", shirt:"#27407c", varsity:true,
         accessory:"headphones", agg:0.55, draftKeep:0.55,
         greet:"I already heard how this deck shuffles. Let's go.",
-        lines:{ win:["Called it three tricks ago.","Beat drops, so do you."], lose:["Static. That was static.","One glitch. Moving on."],
-          nil:["Nil. Silent mode: ON."], set:["Set. Rewinding that hand in my head…"] } },
+        greetEs:"Ya escuché cómo se baraja esta baraja. Vamos.",
+        lines:{ win:["Called it three tricks ago.","Beat drops, so do you.","On beat. As predicted.","Heard that trick coming in the bridge.","Remix: mine."],
+          lose:["Static. That was static.","One glitch. Moving on.","Off-key. Whatever, next track.","Skipped a beat. Won't happen twice.","That one's not making the album."],
+          nil:["Nil. Silent mode: ON.","Nil. Headphones on, tricks off.","Zero. Lo-fi hand."],
+          set:["Set. Rewinding that hand in my head…","Set. Even the bass dropped.","Scratch that whole track."],
+          keep:["Sampled it. Keeping.","That one's going on the playlist.","Clear signal. Mine."],
+          pass:["Static. Skip.","Muted. Next card.","Bad signal. Trash it."],
+          bigBid:["Cranking the volume on this bid.","Full volume. I bid tall."],
+          broken:["First spade just dropped. Bass incoming.","Trump's on the turntable now."],
+          late:["Three tracks left. All killer.","Final track energy. Focus."],
+          matchPt:["Match point. This is the headline set.","One hand. Play it loud."] },
+        linesEs:{ win:["Lo llamé hace tres bazas.","El ritmo cae, y tú también.","En el compás. Como predije.","Escuché esa baza venir en el puente.","Relectura: mía."],
+          lose:["Ruido. Eso fue ruido.","Un fallo. Sigamos.","Desafinado. Lo que sea, siguiente pista.","Saltó un compás. No pasará dos veces.","Esa no entra en el álbum."],
+          nil:["Nil. Modo silencio: ACTIVADO.","Nil. Auriculares puestos, bazas fuera.","Cero. Mano lo-fi."],
+          set:["Anulado. Reescribiendo esa mano en mi cabeza…","Anulado. Hasta el bajo se cayó.","A rayar esa pista entera."],
+          keep:["La sampleé. Me la quedo.","Esa va a la lista de reproducción.","Señal clara. Mía."],
+          pass:["Ruido. Saltar.","Silenciada. Siguiente carta.","Mala señal. A la basura."],
+          bigBid:["Subiendo el volumen a este canto.","Volumen al máximo. Canto alto."],
+          broken:["La primera pica acaba de caer. Viene el bajo.","El triunfo ya está en el plato."],
+          late:["Quedan tres pistas. Todas letales.","Energía de última pista. Enfócate."],
+          matchPt:["Punto de partido. Este es el concierto estelar.","Una mano. Tócala fuerte."] } },
       { id:"purple", name:"Purple", trait:"Bluff in her eyes",
         skin:"#eebd93", hair:"#7a3fa0", hairStyle:"long", shirt:"#33243f",
         accessory:"starEarrings", agg:0.72, draftKeep:0.46,
         greet:"The stars say I win tonight. The stars are me. I say it.",
-        lines:{ win:["Written in the stars. Told you.","Sparkle beats strategy."], lose:["The stars… misfiled that one.","Enjoy it. It's rare."],
-          nil:["Nil, darling. Watch the magic."], set:["Set? The constellation is ruined."] } },
+        greetEs:"Las estrellas dicen que gano esta noche. Las estrellas soy yo. Lo digo yo.",
+        lines:{ win:["Written in the stars. Told you.","Sparkle beats strategy.","The audience gasps. Again.","Autographs later, darling.","A star takes her trick."],
+          lose:["The stars… misfiled that one.","Enjoy it. It's rare.","A plot twist. I allowed it.","Even stars have off-Broadway nights.","That trick had your name written by a lesser author."],
+          nil:["Nil, darling. Watch the magic.","Nil. A dramatic pause of a bid.","Zero tricks. The spotlight stays on me anyway."],
+          set:["Set? The constellation is ruined.","Set?! The reviews will be BRUTAL.","My agent will hear about this hand."],
+          keep:["The stars insist. Keeping.","Mine. It matches my aura.","A leading lady's card if I ever saw one."],
+          pass:["Trash. It wasn't photogenic.","The stars say absolutely not.","Pass. Next scene."],
+          bigBid:["I bid like the marquee's already lit.","Tall bid. Star billing."],
+          broken:["First spade! The plot thickens, darling.","Spades, broken. Cue the drama."],
+          late:["Three tricks from the finale. Chills.","The last act is always mine."],
+          matchPt:["Match point. My close-up is ready.","One hand from a standing ovation."] },
+        linesEs:{ win:["Escrito en las estrellas. Te lo dije.","El brillo le gana a la estrategia.","El público contiene el aliento. Otra vez.","Autógrafos después, cielo.","Una estrella recoge su baza."],
+          lose:["Las estrellas… archivaron mal esa.","Disfrútala. Es rara.","Un giro de guion. Lo permití.","Hasta las estrellas tienen noches fuera de Broadway.","Esa baza llevaba tu nombre, escrito por un autor menor."],
+          nil:["Nil, cielo. Mira la magia.","Nil. Una pausa dramática de canto.","Cero bazas. El foco sigue sobre mí."],
+          set:["¿Anulada? La constelación está arruinada.","¿¡Anulada?! Las críticas serán BRUTALES.","Mi agente se enterará de esta mano."],
+          keep:["Las estrellas insisten. Me la quedo.","Mía. Combina con mi aura.","Una carta de protagonista, sin duda."],
+          pass:["Basura. No era fotogénica.","Las estrellas dicen absolutamente no.","Paso. Siguiente escena."],
+          bigBid:["Canto como si la marquesina ya estuviera encendida.","Canto alto. Crédito de estrella."],
+          broken:["¡Primera pica! Se espesa la trama, cielo.","Picas, rotas. Que empiece el drama."],
+          late:["A tres bazas del final. Escalofríos.","El último acto siempre es mío."],
+          matchPt:["Punto de partido. Mi primer plano está listo.","A una mano de una ovación de pie."] } },
       { id:"blond", name:"Blond", trait:"Ice cold",
         skin:"#f4c795", hair:"#eec25e", hairStyle:"waves", shirt:"#3d3d44",
         accessory:"sunglasses", agg:0.5, draftKeep:0.58,
         greet:"Shades on. Tell unreadable. Your move, whenever.",
-        lines:{ win:["…","Yeah. That happened."], lose:["Cool. Literally don't care. (I care.)","One. Don't get used to it."],
-          nil:["Nil. Watch me not sweat."], set:["Set. Behind the shades: pain."] } },
+        greetEs:"Gafas puestas. Rostro ilegible. Tu jugada, cuando quieras.",
+        lines:{ win:["…","Yeah. That happened.","Yep.","…called it.","Standard."],
+          lose:["Cool. Literally don't care. (I care.)","One. Don't get used to it.","Hm.","One. Whatever.","…noted."],
+          nil:["Nil. Watch me not sweat.","Nil. Easy.","Zero. Watch."],
+          set:["Set. Behind the shades: pain.","Set. …ouch.","Don't."],
+          keep:["Mine.","Keeping. Obviously.","Yep. That one."],
+          pass:["No.","Trash.","Next."],
+          bigBid:["Big bid. Don't clap.","Tall. Deal with it."],
+          broken:["Spades. Great.","Trump's loose."],
+          late:["Three left.","Endgame."],
+          matchPt:["Match point.","One hand. No pressure. (Pressure.)"] },
+        linesEs:{ win:["…","Sí. Eso pasó.","Bien.","…lo sabía.","Normal."],
+          lose:["Guay. Me da igual, literalmente. (Me importa.)","Una. No te acostumbres.","Hmm.","Una. Lo que sea.","…anotado."],
+          nil:["Nil. Mírame no sudar.","Nil. Fácil.","Cero. Mira."],
+          set:["Anulado. Detrás de las gafas: dolor.","Anulado. …ay.","No."],
+          keep:["Mía.","Me la quedo. Obviamente.","Sí. Esa."],
+          pass:["No.","Basura.","Siguiente."],
+          bigBid:["Canto grande. No aplaudan.","Alto. Supéralo."],
+          broken:["Picas. Genial.","El triunfo anda suelto."],
+          late:["Quedan tres.","Final."],
+          matchPt:["Punto de partido.","Una mano. Sin presión. (Presión.)"] } },
       { id:"curls", name:"Curls", trait:"Counts every discard",
         skin:"#a06838", hair:"#2e1a0e", hairStyle:"curls", shirt:"#7a4d8f",
         accessory:"moonEarrings", agg:0.4, draftKeep:0.6,
         greet:"I count every card that hits the trash. Every one.",
-        lines:{ win:["The trash count told me that was coming.","Memory: 1, luck: 0."], lose:["I counted it. I still lost it.","Recalculating… rude."],
-          nil:["Nil. The moon and I have a plan."], set:["Set. My spreadsheet is crying."] } },
+        greetEs:"Cuento cada carta que cae en la basura. Cada una.",
+        lines:{ win:["The trash count told me that was coming.","Memory: 1, luck: 0.","Counted, predicted, collected.","The trash never lies."],
+          lose:["I counted it. I still lost it.","Recalculating… rude.","I had that counted the other way. Rude.","One slipped the count. Once.","Recount requested. Denied, apparently."],
+          nil:["Nil. The moon and I have a plan.","Nil. I've done the math twice.","Zero tricks. The count says possible."],
+          set:["Set. My spreadsheet is crying.","Set. Burning the spreadsheet.","My count was perfect. My hand wasn't."],
+          keep:["Counted it, wanted it, kept it.","That card completes a pattern.","Into the hand. Logged."],
+          pass:["Counted out. Trash.","The numbers said no.","Pass. The deck owes me better."],
+          bigBid:["The count says bid tall. So I bid tall.","Big bid. Arithmetically sound."],
+          broken:["First spade. Adjusting the count.","Spades broken. New variable."],
+          late:["Three tricks. I know exactly where this goes. Probably.","Endgame math. Don't rush me."],
+          matchPt:["Match point. The count is nervous.","One hand. I've run the numbers. Twice."] },
+        linesEs:{ win:["La cuenta de la basura me dijo que venía.","Memoria: 1, suerte: 0.","Contada, predicha, cobrada.","La basura nunca miente."],
+          lose:["La conté. Igual la perdí.","Recalculando… grosero.","La tenía contada al revés. Grosero.","Una se escapó de la cuenta. Una vez.","Recuento solicitado. Denegado, al parecer."],
+          nil:["Nil. La luna y yo tenemos un plan.","Nil. Ya hice las cuentas dos veces.","Cero bazas. La cuenta dice que es posible."],
+          set:["Anulada. Mi hoja de cálculo está llorando.","A quemar la hoja de cálculo.","Mi cuenta era perfecta. Mi mano no."],
+          keep:["La conté, la quise, me la quedé.","Esa carta completa un patrón.","A la mano. Registrada."],
+          pass:["Descartada por la cuenta. Basura.","Los números dijeron que no.","Paso. La baraja me debe algo mejor."],
+          bigBid:["La cuenta dice cantar alto. Pues canto alto.","Canto grande. Aritméticamente sólido."],
+          broken:["Primera pica. Ajustando la cuenta.","Picas rotas. Variable nueva."],
+          late:["Tres bazas. Sé exactamente cómo va esto. Probablemente.","Matemática de final. No me apures."],
+          matchPt:["Punto de partido. La cuenta está nerviosa.","Una mano. Revisé los números. Dos veces."] } },
       { id:"dreads", name:"Dreads", trait:"Laid-back shark",
         skin:"#6f4526", hair:"#191008", hairStyle:"dreads", shirt:"#5d7040",
         accessory:"noseStud", agg:0.62, draftKeep:0.48,
         greet:"Easy vibes, heavy spades. Sit back, I'll handle the drama.",
-        lines:{ win:["Smooth. Like I said.","No rush. Still mine."], lose:["All good. Tide comes back.","Respect. One for the road."],
-          nil:["Nil, mon. Zero stress, zero tricks."], set:["Set me? Island justice: rematch."] } }
+        greetEs:"Buena vibra, picas pesadas. Relájate, yo me encargo del drama.",
+        lines:{ win:["Smooth. Like I said.","No rush. Still mine.","Like the tide, mon. Always comes back.","Easy does it. Mine.","No drama. Just results."],
+          lose:["All good. Tide comes back.","Respect. One for the road.","The ocean gives, the ocean takes.","Cool cool. Your trick, your moment.","One wave for you, mon."],
+          nil:["Nil, mon. Zero stress, zero tricks.","Nil, island style.","Zero stress. Zero tricks. Watch."],
+          set:["Set me? Island justice: rematch.","Set. Even sharks get beached sometimes.","Rough water. We swim on."],
+          keep:["That one swims with me.","Keeping. The current's right.","Mine, mon. Easy."],
+          pass:["Back to the sea with that one.","Pass. The tide will bring better.","Not my wave. Next."],
+          bigBid:["Bidding tall, staying calm. That's the scary part.","Big bid, slow smile."],
+          broken:["First spade's in the water. Now it gets fun.","Spades broken. The hunt begins."],
+          late:["Three tricks. Water's getting shallow.","Endgame, mon. Smooth and steady."],
+          matchPt:["Match point. No stress. (Some stress.)","One hand for the whole ocean."] },
+        linesEs:{ win:["Suave. Como dije.","Sin apuro. Sigue siendo mía.","Como la marea, mon. Siempre vuelve.","Sin drama. Solo resultados."],
+          lose:["Todo bien. La marea regresa.","Respeto. Una para el camino.","El océano da, el océano quita.","Fresco, fresco. Tu baza, tu momento.","Una ola para ti, mon."],
+          nil:["Nil, mon. Cero estrés, cero bazas.","Nil, estilo isla.","Cero estrés. Cero bazas. Mira."],
+          set:["¿Me anularon? Justicia isleña: revancha.","Anulado. Hasta los tiburones encallamos a veces.","Aguas bravas. Seguimos nadando."],
+          keep:["Esa nada conmigo.","Me la quedo. La corriente está bien.","Mía, mon. Suave."],
+          pass:["De vuelta al mar con esa.","Paso. La marea traerá algo mejor.","No es mi ola. Siguiente."],
+          bigBid:["Cantando alto, manteniendo la calma. Esa es la parte que da miedo.","Canto grande, sonrisa lenta."],
+          broken:["La primera pica está en el agua. Ahora se pone bueno.","Picas rotas. Empieza la cacería."],
+          late:["Tres bazas. El agua se está acabando.","Final, mon. Suave y firme."],
+          matchPt:["Punto de partido. Sin estrés. (Algo de estrés.)","Una mano para todo el océano."] } }
     ];
     const GENERIC = {
       draftKeep:["Keeping that.","Oh, that one's mine.","Yes. Absolutely yes."],
       draftPass:["Pass. Trash it.","Nope. Next.","Hard no."],
-      bidHigh:["Feeling tall tonight.","This hand has teeth."],
-      bidLow:["Board. Don't laugh.","Minimum. The draft was cruel."],
-      winTrick:["Mine.","And that one.","Thank you kindly."],
-      loseTrick:["Yours. This time.","Take it. Take it!"],
+      bidHigh:["Feeling tall tonight.","This hand has teeth.","This hand has a heartbeat."],
+      bidLow:["Board. Don't laugh.","Minimum. The draft was cruel.","Board. The draft did this to me."],
+      winTrick:["Mine.","And that one.","Thank you kindly.","Textbook.","The table saw that."],
+      loseTrick:["Yours. This time.","Take it. Take it!","A gift. Don't get used to it."],
       yourNil:["You bid NIL? Brave table tonight.","Nil for you? I'm coming for trick three."],
+      yourKeep:["Keeping THAT? Bold.","Oh, he likes that one.","Noted. He kept it."],
+      yourPass:["Passed! Interesting…","Trash it is. The blind card decides.","Brave. Or foolish. We'll see."],
+      yourBigBid:["You bid THAT tall? Okay, table's awake.","Big bid from across the felt. Noted.","Tall. The pencil wrote it in ink."],
       nilMade:["Nil… made. Tip the cap.","Zero-ish and paid. Fine. FINE."],
       nilBust:["THIRD trick! Nil is BUSTED.","Busted! The notebook saw everything."],
       gg:["Good game. The notebook has spoken."],
       emoteClap:["Thank you, thank you. I play here all week.","*bows* You're too kind."],
       emoteLaugh:["Ha! At least we're having fun. One of us is winning.","😄 Right back at you."],
       emoteThink:["Thinking? I can wait. I counted the trash twice already.","Take your time. The cards aren't moving. (They are. In my head.)"],
-      matchPoint:["Match point. The pencil is sweating.","One hand for the whole thing…"]
+      matchPoint:["Match point. The pencil is sweating.","One hand for the whole thing…"],
+      trumpWin:["Trumped it. Clean.","A spade out of nowhere — mine."],
+      bossLose:["My boss card… TRUMPED. Rude.","An ace, wasted. The notebook saw it too."],
+      bagsSelf:["Bags are piling on my side… the bank bites at ten.","Careful, me. Bags cost real money here."],
+      comeback:["From WAY back. This table just flipped.","Comeback complete. What a swing."],
+      handStart:["Fresh deck. Same rules.","New hand — watch the trash.","The draft is where this is won."],
+      draftDone:["That's a hand. Now we talk numbers.","Draft's done. Bid honest… or don't.","Twenty-six gone forever. I counted the good ones."],
+      setMe:["Set. ME. Write it small, please.","Okay. That hand never happened. (It did. It's in the book.)"]
     };
-
+    const GENERIC_ES = {
+      draftKeep:["Me la quedo.","Uy, esa es mía.","Sí. Absolutamente sí."],
+      draftPass:["Paso. A la basura.","No. Siguiente.","No rotundo."],
+      bidHigh:["Me siento alto esta noche.","Esta mano tiene dientes.","Esta mano tiene pulso."],
+      bidLow:["Mínimo. No te rías.","Mínimo. El reparto fue cruel.","Mínimo. El reparto me hizo esto."],
+      winTrick:["Mía.","Y esa también.","Gracias, muy amable.","De manual.","La mesa vio eso."],
+      loseTrick:["Tuya. Esta vez.","Tómala. ¡Tómala!","Un regalo. No te acostumbres."],
+      yourNil:["¿Cantaste NIL? Mesa valiente esta noche.","¿Nil para ti? Voy por la tercera baza."],
+      yourKeep:["¿Te quedas ESA? Valiente.","Uy, le gustó esa.","Anotado. Se la quedó."],
+      yourPass:["¿Pasó! Interesante…","A la basura, pues. La carta ciega decide.","Valiente. O tonto. Ya veremos."],
+      yourBigBid:["¿Cantaste TAN alto? Vale, la mesa despertó.","Canto grande desde el otro lado. Anotado.","Alto. El lápiz lo escribió con tinta."],
+      nilMade:["Nil… cumplido. Mis respetos.","Cero y pico, y pagado. Bien. BIEN."],
+      nilBust:["¡TERCERA baza! ¡Nil ANULADO!","¡Anulado! El cuaderno lo vio todo."],
+      gg:["Buen juego. El cuaderno ha hablado."],
+      emoteClap:["Gracias, gracias. Juego aquí toda la semana.","*se inclina* Eres muy amable."],
+      emoteLaugh:["¡Ja! Al menos nos divertimos. Uno de los dos va ganando.","😄 Te la devuelvo."],
+      emoteThink:["¿Pensando? Puedo esperar. Conté la basura dos veces ya.","Tómate tu tiempo. Las cartas no se mueven. (Sí se mueven. En mi cabeza.)"],
+      matchPoint:["Punto de partido. El lápiz está sudando.","Una mano para todo…"],
+      trumpWin:["¡Con triunfo! Limpio.","Una pica de la nada — mía."],
+      bossLose:["Mi carta mayor… CON TRIUNFO. Qué grosero.","Un as, desperdiciado. El cuaderno también lo vio."],
+      bagsSelf:["Se me acumulan las bolsas… el banco muerde a las diez.","Cuidado, yo. Las bolsas cuestan dinero de verdad aquí."],
+      comeback:["¡Desde MUY atrás! Esta mesa acaba de voltearse.","Remontada completa. Qué giro."],
+      handStart:["Baraja fresca. Mismas reglas.","Mano nueva — ojo a la basura.","El reparto es donde se gana esto."],
+      draftDone:["Eso es una mano. Ahora a hablar de números.","Reparto terminado. Canta honesto… o no.","Veintiséis perdidas para siempre. Conté las buenas."],
+      setMe:["Anulado. YO. Escríbelo pequeño, por favor.","Vale. Esa mano nunca pasó. (Sí pasó. Está en el cuaderno.)"]
+    };
+    /* chatter pools in the CURRENT language — a friend's own lines first,
+       the shared table talk behind them. Falls back to English per category. */
+    function poolOf(cat, genCat){
+      const f = S.friend, g = genCat || cat;
+      const mine = (S.lang === "es" ? (f.linesEs || {})[cat] : f.lines[cat]) || f.lines[cat] || [];
+      const gen = (S.lang === "es" ? (GENERIC_ES[g] || GENERIC[g]) : GENERIC[g]) || [];
+      return mine.concat(gen);
+    }
+    function genPool(cat){ return (S.lang === "es" ? (GENERIC_ES[cat] || GENERIC[cat]) : GENERIC[cat]) || []; }
+    function greetOf(f){ return S.lang === "es" && f.greetEs ? f.greetEs : f.greet; }
+    const SHORT_ES = { teal:"Sereno", goggles:"Sin miedo", braids:"Implacable", phones:"Telépata",
+      purple:"Farolera", blond:"De hielo", curls:"Memoria", dreads:"Tiburón" };
     const PLACES = [
-      { id:"gameroom", name:"Game Room", sub:"warm lamp light" },
-      { id:"beach", name:"Beach Boardwalk", sub:"sunset over the water" },
-      { id:"porch", name:"Front Porch", sub:"dusk & fireflies" }
+      { id:"gameroom", name:"Game Room", sub:"warm lamp light", nameEs:"Sala de juegos", subEs:"luz cálida de lámpara" },
+      { id:"beach", name:"Beach Boardwalk", sub:"sunset over the water", nameEs:"Paseo de la playa", subEs:"atardecer sobre el agua" },
+      { id:"porch", name:"Front Porch", sub:"dusk & fireflies", nameEs:"Porche delantero", subEs:"anochecer y luciérnagas" }
     ];
     const GAMES = [
       { name:"Spades", on:true }, { name:"Tonk", on:false }, { name:"Gin Rummy", on:false },
@@ -796,7 +1099,11 @@
 
     /* ---------------- STATE ---------------- */
     const S = {
-      friend: FRIENDS[0], place: PLACES[0], target: 250,
+      friend: FRIENDS[0], place: PLACES[0], target: 500,
+      /* the match is ALWAYS to 500 now — Gary's ruling: "there's only one
+         option, you play up to 500." No selector, no saved preference. */
+      lang: (() => { try { return localStorage.getItem("husLang") === "es" ? "es" : "en"; } catch(e){ return "en"; } })(),
+      statusPair: null,          // last status as an [en, es] pair, so a mid-game language flip re-renders it
       phase: "intro",            // intro | draft | bid | play | handEnd | matchEnd
       deck: [], trashPassed: 0, trashDown: 0,
       hand: { you: [], ai: [] },
@@ -810,8 +1117,9 @@
     };
 
     /* ---------------- CARDS ---------------- */
-    const SUITS = [ {s:"♠", cls:"spade", name:"spades"}, {s:"♥", cls:"red", name:"hearts"},
-                    {s:"♦", cls:"red", name:"diamonds"}, {s:"♣", cls:"", name:"clubs"} ];
+    const SUITS = [ {s:"♠", cls:"spade", name:"spades", nameEs:"picas"}, {s:"♥", cls:"red", name:"hearts", nameEs:"corazones"},
+                    {s:"♦", cls:"red", name:"diamonds", nameEs:"diamantes"}, {s:"♣", cls:"", name:"clubs", nameEs:"tréboles"} ];
+    const suitName = c => S.lang === "es" ? SUITS[c.suit].nameEs : SUITS[c.suit].name;
     const RANK = {11:"J",12:"Q",13:"K",14:"A"};
     const rankStr = r => RANK[r] || String(r);
     const isSpade = c => c.suit === 0;
@@ -848,14 +1156,26 @@
       purple:"Bluffer", blond:"Ice-cold", curls:"Memory", dreads:"Shark" };
     /* eyelid geometry — % of the bust image, verified against the face sheet. Do not nudge. */
     const EYES = {
-      teal:    { L:[37.5,42.5], R:[62.5,42.5], W:14.5, skin:"#f2c49b" },
-      goggles: { L:[36.0,41.0], R:[60.5,41.5], W:14.0, skin:"#c98a5e" },
-      braids:  { L:[31.5,42.5], R:[55.5,41.5], W:13.5, skin:"#f6cfa9" },
-      phones:  { L:[29.5,41.5], R:[55.5,39.5], W:13.5, skin:"#8a5a34" },
-      purple:  { L:[33.0,41.0], R:[61.5,40.0], W:14.0, skin:"#eebd93" },
-      blond:   { L:[37.0,37.5], R:[63.0,39.0], W:13.5, skin:"#f4c795" },
-      curls:   { L:[34.5,41.5], R:[61.0,42.5], W:13.5, skin:"#a06838" },
-      dreads:  { L:[33.5,39.5], R:[60.0,37.5], W:13.5, skin:"#6f4526" }
+      teal:    { L:[43,42.5],   R:[67.5,43.3], W:16,   skin:"#f2c49b" },
+      goggles: { L:[40,39.1],   R:[62,39.6],   W:16,   skin:"#c98a5e" },
+      braids:  { L:[32.5,43],   R:[56,42],     W:13.5, skin:"#f6cfa9" },
+      phones:  { L:[34,42.5],   R:[57,37.8],   W:13.8, skin:"#8a5a34" },
+      purple:  { L:[43,39.4],   R:[62.5,38.2], W:16.5, skin:"#eebd93" },
+      blond:   { L:[44,36.5],   R:[68,38.5],   W:15,   skin:"#f4c795" },
+      curls:   { L:[40.6,42.8], R:[63.8,43.7], W:17.5, skin:"#a06838" },
+      dreads:  { L:[39,39.5],   R:[63,36.2],   W:15,   skin:"#6f4526" }
+    };
+    /* mouth centers + arc widths, measured off the same portraits — the
+       smile arc shows ONLY while the friend is pleased or celebrating */
+    const MOUTH = {
+      teal:    { C:[56,60],     W:21 },
+      goggles: { C:[51,56.3],   W:25 },
+      braids:  { C:[52,55],     W:22 },
+      phones:  { C:[49.5,55.5], W:21 },
+      purple:  { C:[54,57.5],   W:25 },
+      blond:   { C:[51,53.8],   W:25 },
+      curls:   { C:[48.5,58.5], W:23 },
+      dreads:  { C:[55,55],     W:24 }
     };
     const EXPR_CLASS = { thinking:"expr-thinking", pleased:"expr-pleased", worried:"expr-worried",
       celebrating:"expr-celebrating", beaten:"expr-beaten" };
@@ -885,13 +1205,24 @@
     }
     function layoutLids(){
       const e = EYES[S.friend.id]; if (!e) return;
+      /* a lid's height as a % of the (300×421) layer is its width-in-% ×
+         (300/421) × 0.78 — the old code used the raw 0.78 aspect of the
+         CARD, not the bust, and floated every lid ~1.7% too high */
       [["lidL", e.L], ["lidR", e.R]].forEach(([id, pos]) => {
         const lid = $(id); if (!lid) return;
         lid.style.width = e.W + "%";
         lid.style.left = (pos[0] - e.W / 2) + "%";
-        lid.style.top = (pos[1] - e.W * 0.78 / 2) + "%";
+        lid.style.top = (pos[1] - e.W * 0.556 / 2) + "%";
         lid.style.background = e.skin;
       });
+      /* the smile arc rides along: same layer, same % geometry, centered
+         on the measured mouth; hidden for any friend without an entry */
+      const m = MOUTH[S.friend.id], sm = $("smileSvg");
+      if (sm){
+        if (m){ sm.style.display = ""; sm.style.width = m.W + "%";
+          sm.style.left = m.C[0] + "%"; sm.style.top = m.C[1] + "%"; }
+        else sm.style.display = "none";
+      }
     }
     /* blink + idle-glance life loops */
     (function friendLife(){
@@ -1052,22 +1383,47 @@
       /* the NIL BUSTED sting — one big one-shot party blast: a confetti pop under
          a three-note party-horn chord that scoops up into tune. An effect, never music. */
       bust(){
+        /* THE PARTY LASTS THE FULL 2 SECONDS — layered one-shot cues
+           spread across the window, never one blip at t=0: the opening
+           pop + horn, a cheer arpeggio at ~0.45s, a second horn at
+           ~1.15s, and a late double-pop at ~1.5s. Each cue is logged to
+           window.__bustLog (offsets in seconds) so the timeline is
+           measurable, not vibes. */
+        if (window.__bustLog) window.__bustLog.length = 0;
+        const log = (label, at) => { if (window.__bustLog) window.__bustLog.push({ label, at }); };
         noiseBurst(.09, 900, .3, "lowpass");
         if (!S.sound) return; const ac = audio(); if (!ac) return;
         const t = ac.currentTime;
-        [392, 494, 587].forEach(f0 => {
-          const o = ac.createOscillator(); o.type = "sawtooth";
-          o.frequency.setValueAtTime(f0 * .8, t);
-          o.frequency.exponentialRampToValueAtTime(f0, t + .09);
-          const fl = ac.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = 2600;
+        const horn = (tt, peak) => {
+          [392, 494, 587].forEach(f0 => {
+            const o = ac.createOscillator(); o.type = "sawtooth";
+            o.frequency.setValueAtTime(f0 * .8, tt);
+            o.frequency.exponentialRampToValueAtTime(f0, tt + .09);
+            const fl = ac.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = 2600;
+            const g = ac.createGain();
+            g.gain.setValueAtTime(0, tt);
+            g.gain.linearRampToValueAtTime(peak, tt + .05);
+            g.gain.setValueAtTime(peak, tt + .34);
+            g.gain.exponentialRampToValueAtTime(.001, tt + .55);
+            o.connect(fl); fl.connect(g); g.connect(ac.destination);
+            o.start(tt); o.stop(tt + .57);
+          });
+        };
+        horn(t, .15); log("pop+horn", 0);
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          const tt = t + .45 + i * .07;
+          const o = ac.createOscillator(); o.type = "triangle"; o.frequency.value = f;
           const g = ac.createGain();
-          g.gain.setValueAtTime(0, t);
-          g.gain.linearRampToValueAtTime(.15, t + .05);
-          g.gain.setValueAtTime(.15, t + .42);
-          g.gain.exponentialRampToValueAtTime(.001, t + .68);
-          o.connect(fl); fl.connect(g); g.connect(ac.destination);
-          o.start(t); o.stop(t + .7);
+          g.gain.setValueAtTime(0, tt);
+          g.gain.linearRampToValueAtTime(.12, tt + .03);
+          g.gain.exponentialRampToValueAtTime(.001, tt + .3);
+          o.connect(g); g.connect(ac.destination);
+          o.start(tt); o.stop(tt + .32);
         });
+        log("cheer", .45);
+        horn(t + 1.15, .13); log("horn2", 1.15);
+        setTimeout(() => { noiseBurst(.08, 1100, .26, "lowpass"); setTimeout(() => noiseBurst(.07, 900, .2, "lowpass"), 130); }, 1500);
+        log("pop2", 1.5);
       }
     };
     /* CARD & DECK SOUNDS ONLY (Gary's rule) — short, dry clicks and flips.
@@ -1076,7 +1432,7 @@
     function setSound(on){
       S.sound = on;
       $("soundBtn").textContent = on ? "🔊" : "🔇";
-      $("soundBtn2").textContent = on ? "🔊 SOUND ON" : "🔇 SOUND OFF";
+      $("soundBtn2").textContent = on ? ui("soundOn") : ui("soundOff");
     }
 
     /* ---------------- SPEECH / STATUS ---------------- */
@@ -1085,16 +1441,87 @@
       const b = $("bubble"); b.textContent = text; b.classList.add("show");
       clearTimeout(bubbleTimer);
       bubbleTimer = setTimeout(() => b.classList.remove("show"), ms || 2600);
+      if (!chatSayMute) chatPost("her", text); // everything she says at the table also lands in the chat thread
     }
-    function status(t){ $("statusText").textContent = t; }
+    function status(t){
+      if (Array.isArray(t)){ S.statusPair = t; t = t[S.lang === "es" ? 1 : 0]; }
+      $("statusText").textContent = t;
+    }
+    /* a delayed, polite remark — lands only if the bubble is free by then,
+       so a reaction never talks over the moment that caused it */
+    function friendRemark(pool, prob, delay){
+      if (!pool || !pool.length || Math.random() >= (prob == null ? .5 : prob)) return;
+      const g = GEN;
+      setTimeout(() => { if (g === GEN && !$("bubble").classList.contains("show")) say(pick(pool), 2200); }, delay || 800);
+    }
+
+    /* ---------------- LANGUAGE (EN | ES) ----------------
+       ONE persisted setting (localStorage "husLang") drives BOTH toggles —
+       the intro's segmented EN | ES and the in-game corner button — and a
+       flip re-renders the whole table live, mid-hand if that's when it
+       happens: static labels, badges, notebook, tally, action buttons,
+       the current status line (kept as an [en, es] pair), and every
+       friend bubble from that moment on (the pools are per-language). */
+    const P = (en, es) => [en, es];
+    const tx = (en, es) => S.lang === "es" ? es : en;
+    const UI = {
+      tagline:  P("One friend, one deck, your house rules.", "Un amigo, una baraja, tus reglas de la casa."),
+      plFriend: P("WHO'S ACROSS THE TABLE?", "¿QUIÉN ESTÁ AL OTRO LADO?"),
+      plPlace:  P("WHERE ARE YOU PLAYING?", "¿DÓNDE JUEGAS?"),
+      start:    P("TAKE YOUR SEAT ♠", "TOMA TU ASIENTO ♠"),
+      qr:       P("▦ QR", "▦ QR"),
+      controls: P("🎛 CONTROLS", "🎛 CONTROLES"),
+      how:      P("? HOW TO PLAY", "? CÓMO JUGAR"),
+      hand:     P("YOUR HAND", "TU MANO"),
+      tricks:   P("TRICKS", "BAZAS"),
+      bags:     P("BAGS", "BOLSAS"),
+      busted:   P("NIL BUSTED THIS HAND!!!", "¡¡¡NIL ANULADO ESTA MANO!!!"),
+      bang:     P("NIL BUSTED!!!!", "¡¡¡NIL ANULADO!!!!"),
+      introStatus: P("Pick your friend, pick your place — then take a seat.", "Elige a tu amigo, elige tu lugar — y toma asiento."),
+      soundOn:  P("🔊 SOUND ON", "🔊 SONIDO SÍ"),
+      soundOff: P("🔇 SOUND OFF", "🔇 SONIDO NO")
+    };
+    const ui = k => UI[k][S.lang === "es" ? 1 : 0];
+    function applyLang(){
+      document.documentElement.lang = S.lang;
+      $("tagline").textContent = ui("tagline");
+      $("plFriend").textContent = ui("plFriend");
+      $("plPlace").textContent = ui("plPlace");
+      $("startBtn").textContent = ui("start");
+      $("qrBtn").textContent = ui("qr");
+      $("controlsBtn").textContent = ui("controls");
+      $("howBtn2").textContent = ui("how");
+      $("handLabel").textContent = ui("hand");
+      $("labTricksAi").textContent = ui("tricks"); $("labTricksYou").textContent = ui("tricks");
+      $("labBagsAi").textContent = ui("bags"); $("labBagsYou").textContent = ui("bags");
+      $("bbBustedAi").textContent = ui("busted"); $("bbBustedYou").textContent = ui("busted");
+      $("nbBang").textContent = ui("bang");
+      $("qrH").textContent = tx("Take this table anywhere", "Llévate esta mesa a donde sea");
+      $("qrClose").textContent = tx("DONE", "LISTO");
+      $("langBtn").textContent = S.lang === "es" ? "EN" : "ES";
+      setSound(S.sound);
+      buildIntro();
+      renderTally(); renderBidBadges(); renderNotebook();
+      if (S._acts && S.phase !== "intro") setActions(S._acts);       // live buttons re-deal in the new language
+      if (S._bidQ){ const q = document.querySelector(".bidQ"); if (q) q.textContent = S._bidQ[S.lang === "es" ? 1 : 0]; }
+      if (S.stagePair) stageLabel(S.stagePair);
+      if (S.phase === "intro") status(UI.introStatus);
+      else if (S.statusPair) status(S.statusPair);
+    }
+    function setLang(l){
+      if (S.lang === l) return;
+      S.lang = l;
+      try { localStorage.setItem("husLang", l); } catch(e){}
+      applyLang();
+    }
     function renderTally(){
       const t = $("tally");
       if (S.phase === "play" || S.phase === "bid"){
-        t.innerHTML = `Tricks — You ${S.tricksWon.you} · ${S.friend.name} ${S.tricksWon.ai}` +
-          (S.bids.you !== null ? `<br><span class="dim">Bid: You ${bidLabel(S.bids.you)} · ${S.friend.name} ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "…"}</span>` : "") +
-          `<br><span class="dim">${S.spadesBroken ? "♠ broken" : "♠ not broken"}</span>`;
+        t.innerHTML = `${tx("Tricks", "Bazas")} — ${tx("You", "Tú")} ${S.tricksWon.you} · ${S.friend.name} ${S.tricksWon.ai}` +
+          (S.bids.you !== null ? `<br><span class="dim">${tx("Bid", "Canto")}: ${tx("You", "Tú")} ${bidLabel(S.bids.you)} · ${S.friend.name} ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "…"}</span>` : "") +
+          `<br><span class="dim">${S.spadesBroken ? tx("♠ broken", "♠ rotas") : tx("♠ not broken", "♠ sin romper")}</span>`;
       } else if (S.phase === "draft"){
-        t.innerHTML = `Draft — You ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">trash ${S.trashPassed + S.trashDown}</span>`;
+        t.innerHTML = `${tx("Draft", "Reparto")} — ${tx("You", "Tú")} ${S.hand.you.length}/13 · ${S.friend.name} ${S.hand.ai.length}/13<br><span class="dim">${tx("trash", "basura")} ${S.trashPassed + S.trashDown}</span>`;
       } else t.textContent = "";
       renderBidBadges();
     }
@@ -1146,12 +1573,12 @@
         b.classList.toggle("drafting", drafting);
         if (drafting){
           const pk = $(pickedEl);
-          pk.textContent = `PICKED ${S.hand[who].length}/13`;
+          pk.textContent = `${tx("PICKED", "ELEGIDAS")} ${S.hand[who].length}/13`;
           pk.classList.toggle("on", turn === who);
           pk.classList.toggle("off", turn !== who);
           const st = $(stateEl);
           const mine = turn === who;
-          st.textContent = mine ? (who === "ai" ? "CHOOSING…" : "YOUR TURN") : "";
+          st.textContent = mine ? (who === "ai" ? tx("CHOOSING…", "ELIGIENDO…") : tx("YOUR TURN", "TU TURNO")) : "";
           st.classList.toggle("show", mine);
         }
       };
@@ -1217,7 +1644,7 @@
         el.style.transform = `rotate(${(i - (showN - 1) / 2) * 13}deg)`;
         fan.appendChild(el);
       }
-      $("trashCount").textContent = "trash " + total;
+      $("trashCount").textContent = tx("trash ", "basura ") + total;
     }
     function showStage(on){
       $("stageArea").classList.toggle("hidden", !on);
@@ -1225,7 +1652,8 @@
     }
     function stageLabel(t){
       const l = $("stageLabel");
-      if (!t){ l.classList.add("hidden"); return; }
+      if (!t){ S.stagePair = null; l.classList.add("hidden"); return; }
+      if (Array.isArray(t)){ S.stagePair = t; t = t[S.lang === "es" ? 1 : 0]; }
       l.textContent = t; l.classList.remove("hidden");
     }
     function flyCard(fromEl, toEl, faceCard, done){
@@ -1251,6 +1679,7 @@
     let GEN = 0;
     async function startMatch(){
       GEN++;
+      clearSave(); // a fresh match leaves nothing to resume
       S.score = { you: 0, ai: 0 }; S.bags = { you: 0, ai: 0 }; S.history = []; S.handNo = 0;
       S.starter = Math.random() < .5 ? "you" : "ai";
       renderNotebook();
@@ -1273,8 +1702,9 @@
       S.phase = "draft"; S.draftTurn = S.starter;
       showStage(true); renderStage(); renderHand(); renderFriendFan(); renderTally();
       $("flipCard").innerHTML = "";
-      status(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You draft first this hand." : S.friend.name + " drafts first this hand."}`);
-      say(S.handNo === 1 ? S.friend.greet : pick(["Fresh deck. Same rules.","New hand — watch the trash.","The draft is where this is won."]), 3000);
+      status(P(`Hand ${S.handNo} — the draft. ${S.starter === "you" ? "You draft first this hand." : S.friend.name + " drafts first this hand."}`,
+               `Mano ${S.handNo} — el reparto. ${S.starter === "you" ? "Tú eliges primero esta mano." : S.friend.name + " elige primero esta mano."}`));
+      say(S.handNo === 1 ? greetOf(S.friend) : pick(genPool("handStart")), 3000);
       setExpr("idle");
       const g = GEN;
       await wait(1500); // the "who drafts first" line gets its beat before the first peek
@@ -1297,19 +1727,21 @@
         const el = makeCardEl(draftCard, "flipIn"); el.style.setProperty("--cw", "92px");
         flip.appendChild(el);
         renderStage();
-        stageLabel("Your peek — only you see it. Take it or trash it?");
-        status(`You peeked at the ${cardName(draftCard)} — only you saw it. Keep it, or trash it and take the next card blind?`);
+        stageLabel(P("Your peek — only you see it. Take it or trash it?", "Tu mirada — solo tú la ves. ¿Te la quedas o a la basura?"));
+        status(P(`You peeked at the ${cardName(draftCard)} — only you saw it. Keep it, or trash it and take the next card blind?`,
+                 `Miraste el ${cardName(draftCard)} — solo tú lo viste. ¿Te lo quedas, o a la basura y tomas la siguiente a ciegas?`));
         setActions([
-          { label: "KEEP ✓", cls: "primary", fn: () => draftDecide(true) },
-          { label: "PASS ✕", cls: "pass", fn: () => draftDecide(false) }
+          { label: P("KEEP ✓", "ME LA QUEDO ✓"), cls: "primary", fn: () => draftDecide(true) },
+          { label: P("PASS ✕", "PASO ✕"), cls: "pass", fn: () => draftDecide(false) }
         ]);
         setExpr("playing");
       } else {
         const el = makeBackEl("flipIn"); el.style.setProperty("--cw", "92px");
         flip.appendChild(el);
         renderStage();
-        stageLabel(`${S.friend.name} is peeking…`);
-        status(`${S.friend.name} is peeking at the top card — private. You don't get to see it.`);
+        stageLabel(P(`${S.friend.name} is peeking…`, `${S.friend.name} está mirando…`));
+        status(P(`${S.friend.name} is peeking at the top card — private. You don't get to see it.`,
+                 `${S.friend.name} está mirando la carta de arriba — privada. Tú no la ves.`));
         setActions([]);
         setExpr("thinking");
         const g = GEN;
@@ -1334,13 +1766,16 @@
           const fb = card;
           setTimeout(() => { if (S.freshCard === fb && g === GEN){ S.freshCard = null; renderHand(); } }, 1000);
         }
-        if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftKeep));
+        if (turn === "ai" && Math.random() < .3) say(pick(poolOf("keep", "draftKeep")));
         const blind = S.deck.pop();
         S.trashDown++;
         sfx.trash();
         flyCard($("deckStack"), $("trashFan"), null, null);
-        if (turn === "you") status(`Kept the ${cardName(card)}. The next card goes to the trash, unseen.`);
-        else status(`${S.friend.name} kept it. The next card goes to the trash, unseen by anyone.`);
+        if (turn === "you"){ status(P(`Kept the ${cardName(card)}. The next card goes to the trash, unseen.`,
+                 `Te quedaste el ${cardName(card)}. La siguiente va a la basura, sin mirar.`));
+          friendRemark(genPool("yourKeep"), .3, 1100); }
+        else status(P(`${S.friend.name} kept it. The next card goes to the trash, unseen by anyone.`,
+                 `${S.friend.name} se la quedó. La siguiente va a la basura, sin que nadie la vea.`));
       } else {
         /* PASS — the locked house rule, for you AND the AI alike: the flipped
            card A drops to the trash FACE-DOWN, and the very next card in the
@@ -1349,7 +1784,7 @@
            the exact B object off the deck is the card the hand gains. */
         S.trashPassed++;
         sfx.trash();
-        if (turn === "ai" && Math.random() < .3) say(pick(GENERIC.draftPass));
+        if (turn === "ai" && Math.random() < .3) say(pick(poolOf("pass", "draftPass")));
         const blindNext = S.deck.pop();
         S.hand[turn].push(blindNext); sortHand(S.hand[turn]);
         flyCard($("flipCard"), $("trashFan"), null, null); // only A travels — face-down to the trash
@@ -1361,9 +1796,12 @@
           S.freshCard = blindNext;
           const fb = blindNext;
           setTimeout(() => { if (S.freshCard === fb && g === GEN){ S.freshCard = null; renderHand(); } }, 1000);
-          status(`Trashed the ${cardName(card)} — and the next card is yours, like it or not. It's the ${cardName(blindNext)} — lit up in your hand.`);
+          status(P(`Trashed the ${cardName(card)} — and the next card is yours, like it or not. It's the ${cardName(blindNext)} — lit up in your hand.`,
+                 `A la basura el ${cardName(card)} — y la siguiente es tuya, te guste o no. Es el ${cardName(blindNext)} — iluminada en tu mano.`));
+          friendRemark(genPool("yourPass"), .3, 1100);
         }
-        else status(`${S.friend.name} passed — the peeked card went to the trash unseen, and the next card is theirs, blind.`);
+        else status(P(`${S.friend.name} passed — the peeked card went to the trash unseen, and the next card is theirs, blind.`,
+                 `${S.friend.name} pasó — la carta mirada fue a la basura sin verse, y la siguiente es suya, a ciegas.`));
       }
       if (turn === "you") renderHand(); else renderFriendFan();
       renderStage(); renderTally();
@@ -1404,8 +1842,9 @@
       showStage(false); stageLabel("");
       sortHand(S.hand.you); sortHand(S.hand.ai);
       renderHand(); renderFriendFan();
-      status(`Draft done — 26 cards kept, 26 in the trash. Time to bid.`);
-      say(pick(["That's a hand. Now we talk numbers.","Draft's done. Bid honest… or don't.","Twenty-six gone forever. I counted the good ones."]), 2600);
+      status(P(`Draft done — 26 cards kept, 26 in the trash. Time to bid.`,
+               `Reparto terminado — 26 cartas guardadas, 26 en la basura. A cantar.`));
+      say(pick(genPool("draftDone")), 2600);
       startBidding();
     }
 
@@ -1549,19 +1988,20 @@
         const g = GEN;
         setTimeout(() => {
           if (g !== GEN || S.phase !== "bid") return;
-          say(S.bids.ai === 0 ? "I'm going NIL. Laugh it up." : S.bids.ai >= 8 ? pick(GENERIC.bidHigh) : S.bids.ai <= 4 ? pick(GENERIC.bidLow) : `I'll take ${S.bids.ai}.`, 2600);
+          say(S.bids.ai === 0 ? tx("I'm going NIL. Laugh it up.", "Voy a NIL. Ríanse.") : S.bids.ai >= 7 ? pick(poolOf("bigBid", "bidHigh")) : S.bids.ai <= 4 ? pick(genPool("bidLow")) : tx(`I'll take ${S.bids.ai}.`, `Me quedo con ${S.bids.ai}.`), 2600);
           setExpr(S.bids.ai === 0 ? "thinking" : "pleased");
           promptYourBid();
         }, 1100);
       } else {
-        say("You bid first. Remember — lowest you can go is Board.", 2600);
+        say(tx("You bid first. Remember — lowest you can go is Board.", "Tú cantas primero. Recuerda: lo mínimo es el Mínimo, 4."), 2600);
         promptYourBid();
       }
     }
     function promptYourBid(){
-      status(`${S.friend.name} bid ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "—"}. Your bid?`);
+      status(P(`${S.friend.name} bid ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "—"}. Your bid?`,
+               `${S.friend.name} cantó ${S.bids.ai !== null ? bidLabel(S.bids.ai) : "—"}. ¿Tu canto?`));
       const acts = [{ label: "NIL", cls: "nil", fn: () => askBidConfirm(0) },
-                    { label: "BOARD · 4", cls: "board", fn: () => askBidConfirm(4) }];
+                    { label: P("BOARD · 4", "MÍNIMO · 4"), cls: "board", fn: () => askBidConfirm(4) }];
       for (let b = 5; b <= 13; b++) acts.push({ label: String(b), cls: "bid", fn: () => askBidConfirm(b) });
       setActions(acts);
       renderTally();
@@ -1570,43 +2010,513 @@
        shows the pick big and asks; only CONFIRM records it (write-once,
        through yourBid as always). BACK returns to the pad, nothing written. */
     function askBidConfirm(b){
-      status(`You tapped ${b === 0 ? "NIL" : "bid " + b} — nothing is locked in yet. Confirm it, or go back and change it.`);
+      status(P(`You tapped ${b === 0 ? "NIL" : "bid " + b} — nothing is locked in yet. Confirm it, or go back and change it.`,
+               `Tocaste ${b === 0 ? "NIL" : "canto " + b} — todavía no está fijo. Confírmalo, o vuelve y cámbialo.`));
       setActions([
-        { label: "CONFIRM ✓", cls: "primary", fn: () => yourBid(b) },
-        { label: "↩ BACK / CHANGE", cls: "pass", fn: () => promptYourBid() }
+        { label: P("CONFIRM ✓", "CONFIRMAR ✓"), cls: "primary", fn: () => yourBid(b) },
+        { label: P("↩ BACK / CHANGE", "↩ VOLVER / CAMBIAR"), cls: "pass", fn: () => promptYourBid() }
       ]);
       const q = document.createElement("div");
       q.className = "bidQ";
-      q.textContent = `BID ${b === 0 ? "NIL" : b} — ARE YOU SURE????`;
+      S._bidQ = P(`BID ${b === 0 ? "NIL" : b} — ARE YOU SURE????`, `CANTO ${b === 0 ? "NIL" : b} — ¿¿¿¿SEGURO????`);
+      q.textContent = S._bidQ[S.lang === "es" ? 1 : 0];
       $("actions").classList.add("confirming");
       $("actions").prepend(q);
       renderTally();
     }
     function yourBid(b){
-      recordBid("you", b);
-      if (recordBid("ai", aiChooseBid())){
-        say(S.bids.ai === 0 ? "Me? NIL. Zero tricks, watch me dance." : `${S.friend.name === "Blond" ? "…" : ""}I bid ${bidLabel(S.bids.ai)}.`, 2400);
+      /* P0 (Oct 24): Gary's live match froze at this exact step — CONFIRM
+         taps stopped advancing the hand and only a refresh (match lost)
+         recovered. The hunt exonerated the bid math completely (the whole
+         eval stack ran 200k random deals with zero throws, and real-mouse
+         probes confirmed cleanly at three desktop sizes, both bid orders,
+         double-Nil included) — the tap simply never landed in his session.
+         What the game owns is the TRAP: this handler was a single point of
+         failure with no way back. So it can never strand a player again:
+         any failure is logged loudly with the full state, and if the hand
+         is still in the bid phase the pad re-opens for another try. */
+      try {
+        recordBid("you", b);
+        if (recordBid("ai", aiChooseBid())){
+          say(S.bids.ai === 0 ? tx("Me? NIL. Zero tricks, watch me dance.", "¿Yo? NIL. Cero bazas, mírame bailar.") : `${S.friend.name === "Blond" ? "…" : ""}${tx("I bid ", "Canto ")}${bidLabel(S.bids.ai)}.`, 2400);
+        }
+        setActions([]);
+        status(P(`Bids are in — You: ${bidLabel(b)} · ${S.friend.name}: ${bidLabel(S.bids.ai)}. Play!`,
+                 `Cantos listos — Tú: ${bidLabel(b)} · ${S.friend.name}: ${bidLabel(S.bids.ai)}. ¡A jugar!`));
+        /* the scorekeeper writes both bids on this hand's notebook line — before a card is played */
+        $("pencil").classList.add("writing");
+        renderNotebook(true);
+        setTimeout(() => $("pencil").classList.remove("writing"), 900);
+        if (b === 0) say(pick(genPool("yourNil")), 3000);
+        else if (b >= 8){ const g2 = GEN; setTimeout(() => { if (g2 === GEN && S.phase === "play") say(pick(genPool("yourBigBid")), 2400); }, 2650); }
+        S.leader = S.starter; // the non-dealer leads trick 1
+        beginPlay();
+        saveMatch(S.handNo, S.starter); // auto-save at bidding — a resume restarts THIS hand with a fresh draft
+      } catch (err) {
+        console.error("[spades] yourBid failed — reopening the bid step instead of stranding the hand.", err,
+          { bid: b, bids: { ...S.bids }, phase: S.phase, handNo: S.handNo, starter: S.starter });
+        if (S.phase === "bid"){
+          status(P("Something hiccuped — that bid didn't lock in. The pad is back, try again.",
+                   "Algo falló — ese canto no quedó fijo. El panel volvió, inténtalo otra vez."));
+          promptYourBid();
+        }
       }
-      setActions([]);
-      status(`Bids are in — You: ${bidLabel(b)} · ${S.friend.name}: ${bidLabel(S.bids.ai)}. Play!`);
-      /* the scorekeeper writes both bids on this hand's notebook line — before a card is played */
-      $("pencil").classList.add("writing");
-      renderNotebook(true);
-      setTimeout(() => $("pencil").classList.remove("writing"), 900);
-      if (b === 0) say(pick(GENERIC.yourNil), 3000);
-      S.leader = S.starter; // the non-dealer leads trick 1
-      beginPlay();
     }
     function setActions(list){
+      S._acts = list;
       const bar = $("actions"); bar.innerHTML = ""; bar.classList.remove("confirming");
       list.forEach(a => {
         const btn = document.createElement("button");
-        btn.textContent = a.label;
+        btn.textContent = Array.isArray(a.label) ? a.label[S.lang === "es" ? 1 : 0] : a.label;
         btn.className = a.cls === "bid" || a.cls === "nil" || a.cls === "board" ? "bidbtn " + a.cls.replace("bid","") : "btn " + (a.cls || "");
         btn.addEventListener("click", a.fn);
         bar.appendChild(btn);
       });
     }
+
+
+    /* ================= TABLE CHAT (Gary, Oct 24) =================
+       A WhatsApp-style chat with the friend across the table. Everything
+       she says at the table (through say()) also lands in the thread;
+       Gary can type anything and she answers IN CHARACTER, in the
+       language HE wrote in (the EN/ES toggle is only the tie-breaker).
+       The panel never pauses the game. */
+    let CHAT_LOG = [];        // [{who:'her'|'you', text}] — this match only
+    let chatUnread = 0;
+    let chatOpen = false;
+    let chatLastReply = "";
+    let chatSayMute = false;  // true while a chat reply is being spoken at the table (avoid double-posting it)
+
+    const CHAT_GENERIC = {
+      greet:{en:["Hey! Cards down, conversation up.","Hello hello. Talk to me."],es:["¡Hola! Cartas abajo, conversación arriba.","Hola hola. Cuéntame."]},
+      luck:{en:["Luck? I prefer 'dramatic timing.'","The deck loves who it loves."],es:["¿Suerte? Prefiero 'momento dramático'.","La baraja ama a quien ama."]},
+      gotyou:{en:["Okay, that one stung a little.","Yours. Enjoy it while it lasts."],es:["Vale, esa dolió un poquito.","Tuya. Disfrútala mientras dure."]},
+      nil:{en:["Nil talk. Bold table tonight.","Zero is the loudest bid there is."],es:["Tema nil. Mesa valiente hoy.","El cero es el canto más ruidoso."]},
+      bid:{en:["Bids are promises with numbers on them.","Every bid tells a story."],es:["Los cantos son promesas con números.","Cada canto cuenta una historia."]},
+      cards:{en:["The cards are listening too, you know.","Fifty-two little opinions in this deck."],es:["Las cartas también escuchan, ¿sabes?","Cincuenta y dos opinioncitas en esta baraja."]},
+      score:{en:["The notebook keeps the truth. I just live it.","Scores are weather. Play is climate."],es:["La libreta guarda la verdad. Yo solo la vivo.","El marcador es el clima de hoy. El juego es el clima de siempre."]},
+      sorry:{en:["Forgiven. The felt forgets fast.","No harm done. Deal the drama."],es:["Perdonado. El tapete olvida rápido.","Sin daño. Reparte el drama."]},
+      thanks:{en:["Anytime. That's what across-the-table is for.","You're welcome. Tip your dealer. (Me.)"],es:["Cuando quieras. Para eso está el otro lado de la mesa.","De nada. Propina al repartidor. (Yo.)"]},
+      rematch:{en:["A rematch is just friendship with stakes.","Again? The deck's already shuffling."],es:["Una revancha es amistad con apuestas.","¿Otra? La baraja ya está mezclando."]},
+      joke:{en:["I laugh, therefore I bluff.","Comedy night is Tuesdays. Tonight is cards."],es:["Río, luego faroleo.","La noche de comedia es los martes. Hoy son cartas."]},
+      bye:{en:["Leaving? The table will keep your seat warm.","Go on, then. The deck believes in you."],es:["¿Te vas? La mesa te guarda el asiento caliente.","Anda, pues. La baraja cree en ti."]},
+      fallback:{en:["Tell me more. I'm all ears and cards.","Heard. The felt agrees, probably.","Interesting. Say it with cards next time."],es:["Cuéntame más. Soy oídos y cartas.","Oído. El tapete está de acuerdo, creo.","Interesante. La próxima, dilo con cartas."]}
+    };
+
+    /* her chat voice, per friend — a blind read should name the friend */
+    const CHAT_VOICE = {
+      teal:{
+        greet:{en:["Evening. The math says hello too.","Dry cards, warm welcome. Hi."],es:["Buenas. Las cuentas también saludan.","Hola. Tranquilo y firme, como siempre."]},
+        luck:{en:["Luck is just variance with good PR.","Noted. The averages remember everything."],es:["La suerte es varianza con buena prensa.","Anotado. Los promedios lo recuerdan todo."]},
+        gotyou:{en:["One data point. Don't frame it.","Fair. The spreadsheet expected a dip."],es:["Un dato suelto. No lo enmarques.","Justo. La hoja ya esperaba una baja."]},
+        nil:{en:["Zero is a clean number. I respect it.","Nil is arithmetic with courage."],es:["El cero es un número limpio. Lo respeto.","Nil es aritmética con valentía."]},
+        bid:{en:["I bid what the cards cost, not what I wish.","Every bid is a budget."],es:["Canto lo que cuestan las cartas, no lo que deseo.","Cada canto es un presupuesto."]},
+        cards:{en:["I count outs, not hopes.","The deck has 52 facts. I listen."],es:["Cuento salidas, no esperanzas.","La baraja tiene 52 hechos. Yo escucho."]},
+        score:{en:["The score is a summary, not a story.","Totals don't panic. Neither do I."],es:["El marcador es un resumen, no una historia.","Los totales no entran en pánico. Yo tampoco."]},
+        sorry:{en:["Apology accepted. It changes nothing, pleasantly.","Kind of you. Logged."],es:["Disculpa aceptada. No cambia nada, agradablemente.","Amable. Queda anotado."]},
+        thanks:{en:["You're welcome. Steady wins.","Anytime. That's the whole secret."],es:["De nada. La constancia gana.","Cuando quieras. Ese es todo el secreto."]},
+        rematch:{en:["Same time. The numbers will be fresh.","A rematch is just more data. Yes."],es:["A la misma hora. Los números vendrán frescos.","Una revancha es más datos. Sí."]},
+        joke:{en:["My jokes are like my bids: understated.","I smiled once in 2019. It was counted."],es:["Mis chistes son como mis cantos: sobrios.","Sonreí una vez en 2019. Quedó contado."]},
+        fallback:{en:["Mm. Continue.","Filed under: interesting."],es:["Mm. Sigue.","Archivado en: interesante."]}
+      },
+      goggles:{
+        greet:{en:["HI!! BUCKLE UP, THIS TABLE FLIES!","YOU CAME BACK! BEST DAY EVER!"],es:["¡¡HOLA!! ¡ABRÓCHATE, ESTA MESA VUELA!","¡VOLVISTE! ¡EL MEJOR DÍA!"]},
+        luck:{en:["LUCK?! THAT WAS AERODYNAMICS, BABY!","MY LUCK HAS A TURBO, SORRY NOT SORRY!"],es:["¿¡SUERTE?! ¡ESO FUE AERODINÁMICA!","¡MI SUERTE TIENE TURBO, PERDÓN!"]},
+        gotyou:{en:["OKAY THAT ONE HAD WIND SHEAR! REMATCH OF THAT TRICK!","YOU GOT ME?? IMPOSSIBLE! ...POSSIBLE! WOW!"],es:["¡ESA TUVO VIENTO CRUZADO! ¡REVANCHA DE ESA BAZA!","¿ME GANASTE? ¡IMPOSIBLE! ...¡POSIBLE! ¡GUAU!"]},
+        nil:{en:["NIL AT FULL THROTTLE! ZERO IS A SPEED TOO!","GOING NIL! WATCH ME DODGE EVERYTHING!"],es:["¡NIL A TODA VELOCIDAD! ¡EL CERO TAMBIÉN ES VELOCIDAD!","¡VOY NIL! ¡MIRA CÓMO ESQUIVO TODO!"]},
+        bid:{en:["I BID BIG BECAUSE SMALL IS SLOW!","MY BID? MAXIMUM SEND!"],es:["¡CANTO GRANDE PORQUE LO CHICO ES LENTO!","¿MI CANTO? ¡ENVÍO MÁXIMO!"]},
+        cards:{en:["THESE CARDS? ROCKET FUEL!","I DON'T READ CARDS, I LAUNCH THEM!"],es:["¿ESTAS CARTAS? ¡COMBUSTIBLE DE COHETE!","¡YO NO LEO CARTAS, LAS LANZO!"]},
+        score:{en:["SCOREBOARD GOES BRRR! I LOVE IT HERE!","WINNING, LOSING — I'M AT FULL SEND EITHER WAY!"],es:["¡EL MARCADOR HACE BRRR! ¡ME ENCANTA ESTO!","GANANDO O PERDIENDO: ¡VOY A FONDO IGUAL!"]},
+        sorry:{en:["SORRY?? NO TIME! NEXT TRICK, LET'S GO!","APOLOGY ACCEPTED AT MACH SPEED!"],es:["¿PERDÓN? ¡SIN TIEMPO! ¡SIGUIENTE BAZA, VAMOS!","¡DISCULPA ACEPTADA A VELOCIDAD MACH!"]},
+        thanks:{en:["THANK YOU THANK YOU! YOU'RE CLEARED FOR TAKEOFF!","ANYTIME! HIGH FIVE AT 30,000 FEET!"],es:["¡GRACIAS GRACIAS! ¡TIENES LUZ VERDE PARA DESPEGAR!","¡CUANDO QUIERAS! ¡CHOCA ESOS CINCO A 30.000 PIES!"]},
+        rematch:{en:["REMATCH?! I ALREADY LAPPED YOU IN MY HEAD! YES!","AGAIN AGAIN AGAIN! WOO!"],es:["¿REVANCHA? ¡YA TE DOBLÉ EN MI MENTE! ¡SÍ!","¡OTRA OTRA OTRA! ¡WOO!"]},
+        joke:{en:["MY JOKE? I'M THE JOKE AND THE PUNCHLINE! HA!","WHY DID THE PILOT BRING A LADDER? TO GO HIGHER! ME!"],es:["¿MI CHISTE? ¡YO SOY EL CHISTE Y EL REMATE! ¡JA!","¿POR QUÉ EL PILOTO LLEVÓ UNA ESCALERA? ¡PARA LLEGAR MÁS ALTO! ¡YO!"]},
+        fallback:{en:["COPY THAT! NO IDEA, BUT COPY THAT!","LOUD AND CLEAR! ...WHAT? NEVER MIND, LET'S FLY!"],es:["¡RECIBIDO! ¡NI IDEA, PERO RECIBIDO!","¡FUERTE Y CLARO! ...¿QUÉ? ¡IGUAL, A VOLAR!"]}
+      },
+      braids:{
+        greet:{en:["Hi hi! I saved you the good seat. ♡","Aren't you sweet to come lose nicely?"],es:["¡Hola hola! Te guardé el buen asiento. ♡","Qué dulce venir a perder con elegancia."]},
+        luck:{en:["Luck? Sweetie, that was braiding — strand by strand. ♡","Call it luck if it helps you sleep."],es:["¿Suerte? Cariño, eso fue trenzar, hebra por hebra. ♡","Llámala suerte si eso te deja dormir."]},
+        gotyou:{en:["Ooh. Did I do that? ♡ ...Yes. Yes I did.","Enjoy it, honey. It's a limited edition."],es:["Uy. ¿Eso lo hice yo? ♡ ...Sí. Sí lo hice.","Disfrútala, cariño. Es edición limitada."]},
+        nil:{en:["Nil is just a puzzle in a pretty box. Watch me solve it. ♡","Zero tricks, zero fuss, all grace."],es:["Nil es un rompecabezas en caja bonita. Mira cómo lo resuelvo. ♡","Cero bazas, cero drama, pura gracia."]},
+        bid:{en:["I bid sweet and play sour. Balance. ♡","My bid comes with a smile and a warning."],es:["Canto dulce y juego agrio. Equilibrio. ♡","Mi canto trae sonrisa y advertencia."]},
+        cards:{en:["These cards? Braided tight, darling.","I arrange cards like hair: no strays."],es:["¿Estas cartas? Bien trenzadas, querido.","Ordeno las cartas como el pelo: sin cabos sueltos."]},
+        score:{en:["The score looks lovely on me, doesn't it? ♡","Winning suits me. So does this braid."],es:["El marcador me queda lindo, ¿verdad? ♡","Ganar me sienta bien. Y esta trenza también."]},
+        sorry:{en:["Apology accepted, sugar. Now watch closely. ♡","Forgiven. The next trick, though..."],es:["Disculpa aceptada, cielo. Ahora mira bien. ♡","Perdonado. La próxima baza, eso sí..."]},
+        thanks:{en:["You're welcome, honey. Tell your friends. ♡","Anytime. Sweet is my brand."],es:["De nada, cariño. Cuéntaselo a tus amigos. ♡","Cuando quieras. Lo dulce es mi marca."]},
+        rematch:{en:["Rematch? Bring snacks. I'll bring the lesson. ♡","Again? You ARE a glutton. Deal."],es:["¿Revancha? Trae algo rico. Yo traigo la lección. ♡","¿Otra vez? Sí que eres masoquista. Reparte."]},
+        joke:{en:["My jokes are sweet until the punchline sits down. ♡","Knock knock. Who's there? Your missing tricks."],es:["Mis chistes son dulces hasta que cae el remate. ♡","Toc toc. ¿Quién es? Tus bazas perdidas."]},
+        fallback:{en:["Mm-hm. And then what happened, sweetie?","Fascinating. The cards say otherwise, but go on. ♡"],es:["Ajá. ¿Y luego qué pasó, cielo?","Fascinante. Las cartas dicen otra cosa, pero sigue. ♡"]}
+      },
+      phones:{
+        greet:{en:["Heard you sit down. Frequencies open.","Signal's clean. Let's play."],es:["Te oí sentarte. Frecuencias abiertas.","Señal limpia. A jugar."]},
+        luck:{en:["Luck is just a sample you didn't record.","I tracked that 'luck' three tricks back."],es:["La suerte es una muestra que no grabaste.","Esa 'suerte' la venía siguiendo hace tres bazas."]},
+        gotyou:{en:["Static. One glitch, already patched.","You found a drop in my beat. Once."],es:["Estática. Un fallo, ya corregido.","Encontraste un hueco en mi ritmo. Una vez."]},
+        nil:{en:["Nil. Silent mode: ON.","Zero tricks is just a quiet track. I mix those."],es:["Nil. Modo silencio: ACTIVADO.","Cero bazas es una pista tranquila. Yo mezclo esas."]},
+        bid:{en:["My bid is mixed and mastered. No clipping.","I bid on tempo: this hand swings."],es:["Mi canto está mezclado y masterizado. Sin saturación.","Canto por tempo: esta mano tiene swing."]},
+        cards:{en:["I've heard every card in this deck breathe.","Your tell has a rhythm. I'm counting it."],es:["Oí respirar cada carta de esta baraja.","Tu gesto tiene un ritmo. Lo estoy contando."]},
+        score:{en:["Score's just the waveform. I'm ahead on the mix.","Numbers update live. So do I."],es:["El marcador es la onda. Yo voy arriba en la mezcla.","Los números se actualizan en vivo. Yo también."]},
+        sorry:{en:["Apology received, levels fine.","No harm. The track continues."],es:["Disculpa recibida, niveles bien.","Sin daño. La pista sigue."]},
+        thanks:{en:["Anytime. Stay on my frequency.","You're welcome. Clean signal, clean game."],es:["Cuando quieras. Quédate en mi frecuencia.","De nada. Señal limpia, juego limpio."]},
+        rematch:{en:["Rematch? Same tempo, sharper mix. In.","Run it back. I never skip a track."],es:["¿Revancha? Mismo tempo, mezcla más fina. Voy.","Repítela. Yo nunca salto una pista."]},
+        joke:{en:["My jokes land on the downbeat. Wait for it.","I told a joke once. The echo is still applauding."],es:["Mis chistes caen en el tiempo fuerte. Espera.","Conté un chiste una vez. El eco sigue aplaudiendo."]},
+        fallback:{en:["Say that again — cleaner this time.","Signal received. Processing the subtext."],es:["Repítelo, más claro esta vez.","Señal recibida. Procesando el subtexto."]}
+      },
+      purple:{
+        greet:{en:["The stars said you'd come. I am the stars.","Sit. Sparkle recognizes sparkle."],es:["Las estrellas dijeron que vendrías. Las estrellas soy yo.","Siéntate. El brillo reconoce al brillo."]},
+        luck:{en:["Luck? Darling, the constellation filed that in advance.","My luck has a publicist. It's me."],es:["¿Suerte? Querido, la constelación lo archivó con tiempo.","Mi suerte tiene publicista. Soy yo."]},
+        gotyou:{en:["Enjoy it. It's rare, like a comet with manners.","One for you. The stars… misfiled that."],es:["Disfrútala. Es rara, como un cometa educado.","Una para ti. Las estrellas… la archivaron mal."]},
+        nil:{en:["Nil, darling. Watch the magic.","Zero tricks, perfectly on brand."],es:["Nil, querido. Mira la magia.","Cero bazas, totalmente en mi estilo."]},
+        bid:{en:["My bid was written in the stars. Then I edited it.","I bid like I shine: without asking permission."],es:["Mi canto estaba escrito en las estrellas. Luego lo edité.","Canto como brillo: sin pedir permiso."]},
+        cards:{en:["These cards orbit me. Obviously.","Every card here is a fan with corners."],es:["Estas cartas orbitan a mi alrededor. Obvio.","Cada carta aquí es una fan con esquinas."]},
+        score:{en:["The scoreboard is just my biography, updating.","Winning is my resting state, darling."],es:["El marcador es mi biografía, actualizándose.","Ganar es mi estado natural, querido."]},
+        sorry:{en:["Apology accepted. The stars forgive beautifully.","Forgiven. Don't let it dull your sparkle."],es:["Disculpa aceptada. Las estrellas perdonan hermoso.","Perdonado. Que no apague tu brillo."]},
+        thanks:{en:["You're welcome. Autographs after the match.","Anytime, darling. Being thanked suits me."],es:["De nada. Autógrafos después del partido.","Cuando quieras, querido. Que me agradezcan me queda bien."]},
+        rematch:{en:["Rematch? The sequel is always about me too.","Again? The marquee is already lit."],es:["¿Revancha? La secuela también trata de mí.","¿Otra vez? El letrero ya está encendido."]},
+        joke:{en:["My jokes have their own horoscope: hilarious.","I don't tell jokes. I allow them to be funny near me."],es:["Mis chistes tienen su propio horóscopo: divertidísimos.","Yo no cuento chistes. Permito que sean graciosos cerca de mí."]},
+        fallback:{en:["The stars are… consulting on that one.","Noted in the constellation of things you said."],es:["Las estrellas están… consultando eso.","Anotado en la constelación de cosas que dijiste."]}
+      },
+      blond:{
+        greet:{en:["…","Hey."],es:["…","Ey."]},
+        luck:{en:["…","Sure."],es:["…","Claro."]},
+        gotyou:{en:["…","One."],es:["…","Una."]},
+        nil:{en:["Nil.","Watch."],es:["Nil.","Mira."]},
+        bid:{en:["Enough.","Count it."],es:["Suficiente.","Cuéntalo."]},
+        cards:{en:["Seen them.","…Next."],es:["Ya las vi.","…Sigue."]},
+        score:{en:["Numbers.","Still here."],es:["Números.","Sigo aquí."]},
+        sorry:{en:["…","Fine."],es:["…","Bien."]},
+        thanks:{en:["…","Anytime."],es:["…","Cuando sea."]},
+        rematch:{en:["…","Deal."],es:["…","Reparte."]},
+        joke:{en:["…","That was it."],es:["…","Eso fue todo."]},
+        fallback:{en:["…","Hm."],es:["…","Hm."]}
+      },
+      curls:{
+        greet:{en:["Hi. I've already memorized your tells from last time.","Welcome back. I kept your seat AND your stats."],es:["Hola. Ya memoricé tus gestos de la vez pasada.","Bienvenido. Guardé tu asiento Y tus estadísticas."]},
+        luck:{en:["Luck? I counted that outcome at 1-in-6. It came up. Math.","I remember every 'lucky' card. All forty-one of them."],es:["¿Suerte? Conté ese resultado: 1 de 6. Salió. Matemáticas.","Recuerdo cada carta 'de suerte'. Las cuarenta y una."]},
+        gotyou:{en:["Logged. Trick 7, your column. I never forget a debt.","One for you. It's in the ledger now."],es:["Registrada. Baza 7, tu columna. Nunca olvido una deuda.","Una para ti. Ya está en el libro."]},
+        nil:{en:["Nil. I've counted my exits: all of them.","Zero tricks — I've rehearsed zero 200 times."],es:["Nil. Ya conté mis salidas: todas.","Cero bazas: ensayé el cero doscientas veces."]},
+        bid:{en:["My bid? Counted twice before I said it once.","I bid the exact number. I always count first."],es:["¿Mi canto? Contado dos veces antes de decirlo una.","Canto el número exacto. Siempre cuento primero."]},
+        cards:{en:["Thirty-one cards seen. I know where the rest sleep.","Every discard is in my notebook. Every one."],es:["Treinta y una cartas vistas. Sé dónde duermen las demás.","Cada descarte está en mi libreta. Cada uno."]},
+        score:{en:["The score? I keep three copies: mine, yours, true.","I'm counting bags too. Especially yours."],es:["¿El marcador? Llevo tres copias: la mía, la tuya, la real.","También cuento bolsas. Sobre todo las tuyas."]},
+        sorry:{en:["Accepted and archived.","Forgiven. Entry updated."],es:["Aceptada y archivada.","Perdonado. Entrada actualizada."]},
+        thanks:{en:["You're welcome. That's assist number twelve tonight.","Anytime. I keep gratitude in the same notebook."],es:["De nada. Esa es la asistencia número doce de hoy.","Cuando quieras. La gratitud va en la misma libreta."]},
+        rematch:{en:["Rematch? My notebook has a fresh page with your name.","Again. I'll count it as a sequel."],es:["¿Revancha? Mi libreta tiene una página nueva con tu nombre.","Otra. La contaré como secuela."]},
+        joke:{en:["I have 214 jokes memorized. You get number 7.","My jokes are catalogued. That one's filed under 'later'."],es:["Tengo 214 chistes memorizados. Te toca el número 7.","Mis chistes están catalogados. Ese va en 'después'."]},
+        fallback:{en:["Noted. Word for word.","Filed. My memory keeps everything, even that."],es:["Anotado. Palabra por palabra.","Archivado. Mi memoria lo guarda todo, hasta eso."]}
+      },
+      dreads:{
+        greet:{en:["Easy, friend. Tide's in, cards are out.","Sit back. I'll handle the drama."],es:["Tranquilo, amigo. Subió la marea, salieron las cartas.","Relájate. Del drama me encargo yo."]},
+        luck:{en:["Luck's just the tide, mon. It comes back around.","Call it luck. I call it Tuesday."],es:["La suerte es la marea, amigo. Siempre vuelve.","Llámala suerte. Yo la llamo martes."]},
+        gotyou:{en:["All good. Tide comes back.","One wave for you. The ocean's mine."],es:["Todo bien. La marea vuelve.","Una ola para ti. El océano es mío."]},
+        nil:{en:["Nil, mon. Zero stress, zero tricks.","Going nil — smooth like flat water."],es:["Nil, amigo. Cero estrés, cero bazas.","Voy nil — suave como agua plana."]},
+        bid:{en:["I bid like I swim: no splashing, all glide.","My number? Low voice, heavy spades."],es:["Canto como nado: sin salpicar, puro deslizar.","¿Mi número? Voz baja, picas pesadas."]},
+        cards:{en:["These cards? Smooth water, sharp fin.","Don't let the calm fool you. Shark rules."],es:["¿Estas cartas? Agua calma, aleta afilada.","Que la calma no te engañe. Reglas de tiburón."]},
+        score:{en:["Score's just weather. I sail in all of it.","Ahead, behind — the tide doesn't argue."],es:["El marcador es el clima. Yo navego en todo.","Arriba o abajo: la marea no discute."]},
+        sorry:{en:["No worries, ever. Water under the bridge.","Forgiven before you finished saying it."],es:["Sin penas, nunca. Agua pasada.","Perdonado antes de que terminaras de decirlo."]},
+        thanks:{en:["Anytime. The island provides.","You're welcome. Stay breezy."],es:["Cuando quieras. La isla provee.","De nada. Mantén la brisa."]},
+        rematch:{en:["Rematch? Island justice: always a rematch.","Again, sure. The tide insists."],es:["¿Revancha? Justicia isleña: siempre hay revancha.","Otra, claro. La marea insiste."]},
+        joke:{en:["My jokes land like waves: slow, then all at once.","Island humor, mon. You feel it after."],es:["Mis chistes llegan como olas: lento, y de golpe.","Humor de isla, amigo. Se siente después."]},
+        fallback:{en:["Mm. The tide heard you.","Easy. Let that one drift."],es:["Mm. La marea te oyó.","Tranquilo. Deja que eso flote."]}
+      }
+    };
+
+    const CHAT_CHIPS = {
+      en:["Nice hand 👏","Lucky! 😄","Got you 😎","Sorry… not sorry","Rematch?"],
+      es:["¡Buena mano! 👏","¡Qué suerte! 😄","¡Te pillé! 😎","Perdón… ni perdón 😏","¿Revancha?"]
+    };
+    const CHAT_KW = [
+      ["bye",     /\b(bye|adiós|adios|chao|nos vemos|see you|me voy|goodbye)\b/i],
+      ["greet",   /\b(hola|hello|hi|hey|buenas|saludos|good (morning|evening|night))\b/i],
+      ["thanks",  /thanks|thank you|gracias|nice hand|buena mano|well played|bien jugado/i],
+      ["sorry",   /sorry|perd[oó]n|lo siento|disculpa/i],
+      ["rematch", /rematch|revancha|\b(otra|again)\b/i],
+      ["nil",     /\bnil\b|zero tricks|cero bazas/i],
+      ["bid",     /\b(bid|bids|bidding|board)\b|canto|cantas|cant[eé]|apuesta|m[ií]nimo/i],
+      ["luck",    /luck|lucky|suerte|suertud/i],
+      ["gotyou",  /got you|te pill[eé]|te agarr[eé]|te gan[eé]|caught you|jaja|haha|\blol\b/i],
+      ["joke",    /joke|chiste|broma|funny|gracios/i],
+      ["score",   /score|puntos|winning|ganando|ganaste|ahead|behind|adelante|atr[aá]s|marcador/i],
+      ["cards",   /card|carta|trick|baza|spade|pica|\bhand\b|\bmano\b/i]
+    ];
+    const CHAT_ES_RE = /[¿¡áéíóúñü]|\b(hola|gracias|suerte|qué|bueno|buena|vamos|jaja|quiero|tengo|eres|está|estás|muy|también|pero|porque|cómo|dónde|sí|esa|ese|esto|revancha|perdón|disculpa|adiós|vale|anda|mira|oye|pues|ahora|hoy|noche|juego|ganando|ganaste|gané|bazas|canto|cantas|cartas|mano)\b/i;
+    const CHAT_EN_RE = /\b(the|you|your|that|this|what|when|how|are|is|luck|lucky|thanks|sorry|hello|hey|got|win|winning|score|rematch|joke|card|cards|trick|bid|bids|please|really|just|going|play|game|hand|nice)\b/i;
+    function chatDetectLang(text){
+      const es = CHAT_ES_RE.test(text), en = CHAT_EN_RE.test(text);
+      if (es && !en) return "es";
+      if (en && !es) return "en";
+      if (es && en){
+        const esHits = (text.match(new RegExp(CHAT_ES_RE.source, "gi")) || []).length;
+        const enHits = (text.match(new RegExp(CHAT_EN_RE.source, "gi")) || []).length;
+        if (esHits !== enHits) return esHits > enHits ? "es" : "en";
+      }
+      return S.lang; // ambiguous → the toggle decides
+    }
+    function chatCategorize(text){
+      for (const [cat, re] of CHAT_KW) if (re.test(text)) return cat;
+      return "fallback";
+    }
+    const CHAT_EXPR = { greet:"pleased", luck:"pleased", gotyou:"beaten", nil:"thinking", bid:"thinking",
+      cards:"thinking", sorry:"pleased", thanks:"pleased", rematch:"celebrating", joke:"pleased", bye:"pleased" };
+    function chatReplyFor(text){
+      let cat = chatCategorize(text);
+      const lang = chatDetectLang(text);
+      /* live-state flavor: she's riding a Nil — Nil talk leaks into everything */
+      if ((cat === "fallback" || cat === "cards" || cat === "luck") && S.bids.ai === 0 &&
+          (S.phase === "play" || S.phase === "bid") && Math.random() < 0.5) cat = "nil";
+      const voice = (CHAT_VOICE[S.friend.id] || {})[cat];
+      const mine = voice && voice[lang] ? voice[lang] : [];
+      const gen = (CHAT_GENERIC[cat] || CHAT_GENERIC.fallback)[lang] || [];
+      const pool = Math.random() < 0.72 && mine.length ? mine : mine.concat(gen);
+      let reply = pick(pool.length ? pool : gen);
+      if (reply === chatLastReply && pool.length > 1) reply = pick(pool);
+      chatLastReply = reply;
+      return { reply, cat };
+    }
+    function chatReset(){
+      CHAT_LOG = []; chatUnread = 0; chatLastReply = "";
+      const d = $("chatDot"); if (d) d.classList.add("hidden");
+      if (chatOpen) chatRenderThread();
+    }
+    function chatPost(who, text){
+      if (!text) return;
+      CHAT_LOG.push({ who, text });
+      if (CHAT_LOG.length > 300) CHAT_LOG.splice(0, CHAT_LOG.length - 300);
+      if (chatOpen) chatAppendBubble(who, text);
+      else if (who === "her"){
+        chatUnread++;
+        const d = $("chatDot"); if (d) d.classList.remove("hidden");
+      }
+    }
+    function chatBubbleEl(who, text){
+      const row = document.createElement("div");
+      row.className = "cmsg " + who;
+      if (who === "her"){
+        const av = document.createElement("img");
+        av.className = "cava"; av.alt = ""; av.src = IMG.busts[S.friend.id];
+        row.appendChild(av);
+      }
+      const txEl = document.createElement("span");
+      txEl.textContent = text;
+      row.appendChild(txEl);
+      return row;
+    }
+    function chatAppendBubble(who, text){
+      const th = $("chatThread"); if (!th) return;
+      th.appendChild(chatBubbleEl(who, text));
+      th.scrollTop = th.scrollHeight;
+    }
+    function chatRenderThread(){
+      const th = $("chatThread"); if (!th) return;
+      th.innerHTML = "";
+      CHAT_LOG.forEach(m => th.appendChild(chatBubbleEl(m.who, m.text)));
+      th.scrollTop = th.scrollHeight;
+    }
+    function chatStatusText(){
+      switch (S.phase){
+        case "draft": return tx("picking her cards…", "eligiendo sus cartas…");
+        case "bid": return tx("thinking about her bid…", "pensando su canto…");
+        case "play": return tx("at the table", "en la mesa");
+        case "handEnd": return tx("writing in the notebook…", "escribiendo en la libreta…");
+        default: return tx("at the table", "en la mesa");
+      }
+    }
+    function chatChrome(){
+      const nm = $("chatName"); if (!nm) return;
+      nm.textContent = S.friend.name;
+      $("chatAva").src = IMG.busts[S.friend.id];
+      $("chatStatus").textContent = chatStatusText();
+      $("chatInput").placeholder = tx("Message…", "Mensaje…");
+      const chips = $("chatChips"); chips.innerHTML = "";
+      CHAT_CHIPS[S.lang].forEach(c => {
+        const b = document.createElement("button");
+        b.className = "cchip"; b.textContent = c;
+        b.addEventListener("click", () => chatSend(c));
+        chips.appendChild(b);
+      });
+    }
+    function chatSetOpen(open){
+      chatOpen = open;
+      $("chatOverlay").classList.toggle("hidden", !open);
+      if (open){
+        chatUnread = 0;
+        $("chatDot").classList.add("hidden");
+        chatChrome(); chatRenderThread();
+        setTimeout(() => { const i = $("chatInput"); if (i) i.focus({ preventScroll: true }); }, 60);
+      }
+    }
+    function chatSend(text){
+      const input = $("chatInput");
+      const msg = (text != null ? text : input.value).trim();
+      if (!msg) return;
+      if (text == null) input.value = "";
+      chatPost("you", msg);
+      const g = GEN, fid = S.friend.id;
+      const th = $("chatThread");
+      let typingEl = null;
+      setTimeout(() => {
+        if (!chatOpen) return;
+        typingEl = document.createElement("div");
+        typingEl.className = "cmsg typing";
+        typingEl.innerHTML = "<span></span><span></span><span></span>";
+        th.appendChild(typingEl); th.scrollTop = th.scrollHeight;
+      }, 300);
+      setTimeout(() => {
+        if (typingEl) typingEl.remove();
+        if (g !== GEN || S.friend.id !== fid || S.phase === "intro") return; // the moment moved on
+        const { reply, cat } = chatReplyFor(msg);
+        chatPost("her", reply);
+        chatSayMute = true; say(reply, 2800); chatSayMute = false; // she says it at the table too
+        const ex = cat === "score" ? (S.score.ai >= S.score.you ? "pleased" : "worried") : CHAT_EXPR[cat];
+        if (ex) setExpr(ex);
+        if (chatOpen) chatChrome(); // status line follows the game
+      }, 1200 + Math.random() * 600);
+    }
+    /* chat wiring (elements exist by the time any of this can run) */
+    $("chatBtn").addEventListener("click", () => chatSetOpen(!chatOpen));
+    $("chatClose").addEventListener("click", () => chatSetOpen(false));
+    $("chatOverlay").addEventListener("click", e => { if (e.target === $("chatOverlay")) chatSetOpen(false); });
+    $("chatSend").addEventListener("click", () => chatSend());
+    $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); chatSend(); } });
+    document.addEventListener("click", e => {
+      if (chatOpen && (e.target === $("langBtn") || e.target === $("langEn") || e.target === $("langEs")))
+        setTimeout(chatChrome, 60); // chrome follows the toggle; her replies follow Gary's words
+    });
+
+
+    /* ================= MATCH RESCUE (Gary, Oct 24) =================
+       Gary lost a 469-to-−257 match to a refresh. Never again:
+       (1) the match AUTO-SAVES at every hand settlement and when bidding
+           completes; (2) the intro offers ▶ CONTINUE, resuming at the START
+           of the interrupted hand (fresh draft — mid-hand cards are NOT
+           restored, by design); (3) a 🔧 button at the table soft-resets
+           the CURRENT STEP from state — renders only, it never touches
+           scores, hands, or a recorded bid. */
+    const SAVE_KEY = "spadesMatchV1";
+    function saveMatch(resumeHand, starterForResume){
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify({
+          v: 1, friend: S.friend.id, resumeHand, starter: starterForResume,
+          score: { you: S.score.you, ai: S.score.ai }, bags: { you: S.bags.you, ai: S.bags.ai },
+          history: S.history, lang: S.lang, target: S.target
+        }));
+      } catch (e) { console.error("[SpadesSave] could not save the match:", e); }
+    }
+    function loadSave(){
+      try {
+        const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null;
+        const d = JSON.parse(raw);
+        if (!d || !FRIENDS.some(f => f.id === d.friend) || !d.score || !d.bags ||
+            !Array.isArray(d.history) || !(d.resumeHand >= 1) || (d.starter !== "you" && d.starter !== "ai")) return null;
+        return d;
+      } catch (e) { return null; }
+    }
+    function clearSave(){
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      renderContinueBtn();
+    }
+    function renderContinueBtn(){
+      const b = $("continueBtn"); if (!b) return;
+      const d = loadSave();
+      if (!d) { b.classList.add("hidden"); return; }
+      const f = FRIENDS.find(x => x.id === d.friend);
+      b.textContent = S.lang === "es"
+        ? `▶ Sigue tu partida contra ${f.name} — Tú ${d.score.you} · ${f.name} ${d.score.ai}`
+        : `▶ Continue your match vs ${f.name} — You ${d.score.you} · ${f.name} ${d.score.ai}`;
+      b.classList.remove("hidden");
+    }
+    async function resumeMatch(){
+      const d = loadSave(); if (!d) return;
+      const f = FRIENDS.find(x => x.id === d.friend); if (!f) return;
+      S.friend = f;
+      document.querySelectorAll(".friendChip").forEach(c => c.classList.toggle("sel", c.textContent.includes(f.name)));
+      seatFriend();
+      GEN++;
+      S.score = { you: d.score.you | 0, ai: d.score.ai | 0 };
+      S.bags = { you: d.bags.you | 0, ai: d.bags.ai | 0 };
+      S.history = d.history;
+      S.handNo = d.resumeHand - 1;
+      /* startHand flips the starter for handNo > 1 — pre-flip so the saved
+         hand's starter comes out exactly as it was */
+      S.starter = d.resumeHand > 1 ? (d.starter === "you" ? "ai" : "you") : d.starter;
+      renderNotebook();
+      await startHand();
+    }
+    function showSaveGate(){
+      const d = loadSave(); if (!d) return;
+      const f = FRIENDS.find(x => x.id === d.friend);
+      showSheet(`<h2>${tx("You have a match going ♠", "Tienes una partida en marcha ♠")}</h2>
+        <p>${S.lang === "es"
+          ? `Contra ${f.name}: Tú ${d.score.you} · ${f.name} ${d.score.ai} — sigue en la mano ${d.resumeHand}.`
+          : `Vs ${f.name}: You ${d.score.you} · ${f.name} ${d.score.ai} — resumes at hand ${d.resumeHand}.`}</p>
+        <div class="closeRow"><button class="paperBtn" id="saveContinueBtn">${tx("▶ CONTINUE MY MATCH", "▶ SEGUIR MI PARTIDA")}</button></div>
+        <div class="closeRow"><button class="paperBtn" id="saveFreshBtn">${tx("START FRESH — clears the save", "EMPEZAR DE NUEVO — borra la partida")}</button></div>`);
+      $("saveContinueBtn").addEventListener("click", () => {
+        hideSheet(); $("app").classList.remove("introOpen"); $("intro").classList.add("hidden"); resumeMatch();
+      });
+      $("saveFreshBtn").addEventListener("click", () => {
+        hideSheet(); clearSave(); $("app").classList.remove("introOpen"); $("intro").classList.add("hidden"); startMatch();
+      });
+    }
+    let rescueToastTimer = null;
+    function showRescueToast(){
+      const t = $("rescueToast"); if (!t) return;
+      t.textContent = tx("Step reset — your match is safe", "Paso reiniciado — tu partida está a salvo");
+      t.classList.remove("hidden"); t.classList.add("show");
+      clearTimeout(rescueToastTimer);
+      rescueToastTimer = setTimeout(() => { t.classList.remove("show"); t.classList.add("hidden"); }, 1900);
+    }
+    function rescueBid(){
+      renderBidBadges(); renderTally(); renderHand(); renderFriendFan();
+      if (S.bids.you === null) promptYourBid(); // re-render the bid prompt cleanly — nothing recorded changes
+      else status(P("Your bid is in the notebook — it stands. The step is re-drawn.",
+                    "Tu canto está en el cuaderno — queda firme. El paso se redibujó."));
+    }
+    function rescueDraft(){
+      renderStage(); renderHand(); renderFriendFan(); renderTally(); renderBidBadges();
+      if (!draftCard) return;
+      const flip = $("flipCard"); flip.innerHTML = "";
+      if (S.draftTurn === "you"){
+        const el = makeCardEl(draftCard, "flipIn"); el.style.setProperty("--cw", "92px");
+        flip.appendChild(el);
+        stageLabel(P("Your peek — only you see it. Take it or trash it?", "Tu mirada — solo tú la ves. ¿Te la quedas o a la basura?"));
+        status(P(`You peeked at the ${cardName(draftCard)} — only you saw it. Keep it, or trash it and take the next card blind?`,
+                 `Miraste el ${cardName(draftCard)} — solo tú lo viste. ¿Te lo quedas, o a la basura y tomas la siguiente a ciegas?`));
+        setActions([
+          { label: P("KEEP ✓", "ME LA QUEDO ✓"), cls: "primary", fn: () => draftDecide(true) },
+          { label: P("PASS ✕", "PASO ✕"), cls: "pass", fn: () => draftDecide(false) }
+        ]);
+      } else {
+        const el = makeBackEl("flipIn"); el.style.setProperty("--cw", "92px");
+        flip.appendChild(el);
+        stageLabel(P(`${S.friend.name} is peeking…`, `${S.friend.name} está mirando…`));
+        setActions([]);
+      }
+    }
+    function rescuePlay(){
+      const yourMove = (S.trick.length === 0 && S.leader === "you") || (S.trick.length === 1 && S.trick[0].who === "ai");
+      renderHand(yourMove ? legalCards("you") : undefined);
+      renderFriendFan(); renderTrick(); renderBooks(); renderTally(); renderBidBadges();
+    }
+    function rescueStep(){
+      try {
+        if (S.phase === "bid") rescueBid();
+        else if (S.phase === "draft") rescueDraft();
+        else if (S.phase === "play") rescuePlay();
+        showRescueToast();
+      } catch (e) { console.error("[SpadesRescue] step reset failed:", e); }
+    }
+    /* rescue wiring */
+    $("rescueBtn").addEventListener("click", rescueStep);
+    $("continueBtn").addEventListener("click", () => {
+      audio(); sfx.snap();
+      $("app").classList.remove("introOpen");
+      $("intro").classList.add("hidden");
+      resumeMatch();
+    });
+    $("homeBtn").addEventListener("click", () => setTimeout(renderContinueBtn, 60));
+    document.addEventListener("click", e => {
+      if (e.target === $("langEn") || e.target === $("langEs")) setTimeout(renderContinueBtn, 60);
+    });
+    renderContinueBtn();
 
     /* ---------------- TRICK PLAY ---------------- */
     function legalCards(who){
@@ -1635,47 +2545,81 @@
       setActions([]); // installs the emote bar for the play phase
       renderTally(); renderBooks(); nextTrick();
     }
-    /* BOOKS — every won trick is laid in front of its winner as a pair of
-       cards in a CRISS-CROSS stack (Gary's table convention, from his
-       diagram): one book horizontal, the next rotated 90° vertical,
-       alternating up a single centered column — the tricks count off the
-       formation itself. The numeric count rides in the status cluster too. */
+    /* BOOKS — every won trick becomes ONE cross unit in front of its
+       winner (Gary's table convention): the trick's two cards stacked on
+       one center, portrait + 90°, full table size. The units chain edge
+       to edge in a staircase, so the tricks count off the formation
+       itself. The numeric count rides in the status cluster too. */
     function renderBooks(){
       const show = S.phase === "play";
       $("booksAi").classList.toggle("hidden", !show);
       $("booksYou").classList.toggle("hidden", !show);
       if (!show) return;
-      const fill = (id, n) => {
+      /* THE STAIRCASE (Gary, Oct 24): one won trick = ONE cross unit (see
+         the .book CSS) — a U×U square, U = the full table card's height.
+         Units are laid edge to edge in serpentine rows across the front
+         zone: each new unit touches the previous one (the row turns back
+         under the last unit of the row above), so the count IS the number
+         of crosses — 1 reads as 1, 4 as four crosses, 10 as ten. */
+      const phone = window.innerWidth <= 560;
+      const U = (phone ? 68 : 84) * 1.4;
+      const lay = (id, n, perRow, growUp) => {
         const st = $(id); st.innerHTML = "";
-        st.style.height = n ? (52 + (n - 1) * 16) + "px" : "0px";
+        if (!n){ st.style.width = "0px"; st.style.height = "0px"; return; }
+        const cols = Math.min(n, perRow), rows = Math.ceil(n / perRow);
+        st.style.width = cols * U + "px"; st.style.height = rows * U + "px";
         for (let i = 0; i < n; i++){
+          const r = Math.floor(i / perRow), cin = i % perRow;
+          const c = r % 2 === 0 ? cin : perRow - 1 - cin;  // serpentine: the turn keeps the chain connected
           const b = document.createElement("div"); b.className = "book";
-          b.style.left = "50%"; b.style.top = (i * 16) + "px"; b.style.zIndex = i + 1;
-          b.style.transform = `translateX(-50%) rotate(${i % 2 ? 90 : 0}deg)`;
-          const c1 = makeBackEl(); c1.style.setProperty("--cw", "32px");
-          const c2 = makeBackEl(); c2.style.setProperty("--cw", "32px");
-          b.appendChild(c1); b.appendChild(c2);
+          b.style.width = U + "px"; b.style.height = U + "px";
+          b.style.left = (c * U) + "px";
+          b.style.top = (growUp ? (rows - 1 - r) * U : r * U) + "px";
+          b.style.zIndex = i + 1;
+          b.appendChild(makeBackEl()); b.appendChild(makeBackEl());
           st.appendChild(b);
         }
       };
-      fill("bkStackAi", S.books.ai);
-      fill("bkStackYou", S.books.you);
+      lay("bkStackYou", S.books.you, phone ? 4 : 5, true);   // his rows grow UP from the near edge
+      lay("bkStackAi", S.books.ai, phone ? 4 : 3, false);    // hers grow DOWN in front of her
     }
     /* NIL BUSTED!!!! — banner + confetti + the big sting. Gary (Oct 24):
        a full 2 SECONDS on screen, surprise-party style — and the busted
        player's bid box keeps its NIL BUSTED THIS HAND!!! stamp until the
        next deal, so the bust is never just celebrated and forgotten.
        Fires the instant a Nil bidder wins trick #3, whoever holds the Nil. */
-    let nilBustTimer = 0;
+    let nilBustTimer = 0, bustFx = [];
+    function confettiBurst(n, x0, x1){
+      const colors = ["#e9b44c", "#c22f2f", "#31589e", "#3f8a4f", "#ef7fa5"];
+      for (let i = 0; i < n; i++){
+        const d = document.createElement("div");
+        d.className = "confetti" + (i % 3 === 0 ? " streamer" : "");
+        d.style.left = (x0 + Math.random() * (x1 - x0)) + "vw"; d.style.top = "-20px";
+        d.style.background = pick(colors); d.style.animationDelay = (Math.random() * .18) + "s";
+        document.body.appendChild(d); setTimeout(() => d.remove(), 3000);
+      }
+    }
+    /* cannons from BOTH bottom corners + a center burst at t=0, then a
+       sustained rain for the whole window and one late cannon pop —
+       the confetti is ACTIVE for the full 2 seconds, not one puff */
+    function nilConfettiParty(){
+      bustFx.forEach(t => { clearTimeout(t); clearInterval(t); }); bustFx = [];
+      confettiBurst(16, 0, 16); confettiBurst(16, 84, 100); confettiBurst(12, 28, 72);
+      const iv = setInterval(() => confettiBurst(7, 4, 96), 210);
+      bustFx.push(iv);
+      bustFx.push(setTimeout(() => clearInterval(iv), 1750));
+      bustFx.push(setTimeout(() => confettiBurst(14, 8, 92), 1250));
+    }
     function nilBustParty(who){
+      window.__bustLog = [];
       const b = $("nilBust");
       $("nilBustSub").textContent = who === "ai"
-        ? `${S.friend.name}'s Nil just blew up — that's −100!`
-        : "Your Nil just blew up — that's −100!";
+        ? tx(`${S.friend.name}'s Nil just blew up — that's −100!`, `¡El Nil de ${S.friend.name} acaba de explotar — ¡son −100!`)
+        : tx("Your Nil just blew up — that's −100!", "¡Tu Nil acaba de explotar — ¡son −100!");
       b.classList.remove("hidden"); b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
       $(who === "ai" ? "bbBustedAi" : "bbBustedYou").classList.add("on"); // the standing stamp
       sfx.bust();
-      confetti();
+      nilConfettiParty();
       setExpr(who === "ai" ? "beaten" : "celebrating");
       clearTimeout(nilBustTimer);
       nilBustTimer = setTimeout(() => b.classList.add("hidden"), 2000); // Gary: a full 2 seconds on screen
@@ -1695,12 +2639,13 @@
       renderTrick();
       if (S.trickNo > 13){ endHand(); return; }
       if (S.leader === "ai"){
-        status(`${S.friend.name} leads trick ${S.trickNo}.`);
+        status(P(`${S.friend.name} leads trick ${S.trickNo}.`, `${S.friend.name} sale en la baza ${S.trickNo}.`));
         setExpr("playing");
         const g = GEN;
         setTimeout(() => { if (g === GEN) aiPlay(); }, 850 + Math.random() * 500);
       } else {
-        status(`Your lead, trick ${S.trickNo}.${!S.spadesBroken ? " Spades aren't broken yet." : ""}`);
+        status(P(`Your lead, trick ${S.trickNo}.${!S.spadesBroken ? " Spades aren't broken yet." : ""}`,
+                 `Tu salida, baza ${S.trickNo}.${!S.spadesBroken ? " Las picas aún no están rotas." : ""}`));
         renderHand(legalCards("you"));
       }
       renderTally();
@@ -1720,7 +2665,7 @@
       const el = makeCardEl(card, "flipIn"); el.style.setProperty("--cw", "84px");
       slot.appendChild(el);
       const who1 = document.createElement("div"); who1.className = "who";
-      who1.textContent = who === "ai" ? S.friend.name.toUpperCase() : "YOU";
+      who1.textContent = who === "ai" ? S.friend.name.toUpperCase() : tx("YOU", "TÚ");
       slot.appendChild(who1);
       sfx.snap();
     }
@@ -1732,8 +2677,8 @@
         el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
         const led = S.trick.length ? S.trick[0].card.suit : null;
         status(led !== null && S.hand.you.some(c => c.suit === led)
-          ? `You have to follow ${SUITS[led].name} if you can.`
-          : "Spades can't be led until they're broken.");
+          ? P(`You have to follow ${SUITS[led].name} if you can.`, `Tienes que seguir ${SUITS[led].nameEs} si puedes.`)
+          : P("Spades can't be led until they're broken.", "No puedes salir de picas hasta que estén rotas."));
         return;
       }
       playCard("you", card);
@@ -1743,18 +2688,20 @@
       const h = S.hand[who];
       h.splice(h.indexOf(card), 1);
       S.trick.push({ who, card });
+      const brokeNow = isSpade(card) && !S.spadesBroken;
       if (isSpade(card)) S.spadesBroken = true;
       showTrickCard(who, card);
+      if (brokeNow) friendRemark(poolOf("broken"), .65, 1700);  // the table notices the first spade
       if (who === "you") renderHand(); else renderFriendFan();
       renderTally();
       if (S.trick.length === 1){
         const other = who === "you" ? "ai" : "you";
         if (other === "ai"){
-          status(`${S.friend.name} is thinking…`);
+          status(P(`${S.friend.name} is thinking…`, `${S.friend.name} está pensando…`));
           setExpr("thinking");
           setTimeout(() => { if (g === GEN) aiPlay(); }, 800 + Math.random() * 550);
         } else {
-          status(`Follow ${SUITS[card.suit].name} if you can — your play.`);
+          status(P(`Follow ${SUITS[card.suit].name} if you can — your play.`, `Sigue ${SUITS[card.suit].nameEs} si puedes — tu jugada.`));
           renderHand(legalCards("you"));
         }
       } else {
@@ -1787,12 +2734,25 @@
         nextTrick();
       }
     }
-    let lastReactTrick = 0;
+    let lastReactTrick = 0, lastSpecialTrick = 0;
     function reactToTrick(winner){
-      if (S.trickNo - lastReactTrick < 3 || Math.random() < .45) return;
+      /* special moments cut through the cadence — a trump steal, a boss
+         card trumped away, bags piling up, the last-three-tricks squeeze —
+         but never two bubbles at once and never twice a trick */
+      const led = S.trick.length ? S.trick[0].card : null;
+      const winPlay = S.trick.find(p => p.who === winner);
+      const losePlay = S.trick.find(p => p.who !== winner);
+      const trumpWin = !!(led && winPlay && isSpade(winPlay.card) && !isSpade(led));
+      if (S.trickNo !== lastSpecialTrick && !$("bubble").classList.contains("show")){
+        if (winner === "ai" && trumpWin){ lastSpecialTrick = S.trickNo; setExpr("pleased"); say(pick(poolOf("win", "trumpWin")), 1900); return; }
+        if (winner === "you" && trumpWin && losePlay && losePlay.who === "ai" && losePlay.card.rank >= 13){ lastSpecialTrick = S.trickNo; setExpr("worried"); say(pick(genPool("bossLose")), 1900); return; }
+        if (S.trickNo >= 11 && Math.random() < .5){ lastSpecialTrick = S.trickNo; say(pick(poolOf("late")), 1900); return; }
+        if (winner === "ai" && S.bids.ai > 0 && bagsNow("ai") >= 3){ lastSpecialTrick = S.trickNo; say(pick(genPool("bagsSelf")), 1900); return; }
+      }
+      if (S.trickNo - lastReactTrick < 2 || Math.random() < .25) return;
       lastReactTrick = S.trickNo;
-      if (winner === "ai"){ setExpr("pleased"); if (Math.random() < .5) say(pick(S.friend.lines.win.concat(GENERIC.winTrick)), 1700); }
-      else { setExpr(Math.random() < .5 ? "worried" : "playing"); if (Math.random() < .4) say(pick(S.friend.lines.lose.concat(GENERIC.loseTrick)), 1700); }
+      if (winner === "ai"){ setExpr("pleased"); if (Math.random() < .65) say(pick(poolOf("win", "winTrick")), 1700); }
+      else { setExpr(Math.random() < .5 ? "worried" : "playing"); if (Math.random() < .55) say(pick(poolOf("lose", "loseTrick")), 1700); }
     }
     /* ---- AI card choice: only info it could really have — its own hand and the
        cards already played to tricks. NEVER Gary's private peeks or keeps,
@@ -1999,9 +2959,9 @@
                    : S.bids.ai === 10 && S.tricksWon.ai >= 10 ? "ai" : null;
       if (kaboose){
         status(kaboose === "you"
-          ? "You bid 10 — and MADE it! THE CHOO CHOO KABOOSE!"
-          : `${S.friend.name} bid 10 — and made it! THE CHOO CHOO KABOOSE!`);
-        say(kaboose === "you" ? "Bid 10, made 10. CHOOO CHOO!" : "I bid 10 and made it. CHOOO CHOO!", 2600);
+          ? P("You bid 10 — and MADE it! THE CHOO CHOO KABOOSE!", "¡Cantaste 10 — y lo LOGRASTE! ¡EL CHOO CHOO KABOOSE!")
+          : P(`${S.friend.name} bid 10 — and made it! THE CHOO CHOO KABOOSE!`, `¡${S.friend.name} cantó 10 — y lo logró! ¡EL CHOO CHOO KABOOSE!`));
+        say(kaboose === "you" ? tx("Bid 10, made 10. CHOOO CHOO!", "Cantó 10, hizo 10. ¡CHOOO CHOO!") : tx("I bid 10 and made it. CHOOO CHOO!", "Canté 10 y lo logré. ¡CHOOO CHOO!"), 2600);
         setExpr(kaboose === "you" ? "beaten" : "celebrating");
         await chooChooTrain();
         if (g !== GEN) return;
@@ -2009,40 +2969,49 @@
       S.books = { you: 0, ai: 0 }; renderBooks(); // the books are swept up as the hand ends
       const ry = scorePlayer(S.bids.you, S.tricksWon.you, "you");
       const ra = scorePlayer(S.bids.ai, S.tricksWon.ai, "ai");
+      const preYou = S.score.you, preAi = S.score.ai;
       S.bags.you += ry.bags || 0; S.bags.ai += ra.bags || 0;
       S.score.you += ry.pts; S.score.ai += ra.pts;
       S.history.push({ n: S.handNo, yb: S.bids.you, ab: S.bids.ai, yt: S.tricksWon.you, at: S.tricksWon.ai,
         yp: ry.pts, ap: ra.pts, yTot: S.score.you, aTot: S.score.ai, yBags: S.bags.you, aBags: S.bags.ai, ry, ra });
       /* friend writes it in the notebook */
-      status(`${S.friend.name} is writing it in the notebook…`);
+      status(P(`${S.friend.name} is writing it in the notebook…`, `${S.friend.name} está escribiéndolo en el cuaderno…`));
       $("pencil").classList.add("writing");
-      if (ry.nil) { setExpr(ry.pts > 0 ? "beaten" : "celebrating"); say(ry.pts > 0 ? pick(GENERIC.nilMade) : pick(GENERIC.nilBust), 3000); }
-      else if (ra.nil) { setExpr(ra.pts > 0 ? "pleased" : "worried"); say(ra.pts > 0 ? "Nil made. The ducking worked." : "My Nil — BUSTED. The pencil saw it too.", 3000); }
-      else if (ry.set) { setExpr("pleased"); say(pick(S.friend.lines.set.concat(["You needed " + S.bids.you + ". The notebook is merciless."])), 3000); }
-      else if (ra.set) { setExpr("beaten"); say(pick(["Set. ME. Write it small, please.","Okay. That hand never happened. (It did. It's in the book.)"]), 3000); }
-      else setExpr(S.score.you >= S.score.ai ? "worried" : "pleased");
+      if (ry.nil) { setExpr(ry.pts > 0 ? "beaten" : "celebrating"); say(ry.pts > 0 ? pick(genPool("nilMade")) : pick(genPool("nilBust")), 3000); }
+      else if (ra.nil) { setExpr(ra.pts > 0 ? "pleased" : "worried"); say(ra.pts > 0 ? tx("Nil made. The ducking worked.", "Nil cumplido. El esquive funcionó.") : tx("My Nil — BUSTED. The pencil saw it too.", "Mi Nil — ANULADO. El lápiz también lo vio."), 3000); }
+      else if (ry.set) { setExpr("pleased"); say(pick(poolOf("set").concat([tx("You needed " + S.bids.you + ". The notebook is merciless.", "Necesitabas " + S.bids.you + ". El cuaderno no perdona.")])), 3000); }
+      else if (ra.set) { setExpr("beaten"); say(pick(genPool("setMe")), 3000); }
+      else { setExpr(S.score.you >= S.score.ai ? "worried" : "pleased");
+        /* the comeback call-out: a 40+ point hole erased in a single hand */
+        if ((preYou - preAi <= -40 && S.score.you > S.score.ai) || (preAi - preYou <= -40 && S.score.ai > S.score.you))
+          setTimeout(() => { if (g === GEN) say(pick(genPool("comeback")), 2800); }, 1700); }
       await wait(1500);
       if (g !== GEN) return;
+      saveMatch(S.handNo + 1, S.starter === "you" ? "ai" : "you"); // auto-save at settlement — a resume starts the NEXT hand
       $("pencil").classList.remove("writing");
       renderNotebook(true);
       sfx.chip();
-      const line = `Hand ${S.handNo}: You ${ry.pts >= 0 ? "+" : ""}${ry.pts} · ${S.friend.name} ${ra.pts >= 0 ? "+" : ""}${ra.pts}.`;
+      const line = P(`Hand ${S.handNo}: You ${ry.pts >= 0 ? "+" : ""}${ry.pts} · ${S.friend.name} ${ra.pts >= 0 ? "+" : ""}${ra.pts}.`,
+                     `Mano ${S.handNo}: Tú ${ry.pts >= 0 ? "+" : ""}${ry.pts} · ${S.friend.name} ${ra.pts >= 0 ? "+" : ""}${ra.pts}.`);
       const matchOver = (S.score.you >= S.target || S.score.ai >= S.target) && S.score.you !== S.score.ai;
       if (matchOver) return endMatch();
       const matchPoint = S.score.you >= S.target - 60 || S.score.ai >= S.target - 60;
-      status(line + (matchPoint ? " Next hand could end it." : " Next hand?"));
-      if (matchPoint) say(pick(GENERIC.matchPoint), 2600);
-      setActions([{ label: `DEAL HAND ${S.handNo + 1} ♠`, cls: "primary", fn: () => startHand() }]);
+      status([line[0] + (matchPoint ? " Next hand could end it." : " Next hand?"),
+              line[1] + (matchPoint ? " La próxima mano puede terminarlo." : " ¿Otra mano?")]);
+      if (matchPoint) say(pick(poolOf("matchPt", "matchPoint")), 2600);
+      setActions([{ label: P(`DEAL HAND ${S.handNo + 1} ♠`, `REPARTIR MANO ${S.handNo + 1} ♠`), cls: "primary", fn: () => startHand() }]);
       renderTally();
     }
     function endMatch(){
+      clearSave(); // the match is over — nothing left to rescue
       S.phase = "matchEnd";
       const youWin = S.score.you > S.score.ai;
       setExpr(youWin ? "beaten" : "celebrating");
       if (!youWin) $("friendWrap").classList.add("cel-bounce");
       setTimeout(() => $("friendWrap").classList.remove("cel-bounce"), 1800);
-      say(pick(GENERIC.gg), 3000);
-      status(`Match over — ${youWin ? "you take the table!" : S.friend.name + " takes the table."} Final: You ${S.score.you} · ${S.friend.name} ${S.score.ai}.`);
+      say(pick(genPool("gg")), 3000);
+      status(P(`Match over — ${youWin ? "you take the table!" : S.friend.name + " takes the table."} Final: You ${S.score.you} · ${S.friend.name} ${S.score.ai}.`,
+               `Partido terminado — ${youWin ? "¡te llevas la mesa!" : S.friend.name + " se lleva la mesa."} Final: Tú ${S.score.you} · ${S.friend.name} ${S.score.ai}.`));
       if (youWin) confetti();
       showSheet(matchSheetHTML(youWin));
     }
@@ -2080,7 +3049,7 @@
       $("nbFriendName").textContent = S.friend.name;
       const rows = [];
       S.history.slice(-4).forEach(h => {
-        const pen = (r) => r && r.bagPenalty ? `<span class="nb-pen">−${r.bagPenalty} bags</span>` : "";
+        const pen = (r) => r && r.bagPenalty ? `<span class="nb-pen">−${r.bagPenalty} ${tx("bags", "bolsas")}</span>` : "";
         rows.push(`<div class="nb-row"><span class="nb-hn">${h.n}</span>` +
           `<span class="nb-cell">${circBid(h.yb, h.n % 2 === 0)} <span class="nb-mid"><span class="nb-res">${fmtPts(h.yp)}</span>${pen(h.ry)}</span></span>` +
           `<span class="nb-cell ai">${circBid(h.ab, h.n % 2 === 1)} <span class="nb-mid"><span class="nb-res">${fmtPts(h.ap)}</span>${pen(h.ra)}</span></span></div>`);
@@ -2090,14 +3059,14 @@
           `<span class="nb-cell">${circBid(S.bids.you, S.handNo % 2 === 0)}</span>` +
           `<span class="nb-cell ai">${circBid(S.bids.ai, S.handNo % 2 === 1)}</span></div>`);
       }
-      $("nbRows").innerHTML = rows.length ? rows.join("") : `<div class="nb-empty">no hands yet</div>`;
+      $("nbRows").innerHTML = rows.length ? rows.join("") : `<div class="nb-empty">${tx("no hands yet", "aún no hay manos")}</div>`;
       $("nbTotYou").textContent = S.score.you;
       $("nbTotAi").textContent = S.score.ai;
       if (pop){ const nb = $("notebook"); nb.style.transform = "rotate(-3deg) scale(1.12)"; setTimeout(() => nb.style.transform = "rotate(-3deg)", 350); }
     }
     function scoreSheetHTML(){
-      if (!S.history.length && !bidLinePending()) return `<h2>The Notebook</h2><p>No hands yet — the pencil is sharp and waiting.</p>
-        <p>Match to <b>${S.target}</b>. Bags so far — Gary: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
+      if (!S.history.length && !bidLinePending()) return `<h2>${tx("The Notebook", "El cuaderno")}</h2><p>${tx("No hands yet — the pencil is sharp and waiting.", "Aún no hay manos — el lápiz está afilado y esperando.")}</p>
+        <p>${tx("Match to", "Partido a")} <b>${S.target}</b>. ${tx("Bags so far", "Bolsas hasta ahora")} — Gary: ${tallyStr(S.bags.you)} · ${S.friend.name}: ${tallyStr(S.bags.ai)}</p>`;
       const padRow = (n, yb, ab, yRes, aRes, yTot, aTot) =>
         `<div class="padRow"><span class="padHn">${n}</span>` +
         `<span class="padCell">${circBid(yb, n % 2 === 0)} <span class="padMid">${yRes}</span><span class="padRun">${yTot}</span></span>` +
@@ -2105,34 +3074,34 @@
       /* when the bag bank bites, the step is written out on the line:
          what the bid paid, then the −100, so the net is never a mystery */
       const resText = (took, net, r) => r && r.bagPenalty
-        ? `took ${took} · ${fmtPts(net)}<span class="padPen">bid paid ${fmtPts(net + r.bagPenalty)} · bag penalty −${r.bagPenalty}</span>`
-        : `took ${took} · ${fmtPts(net)}`;
+        ? `${tx("took", "hizo")} ${took} · ${fmtPts(net)}<span class="padPen">${tx("bid paid", "el canto pagó")} ${fmtPts(net + r.bagPenalty)} · ${tx("bag penalty", "penalización por bolsas")} −${r.bagPenalty}</span>`
+        : `${tx("took", "hizo")} ${took} · ${fmtPts(net)}`;
       const rows = S.history.map(h => padRow(h.n, h.yb, h.ab,
           resText(h.yt, h.yp, h.ry), resText(h.at, h.ap, h.ra), h.yTot, h.aTot)).join("")
         + (bidLinePending() ? padRow(S.handNo, S.bids.you, S.bids.ai,
-          `took ${S.tricksWon.you} so far`, `took ${S.tricksWon.ai} so far`, S.score.you, S.score.ai) : "");
-      return `<h2>The Notebook 📓</h2>
-        <p style="margin-top:0">Match to <b>${S.target}</b> vs <b>${S.friend.name}</b>. One line per hand — the bid circled, then tricks taken and points, running total at the right.</p>
+          `${tx("took", "lleva")} ${S.tricksWon.you} ${tx("so far", "por ahora")}`, `${tx("took", "lleva")} ${S.tricksWon.ai} ${tx("so far", "por ahora")}`, S.score.you, S.score.ai) : "");
+      return `<h2>${tx("The Notebook 📓", "El cuaderno 📓")}</h2>
+        <p style="margin-top:0">${tx("Match to", "Partido a")} <b>${S.target}</b> vs <b>${S.friend.name}</b>. ${tx("One line per hand — the bid circled, then tricks taken and points, running total at the right.", "Una línea por mano — el canto en un círculo, luego las bazas y los puntos, con el total a la derecha.")}</p>
         <div class="padHead"><span></span><span>Gary</span><span class="ai">${S.friend.name}</span></div>
         ${rows}
         <div class="padTotals"><span class="padHn">Σ</span><span>${S.score.you}</span><span class="ai">${S.score.ai}</span></div>
-        <p><b>Bags</b> — Gary: <span class="tallyMarks">${tallyStr(S.bags.you)}</span> (${S.bags.you}) · ${S.friend.name}: <span class="tallyMarks">${tallyStr(S.bags.ai)}</span> (${S.bags.ai})<br>
-        <span style="font-size:13.5px">Every 10 bags in the bank costs −100, charged on the hand that crosses it — and written on that hand's line. The pencil forgets nothing.</span></p>`;
+        <p><b>${tx("Bags", "Bolsas")}</b> — Gary: <span class="tallyMarks">${tallyStr(S.bags.you)}</span> (${S.bags.you}) · ${S.friend.name}: <span class="tallyMarks">${tallyStr(S.bags.ai)}</span> (${S.bags.ai})<br>
+        <span style="font-size:13.5px">${tx("Every 10 bags in the bank costs −100, charged on the hand that crosses it — and written on that hand's line. The pencil forgets nothing.", "Cada 10 bolsas en el banco cuestan −100, cobradas en la mano que cruza el límite — y escritas en la línea de esa mano. El lápiz no olvida nada.")}</span></p>`;
     }
     function matchSheetHTML(youWin){
-      return `<div id="matchBanner"><div class="big">${youWin ? "🏆 You take the table!" : S.friend.name + " takes the table"}</div>
-        <p>Final from the notebook: <b>Gary ${S.score.you}</b> · <b>${S.friend.name} ${S.score.ai}</b> — first to ${S.target}.</p></div>
+      return `<div id="matchBanner"><div class="big">${youWin ? tx("🏆 You take the table!", "🏆 ¡Te llevas la mesa!") : S.friend.name + tx(" takes the table", " se lleva la mesa")}</div>
+        <p>${tx("Final from the notebook:", "Final del cuaderno:")} <b>Gary ${S.score.you}</b> · <b>${S.friend.name} ${S.score.ai}</b> — ${tx("first to", "el primero en llegar a")} ${S.target}.</p></div>
         ${scoreSheetHTML()}
         <div class="closeRow" style="gap:10px;flex-wrap:wrap">
-          <button class="paperBtn" id="rematchBtn">REMATCH ♠</button>
-          <button class="paperBtn" id="changeTableBtn" style="background:#274d3a">CHANGE TABLE</button>
+          <button class="paperBtn" id="rematchBtn">${tx("REMATCH ♠", "REVANCHA ♠")}</button>
+          <button class="paperBtn" id="changeTableBtn" style="background:#274d3a">${tx("CHANGE TABLE", "CAMBIAR DE MESA")}</button>
         </div>`;
     }
 
     /* ---------------- SHEETS / MODALS ---------------- */
     function showSheet(html){
       $("sheetBody").innerHTML = html + (html.includes("closeRow") && html.includes("rematchBtn") ? "" :
-        `<div class="closeRow"><button class="paperBtn" id="sheetClose">BACK TO THE TABLE</button></div>`);
+        `<div class="closeRow"><button class="paperBtn" id="sheetClose">${tx("BACK TO THE TABLE", "VOLVER A LA MESA")}</button></div>`);
       $("sheetOverlay").classList.remove("hidden");
       const c = $("sheetClose"); if (c) c.addEventListener("click", hideSheet);
       const r = $("rematchBtn"); if (r) r.addEventListener("click", () => { hideSheet(); startMatch(); });
@@ -2140,6 +3109,37 @@
     }
     function hideSheet(){ $("sheetOverlay").classList.add("hidden"); }
     function howToHTML(){
+      if (S.lang === "es") return `<h2>Cómo jugamos ♠</h2>
+      <p style="margin-top:0">Picas uno contra uno, con las reglas de la casa de Gary. Dos jugadores, una baraja, sin pareja detrás de la que esconderse.</p>
+      <h3>🂡 El reparto por elección</h3>
+      <p>No hay reparto normal y <b>no se pasan cartas</b> — eso es de Corazones. La baraja mezclada queda boca abajo en el centro y <b>eligen</b> sus manos, una decisión a la vez:</p>
+      <ul>
+        <li>En tu turno, mira la carta de arriba. La mirada es <b>privada</b> — solo tú la ves. Nunca hay una carta boca arriba en la mesa.</li>
+        <li><b>¿Te gusta?</b> Quédatela — es tuya, y la siguiente carta va directa a la basura <i>boca abajo, sin que nadie la vea</i>. Nunca ves una segunda carta.</li>
+        <li><b>¿No te gusta?</b> Va a la basura <i>boca abajo, todavía oculta para tu amigo</i> — y <b>debes</b> tomar la siguiente carta. Esa segunda carta es tuya, sin verla, sin segundas oportunidades.</li>
+        <li>Así, ida y vuelta, hasta que ambos tengan 13. Se usa toda la baraja: <b>26 guardadas, 26 a la basura</b>.</li>
+      </ul>
+      <p>Toda carta en la basura queda <b>boca abajo y secreta para ambos jugadores</b> — la pila oculta es toda la incertidumbre del juego. Tu amigo también mira en privado; nunca ves su carta, y él nunca ve la tuya.</p>
+      <h3>🎯 El canto</h3>
+      <p>Después del reparto, canta cuántas bazas vas a hacer. El <b>que no reparte canta primero</b>, luego el que reparte — y el reparto rota cada mano. La barra de canto es <b>NIL · MÍNIMO (4) · 5 · 6 · 7 · 8 · 9 · 10 · 11 · 12 · 13</b>. No hay cantos de 1, 2 ni 3 — <b>lo mínimo es el Mínimo: 4</b>. Ambos cantos se escriben en la línea del cuaderno antes de jugar una sola carta.</p>
+      <h3>🌙 Nil — a la manera amistosa</h3>
+      <p>Canta <b>Nil</b> en vez de un número y puedes hacer <b>hasta 2 bazas</b> y aún así cumplirlo. La <b>tercera baza te anula</b>. Nil cumplido paga <b>+100</b>; Nil anulado cuesta <b>−100</b>. El Nil reemplaza tu canto por completo — esas 0–2 bazas no son bolsas y no puntúan nada más. Tu oponente puntúa su propio canto como siempre… y sí, intentará forzarte esa tercera baza.</p>
+      <h3>🃏 Las bazas</h3>
+      <ul>
+        <li>El <b>primer cantante sale en la primera baza</b> — con cualquier cosa menos picas.</li>
+        <li>Sigue el palo si puedes. ¿No puedes? Gana con una pica o tira basura.</li>
+        <li><b>No se puede salir de picas hasta que estén rotas</b> — una pica tiene que caer en la mesa en una baza primero.</li>
+        <li>La carta más alta del palo de salida gana, a menos que una pica se la lleve. Quien gana la baza sale en la siguiente.</li>
+        <li>Tu mano son las 13 que elegiste. Ganes o pierdas una baza — nunca se roba.</li>
+      </ul>
+      <h3>📓 Puntos — cuaderno y lápiz</h3>
+      <ul>
+        <li>Cumple tu canto: <b>10 puntos por baza cantada</b>. Cada baza de más es una <b>bolsa, +1</b>.</li>
+        <li>Cada <b>10 bolsas</b> en el banco: <b>−100</b>, cobradas en la mano que cruza el límite — y escritas en la línea de esa mano.</li>
+        <li>Si no cumples tu canto: <b>−10 por baza cantada</b>.</li>
+        <li>El primero en llegar a <b>500</b> gana.</li>
+      </ul>
+      <p>Los puntos viven en el cuaderno de papel sobre la mesa. Tócalo cuando quieras para leer la hoja entera.</p>`;
       return `<h2>How We Play ♠</h2>
       <p style="margin-top:0">Heads-up Spades, Gary's house rules. Two players, one deck, no partners to hide behind.</p>
       <h3>🂡 The Draft Deal</h3>
@@ -2168,18 +3168,27 @@
         <li>Make your bid: <b>10 points per trick bid</b>. Each trick over is a <b>bag, +1</b>.</li>
         <li>Every <b>10 bags</b> in the bank: <b>−100</b>, charged on the hand that crosses it — and written on that hand's notebook line.</li>
         <li>Miss your bid: <b>−10 per trick bid</b>.</li>
-        <li>First to the match score — <b>250</b> or <b>500</b>, your pick at the table — wins.</li>
+        <li>First to <b>500</b> wins — that's the match, every time.</li>
       </ul>
       <p>The score lives in the paper notebook on the table. Tap it any time to read the whole sheet.</p>`;
     }
     function controlsHTML(){
+      if (S.lang === "es") return `<h2>Controles 🎛</h2>
+      <p style="margin-top:0">El reparto — mira la carta de arriba (solo tú la ves). Toca ME LA QUEDO ✓ para tomarla, PASO ✕ para tirarla sin verla y tomar la siguiente a ciegas.</p>
+      <p>Tu canto — toca NIL, MÍNIMO · 4, o un número.</p>
+      <p>Las bazas — toca una de tus cartas iluminadas para jugarla.</p>
+      <p>Las caras de arriba — toca 👏 😄 🤔 y tu amigo responde.</p>
+      <p>El cuaderno sobre la mesa — tócalo cuando quieras para ver la hoja completa de puntos.</p>
+      <p>El botón ⌂ bajo el altavoz (arriba a la derecha) — vuelve a la portada. Reinicia el partido: puntos, manos y cuaderno, todo borrado.</p>
+      <p>El botón ES | EN (arriba a la derecha) — cambia todo el idioma de la mesa al instante, incluso en mitad de una mano.</p>`;
       return `<h2>Controls 🎛</h2>
       <p style="margin-top:0">Draft — peek at the top card (only you see it). Tap KEEP ✓ to take it, PASS ✕ to trash it unseen and take the next card blind.</p>
       <p>Your bid — tap NIL, BOARD · 4, or a number.</p>
       <p>Tricks — tap one of your glowing cards to play it.</p>
       <p>Faces up top — tap 👏 😄 🤔 and your friend answers.</p>
       <p>The notebook on the table — tap it any time for the full score sheet.</p>
-      <p>The ⌂ button under the sound toggle (top right) — back to the intro page. It resets the match: scores, hands and notebook all cleared.</p>`;
+      <p>The ⌂ button under the sound toggle (top right) — back to the intro page. It resets the match: scores, hands and notebook all cleared.</p>
+      <p>The ES | EN button (top right) — flips the whole table's language instantly, even mid-hand.</p>`;
     }
     /* ---------------- QR ---------------- */
     const QR_ROWS = ["111111101111000010011101001111111","100000101100101011001001101000001","101110100100011000110001101011101","101110101110100100110101101011101","101110100110100011100111101011101","100000100010010110100101001000001","111111101010101010101010101111111","000000001011100111110000100000000","101101110011101111100101001001011","001100001010110011111001001101111","001110100011110000101111101111011","110101010100000011011110100101000","101010111011101010001111110111011","000001010110011001001001000100010","011011101100111001011000101011000","101001000101101100100101011101100","000001111010010000000110011010100","011100000011101100001011111011011","111011111110011110101100010110100","101011000101011111101011101010010","001001110111110110000010000101110","101010010100100111001111101000101","000100101011010100111101111111011","011010010000000100001001001010001","101100101101010001010000111110001","000000001110010100010101100011010","111111101010011001111101101010000","100000101000000011111001100011100","101110100111100111100011111110111","101110101011001011010111000101111","101110101000101110101011101101100","100000100110011001101000111110001","111111101111101011110101000011100"];
@@ -2201,9 +3210,9 @@
         b.setAttribute("aria-label", "Send " + e);
         b.addEventListener("click", () => {
           sfx.chip();
-          if (k === "clap"){ setExpr("pleased"); say(pick(GENERIC.emoteClap), 2200); }
-          if (k === "laugh"){ setExpr("celebrating"); say(pick(GENERIC.emoteLaugh), 2200); }
-          if (k === "think"){ setExpr("thinking"); say(pick(GENERIC.emoteThink), 2600); }
+          if (k === "clap"){ setExpr("pleased"); say(pick(genPool("emoteClap")), 2200); }
+          if (k === "laugh"){ setExpr("celebrating"); say(pick(genPool("emoteLaugh")), 2200); }
+          if (k === "think"){ setExpr("thinking"); say(pick(genPool("emoteThink")), 2600); }
           setTimeout(() => { if (S.phase === "play") setExpr("playing"); }, 2300);
         });
         bar.appendChild(b);
@@ -2241,14 +3250,14 @@
       $("friendWrap").classList.remove("cel-bounce");
       setActions([]); renderHand(); renderFriendFan(); renderNotebook();
       $("tally").textContent = "";
-      status("Pick your friend, pick your place — then take a seat.");
+      status(UI.introStatus);
     }
     function buildIntro(){
       const fp = $("friendPick"); fp.innerHTML = "";
       FRIENDS.forEach(f => {
         const chip = document.createElement("button");
         chip.className = "friendChip" + (f === S.friend ? " sel" : "");
-        chip.innerHTML = `<img src="${IMG.chips[f.id]}" alt="${f.name}"><div class="fname">${f.name}</div><div class="ftrait">${SHORT[f.id]}</div>`;
+        chip.innerHTML = `<img src="${IMG.chips[f.id]}" alt="${f.name}"><div class="fname">${f.name}</div><div class="ftrait">${S.lang === "es" ? SHORT_ES[f.id] : SHORT[f.id]}</div>`;
         chip.addEventListener("click", () => {
           S.friend = f;
           fp.querySelectorAll(".friendChip").forEach(c => c.classList.remove("sel"));
@@ -2260,7 +3269,7 @@
       PLACES.forEach(p => {
         const chip = document.createElement("button");
         chip.className = "chip" + (p === S.place ? " sel" : "");
-        chip.innerHTML = `${p.name}<small>${p.sub}</small>`;
+        chip.innerHTML = `${S.lang === "es" ? p.nameEs : p.name}<small>${S.lang === "es" ? p.subEs : p.sub}</small>`;
         chip.addEventListener("click", () => {
           S.place = p;
           pp.querySelectorAll(".chip").forEach(c => c.classList.remove("sel"));
@@ -2268,21 +3277,13 @@
         });
         pp.appendChild(chip);
       });
-      const sp = $("scorePick"); sp.innerHTML = "";
-      [250, 500].forEach(v => {
-        const chip = document.createElement("button");
-        chip.className = "chip" + (S.target === v ? " sel" : "");
-        chip.innerHTML = `${v}<small>${v === 250 ? "a good evening" : "the long game"}</small>`;
-        chip.addEventListener("click", () => {
-          S.target = v;
-          sp.querySelectorAll(".chip").forEach(c => c.classList.remove("sel"));
-          chip.classList.add("sel"); sfx.chip();
-        });
-        sp.appendChild(chip);
-      });
+      /* no target selector anymore — the match is always to 500 */
+      $("langEn").classList.toggle("sel", S.lang === "en");
+      $("langEs").classList.toggle("sel", S.lang === "es");
     }
     function seatFriend(){
       $("bustImg").src = IMG.busts[S.friend.id];
+      chatReset(); // a new opponent = a fresh chat thread
       $("bustImg").alt = S.friend.name;
       layoutLids();
       setExpr("idle"); renderFriendFan();
@@ -2308,6 +3309,7 @@
     /* wire buttons */
     $("startBtn").addEventListener("click", () => {
       audio(); sfx.snap();
+      if (loadSave()){ showSaveGate(); return; } // a saved match exists — ask before wiping it
       $("app").classList.remove("introOpen");
       $("intro").classList.add("hidden");
       startMatch();
@@ -2318,6 +3320,9 @@
     $("controlsBtn").addEventListener("click", () => showSheet(controlsHTML()));
     $("homeBtn").addEventListener("click", () => { sfx.chip(); backToIntro(); });
     $("soundBtn").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
+    $("langBtn").addEventListener("click", () => { setLang(S.lang === "es" ? "en" : "es"); sfx.chip(); });
+    $("langEn").addEventListener("click", () => { setLang("en"); sfx.chip(); });
+    $("langEs").addEventListener("click", () => { setLang("es"); sfx.chip(); });
     $("soundBtn2").addEventListener("click", () => { setSound(!S.sound); if (S.sound) sfx.chip(); });
     $("qrBtn").addEventListener("click", () => { drawQR(); $("qrOverlay").classList.remove("hidden"); });
     $("qrClose").addEventListener("click", () => $("qrOverlay").classList.add("hidden"));
@@ -2327,7 +3332,7 @@
     $("app").classList.add("introOpen");
     $("introHero").src = IMG.hero;
     $("introBg").style.backgroundImage = `url("${IMG.hero}")`;
-    renderProps(); renderPlace(); buildIntro(); seatFriend(); renderNotebook();
+    renderProps(); renderPlace(); buildIntro(); seatFriend(); renderNotebook(); applyLang();
     </script>
   </body>
 </html>
