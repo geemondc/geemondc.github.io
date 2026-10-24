@@ -41,6 +41,14 @@
     background:var(--btn); color:var(--ink); border:1px solid var(--line);
     border-radius:6px; height:38px; padding:0 12px; font-size:13px; font-weight:bold; letter-spacing:.08em;
   }
+  #hudSouls{ top:64px; left:12px; }
+  #hudSouls .val{ font-size:clamp(16px,3.8vw,22px); color:var(--cyan); text-shadow:0 0 10px rgba(103,232,255,.85),0 0 26px rgba(103,232,255,.4); }
+  #hudSouls.danger .val{ color:var(--bad); text-shadow:0 0 10px rgba(255,106,94,.9),0 0 26px rgba(255,106,94,.45); }
+  #hudShip{ position:fixed; top:118px; left:0; right:0; z-index:5; display:none; flex-direction:column; align-items:center; gap:3px; pointer-events:none; }
+  body.playing #hudShip{ display:flex; }
+  .shipRow{ display:flex; align-items:center; gap:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,94,225,.5); padding:3px 9px; border-radius:7px; font-size:12px; font-weight:bold; color:#ffd7f6; letter-spacing:.06em; }
+  .shipBar{ width:110px; height:9px; border:1px solid var(--mag); border-radius:5px; overflow:hidden; background:rgba(0,0,0,.6); }
+  .shipFill{ height:100%; background:linear-gradient(90deg,#ff5ee1,#ffd76a); transition:width .12s; }
   #hudBomb{ position:fixed; right:12px; bottom:12px; z-index:6; display:none; }
   body.playing #hudBomb{ display:block; }
   #gbombBtn{
@@ -96,6 +104,11 @@
     #togRow{ margin-top:10px; }
     #futureReady{ margin-top:12px; }
   }
+  /* ---------- story comic ---------- */
+  #comic{ display:flex; gap:10px; margin:14px 0 2px; width:min(880px,100%); }
+  .pan{ flex:1 1 0; min-width:0; border:1px solid var(--line); border-radius:8px; background:#02140a; padding:6px; box-shadow:0 0 14px rgba(61,255,110,.12); }
+  .pan canvas{ width:100%; aspect-ratio:3/2; display:block; }
+  .pan .cap{ margin:6px 2px 2px; font-size:clamp(10px,2.7vw,13.5px); line-height:1.35; color:var(--ink); text-align:center; letter-spacing:.02em; }
   /* ---------- overlays ---------- */
   .overlay{
     position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
@@ -129,6 +142,8 @@
 <div class="hud" id="hudScore"><div class="lab"><span data-i18n="score">SCORE</span> · <span data-i18n="level">LEVEL</span> <span id="lvlVal">1</span></div><div class="val" id="scoreVal">0</div></div>
 <div class="hud" id="hudTime"><div class="lab" data-i18n="time">TIME</div><div class="val" id="timeVal">45</div></div>
 <div class="hud" id="hudStreak"><div class="val" id="streakVal"></div><div id="nextSaveVal"></div></div>
+<div class="hud" id="hudSouls"><div class="lab" data-i18n="souls">SOULS</div><div class="val" id="soulsVal">10 / 10</div></div>
+<div id="hudShip"></div>
 <div id="hudBtns"><button class="miniBtn" id="endBtn" data-i18n="endBtn">⏹ END</button><button class="miniBtn" id="pauseBtn" aria-label="Pause">| |</button></div>
 <div id="hudBomb"><button id="gbombBtn">💥 GEE-BOMB ×3</button></div>
 
@@ -136,6 +151,11 @@
   <canvas id="heroCv" width="880" height="587"></canvas>
   <h1 class="title">VECTOR INVASION</h1>
   <p id="tagline" data-i18n="tagline">Silly aliens are invading the neon city. Blast them — and save the family!</p>
+  <div id="comic">
+    <div class="pan"><canvas class="panCv" width="300" height="200"></canvas><p class="cap" data-i18n="cap1">They came to take our families.</p></div>
+    <div class="pan"><canvas class="panCv" width="300" height="200"></canvas><p class="cap" data-i18n="cap2">5 seconds in the beam… and they're gone.</p></div>
+    <div class="pan"><canvas class="panCv" width="300" height="200"></canvas><p class="cap" data-i18n="cap3">You're the last defender. Protect all 10 souls.</p></div>
+  </div>
   <div id="hiRow">
     <div class="hiBox"><div class="lab" data-i18n="bestLab">BEST SCORE</div><div class="num" id="hiBest">0</div></div>
   </div>
@@ -177,6 +197,7 @@
       <li data-i18n="hPoints"></li>
       <li data-i18n="hStreak"></li>
       <li data-i18n="hFamily"></li>
+      <li data-i18n="hShips"></li>
       <li data-i18n="hSaucer"></li>
       <li data-i18n="hFriends"></li>
       <li data-i18n="hLevels"></li>
@@ -199,7 +220,8 @@
     <h2 id="tallyTitle">LEVEL 1 COMPLETE</h2>
     <div class="statRow"><span data-i18n="lvlPoints">LEVEL POINTS</span><b id="tyPoints">0</b></div>
     <div class="statRow"><span data-i18n="accuracy">ACCURACY</span><b id="tyAcc">0%</b></div>
-    <div class="statRow"><span data-i18n="lvlSaved">FAMILY SAVED</span><b id="tySaved">0</b></div>
+    <div class="statRow"><span data-i18n="soulsSaved">SOULS SAVED</span><b id="tySaved">0</b></div>
+    <div class="statRow"><span data-i18n="soulsLost">SOULS LOST</span><b id="tyLost">0</b></div>
     <div class="statRow"><span data-i18n="score">SCORE</span><b id="tyScore">0</b></div>
     <button class="bigBtn" id="nextLvlBtn" data-i18n="nextLevel">NEXT LEVEL ▶</button>
     <button class="bigBtn" id="tallyEndBtn" data-i18n="endRun">END RUN</button>
@@ -208,14 +230,15 @@
 
 <div class="overlay" id="overOverlay">
   <div class="sheet" style="text-align:center">
-    <h2 data-i18n="gameover">CITY SAVED… FOR NOW</h2>
+    <h2 id="ovTitle" data-i18n="gameover">CITY SAVED… FOR NOW</h2>
     <div id="ovRankLab" data-i18n="rankLab">YOUR RANK</div>
     <div id="ovRank">CADET</div>
     <div class="statRow"><span data-i18n="score">SCORE</span><b id="ovScore">0</b></div>
     <div class="statRow"><span data-i18n="best">BEST</span><b id="ovBest">0</b></div>
     <div class="statRow"><span data-i18n="levels">LEVELS</span><b id="ovLevels">1</b></div>
     <div class="statRow"><span data-i18n="zapped">CRITTERS ZAPPED</span><b id="ovZapped">0</b></div>
-    <div class="statRow"><span data-i18n="savedTotal">FAMILY SAVED</span><b id="ovSaved">0</b></div>
+    <div class="statRow"><span data-i18n="soulsSaved">SOULS SAVED</span><b id="ovSaved">0</b></div>
+    <div class="statRow"><span data-i18n="soulsLost">SOULS LOST</span><b id="ovLost">0</b></div>
     <div class="statRow"><span data-i18n="shots">SHOTS</span><b id="ovShots">0</b></div>
     <div class="statRow"><span data-i18n="hits">HITS</span><b id="ovHits">0</b></div>
     <div class="statRow"><span data-i18n="accuracy">ACCURACY</span><b id="ovAcc">0%</b></div>
@@ -236,49 +259,57 @@ var THEMES = [
   { weapon: "tentacle", en: "🐙 TENTACLE TUESDAY!",  es: "🐙 ¡MARTES DE TENTÁCULOS!" }
 ];
 var STR = {
-en:{ tagline:"Silly aliens are invading the neon city. Blast them — and save the family!", bestLab:"BEST SCORE", start:"START", howto:"HOW TO PLAY",
+en:{ tagline:"The motherships came to take our families. Blast the aliens — and protect all 10 souls!", bestLab:"BEST SCORE", start:"START", howto:"HOW TO PLAY",
+  souls:"SOULS", soulsSaved:"SOULS SAVED", soulsLost:"SOULS LOST", takenTxt:"TAKEN!", emptyCity:"THE CITY IS EMPTY",
+  cap1:"They came to take our families.", cap2:"5 seconds in the beam… and they're gone.", cap3:"You're the last defender. Protect all 10 souls.",
+  tauntsH:["THIS CITY IS OURS!","HAND OVER THE HUMANS!","STOP RESISTING!","WE TAKE WHO WE WANT!","THE SHIP IS HUNGRY!"],
   controls:"CONTROLS", close:"CLOSE", paused:"PAUSED", resume:"RESUME", quit:"QUIT TO TITLE",
   gameover:"CITY SAVED… FOR NOW", score:"SCORE", level:"LEVEL", best:"BEST", again:"PLAY AGAIN", newBest:"NEW BEST!",
   time:"TIME", endBtn:"⏹ END", endRun:"END RUN", nextLevel:"NEXT LEVEL ▶",
-  levels:"LEVELS", zapped:"CRITTERS ZAPPED", savedTotal:"FAMILY SAVED", lvlSaved:"FAMILY SAVED", lvlPoints:"LEVEL POINTS",
+  levels:"LEVELS", zapped:"CRITTERS ZAPPED", lvlPoints:"LEVEL POINTS",
   shots:"SHOTS", hits:"HITS", accuracy:"ACCURACY", maxstreak:"MAX STREAK", rankLab:"YOUR RANK",
   rank0:"CADET", rank1:"SHARPSHOOTER", rank2:"CITY DEFENDER", rank3:"VECTOR ACE",
   soundOn:"SOUND: ON", soundOff:"SOUND: OFF",
   hey:"HEY!!", gotAway:"ONE GOT AWAY!", warning:"⚠ WARNING ⚠", bonusLevel:"BONUS LEVEL",
   levelTxt:"LEVEL {n}", nextSave:"NEXT SAVE: {n}", streakTxt:"STREAK {n} — ×{m}",
   savedTxt:"SAVED {who}! +{n}", tallyDone:"LEVEL {n} COMPLETE", tallyBonus:"BONUS LEVEL COMPLETE!",
-  names:{ dad:"DAD", mom:"MOM", boy:"BOY", girl:"GIRL" },
-  hGoal:"Funny alien critters are popping up all over the neon city — rooftops, windows, street level. You have the SHOTGUN: unlimited shells, and every blast catches everything in its spread. Level after level, how long can you hold the city?",
+  names:{ dad:"DAD", mom:"MOM", boy:"BOY", girl:"GIRL", dog:"THE DOG", cat:"THE CAT" },
+  hGoal:"Neon City is under attack. Silly-but-mean alien critters pop up everywhere — rooftops, windows, street level — and behind them, the MOTHERSHIPS are coming for our people. You have the SHOTGUN: unlimited shells, and every blast catches everything in its spread. Blast critters for points… but your real job is keeping all 10 souls safe.",
   hPoints:"POINTS: far critters on the rooftops are worth 150, mid ones in the windows 100, near ones at street level 50.",
   hStreak:"STREAKS: every critter a blast catches counts. Hits back-to-back without an empty blast multiply your points — ×2 at 5 in a row, ×3 at 10, ×4 at 15. A blast that hits nothing breaks the streak.",
-  hFamily:"SAVE THE FAMILY: the family floats up in bubbles carried by little alien balloons. Blast the BALLOON (not the bubble!) to pop them free — rescues pay a ladder: 1000, 2000, 3000, 4000, 5000, then it cycles. If a bubble floats away, the ladder drops back to 1000. Blasting the person costs −200 and resets the ladder.",
+  hFamily:"THE 10 SOULS: two families of four — plus a dog and a cat — stroll the street at the bottom of the screen, always walking, always in danger. They are never your target: blasting one by accident costs −200 points and breaks your streak.",
+  hShips:"MOTHERSHIPS: a giant ship crosses the sky on a schedule — every 10 seconds on level 1, then every 4s, 3s, 2s… and from level 5, TWO at once. Each ship takes 20 hits to bring down (1000 points). Partway across, it stops over a soul and drops its TRACTOR BEAM: 5 seconds in the beam and that soul is TAKEN — −500 points, and gone for the whole run. Shoot the ship down (or let it drift off) before the 5 seconds run out: a broken beam drops the soul back SAFE and pays the rescue ladder — 1000, 2000, 3000, 4000, 5000, then it cycles. Lose all 10 souls and the city is empty: run over.",
   hSaucer:"GOLDEN SAUCER: once in a while a golden saucer drifts across the sky. Nail it for 500 points flat.",
   hFriends:"NEIGHBORS: the city's friendly faces wave from the windows and doorways. Do NOT blast them — that's −200 points, your streak gone, and they'll let you know about it.",
-  hLevels:"LEVELS: each level is 45 seconds and gets busier. Every 5th level is a crazy THEME BONUS — 60 seconds, double the critters, and the family needs saving non-stop. Press ⏹ END whenever you've had enough to bank your score.",
-  hGbomb:"GEE-BOMB: you start with 3 💥 GEE-BOMBS (SPACE or the big button). One GEE-BOMB zaps every alien on screen, one by one, full points — it never touches the family or the neighbors. Earn +1 for every 10,000 points (hold max 5).",
+  hLevels:"LEVELS: each level is 45 seconds and gets busier — and the motherships come faster every level. Every 5th level is a crazy THEME BONUS — 60 seconds, double the critters. Souls you lose stay lost for the rest of the run. Press ⏹ END whenever you've had enough to bank your score.",
+  hGbomb:"GEE-BOMB: you start with 3 💥 GEE-BOMBS (SPACE or the big button). One GEE-BOMB zaps every alien on screen, one by one, full points — it never touches the souls or the neighbors. It also deals 5 damage to every mothership on screen — a big help, never a one-shot. Earn +1 for every 10,000 points (hold max 5).",
   cMouseLab:"MOUSE", cMouse:"Move the mouse to aim. Click to fire the shotgun — the blast catches everything in its spread.",
   cTouchLab:"TOUCH", cTouch:"Tap anywhere on the city to blast right there.",
   cKeysLab:"KEYBOARD", cKeys:"SPACE drops a 💥 GEE-BOMB. P or ESC pauses." },
-es:{ tagline:"Unos alienígenas muy tontos invaden la ciudad de neón. ¡Dispárales — y salva a la familia!", bestLab:"MEJOR PUNTAJE", start:"INICIAR", howto:"CÓMO JUGAR",
+es:{ tagline:"Las naves nodrizas vinieron a llevarse a nuestras familias. ¡Dispara a los alienígenas — y protege a las 10 almas!", bestLab:"MEJOR PUNTAJE", start:"INICIAR", howto:"CÓMO JUGAR",
+  souls:"ALMAS", soulsSaved:"ALMAS SALVADAS", soulsLost:"ALMAS PERDIDAS", takenTxt:"¡SE LO LLEVARON!", emptyCity:"LA CIUDAD ESTÁ VACÍA",
+  cap1:"Vinieron a llevarse a nuestras familias.", cap2:"5 segundos en el rayo… y desaparecen.", cap3:"Eres el último defensor. Protege a las 10 almas.",
+  tauntsH:["¡ESTA CIUDAD ES NUESTRA!","¡ENTREGA A LOS HUMANOS!","¡DEJA DE RESISTIRTE!","¡NOS LLEVAMOS A QUIEN QUERAMOS!","¡LA NAVE TIENE HAMBRE!"],
   controls:"CONTROLES", close:"CERRAR", paused:"PAUSA", resume:"SEGUIR", quit:"VOLVER AL TÍTULO",
   gameover:"CIUDAD A SALVO… POR AHORA", score:"PUNTOS", level:"NIVEL", best:"RÉCORD", again:"JUGAR OTRA VEZ", newBest:"¡NUEVO RÉCORD!",
   time:"TIEMPO", endBtn:"⏹ FIN", endRun:"TERMINAR", nextLevel:"SIGUIENTE NIVEL ▶",
-  levels:"NIVELES", zapped:"BICHOS ZAPEADOS", savedTotal:"FAMILIA SALVADA", lvlSaved:"FAMILIA SALVADA", lvlPoints:"PUNTOS DEL NIVEL",
+  levels:"NIVELES", zapped:"BICHOS ZAPEADOS", lvlPoints:"PUNTOS DEL NIVEL",
   shots:"DISPAROS", hits:"IMPACTOS", accuracy:"PRECISIÓN", maxstreak:"RACHA MÁXIMA", rankLab:"TU RANGO",
   rank0:"CADETE", rank1:"TIRADOR CERTERO", rank2:"DEFENSOR DE LA CIUDAD", rank3:"AS DEL VECTOR",
   soundOn:"SONIDO: SÍ", soundOff:"SONIDO: NO",
   hey:"¡¡EH!!", gotAway:"¡SE ESCAPÓ UNO!", warning:"⚠ ¡CUIDADO! ⚠", bonusLevel:"NIVEL BONUS",
   levelTxt:"NIVEL {n}", nextSave:"PRÓXIMO RESCATE: {n}", streakTxt:"RACHA {n} — ×{m}",
   savedTxt:"¡{who} A SALVO! +{n}", tallyDone:"NIVEL {n} COMPLETADO", tallyBonus:"¡BONUS COMPLETADO!",
-  names:{ dad:"PAPÁ", mom:"MAMÁ", boy:"NIÑO", girl:"NIÑA" },
-  hGoal:"Unos bichos alienígenas muy graciosos están apareciendo por toda la ciudad de neón — tejados, ventanas, a pie de calle. Tienes la ESCOPETA: cartuchos ilimitados, y cada disparo atrapa todo lo que pille en su dispersión. Nivel tras nivel, ¿cuánto aguanta la ciudad?",
+  names:{ dad:"PAPÁ", mom:"MAMÁ", boy:"NIÑO", girl:"NIÑA", dog:"EL PERRO", cat:"EL GATO" },
+  hGoal:"La Ciudad de Neón está bajo ataque. Unos bichos alienígenas graciosos pero malos aparecen por todas partes — tejados, ventanas, a pie de calle — y detrás de ellos, las NAVES NODRIZAS vienen a por nuestra gente. Tienes la ESCOPETA: cartuchos ilimitados, y cada disparo atrapa todo lo que pille en su dispersión. Dispara a los bichos por puntos… pero tu verdadero trabajo es mantener a salvo a las 10 almas.",
   hPoints:"PUNTOS: los bichos lejanos de los tejados valen 150, los de las ventanas 100, los cercanos a pie de calle 50.",
   hStreak:"RACHAS: cada bicho que atrapa un disparo cuenta. Aciertos seguidos sin un disparo vacío multiplican tus puntos — ×2 a los 5, ×3 a los 10, ×4 a los 15. Un disparo que no da a nada rompe la racha.",
-  hFamily:"SALVA A LA FAMILIA: la familia sube flotando en burbujas llevadas por globitos alienígenas. Dispara al GLOBO (¡no a la burbuja!) para liberarlos — los rescates pagan una escalera: 1000, 2000, 3000, 4000, 5000, y vuelve a empezar. Si una burbuja se escapa, la escalera vuelve a 1000. Disparar a la persona cuesta −200 y reinicia la escalera.",
+  hFamily:"LAS 10 ALMAS: dos familias de cuatro — más un perro y un gato — pasean por la calle en la parte baja de la pantalla, siempre caminando, siempre en peligro. Nunca son tu objetivo: disparar a una por accidente cuesta −200 puntos y rompe tu racha.",
+  hShips:"NAVES NODRIZAS: una nave gigante cruza el cielo con un horario — cada 10 segundos en el nivel 1, luego cada 4s, 3s, 2s… y desde el nivel 5, DOS a la vez. Cada nave aguanta 20 impactos (1000 puntos al derribarla). A mitad de camino, se detiene sobre un alma y suelta su RAYO TRACTOR: 5 segundos en el rayo y esa alma es CAPTURADA — −500 puntos, y perdida por el resto de la partida. Derriba la nave (o deja que se aleje) antes de que pasen los 5 segundos: un rayo roto deja caer al alma A SALVO y paga la escalera de rescate — 1000, 2000, 3000, 4000, 5000, y vuelve a empezar. Pierde las 10 almas y la ciudad queda vacía: fin de la partida.",
   hSaucer:"PLATILLO DORADO: de vez en cuando un platillo dorado cruza el cielo. Aciertale para ganar 500 puntos fijos.",
   hFriends:"VECINOS: las caras amigas de la ciudad saludan desde las ventanas y las puertas. NO les dispares — son −200 puntos, pierdes la racha, y te lo van a reclamar.",
-  hLevels:"NIVELES: cada nivel dura 45 segundos y se llena más. Cada 5 niveles hay un BONUS TEMÁTICO loco — 60 segundos, el doble de bichos, y la familia necesita rescate sin parar. Pulsa ⏹ FIN cuando quieras para guardar tu puntaje.",
-  hGbomb:"BOMBA GEE: empiezas con 3 💥 BOMBAS GEE (ESPACIO o el botón grande). Una BOMBA GEE zapea a todos los alienígenas en pantalla, uno por uno, con puntos completos — nunca toca a la familia ni a los vecinos. Gana +1 por cada 10.000 puntos (máximo 5).",
+  hLevels:"NIVELES: cada nivel dura 45 segundos y se llena más — y las naves nodrizas vienen más rápido en cada nivel. Cada 5 niveles hay un BONUS TEMÁTICO loco — 60 segundos y el doble de bichos. Las almas que pierdes se pierden por el resto de la partida. Pulsa ⏹ FIN cuando quieras para guardar tu puntaje.",
+  hGbomb:"BOMBA GEE: empiezas con 3 💥 BOMBAS GEE (ESPACIO o el botón grande). Una BOMBA GEE zapea a todos los alienígenas en pantalla, uno por uno, con puntos completos — nunca toca a las almas ni a los vecinos. También hace 5 de daño a cada nave nodriza en pantalla — una gran ayuda, nunca un derribo instantáneo. Gana +1 por cada 10.000 puntos (máximo 5).",
   cMouseLab:"RATÓN", cMouse:"Mueve el ratón para apuntar. Haz clic para disparar la escopeta — el disparo atrapa todo en su dispersión.",
   cTouchLab:"TÁCTIL", cTouch:"Toca cualquier parte de la ciudad para disparar justo ahí.",
   cKeysLab:"TECLADO", cKeys:"ESPACIO suelta una 💥 BOMBA GEE. P o ESC pausa el juego." }
@@ -331,6 +362,10 @@ var SFX = {
   zap: function(){ tone(980, 0.1, "square", 0.09, 150); },
   gbomb: function(){ noiseBurst(0.5, 0.3, 500); tone(90, 0.55, "sawtooth", 0.18, 34); tone(1240, 0.3, "square", 0.06, 2400); },
   taunt: function(){ tone(1180 + Math.random() * 300, 0.05, "square", 0.035); },
+  clank: function(){ tone(2300, 0.05, "square", 0.07, 900); noiseBurst(0.05, 0.09, 3200); },
+  beam: function(){ tone(150, 0.5, "sawtooth", 0.055, 420); tone(1180, 0.4, "sine", 0.03, 1560, 0.08); },
+  shipdown: function(){ noiseBurst(0.65, 0.32, 560); tone(72, 0.65, "sawtooth", 0.17, 30); tone(880, 0.2, "square", 0.06, 220, 0.05); },
+  taken: function(){ tone(980, 0.3, "sawtooth", 0.09, 1960); tone(660, 0.34, "square", 0.07, 1320, 0.1); },
   start: function(){ tone(660, 0.09, "square", 0.10); tone(990, 0.12, "square", 0.10, 0, 0.1); },
   record: function(){ tone(660, 0.1, "square", 0.1); tone(880, 0.1, "square", 0.1, 0, 0.11); tone(1320, 0.18, "square", 0.1, 0, 0.22); },
   end: function(){ tone(520, 0.16, "sawtooth", 0.09, 380); tone(330, 0.26, "sawtooth", 0.09, 160, 0.15); }
@@ -422,6 +457,7 @@ function drawWeapon(c, kind, x, y, s, t){
 
 /* ---- critters IN PERSON: dome | stalker | tentacle | bobber ---- */
 var CRITTERS = ["dome", "stalker", "tentacle", "bobber"];
+var critterAngry = false; /* true while a mothership is on screen — the swarm turns mean */
 var CRITTER_COL = { dome: "#67e8ff", stalker: "#3dff6e", tentacle: "#ff9f43", bobber: "#ff5ee1" };
 var CRITTER_WEAPON = { dome: "plunger", stalker: "raygun", tentacle: "banana", bobber: "water" };
 function drawCritter(c, type, x, baseY, h, t, aimX, aimY, weapon){
@@ -440,11 +476,21 @@ function drawCritter(c, type, x, baseY, h, t, aimX, aimY, weapon){
     var ex = cx, ey = cy + ry * 0.06, er = rx * 0.42;
     c.fillStyle = "rgba(223,252,255,0.92)"; c.beginPath(); c.arc(ex, ey, er, 0, Math.PI * 2); c.fill();
     var dx = Math.max(-1, Math.min(1, (aimX - ex) / 300)), dy = Math.max(-1, Math.min(1, (aimY - ey) / 300));
-    FILL(c, "#062a12", ex + dx * er * 0.42, ey + dy * er * 0.42, er * 0.46);
+    FILL(c, critterAngry ? "#ff2020" : "#062a12", ex + dx * er * 0.42, ey + dy * er * 0.42, er * 0.46);
     FILL(c, "#ffffff", ex + dx * er * 0.42 - er * 0.14, ey + dy * er * 0.42 - er * 0.16, er * 0.13);
-    // tongue out
-    c.fillStyle = "#ff8fb5";
-    c.beginPath(); c.roundRect(cx + rx * 0.18, baseY - h * 0.115, rx * 0.24, h * 0.075, 3); c.fill();
+    if(critterAngry){
+      // gritted teeth + angry brow
+      c.strokeStyle = "#ffffff"; c.lineWidth = Math.max(1.1, h * 0.03);
+      c.beginPath();
+      for(var tz = 0; tz <= 5; tz++){ var tx2 = cx - rx * 0.3 + tz * rx * 0.12, ty2 = baseY - h * 0.125 + (tz % 2 ? h * 0.028 : 0); if(tz === 0) c.moveTo(tx2, ty2); else c.lineTo(tx2, ty2); }
+      c.stroke();
+      c.strokeStyle = "#ff2020"; c.lineWidth = Math.max(1.4, h * 0.04);
+      L(c, ex - er * 0.8, ey - er * 0.95, ex + er * 0.55, ey - er * 0.55);
+    } else {
+      // tongue out
+      c.fillStyle = "#ff8fb5";
+      c.beginPath(); c.roundRect(cx + rx * 0.18, baseY - h * 0.115, rx * 0.24, h * 0.075, 3); c.fill();
+    }
     // antennae
     strokeGlow(c, "#67e8ff", Math.max(1.1, h * 0.03), function(){
       L(c, cx - rx * 0.45, cy - ry * 0.8, cx - rx * 0.62, cy - ry * 1.18);
@@ -463,7 +509,8 @@ function drawCritter(c, type, x, baseY, h, t, aimX, aimY, weapon){
     var exx = px + sway, eyy = py - pr * 1.86, er2 = pr * 0.52;
     c.fillStyle = "rgba(223,252,255,0.95)"; c.beginPath(); c.arc(exx, eyy, er2, 0, Math.PI * 2); c.fill();
     var pdx = Math.max(-1, Math.min(1, (aimX - exx) / 300)), pdy = Math.max(-1, Math.min(1, (aimY - eyy) / 300));
-    FILL(c, "#3a0ca3", exx + pdx * er2 * 0.4, eyy + pdy * er2 * 0.4, er2 * 0.5);
+    FILL(c, critterAngry ? "#ff2020" : "#3a0ca3", exx + pdx * er2 * 0.4, eyy + pdy * er2 * 0.4, er2 * 0.5);
+    if(critterAngry){ c.strokeStyle = "#ff2020"; c.lineWidth = Math.max(1.3, h * 0.035); L(c, exx - er2 * 0.85, eyy - er2 * 1.0, exx + er2 * 0.6, eyy - er2 * 0.6); }
     FILL(c, "#ffffff", exx + pdx * er2 * 0.4 - er2 * 0.15, eyy + pdy * er2 * 0.4 - er2 * 0.17, er2 * 0.14);
     // head with jagged grin
     strokeGlow(c, "#3dff6e", Math.max(1.4, h * 0.045), function(){ CIRC(c, px, py, pr); });
@@ -498,13 +545,21 @@ function drawCritter(c, type, x, baseY, h, t, aimX, aimY, weapon){
     // two eyes on bumps + goofy smile
     FILL(c, "#dffcff", bx - br * 0.36, byy - br * 0.52, Math.max(1.6, h * 0.045));
     FILL(c, "#dffcff", bx + br * 0.36, byy - br * 0.52, Math.max(1.6, h * 0.045));
-    FILL(c, "#2a1503", bx - br * 0.36, byy - br * 0.52, Math.max(1, h * 0.022));
-    FILL(c, "#2a1503", bx + br * 0.36, byy - br * 0.52, Math.max(1, h * 0.022));
+    FILL(c, critterAngry ? "#ff2020" : "#2a1503", bx - br * 0.36, byy - br * 0.52, Math.max(1, h * 0.026));
+    FILL(c, critterAngry ? "#ff2020" : "#2a1503", bx + br * 0.36, byy - br * 0.52, Math.max(1, h * 0.026));
+    if(critterAngry){
+      c.strokeStyle = "#ff2020"; c.lineWidth = Math.max(1.3, h * 0.035);
+      L(c, bx - br * 0.62, byy - br * 0.82, bx - br * 0.12, byy - br * 0.66);
+      L(c, bx + br * 0.62, byy - br * 0.82, bx + br * 0.12, byy - br * 0.66);
+      c.strokeStyle = "#ffffff"; c.lineWidth = Math.max(1, h * 0.026);
+      c.beginPath();
+      for(var tz2 = 0; tz2 <= 4; tz2++){ var txx = bx - br * 0.3 + tz2 * br * 0.15, tyy = byy - br * 0.1 + (tz2 % 2 ? br * 0.09 : 0); if(tz2 === 0) c.moveTo(txx, tyy); else c.lineTo(txx, tyy); }
+      c.stroke();
+    }
     c.strokeStyle = "#fff3d6"; c.lineWidth = Math.max(1, h * 0.028);
     c.beginPath(); c.arc(bx, byy - br * 0.28, br * 0.4, Math.PI * 0.15, Math.PI * 0.85); c.stroke();
     // tongue
-    c.fillStyle = "#ff8fb5";
-    c.beginPath(); c.roundRect(bx - br * 0.1, byy - br * 0.16, br * 0.22, h * 0.06, 3); c.fill();
+    if(!critterAngry){ c.fillStyle = "#ff8fb5"; c.beginPath(); c.roundRect(bx - br * 0.1, byy - br * 0.16, br * 0.22, h * 0.06, 3); c.fill(); }
     drawWeapon(c, weapon, bx + br * 1.28, byy - br * 1.1, h * 0.32, t);
   } else { /* bobber */
     var hx = x, hy = top + h * 0.56, hr = h * 0.30;
@@ -524,8 +579,13 @@ function drawCritter(c, type, x, baseY, h, t, aimX, aimY, weapon){
     // two round eyes + rosy cheeks + O mouth
     FILL(c, "#dffcff", hx - hr * 0.34, hy - hr * 0.1, Math.max(1.5, h * 0.04));
     FILL(c, "#dffcff", hx + hr * 0.34, hy - hr * 0.1, Math.max(1.5, h * 0.04));
-    FILL(c, "#2a0a24", hx - hr * 0.34, hy - hr * 0.1, Math.max(1, h * 0.02));
-    FILL(c, "#2a0a24", hx + hr * 0.34, hy - hr * 0.1, Math.max(1, h * 0.02));
+    FILL(c, critterAngry ? "#ff2020" : "#2a0a24", hx - hr * 0.34, hy - hr * 0.1, Math.max(1, h * 0.024));
+    FILL(c, critterAngry ? "#ff2020" : "#2a0a24", hx + hr * 0.34, hy - hr * 0.1, Math.max(1, h * 0.024));
+    if(critterAngry){
+      c.strokeStyle = "#ff2020"; c.lineWidth = Math.max(1.3, h * 0.035);
+      L(c, hx - hr * 0.62, hy - hr * 0.42, hx - hr * 0.1, hy - hr * 0.24);
+      L(c, hx + hr * 0.62, hy - hr * 0.42, hx + hr * 0.1, hy - hr * 0.24);
+    }
     c.fillStyle = "rgba(255,143,181,0.75)";
     c.beginPath(); c.arc(hx - hr * 0.58, hy + hr * 0.22, hr * 0.16, 0, Math.PI * 2); c.fill();
     c.beginPath(); c.arc(hx + hr * 0.58, hy + hr * 0.22, hr * 0.16, 0, Math.PI * 2); c.fill();
@@ -613,23 +673,31 @@ function drawFriend(c, fi, x, baseY, h, t){
 /* ---- THE FAMILY (same little family as Vector Rescue & Defend, neon mini) ---- */
 var FAMILY_CLOTH = { dad: "#35c26e", mom: "#c678f0", boy: "#3a86ff", girl: "#ff6fa5" };
 var FAMILY_SCALE = { dad: 1.0, mom: 0.96, boy: 0.62, girl: 0.62 };
-function drawFamilyMember(c, member, cx, feetY, s){
-  var cloth = FAMILY_CLOTH[member], headR = s * 0.17, headY = feetY - s + headR;
+function drawFamilyMember(c, member, cx, feetY, s, opts){
+  opts = opts || {};
+  var cloth = opts.cloth || FAMILY_CLOTH[member], headR = s * 0.17, headY = feetY - s + headR;
+  var stride = opts.walkPh !== undefined ? Math.sin(opts.walkPh) * s * 0.10 : 0;
   c.save();
-  // legs + body
+  // legs + body (animated stride when walking)
   c.strokeStyle = cloth; c.lineWidth = Math.max(1.6, s * 0.075); c.lineCap = "round";
-  L(c, cx - s * 0.08, feetY - s * 0.34, cx - s * 0.11, feetY);
-  L(c, cx + s * 0.08, feetY - s * 0.34, cx + s * 0.11, feetY);
+  L(c, cx - s * 0.08, feetY - s * 0.34, cx - s * 0.11 + stride, feetY);
+  L(c, cx + s * 0.08, feetY - s * 0.34, cx + s * 0.11 - stride, feetY);
   c.fillStyle = cloth;
   c.beginPath(); c.roundRect(cx - s * 0.17, feetY - s * 0.68, s * 0.34, s * 0.38, s * 0.08); c.fill();
-  // arms (dad broader)
+  // arms (dad broader) — raised in panic while beamed, swinging while walking
   var aw = member === "dad" ? 0.26 : 0.21;
   c.beginPath();
-  c.moveTo(cx - s * 0.16, feetY - s * 0.62); c.lineTo(cx - s * aw, feetY - s * 0.38);
-  c.moveTo(cx + s * 0.16, feetY - s * 0.62); c.lineTo(cx + s * aw, feetY - s * 0.38);
+  if(opts.panic){
+    c.moveTo(cx - s * 0.16, feetY - s * 0.62); c.lineTo(cx - s * (aw + 0.06), feetY - s * 0.94);
+    c.moveTo(cx + s * 0.16, feetY - s * 0.62); c.lineTo(cx + s * (aw + 0.06), feetY - s * 0.94);
+  } else {
+    var aSwing = opts.walkPh !== undefined ? Math.sin(opts.walkPh) * s * 0.05 : 0;
+    c.moveTo(cx - s * 0.16, feetY - s * 0.62); c.lineTo(cx - s * aw, feetY - s * 0.38 + aSwing);
+    c.moveTo(cx + s * 0.16, feetY - s * 0.62); c.lineTo(cx + s * aw, feetY - s * 0.38 - aSwing);
+  }
   c.stroke();
   // head
-  c.fillStyle = "#ffca9e"; c.beginPath(); c.arc(cx, headY, headR, 0, Math.PI * 2); c.fill();
+  c.fillStyle = opts.skin || "#ffca9e"; c.beginPath(); c.arc(cx, headY, headR, 0, Math.PI * 2); c.fill();
   c.strokeStyle = "#ffd76a"; c.lineWidth = Math.max(1, s * 0.03);
   c.beginPath(); c.arc(cx, headY, headR, 0, Math.PI * 2); c.stroke();
   // hair
@@ -648,40 +716,130 @@ function drawFamilyMember(c, member, cx, feetY, s){
   c.beginPath(); c.arc(cx, headY + headR * 0.2, headR * 0.42, Math.PI * 0.2, Math.PI * 0.8); c.stroke();
   c.restore();
 }
-function drawFamilyUnit(c, f, t){
-  var s = H * 0.115 * FAMILY_SCALE[f.member] / 0.85;
-  var r = s * 0.78;
+var SOUL_SCALE = { dad: 1.0, mom: 0.96, boy: 0.62, girl: 0.62 };
+function drawPet(c, w, t){
+  var feetY = H * 0.95 - w.lift, s = w.kind === "dog" ? H * 0.052 : H * 0.044;
+  var ph = w.walkPh || 0, d = w.dir || 1;
   c.save();
-  if(f.state === "falling"){
-    // parachute canopy + lines + member
-    var sway = Math.sin(t * 2 + f.x * 0.05) * 6;
-    c.strokeStyle = "#ffd76a"; c.lineWidth = 2;
-    c.beginPath(); c.arc(f.x + sway, f.y - s * 0.4, s * 0.52, Math.PI, 0); c.stroke();
-    L(c, f.x + sway - s * 0.52, f.y - s * 0.4, f.x + sway - s * 0.14, f.y - s * 0.08);
-    L(c, f.x + sway + s * 0.52, f.y - s * 0.4, f.x + sway + s * 0.14, f.y - s * 0.08);
-    drawFamilyMember(c, f.member, f.x + sway, f.y + s * 0.62, s);
-  } else {
-    // carrier balloon (little alien balloon) + wavy string
-    var bx = f.x + r * 0.55, by = f.y - r - H * 0.035;
-    c.strokeStyle = "rgba(180,240,255,0.75)"; c.lineWidth = 1.4;
+  c.lineCap = "round";
+  if(w.kind === "dog"){
+    var col = "#e0a458";
+    c.fillStyle = "rgba(46,28,8,0.9)";
+    c.beginPath(); c.roundRect(w.x - s * 0.95, feetY - s * 0.66, s * 1.9, s * 0.62, s * 0.3); c.fill();
+    strokeGlow(c, col, Math.max(1.4, s * 0.09), function(){ c.beginPath(); c.roundRect(w.x - s * 0.95, feetY - s * 0.66, s * 1.9, s * 0.62, s * 0.3); c.stroke(); });
+    // head + snout + floppy ear
+    c.fillStyle = "rgba(46,28,8,0.9)"; c.beginPath(); c.arc(w.x + d * s * 1.05, feetY - s * 0.82, s * 0.36, 0, Math.PI * 2); c.fill();
+    strokeGlow(c, col, Math.max(1.3, s * 0.08), function(){ CIRC(c, w.x + d * s * 1.05, feetY - s * 0.82, s * 0.36); });
+    c.fillStyle = col; c.beginPath(); c.ellipse(w.x + d * s * 0.92, feetY - s * 0.62, s * 0.17, s * 0.26, d * 0.5, 0, Math.PI * 2); c.fill();
+    FILL(c, "#1a0f04", w.x + d * s * 1.38, feetY - s * 0.72, Math.max(1.3, s * 0.07));
+    FILL(c, "#fff7e0", w.x + d * s * 1.14, feetY - s * 0.9, Math.max(1.2, s * 0.06));
+    // wagging tail + legs
+    c.strokeStyle = col; c.lineWidth = Math.max(1.5, s * 0.1);
+    var wag = Math.sin(t * 11 + w.seed) * s * 0.22;
+    L(c, w.x - d * s * 0.95, feetY - s * 0.6, w.x - d * s * 1.3, feetY - s * 1.0 + wag);
+    for(var li = -1; li <= 1; li += 2){
+      var lo = w.status === "walking" ? Math.sin(ph + (li > 0 ? 0 : Math.PI)) * s * 0.22 : 0;
+      L(c, w.x + li * s * 0.6, feetY - s * 0.1, w.x + li * s * 0.6 + lo, feetY);
+      L(c, w.x + li * s * 0.25, feetY - s * 0.1, w.x + li * s * 0.25 - lo, feetY);
+    }
+  } else { /* cat */
+    var col2 = "#cfd9e4";
+    c.fillStyle = "rgba(20,26,34,0.9)";
+    c.beginPath(); c.roundRect(w.x - s * 0.8, feetY - s * 0.55, s * 1.6, s * 0.52, s * 0.26); c.fill();
+    strokeGlow(c, col2, Math.max(1.3, s * 0.08), function(){ c.beginPath(); c.roundRect(w.x - s * 0.8, feetY - s * 0.55, s * 1.6, s * 0.52, s * 0.26); c.stroke(); });
+    c.fillStyle = "rgba(20,26,34,0.9)"; c.beginPath(); c.arc(w.x + d * s * 0.9, feetY - s * 0.72, s * 0.3, 0, Math.PI * 2); c.fill();
+    strokeGlow(c, col2, Math.max(1.2, s * 0.07), function(){
+      CIRC(c, w.x + d * s * 0.9, feetY - s * 0.72, s * 0.3);
+      L(c, w.x + d * s * 0.9 - s * 0.24, feetY - s * 0.94, w.x + d * s * 0.9 - s * 0.2, feetY - s * 1.22);
+      L(c, w.x + d * s * 0.9 - s * 0.2, feetY - s * 1.22, w.x + d * s * 0.9 + s * 0.02, feetY - s * 1.0);
+      L(c, w.x + d * s * 0.9 + s * 0.24, feetY - s * 0.94, w.x + d * s * 0.9 + s * 0.2, feetY - s * 1.22);
+      L(c, w.x + d * s * 0.9 + s * 0.2, feetY - s * 1.22, w.x + d * s * 0.9 - s * 0.02, feetY - s * 1.0);
+    });
+    FILL(c, "#7dff8a", w.x + d * s * 0.98, feetY - s * 0.74, Math.max(1.1, s * 0.055));
+    // tail curling up, swaying
+    c.strokeStyle = col2; c.lineWidth = Math.max(1.4, s * 0.09);
+    var sway = Math.sin(t * 3 + w.seed * 2) * s * 0.18;
     c.beginPath();
-    c.moveTo(bx, by + H * 0.02);
-    c.quadraticCurveTo(bx - 6, by + H * 0.035, f.x + r * 0.2, f.y - r * 0.9);
+    c.moveTo(w.x - d * s * 0.8, feetY - s * 0.5);
+    c.quadraticCurveTo(w.x - d * s * 1.25, feetY - s * 0.75, w.x - d * s * 1.1 + sway, feetY - s * 1.25);
     c.stroke();
-    c.fillStyle = "rgba(255,94,225,0.9)";
-    c.beginPath(); c.ellipse(bx, by, H * 0.017, H * 0.022, 0, 0, Math.PI * 2); c.fill();
-    c.strokeStyle = "#ff5ee1"; c.lineWidth = 1.6;
-    c.beginPath(); c.ellipse(bx, by, H * 0.017, H * 0.022, 0, 0, Math.PI * 2); c.stroke();
-    FILL(c, "#10240f", bx - H * 0.006, by - H * 0.004, Math.max(1.2, H * 0.0035));
-    FILL(c, "#10240f", bx + H * 0.006, by - H * 0.004, Math.max(1.2, H * 0.0035));
-    // the bubble
-    c.fillStyle = "rgba(140,220,255,0.10)";
-    c.beginPath(); c.arc(f.x, f.y, r, 0, Math.PI * 2); c.fill();
-    strokeGlow(c, "rgba(180,240,255,0.9)", 1.8, function(){ CIRC(c, f.x, f.y, r); });
-    c.strokeStyle = "rgba(255,255,255,0.75)"; c.lineWidth = 2;
-    c.beginPath(); c.arc(f.x, f.y, r * 0.78, Math.PI * 1.15, Math.PI * 1.45); c.stroke();
-    drawFamilyMember(c, f.member, f.x, f.y + s * 0.52, s);
+    c.lineWidth = Math.max(1.3, s * 0.08);
+    for(var lj = -1; lj <= 1; lj += 2){
+      var lo2 = w.status === "walking" ? Math.sin(ph + (lj > 0 ? 0 : Math.PI)) * s * 0.18 : 0;
+      L(c, w.x + lj * s * 0.45, feetY - s * 0.08, w.x + lj * s * 0.45 + lo2, feetY);
+    }
   }
+  c.restore();
+}
+function drawSoul(c, w, t){
+  if(w.kind === "dog" || w.kind === "cat"){ drawPet(c, w, t); return; }
+  var feetY = H * 0.95 - w.lift;
+  var s = H * 0.128 * (SOUL_SCALE[w.member] || 1);
+  var bob = w.status === "walking" ? Math.abs(Math.sin(w.walkPh)) * s * 0.03 : 0;
+  c.save();
+  if(w.status === "rising") c.translate(Math.sin(t * 26 + w.seed * 9) * 2.2, 0);
+  drawFamilyMember(c, w.member, w.x, feetY - bob, s, { cloth: w.cloth, skin: w.skin, walkPh: w.status === "walking" ? w.walkPh : undefined, panic: w.status === "rising" });
+  c.restore();
+}
+
+/* ---- THE MOTHERSHIP ---- */
+var SHIP_COLORS = ["#ff5ee1", "#67e8ff", "#ff9f43", "#b388ff", "#3dff6e", "#ff6a5e"];
+function drawMothership(c, sh, t){
+  var x = sh.x, y = sh.y, rx = sh.rx, ry = rx * 0.34;
+  c.save();
+  if(sh.flashT > 0){ c.shadowColor = "#ffffff"; c.shadowBlur = 26; }
+  // hull
+  c.fillStyle = "rgba(10,10,26,0.92)";
+  c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
+  strokeGlow(c, sh.color, Math.max(2, rx * 0.045), function(){
+    c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.ellipse(x, y + ry * 0.34, rx * 0.58, ry * 0.5, 0, 0, Math.PI); c.stroke();
+  });
+  // dome with a pilot silhouette
+  c.fillStyle = "rgba(160,230,255,0.16)";
+  c.beginPath(); c.arc(x, y - ry * 0.28, rx * 0.34, Math.PI, 0); c.closePath(); c.fill();
+  strokeGlow(c, sh.color, Math.max(1.6, rx * 0.035), function(){
+    c.beginPath(); c.arc(x, y - ry * 0.28, rx * 0.34, Math.PI, 0); c.closePath(); c.stroke();
+  });
+  FILL(c, "rgba(6,20,10,0.85)", x, y - ry * 0.52, rx * 0.13);
+  // chasing hull lights
+  for(var i = 0; i < 7; i++){
+    var lx = x - rx * 0.78 + i * rx * 0.26, on = Math.sin(t * 9 + i * 1.35 + sh.seed * 7) > -0.15;
+    FILL(c, on ? "#fff3d6" : sh.color, lx, y + ry * 0.18, Math.max(1.8, rx * 0.05));
+  }
+  // beam emitter glow while beaming
+  if(sh.state === "beam"){
+    var pulse = 0.6 + 0.4 * Math.sin(t * 14);
+    FILL(c, "rgba(160,245,255," + (0.85 * pulse).toFixed(3) + ")", x, y + ry * 0.8, rx * 0.13);
+  }
+  c.restore();
+}
+function drawBeam(c, sh, t){
+  if(sh.state !== "beam" || !sh.target) return;
+  var topY = sh.y + sh.rx * 0.26, botY = H * 0.95, tx = sh.target.x;
+  var tw = sh.rx * 0.24, bw = sh.rx * 0.85;
+  var urg = sh.beamT / 5;
+  c.save();
+  var gr = c.createLinearGradient(0, topY, 0, botY);
+  var col = urg > 0.66 ? "255,110,90" : "140,240,255";
+  gr.addColorStop(0, "rgba(" + col + ",0.30)"); gr.addColorStop(1, "rgba(" + col + ",0.10)");
+  c.fillStyle = gr;
+  c.beginPath();
+  c.moveTo(sh.x - tw, topY); c.lineTo(sh.x + tw, topY);
+  c.lineTo(tx + bw, botY); c.lineTo(tx - bw, botY);
+  c.closePath(); c.fill();
+  c.strokeStyle = "rgba(" + col + ",0.55)"; c.lineWidth = 1.6;
+  L(c, sh.x - tw, topY, tx - bw, botY); L(c, sh.x + tw, topY, tx + bw, botY);
+  // rising sparkles
+  c.fillStyle = "rgba(230,255,255,0.8)";
+  for(var i = 0; i < 5; i++){
+    var p = ((t * 0.7 + i * 0.21 + sh.seed) % 1), sy = botY - (botY - topY) * p;
+    var sw = (tw + (bw - tw) * (1 - p)) * Math.sin(i * 2.7 + t * 3);
+    c.fillRect(tx + sw - 1.4, sy - 1.4, 2.8, 2.8);
+  }
+  // ground ring closing in on the target
+  c.strokeStyle = "rgba(" + col + ",0.8)"; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(tx, botY, bw * (1.15 - urg * 0.5), bw * 0.26 * (1.15 - urg * 0.5), 0, 0, Math.PI * 2); c.stroke();
   c.restore();
 }
 
@@ -830,15 +988,111 @@ function newGame(){
   return { score: 0, streak: 0, maxStreak: 0, shots: 0, hits: 0, zapped: 0, friendHits: 0, personHits: 0,
     familySaved: 0, familySpawned: 0, familyLost: 0, ladderIdx: 0, gbombs: 3, nextBombAt: 10000,
     level: 0, levelTime: 0, bonus: false, theme: null, themeName: "",
-    lvl: { score: 0, shots: 0, hits: 0, saved: 0 },
+    lvl: { score: 0, shots: 0, hits: 0, saved: 0, lost: 0 },
     pump: 0, pendingBlast: null, kick: 0, elapsed: 0, spawnT: 0.5, familyT: 7, saucerT: 9 + Math.random() * 8, saucer: null,
+    wanderers: makeWanderers(), ships: [], shipT: 10, soulsTaken: 0, emptyCity: false, shipHudSig: "",
     ents: [], family: [], parts: [], pops: [], bubbles: [], bolts: [], rings: [],
     banner: null, flashRed: 0, flashWhite: 0, zapQ: [], zapT: 0, lastEvent: "", memberIdx: 0 };
+}
+/* ---------- the 10 souls ---------- */
+var SOUL_DEFS = [
+  { fam: "A", member: "dad",  cloth: "#35c26e", skin: "#8a5a33" },
+  { fam: "A", member: "mom",  cloth: "#c678f0", skin: "#ffca9e" },
+  { fam: "A", member: "boy",  cloth: "#3a86ff", skin: "#ffca9e" },
+  { fam: "A", member: "girl", cloth: "#ff6fa5", skin: "#c98a5a" },
+  { fam: "B", member: "dad",  cloth: "#ff9f43", skin: "#ffca9e" },
+  { fam: "B", member: "mom",  cloth: "#2dd4bf", skin: "#8a5a33" },
+  { fam: "B", member: "boy",  cloth: "#e5484d", skin: "#c98a5a" },
+  { fam: "B", member: "girl", cloth: "#ffd93d", skin: "#ffca9e" },
+  { fam: "A", member: "dog",  cloth: null, skin: null },
+  { fam: "B", member: "cat",  cloth: null, skin: null }
+];
+function makeWanderers(){
+  return SOUL_DEFS.map(function(d, i){
+    var kid = d.member === "boy" || d.member === "girl";
+    var pet = d.member === "dog" || d.member === "cat";
+    return { fam: d.fam, member: d.member, kind: pet ? d.member : "person", cloth: d.cloth, skin: d.skin,
+      x: (0.07 + 0.86 * (i + 0.5) / 10) * (typeof W === "number" && W > 0 ? W : 900) + (Math.random() * 30 - 15),
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: pet ? 20 + Math.random() * 10 : kid ? 17 + Math.random() * 8 : 13 + Math.random() * 7,
+      status: "walking", lift: 0, beamT: 0, walkPh: Math.random() * 6.28, seed: Math.random() * 10,
+      burstT: 1 + Math.random() * 3, burst: false, hopT: 0 };
+  });
+}
+function soulsLeft(){ if(!G) return 10; return G.wanderers.filter(function(w){ return w.status !== "taken"; }).length; }
+function shipCadenceFor(n){ return n <= 1 ? 10 : n === 2 ? 4 : n === 3 ? 3 : 2; }
+function maxShips(){ return G && G.level >= 5 ? 2 : 1; }
+function spawnShip(){
+  if(!G) return null;
+  var dir = Math.random() < 0.5 ? 1 : -1;
+  var scale = 0.8 + Math.random() * 0.6;
+  var rx = H * 0.078 * scale;
+  var sh = { dir: dir, scale: scale, rx: rx, x: dir > 0 ? -rx * 1.3 : W + rx * 1.3,
+    y: H * (0.085 + Math.random() * 0.035), hp: 20, maxHp: 20,
+    color: SHIP_COLORS[Math.floor(Math.random() * SHIP_COLORS.length)],
+    state: "cross", target: null, beamT: 0, traveled: 0, flashT: 0, seed: Math.random() * 10 };
+  sh.speed = (W + rx * 2.6) / 13.5;
+  G.ships.push(sh);
+  G.lastEvent = "ship";
+  return sh;
+}
+function breakBeam(sh, pay){
+  var w = sh.target;
+  sh.target = null; sh.beamT = 0;
+  if(sh.state === "beam") sh.state = "cross";
+  if(w && w.status === "rising"){
+    w.status = "falling"; w.beamT = 0;
+    if(pay){
+      var idx = G.ladderIdx, pts = LADDER[idx];
+      addScore(pts);
+      G.familySaved++; G.lvl.saved++;
+      G.ladderIdx = (idx + 1) % LADDER.length;
+      popup(w.x, H * 0.95 - w.lift - H * 0.1, T("savedTxt").replace("{who}", STR[lang].names[w.member]).replace("{n}", pts), "#67e8ff");
+      burst(w.x, H * 0.95 - w.lift, "#aee9ff", 8, 160);
+      SFX.rescue(idx);
+      G.lastEvent = "saved";
+    }
+  }
+}
+function takeSoul(sh){
+  var w = sh.target;
+  sh.target = null; sh.beamT = 0; sh.state = "cross";
+  if(!w) return;
+  w.status = "taken"; w.beamT = 0;
+  G.soulsTaken++; G.familyLost = G.soulsTaken; G.lvl.lost++;
+  addScore(-500); G.streak = 0; G.ladderIdx = 0; G.flashRed = 0.4; G.lastEvent = "taken";
+  popup(w.x, sh.y + sh.rx, T("takenTxt") + " −500", "#ff6a5e");
+  burst(w.x, sh.y + sh.rx * 0.4, "#dff6ff", 16, 260);
+  SFX.taken();
+  if(soulsLeft() <= 0){
+    G.emptyCity = true;
+    endGame();
+  }
+}
+function killShip(sh){
+  var ix = G.ships.indexOf(sh); if(ix < 0) return;
+  burst(sh.x, sh.y, sh.color, 30, 400);
+  burst(sh.x, sh.y, "#ffffff", 14, 300);
+  G.rings.push({ x: sh.x, y: sh.y, t: 0, max: sh.rx * 2.4, big: false, delay: 0 });
+  popup(sh.x, sh.y - sh.rx * 0.6, "+1000", "#ffd76a");
+  addScore(1000);
+  SFX.shipdown();
+  G.lastEvent = "shipdown";
+  if(sh.target) breakBeam(sh, true);
+  G.ships.splice(ix, 1);
+}
+function damageShip(sh, dmg, px, py){
+  sh.hp -= dmg; sh.flashT = 0.09;
+  SFX.clank();
+  if(px !== undefined) burst(px, py, "#ffe9a8", 5, 180);
+  if(sh.hp <= 0) killShip(sh);
 }
 function spawnInterval(){
   if(!G) return 1;
   var base = Math.max(0.34, 1.05 - (G.level - 1) * 0.09);
-  return G.bonus ? base * 0.5 : base;
+  var iv = G.bonus ? base * 0.5 : base;
+  if(G.ships && G.ships.length) iv *= 0.55; /* THE DIVERSION: the swarm thickens while a mothership works */
+  return iv;
 }
 function spawnEnt(list, spot, kind, type){
   if(spot.occupied) return null;
@@ -885,16 +1139,6 @@ function entGeom(e){
   var cx = e.spot.x * W + e.wigX, visH = hPx * e.peek;
   return { cx: cx, baseY: baseY, hPx: hPx, top: baseY - visH, cy: baseY - visH / 2, rx: hPx * 0.55, ry: Math.max(6, visH * 0.55) };
 }
-function famGeom(f){
-  var s = H * 0.115 * FAMILY_SCALE[f.member] / 0.85, r = s * 0.78;
-  return { s: s, r: r, bx: f.x + r * 0.55, by: f.y - r - H * 0.035, balR: H * 0.024 };
-}
-function spawnFamilyUnit(member){
-  var f = { member: member || MEMBERS[G.memberIdx++ % 4], x: (0.14 + Math.random() * 0.72) * W,
-    y: H + H * 0.07, state: "rising", seed: Math.random() * 10 };
-  G.family.push(f); G.familySpawned++;
-  return f;
-}
 function updateEnts(list, dt){
   for(var i = list.length - 1; i >= 0; i--){
     var e = list[i];
@@ -905,7 +1149,16 @@ function updateEnts(list, dt){
       if(p >= 1){ e.phase = "hold"; e.phaseT = 0; }
     } else if(e.phase === "hold"){
       e.peek = 1;
-      if(e.kind === "alien" && !e.taunted && e.phaseT > e.hold * 0.55 && Math.random() < dt * 0.7){ e.taunted = true; if(state === "playing") SFX.taunt(); }
+      if(e.kind === "alien" && !e.taunted && e.phaseT > e.hold * 0.55 && Math.random() < dt * 0.7){
+        e.taunted = true;
+        if(state === "playing"){
+          SFX.taunt();
+          if(critterAngry && G){
+            var hg = entGeom(e), pool = STR[lang].tauntsH || STR.en.tauntsH;
+            G.bubbles.push({ x: hg.cx, y: hg.top - H * 0.015, text: pool[Math.floor(Math.random() * pool.length)], t: 0 });
+          }
+        }
+      }
       if(e.phaseT >= e.hold){ e.phase = "duck"; e.phaseT = 0; }
     } else {
       e.peek = Math.max(0, 1 - e.phaseT / 0.16);
@@ -934,11 +1187,14 @@ function addScore(n){
 function startLevel(n){
   G.ents.forEach(function(e){ e.spot.occupied = null; });
   G.ents = []; G.family = []; G.zapQ = [];
+  G.ships = [];
+  G.wanderers.forEach(function(w){ if(w.status === "rising"){ w.status = "falling"; w.beamT = 0; } });
+  G.shipT = shipCadenceFor(n);
   G.level = n; G.bonus = isBonus(n); G.theme = G.bonus ? themeFor(n) : null;
   G.themeName = G.theme ? G.theme.name : "";
   G.levelTime = G.bonus ? 60 : 45;
-  G.lvl = { score: 0, shots: 0, hits: 0, saved: 0 };
-  G.spawnT = 0.7; G.familyT = G.bonus ? 1.3 : 6.5;
+  G.lvl = { score: 0, shots: 0, hits: 0, saved: 0, lost: 0 };
+  G.spawnT = 0.7;
   if(G.bonus){
     G.banner = { text: T("warning"), sub: T("bonusLevel") + " — " + G.themeName, t: 0, dur: 2.8, warn: true };
     SFX.klaxon();
@@ -954,6 +1210,7 @@ function endLevel(){
   $("tyPoints").textContent = G.lvl.score;
   $("tyAcc").textContent = (G.lvl.shots ? Math.min(100, Math.round(G.lvl.hits / G.lvl.shots * 100)) : 0) + "%";
   $("tySaved").textContent = G.lvl.saved;
+  $("tyLost").textContent = G.lvl.lost;
   $("tyScore").textContent = G.score;
   $("tallyOverlay").classList.add("open");
   if(G.lvl.score > 0) SFX.record(); else SFX.end();
@@ -976,6 +1233,8 @@ function endGame(){
   $("ovLevels").textContent = G.level;
   $("ovZapped").textContent = G.zapped;
   $("ovSaved").textContent = G.familySaved;
+  $("ovLost").textContent = G.soulsTaken;
+  $("ovTitle").textContent = G.emptyCity ? T("emptyCity") : T("gameover");
   $("ovShots").textContent = G.shots;
   $("ovHits").textContent = G.hits;
   $("ovAcc").textContent = (G.shots ? Math.min(100, Math.round(G.hits / G.shots * 100)) : 0) + "%";
@@ -1030,22 +1289,19 @@ function friendHit(e){
   SFX.hey();
   e.phase = "duck"; e.phaseT = 0;
 }
-function freeFamily(f, g){
-  var idx = G.ladderIdx, pts = LADDER[idx];
-  addScore(pts);
-  G.familySaved++; G.lvl.saved++; G.hits++; G.lvl.hits++;
-  G.ladderIdx = (idx + 1) % LADDER.length;
-  popup(f.x, f.y - g.r - 8, T("savedTxt").replace("{who}", STR[lang].names[f.member]).replace("{n}", pts), "#67e8ff");
-  burst(f.x, f.y, "#aee9ff", 10, 200);
-  SFX.rescue(idx);
-  f.state = "falling";
-  G.lastEvent = "saved";
-}
 function personHit(f, g){
   addScore(-200); G.ladderIdx = 0; G.streak = 0; G.personHits++; G.lastEvent = "person"; G.flashRed = 0.35;
   popup(f.x, f.y - g.r - 8, "−200", "#ff6a5e");
   G.bubbles.push({ x: f.x, y: f.y - g.r - H * 0.02, text: T("hey"), t: 0 });
   SFX.hey();
+}
+function soulHit(w){
+  addScore(-200); G.streak = 0; G.personHits++; G.friendHits++; G.lastEvent = "person"; G.flashRed = 0.35;
+  var wy = H * 0.95 - w.lift;
+  popup(w.x, wy - H * 0.09, "−200", "#ff6a5e");
+  G.bubbles.push({ x: w.x, y: wy - H * 0.075, text: T("hey"), t: 0 });
+  SFX.hey();
+  w.hopT = 0.3;
 }
 function blastAt(px, py){
   if(state !== "playing" || !G) return;
@@ -1061,6 +1317,21 @@ function blastAt(px, py){
   }
   G.parts.push({ x: W / 2 + 30, y: H - 6, vx: 70, vy: -200, t: 0, dur: 0.5, color: "#ffd76a", len: 4, rot: 0, vr: 4, kind: "spark" });
   var hitSomething = false;
+  // motherships: one blast = one hit (pump rhythm respected above)
+  G.ships.slice().forEach(function(sh){
+    var ddx = (px - sh.x) / (BR * 0.7 + sh.rx * 0.85), ddy = (py - sh.y) / (BR * 0.7 + sh.rx * 0.4);
+    if(ddx * ddx + ddy * ddy <= 1){
+      hitSomething = true; G.hits++; G.lvl.hits++;
+      damageShip(sh, 1, px, py);
+      G.lastEvent = "shiphit";
+    }
+  });
+  // the souls on the street — never a target: an accidental catch costs −200
+  G.wanderers.forEach(function(w){
+    if(w.status === "taken") return;
+    var wy = H * 0.95 - w.lift, ws = w.kind === "person" ? H * 0.128 * (SOUL_SCALE[w.member] || 1) : H * 0.05;
+    if(Math.hypot(px - w.x, py - (wy - ws * 0.5)) <= BR * 0.45 + ws * 0.34){ soulHit(w); hitSomething = true; }
+  });
   // golden saucer
   if(G.saucer){
     var s = G.saucer;
@@ -1070,14 +1341,6 @@ function blastAt(px, py){
       SFX.chime(); SFX.pop(); G.saucer = null; hitSomething = true;
     }
   }
-  // family: shoot the BALLOON to free, the BUBBLE is the person
-  G.family.slice().forEach(function(f){
-    if(f.state !== "rising") return;
-    var g = famGeom(f);
-    var dBub = Math.hypot(px - f.x, py - f.y), dBal = Math.hypot(px - g.bx, py - g.by);
-    if(dBub <= g.r){ personHit(f, g); hitSomething = true; }
-    else if(dBal <= BR * 0.8 + g.balR){ freeFamily(f, g); hitSomething = true; }
-  });
   // critters + friends in the spread
   var caught = G.ents.filter(function(e){
     if(e.peek < 0.5 || e.phase === "duck") return false;
@@ -1101,6 +1364,10 @@ function fireGBomb(){
   SFX.gbomb(); G.flashWhite = 0.3; G.kick = 1; G.lastEvent = "gbomb";
   G.rings.push({ x: W / 2, y: H * 1.02, t: 0, max: H * 0.95, big: true, delay: 0 });
   G.rings.push({ x: W / 2, y: H * 1.02, t: 0, max: H * 0.95, big: true, delay: 0.18 });
+  G.ships.slice().forEach(function(sh){
+    G.bolts.push({ x1: W / 2, y1: H * 1.0, x2: sh.x, y2: sh.y, t: 0, seed: Math.random() * 10 });
+    damageShip(sh, 5, sh.x, sh.y);
+  });
   var cxp = W / 2, cyp = H;
   G.zapQ = G.ents.filter(function(e){ return e.kind === "alien" && e.peek > 0.3; }).sort(function(a, b){
     var ga = entGeom(a), gb = entGeom(b);
@@ -1140,21 +1407,75 @@ function update(dt){
   if(G.flashWhite > 0) G.flashWhite -= dt;
   if(G.banner && (G.banner.t += dt) > G.banner.dur) G.banner = null;
   updateEnts(G.ents, dt);
-  // family rise / fall / escape
-  for(var fi = G.family.length - 1; fi >= 0; fi--){
-    var f = G.family[fi], fg = famGeom(f);
-    if(f.state === "rising"){
-      f.y -= H * 0.05 * dt;
-      f.x += Math.sin(elapsed * 1.3 + f.seed * 4) * 6 * dt;
-      if(f.y - fg.r < -H * 0.02){
-        G.family.splice(fi, 1);
-        G.familyLost++; G.ladderIdx = 0; G.lastEvent = "away";
-        G.banner = { text: T("gotAway"), sub: "", t: 0, dur: 1.3, warn: true };
-        SFX.away();
+  // ---- the souls stroll the street ----
+  critterAngry = G.ships.length > 0;
+  var groundY = H * 0.95;
+  G.wanderers.forEach(function(w){
+    if(w.status === "taken") return;
+    if(w.hopT > 0) w.hopT -= dt;
+    if(w.status === "walking"){
+      var kid = w.member === "boy" || w.member === "girl";
+      w.burstT -= dt;
+      if(w.burstT <= 0){ w.burst = !w.burst && kid; w.burstT = w.burst ? 0.8 + Math.random() * 0.9 : 1.6 + Math.random() * 3.2; }
+      var spd = w.speed * (w.burst ? 1.9 : 1) * (W / 900);
+      w.x += w.dir * spd * dt;
+      w.walkPh += dt * spd * 0.16;
+      if(w.x < W * 0.03){ w.x = W * 0.03; w.dir = 1; }
+      if(w.x > W * 0.97){ w.x = W * 0.97; w.dir = -1; }
+    } else if(w.status === "falling"){
+      w.lift -= H * 0.30 * dt;
+      w.x += Math.sin(elapsed * 1.7 + w.seed * 4) * 8 * dt;
+      if(w.lift <= 0){
+        w.lift = 0; w.status = "walking";
+        burst(w.x, groundY, "#aee9ff", 5, 110);
       }
+    }
+    // rising is driven by the ship's beam below
+  });
+  // ---- motherships: schedule, crossing, beams ----
+  if(soulsLeft() > 0){
+    G.shipT -= dt;
+    if(G.shipT <= 0){
+      if(G.ships.length < maxShips()) spawnShip();
+      G.shipT = shipCadenceFor(G.level);
+    }
+  }
+  for(var si = G.ships.length - 1; si >= 0; si--){
+    var sh = G.ships[si];
+    if(sh.flashT > 0) sh.flashT -= dt;
+    if(sh.state === "beam" && sh.target){
+      sh.traveled += sh.speed * 0.35 * dt;
+      sh.x += sh.dir * sh.speed * 0.35 * dt;
+      // hover-drift to stay over the target
+      sh.x += Math.max(-46 * dt, Math.min(46 * dt, sh.target.x - sh.x));
+      sh.beamT += dt;
+      sh.target.beamT = sh.beamT;
+      var liftMax = Math.max(10, groundY - (sh.y + sh.rx * 0.35));
+      sh.target.lift = liftMax * Math.min(1, sh.beamT / 5);
+      sh.target.x += (sh.x - sh.target.x) * Math.min(1, dt * 1.6);
+      if(sh.beamT >= 5){ takeSoul(sh); if(state !== "playing") return; }
     } else {
-      f.y += H * 0.055 * dt;
-      if(f.y > H * 0.99){ burst(f.x, H * 0.95, "#aee9ff", 6, 120); G.family.splice(fi, 1); }
+      sh.traveled += sh.speed * dt;
+      sh.x += sh.dir * sh.speed * dt;
+      var total = W + sh.rx * 2.6;
+      if(sh.traveled / total >= 0.25 && soulsLeft() > 0){
+        var bestW = null, bestD = 1e12;
+        G.wanderers.forEach(function(w){
+          if(w.status !== "walking") return;
+          var dd = Math.abs(w.x - sh.x);
+          if(dd < bestD){ bestD = dd; bestW = w; }
+        });
+        if(bestW){
+          sh.state = "beam"; sh.target = bestW; sh.beamT = 0;
+          bestW.status = "rising"; bestW.beamT = 0;
+          SFX.beam();
+          G.lastEvent = "beam";
+        }
+      }
+    }
+    if((sh.dir > 0 && sh.x - sh.rx > W + 8) || (sh.dir < 0 && sh.x + sh.rx < -8)){
+      if(sh.target) breakBeam(sh, true); /* drifted off mid-abduction: the soul drops SAFE, rescue pays */
+      G.ships.splice(si, 1);
     }
   }
   // spawner
@@ -1163,13 +1484,6 @@ function update(dt){
   if(G.spawnT <= 0){
     if(G.ents.length < cap) trySpawn(G.ents, true);
     G.spawnT = spawnInterval() * (0.75 + Math.random() * 0.5);
-  }
-  // family spawner
-  G.familyT -= dt;
-  if(G.familyT <= 0){
-    var rising = G.family.filter(function(f2){ return f2.state === "rising"; }).length;
-    if(rising < (G.bonus ? 3 : 1)) spawnFamilyUnit();
-    G.familyT = G.bonus ? 1.8 + Math.random() * 0.9 : 10 + Math.random() * 5;
   }
   // golden saucer
   if(!G.saucer){
@@ -1223,7 +1537,11 @@ function render(){
     ctx.restore();
     drawSpotCover(ctx, e.spot);
   });
-  if(G && state !== "title") G.family.forEach(function(f){ drawFamilyUnit(ctx, f, elapsed); });
+  if(G && state !== "title"){
+    G.ships.forEach(function(sh){ drawMothership(ctx, sh, elapsed); });
+    G.ships.forEach(function(sh){ drawBeam(ctx, sh, elapsed); });
+    G.wanderers.forEach(function(w){ if(w.status !== "taken") drawSoul(ctx, w, elapsed); });
+  }
   ctx.restore();
   if(G && state !== "title"){
     // rings
@@ -1325,6 +1643,17 @@ function updateHUD(){
   $("hudTime").classList.toggle("low", G.levelTime <= 10 && state === "playing");
   $("streakVal").textContent = G.streak >= 2 ? T("streakTxt").replace("{n}", G.streak).replace("{m}", multFor(G.streak)) : "";
   $("nextSaveVal").textContent = T("nextSave").replace("{n}", LADDER[G.ladderIdx]);
+  var sl = soulsLeft();
+  $("soulsVal").textContent = sl + " / 10";
+  $("hudSouls").classList.toggle("danger", sl <= 3);
+  var sig = G.ships.map(function(sh){ return sh.hp; }).join(",");
+  if(sig !== G.shipHudSig){
+    G.shipHudSig = sig;
+    $("hudShip").innerHTML = G.ships.map(function(sh){
+      var pct = Math.max(0, Math.round(sh.hp / sh.maxHp * 100));
+      return '<div class="shipRow">🛸 <div class="shipBar"><div class="shipFill" style="width:' + pct + '%"></div></div>' + sh.hp + "/" + sh.maxHp + "</div>";
+    }).join("");
+  }
 }
 function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(function(el){ el.textContent = T(el.getAttribute("data-i18n")); });
@@ -1372,9 +1701,16 @@ function drawHero(){
   drawFriend(c, 0, pw.x * W, (pw.y + 0.052) * H, H * 0.125, 1.4);
   drawFriend(c, 2, (frontB[1].x + frontB[1].w / 2) * W, H * 0.775, H * 0.125, 2.1);
   drawSpotCover(c, { kind: "balcony", x: frontB[1].x + frontB[1].w / 2, baseY: 0.775, bw: frontB[1].w * 0.8 });
-  // family bubble rising at right
-  drawFamilyUnit(c, { member: "mom", x: W * 0.86, y: H * 0.52, state: "rising", seed: 1 }, 1.4);
-  drawFamilyUnit(c, { member: "girl", x: W * 0.70, y: H * 0.30, state: "falling", seed: 2 }, 1.4);
+  // mothership abducting a dad at right; souls strolling the street below
+  var heroShip = { x: W * 0.80, y: H * 0.13, rx: H * 0.085, color: "#ff5ee1", state: "beam", flashT: 0, seed: 3, beamT: 2.2,
+    target: { x: W * 0.80, member: "dad" } };
+  drawMothership(c, heroShip, 1.4);
+  drawBeam(c, heroShip, 1.4);
+  drawFamilyMember(c, "dad", W * 0.80, H * 0.95 - H * 0.30, H * 0.115, { cloth: "#35c26e", skin: "#8a5a33", panic: true });
+  drawFamilyMember(c, "mom", W * 0.16, H * 0.95, H * 0.11, { cloth: "#c678f0", walkPh: 1.2 });
+  drawFamilyMember(c, "boy", W * 0.26, H * 0.95, H * 0.075, { cloth: "#e5484d", walkPh: 4.4 });
+  drawPet(c, { kind: "dog", member: "dog", x: W * 0.36, dir: 1, lift: 0, walkPh: 2.2, seed: 1, status: "walking" }, 1.4);
+  drawPet(c, { kind: "cat", member: "cat", x: W * 0.58, dir: -1, lift: 0, walkPh: 0.6, seed: 2, status: "walking" }, 1.4);
   // shotgun blast ring + crosshair
   var cxp = W * 0.36, cyp = H * 0.62;
   c.strokeStyle = "rgba(182,255,94,0.85)"; c.lineWidth = 3;
@@ -1447,7 +1783,7 @@ window.VINV = {
   gbombs: function(){ return G ? G.gbombs : 0; },
   zaps: function(){ return G ? G.gbombs : 0; },
   familySaved: function(){ return G ? G.familySaved : 0; },
-  familySpawned: function(){ return G ? G.familySpawned : 0; },
+  familySpawned: function(){ return G ? G.wanderers.length : 0; },
   familyLost: function(){ return G ? G.familyLost : 0; },
   banner: function(){ return G && G.banner ? G.banner.text + (G.banner.sub ? " | " + G.banner.sub : "") : ""; },
   spawnInterval: function(){ return spawnInterval(); },
@@ -1494,24 +1830,48 @@ window.VINV = {
     var g = entGeom(e);
     return { x: Math.round(g.cx), y: Math.round(g.cy), depth: s.depth };
   },
-  spawnFamily: function(member){
-    if(!G) return null;
-    var f = spawnFamilyUnit(member);
-    f.y = H * 0.62;
-    var g = famGeom(f);
-    return { member: f.member, x: Math.round(f.x), y: Math.round(f.y), bx: Math.round(g.bx), by: Math.round(g.by), r: Math.round(g.r) };
+  spawnFamily: function(){
+    /* legacy hook: the bubble family is gone — returns the street souls now */
+    return window.VINV.family();
   },
   family: function(){
     if(!G) return [];
-    return G.family.map(function(f){
-      var g = famGeom(f);
-      return { member: f.member, state: f.state, x: Math.round(f.x), y: Math.round(f.y), bx: Math.round(g.bx), by: Math.round(g.by), r: Math.round(g.r) };
+    return G.wanderers.map(function(w){
+      return { member: w.member, fam: w.fam, kind: w.kind, status: w.status,
+        x: Math.round(w.x), y: Math.round(H * 0.95 - w.lift), lift: Math.round(w.lift),
+        beamT: +w.beamT.toFixed(2), dir: w.dir };
     });
   },
-  familyTop: function(){
-    if(!G) return;
-    for(var i = 0; i < G.family.length; i++){ if(G.family[i].state === "rising"){ G.family[i].y = 24; return; } }
+  wanderers: function(){ return window.VINV.family(); },
+  soulsLeft: function(){ return soulsLeft(); },
+  soulsTaken: function(){ return G ? G.soulsTaken : 0; },
+  ships: function(){
+    if(!G) return [];
+    return G.ships.map(function(sh){
+      return { x: Math.round(sh.x), y: Math.round(sh.y), hp: sh.hp, maxHp: sh.maxHp, dir: sh.dir,
+        scale: +sh.scale.toFixed(2), color: sh.color, state: sh.state,
+        target: sh.target ? sh.target.member : null, beamT: +sh.beamT.toFixed(2) };
+    });
   },
+  spawnShip: function(){ if(!G) return null; var sh = spawnShip(); return { x: Math.round(sh.x), y: Math.round(sh.y), hp: sh.hp, dir: sh.dir, color: sh.color }; },
+  setShipHp: function(n){ if(!G) return; G.ships.forEach(function(sh){ sh.hp = n; }); },
+  beamInfo: function(){
+    if(!G) return { active: false };
+    for(var i = 0; i < G.ships.length; i++){
+      var sh = G.ships[i];
+      if(sh.state === "beam" && sh.target) return { active: true, target: sh.target.member, beamT: +sh.beamT.toFixed(2), progress: +(sh.beamT / 5).toFixed(2), shipHp: sh.hp };
+    }
+    return { active: false };
+  },
+  shipCadence: function(n){ return shipCadenceFor(n === undefined ? (G ? G.level : 1) : n); },
+  nextShipIn: function(){ return G ? +G.shipT.toFixed(2) : 0; },
+  takeAllSouls: function(){
+    if(!G) return;
+    G.wanderers.forEach(function(w){ if(w.status !== "taken"){ w.status = "taken"; G.soulsTaken++; } });
+    G.familyLost = G.soulsTaken;
+    if(soulsLeft() <= 0){ G.emptyCity = true; endGame(); }
+  },
+  familyTop: function(){ /* legacy no-op: souls walk the street now */ },
   spawnSaucer: function(){
     if(!G) return null;
     G.saucer = { x: W * 0.5, y: H * 0.13, dir: 1, t: 0, rx: H * 0.055 };
@@ -1525,17 +1885,89 @@ window.VINV = {
       var g = entGeom(e);
       out.push({ x: Math.round(g.cx), y: Math.round(g.cy), kind: e.kind === "alien" ? "critter" : "friend", type: e.type, weapon: e.weapon, depth: e.spot.depth, peek: +e.peek.toFixed(2) });
     });
-    G.family.forEach(function(f){
-      var g = famGeom(f);
-      out.push({ x: Math.round(f.x), y: Math.round(f.y), bx: Math.round(g.bx), by: Math.round(g.by), kind: "family", member: f.member, state: f.state, depth: "sky", peek: 1 });
+    G.wanderers.forEach(function(w){
+      if(w.status === "taken") return;
+      out.push({ x: Math.round(w.x), y: Math.round(H * 0.95 - w.lift), kind: "soul", member: w.member, fam: w.fam, pet: w.kind !== "person" ? w.kind : null, status: w.status, depth: "street", peek: 1 });
+    });
+    G.ships.forEach(function(sh){
+      out.push({ x: Math.round(sh.x), y: Math.round(sh.y), kind: "ship", hp: sh.hp, state: sh.state, depth: "sky", peek: 1 });
     });
     if(G.saucer) out.push({ x: Math.round(G.saucer.x), y: Math.round(G.saucer.y), kind: "saucer", depth: "sky", peek: 1 });
     return out;
   }
 };
 
+/* ============================== STORY COMIC ============================== */
+function drawComic(){
+  var cvs = document.querySelectorAll(".panCv");
+  if(cvs.length < 3) return;
+  // panel 1: motherships over the neon city
+  (function(){
+    var c = cvs[0].getContext("2d"), w = 300, h = 200;
+    c.fillStyle = "#020604"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#fff";
+    for(var i = 0; i < 26; i++) c.fillRect((i * 53) % w, (i * 31) % 70, 1.6, 1.6);
+    c.fillStyle = "rgba(6,26,12,0.95)"; c.fillRect(8, 118, 52, 66); c.fillRect(70, 100, 40, 84); c.fillRect(196, 108, 46, 76); c.fillRect(250, 126, 42, 58);
+    c.strokeStyle = "#1f7a3d"; c.lineWidth = 1.6; c.strokeRect(8, 118, 52, 66); c.strokeRect(70, 100, 40, 84); c.strokeRect(196, 108, 46, 76); c.strokeRect(250, 126, 42, 58);
+    c.fillStyle = "rgba(255,183,77,0.8)"; c.fillRect(20, 134, 5, 6); c.fillRect(82, 120, 5, 6); c.fillRect(210, 128, 5, 6);
+    drawMothership(c, { x: 120, y: 52, rx: 62, color: "#ff5ee1", state: "cross", flashT: 0, seed: 1 }, 1);
+    drawMothership(c, { x: 236, y: 34, rx: 34, color: "#67e8ff", state: "cross", flashT: 0, seed: 5 }, 1);
+    c.strokeStyle = "#3dff6e"; c.lineWidth = 2; L(c, 0, 184, w, 184);
+    drawFamilyMember(c, "mom", 128, 184, 34, { cloth: "#c678f0" });
+    drawFamilyMember(c, "dad", 160, 184, 36, { cloth: "#35c26e", skin: "#8a5a33" });
+    drawFamilyMember(c, "girl", 106, 184, 23, { cloth: "#ff6fa5" });
+  })();
+  // panel 2: the beam takes a dad — 5 seconds
+  (function(){
+    var c = cvs[1].getContext("2d"), w = 300, h = 200;
+    c.fillStyle = "#020604"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#fff";
+    for(var i = 0; i < 20; i++) c.fillRect((i * 47) % w, (i * 29) % 60, 1.6, 1.6);
+    var sh = { x: 150, y: 40, rx: 56, color: "#ff9f43", state: "beam", flashT: 0, seed: 2, beamT: 3.1, target: { x: 150, member: "dad" } };
+    var saveH = H; H = 200;
+    drawBeam(c, sh, 1.2);
+    H = saveH;
+    drawMothership(c, sh, 1.2);
+    drawFamilyMember(c, "dad", 150, 132, 34, { cloth: "#35c26e", skin: "#8a5a33", panic: true });
+    c.strokeStyle = "#3dff6e"; c.lineWidth = 2; L(c, 0, 184, w, 184);
+    drawFamilyMember(c, "mom", 52, 184, 33, { cloth: "#2dd4bf", skin: "#8a5a33", panic: true });
+    drawFamilyMember(c, "boy", 248, 184, 22, { cloth: "#e5484d", panic: true });
+    c.fillStyle = "#ff6a5e"; c.font = "bold 30px 'Courier New',monospace"; c.textAlign = "center";
+    c.fillText("5s", 262, 52);
+  })();
+  // panel 3: the last defender
+  (function(){
+    var c = cvs[2].getContext("2d"), w = 300, h = 200;
+    c.fillStyle = "#020604"; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#fff";
+    for(var i = 0; i < 20; i++) c.fillRect((i * 41) % w, (i * 37) % 56, 1.6, 1.6);
+    c.fillStyle = "rgba(6,26,12,0.95)"; c.fillRect(6, 122, 44, 62); c.fillRect(252, 116, 42, 68);
+    c.strokeStyle = "#1f7a3d"; c.lineWidth = 1.6; c.strokeRect(6, 122, 44, 62); c.strokeRect(252, 116, 42, 68);
+    c.strokeStyle = "#3dff6e"; c.lineWidth = 2; L(c, 0, 184, w, 184);
+    // crosshair over the sky
+    c.strokeStyle = "#3dff6e"; c.lineWidth = 2.4;
+    c.beginPath(); c.arc(212, 52, 17, 0, Math.PI * 2); c.stroke();
+    L(c, 188, 52, 201, 52); L(c, 223, 52, 236, 52); L(c, 212, 28, 212, 41); L(c, 212, 63, 212, 76);
+    drawSaucerShip(c, 92, 44, 17, 1);
+    // defender + the souls behind him
+    drawFamilyMember(c, "boy", 88, 184, 23, { cloth: "#3a86ff" });
+    drawFamilyMember(c, "girl", 196, 184, 23, { cloth: "#ffd93d" });
+    var saveH2 = H; H = 200;
+    drawPet(c, { kind: "dog", member: "dog", x: 226, dir: 1, lift: 0, walkPh: 1, seed: 1, status: "walking" }, 1);
+    drawPet(c, { kind: "cat", member: "cat", x: 66, dir: -1, lift: 0, walkPh: 2, seed: 2, status: "walking" }, 1);
+    H = saveH2;
+    // the defender: big, center, shotgun raised (two barrels toward the sky)
+    c.save();
+    c.strokeStyle = "#ffd76a"; c.lineWidth = 4; c.lineCap = "round";
+    L(c, 138, 128, 128, 96); L(c, 146, 128, 140, 94);
+    c.restore();
+    drawFamilyMember(c, "dad", 142, 184, 44, { cloth: "#ffd93d", skin: "#ffca9e" });
+  })();
+}
+
 computeLayout();
 drawHero();
+drawComic();
 applyLang();
 resize();
 requestAnimationFrame(resize);
