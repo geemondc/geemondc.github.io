@@ -879,8 +879,11 @@ function drawKnight(k){
   ctx.lineWidth=0.55;
   /* spine, rear crest tip to chest */
   L([-20,0, 10.5,0]);
-  /* helmet crest — the rear pointed diamond */
-  L([-20,0, -16,-3.8, -13.5,0, -16,3.8], true);
+  /* helmet — a stack of NESTED TRIANGLES, points rearward (Gary, Oct 24:
+     not one crest diamond — the original's helm is chevron triangles) */
+  L([-20,0, -13.8,-3.9, -13.8,3.9], true);
+  L([-18.1,0, -14.5,-2.6, -14.5,2.6], true);
+  L([-16.4,0, -15.1,-1.4, -15.1,1.4], true);
   /* shoulders — the wide diamond, with its inner facet diamond */
   L([-16.5,0, -9.5,-10, -2.5,0, -9.5,10], true);
   ctx.lineWidth=0.45;
@@ -895,32 +898,46 @@ function drawKnight(k){
   ctx.lineWidth=0.45;
   L([-5,-7.2, 0,-5.4]); L([-5,7.2, 0,5.4]);          /* taper chords */
   L([0,-5.4, 4,-3.6]);  L([0,5.4, 4,3.6]);
-  /* ARMS — SEGMENTED, and they BEND (Gary, Oct 24, from the original's
-     frames: "see arms have 3-4 segments so they bend"). Each arm is a
-     3-segment chain — shoulder → elbow → forearm → hand — reaching from
-     the torso's front corner to wherever the sword's grip actually is
-     this frame. The grip rides with the blade (see swordSegAt), so as
-     the sword sweeps sideways the chains travel sideways with it, the
-     elbows bowing outward, harder the wider the swing. The arm on the
-     swing's side reaches across and bends most. */
+  /* ARMS — ARTICULATED, two-bone IK (Gary's facet spec + Perplexity
+     reconciliation, Oct 24). Each arm is a real chain — shoulder →
+     upper arm → ELBOW → forearm → wrist — solved every frame at
+     CONSTANT bone lengths; the elbow bends only to the arm's own side,
+     so it never flips, and the hand stays glued to the sword grip
+     (the grip rides with the blade — see swordSegAt). Freeze the torso
+     and sweep the sword: the elbow visibly flexes and straightens.
+     Around the bones, sparse FACETS, as in Gary's frames: a triangle
+     plate at the shoulder, a tapered quadrilateral upper arm, a
+     TRIANGLE at the elbow with its point outward, a tapered
+     quadrilateral forearm. Thin pale outlines, nothing filled. */
   var gSeg=swordSeg(k);
   var gdx=gSeg[0].x-k.x, gdy=gSeg[0].y-k.y, cf=Math.cos(k.face), sf=Math.sin(k.face);
   var glx=(cf*gdx+sf*gdy)/SCALE, gly=(-sf*gdx+cf*gdy)/SCALE; /* grip, figure-local */
-  var dev=((k.sword-k.face+Math.PI*3)%(Math.PI*2))-Math.PI;  /* sword deviation from the heading */
-  function armChain(sx,sy,sideSign){
-    var dx=glx-sx, dy=gly-sy, len=Math.hypot(dx,dy)||1;
-    var pxv=-dy/len, pyv=dx/len;
-    if(pyv*sideSign<0){ pxv=-pxv; pyv=-pyv; }                /* bow to the arm's own side */
-    var reach=(sideSign===(dev>=0?1:-1))?1.35:0.85;          /* the reaching arm bends most */
-    var bow=(1.5+Math.abs(dev)*4.4)*reach;
-    return [ sx,sy,
-      sx+dx*0.36+pxv*bow*0.55, sy+dy*0.36+pyv*bow*0.55,
-      sx+dx*0.70+pxv*bow,      sy+dy*0.70+pyv*bow,
-      glx,gly ];
+  var L1=7.6, L2=7.6; /* upper arm, forearm — constant lengths, always */
+  function boneQuad(ax,ay,bx,by,wa,wb){
+    var dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, px=-dy/len, py=dx/len;
+    L([ax+px*wa, ay+py*wa, bx+px*wb, by+py*wb, bx-px*wb, by-py*wb, ax-px*wa, ay-py*wa], true);
   }
-  ctx.lineWidth=0.55;
-  L(armChain(-4,-7.5,-1));
-  L(armChain(-4, 7.5, 1));
+  function drawArm(sx,sy,sideSign){
+    var dx=glx-sx, dy=gly-sy, dist=Math.hypot(dx,dy)||0.001;
+    var d=Math.max(1.2, Math.min(dist, L1+L2-0.02));
+    var ux=dx/dist, uy=dy/dist;
+    var a=(L1*L1 - L2*L2 + d*d)/(2*d), h=Math.sqrt(Math.max(0, L1*L1 - a*a));
+    var px=-uy*sideSign, py=ux*sideSign; /* the bend: always the arm's own side */
+    var ex=sx + ux*a + px*h, ey=sy + uy*a + py*h; /* the elbow */
+    var dux=(ex-sx)/L1, duy=(ey-sy)/L1;           /* upper-arm direction */
+    var dfx=(glx-ex)/L2, dfy=(gly-ey)/L2;        /* forearm direction */
+    /* shoulder plate — a compact triangle IN THE ARM'S OWN FRAME,
+       hugging the shoulder joint (a fixed-axis plate poked outside the
+       body outline at guard and read as stray triangles) */
+    L([sx+dux*2.3, sy+duy*2.3, sx-dux*1.9-duy*2.1, sy-duy*1.9+dux*2.1, sx-dux*1.9+duy*2.1, sy-duy*1.9-dux*2.1], true);
+    boneQuad(sx,sy, ex,ey, 1.1, 0.65);           /* upper arm — quadrilateral */
+    /* elbow — a TRIANGLE bridging both bones, apex pointing outward */
+    L([ex-dux*1.2, ey-duy*1.2, ex+px*1.7, ey+py*1.7, ex+dfx*1.2, ey+dfy*1.2], true);
+    boneQuad(ex,ey, glx,gly, 0.6, 0.38);         /* forearm — quadrilateral */
+  }
+  ctx.lineWidth=0.5;
+  drawArm(-4,-7.5,-1);
+  drawArm(-4, 7.5, 1);
   ctx.restore();
   /* ===== THE SWORD — two long THIN lines from the grip converging to a
      sharp tip (a very thin triangle), 2 short cross-ties near the base
