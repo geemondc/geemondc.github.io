@@ -57,6 +57,56 @@
   #zapBtn.empty{ opacity:.42; filter:grayscale(.85); box-shadow:none; }
   #zapBtn.denied{ animation:zapShake .3s; }
   @keyframes zapShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
+  /* ---------- phone control strip + compact G-BOMB dock ----------
+     On narrow screens every touch on the field fires the cannon, so the
+     phone gets a slim fixed strip across the top that the game treats as
+     dead space: menu / reset / pause / mute / G-BOMB live there, the
+     canvas starts BELOW it, and the bottom pill + floating pause retire. */
+  #ctrlStrip{
+    position:fixed; top:0; left:0; right:0; z-index:8; display:none;
+    height:calc(46px + env(safe-area-inset-top, 0px));
+    padding:env(safe-area-inset-top, 0px) 8px 0;
+    align-items:center; gap:8px;
+    background:rgba(2,10,4,.94); border-bottom:1px solid var(--line);
+  }
+  .stripBtn{
+    flex:0 0 auto; width:40px; height:36px; border-radius:8px;
+    background:var(--btn); border:1px solid var(--line); color:var(--ink);
+    font-size:17px; line-height:1; display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation; -webkit-user-select:none; user-select:none;
+  }
+  .stripBtn:active{ transform:scale(.94); }
+  #zapBtnMini{
+    position:relative; margin-left:auto; flex:0 0 auto;
+    align-items:center; justify-content:center; display:flex;
+    width:40px; height:40px; border-radius:50%;
+    background:radial-gradient(circle at 50% 36%, #431806, #1c0d04);
+    border:2px solid var(--warn); color:#fff; font-size:20px; line-height:1;
+    box-shadow:0 0 16px rgba(255,215,106,.5), inset 0 0 10px rgba(255,150,40,.35);
+    touch-action:none; -webkit-user-select:none; user-select:none;
+  }
+  #zapBtnMini:active{ transform:scale(.94); }
+  #zapCntMini{
+    position:absolute; bottom:-4px; right:-4px;
+    background:#1c0d04; border:1px solid var(--warn); border-radius:9px;
+    color:var(--warn); font-size:11px; font-weight:bold; line-height:1.25; padding:0 5px;
+    text-shadow:0 0 6px rgba(255,215,106,.8);
+  }
+  #zapBtnMini.empty{ opacity:.42; filter:grayscale(.85); box-shadow:none; }
+  #zapBtnMini.denied{ animation:zapShake .3s; }
+  @media (max-width:600px){
+    #stageWrap{ top:calc(46px + env(safe-area-inset-top, 0px)); }
+    #hud{ top:calc(46px + env(safe-area-inset-top, 0px)); padding:6px 12px 0 12px; }
+    .hudBox{ min-width:0; }
+    .hudLab{ letter-spacing:.14em; }
+    body.playing #ctrlStrip{ display:flex; }
+    body.playing #zapBtn{ display:none; }
+    body.playing #pauseBtn{ display:none; }
+    /* the pause sheet starts BELOW the strip: the strip is dead-space
+       controls and must stay tappable while paused, or its own pause
+       toggle could never un-pause (the overlay is z-30, the strip z-8) */
+    #pauseOverlay{ top:calc(46px + env(safe-area-inset-top, 0px)); }
+  }
   /* ---------- intro ---------- */
   #intro{
     position:fixed; inset:0; z-index:10; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -138,8 +188,16 @@
   <div class="hudBox c"><div class="hudLab" data-i18n="zapLab">ZAPS</div><div class="hudVal" id="hudZaps">💥×3</div></div>
   <div class="hudBox r"><div class="hudLab" data-i18n="best">BEST</div><div class="hudVal" id="hudBest">0</div></div>
 </div>
+<div id="ctrlStrip">
+  <button class="stripBtn" id="stripHome" aria-label="Main menu">🏠</button>
+  <button class="stripBtn" id="stripReset" aria-label="Restart run">🔁</button>
+  <button class="stripBtn" id="stripPause" aria-label="Pause">❚❚</button>
+  <button class="stripBtn" id="stripSound" aria-label="Sound on/off">🔊</button>
+  <button id="zapBtnMini" aria-label="G-Bomb">💥<span id="zapCntMini">×3</span></button>
+</div>
 <button id="pauseBtn" aria-label="Pause">| |</button>
 <button id="zapBtn" aria-label="G-Bomb">💥 G-BOMB <span id="zapCnt">×3</span></button>
+
 
 <section id="intro">
   <canvas id="heroCv" width="880" height="587"></canvas>
@@ -232,9 +290,12 @@ en:{ tagline:"One cannon. Six bases. Hold the line.", bestLab:"BEST SCORE", star
   waveNames:["FIRST CONTACT","PROBING RUN","FIRST STORM","THE SPLITTERS","DIVE SEASON","CROSSFIRE","HEAVY WEATHER","THE SWARM","NIGHT RAID","MAXIMUM ALERT","TOTAL WAR","THE LAST SKY"],
   warn:"⚠ WARNING ⚠", bonusTag:"BONUS WAVE · 10× THE FAMILY · DOUBLE TROUBLE",
   bonusThemes:[["FAMILY REUNION!","Uh-oh — EVERYBODY'S falling!"],["DOUBLE TROUBLE!","They brought friends. So did the aliens."],["THE IN-LAWS ARRIVE!","Nobody warned you about this many relatives."],["REUNION REMATCH!","Double everything. Yes, everything."]],
+  showdownTag:"DIVER EVENT · EVERY 10TH WAVE · THEY JUST KEEP COMING",
+  diverBases:["DIVER SHOWDOWN","RED STORM","KAMIKAZE RAIN"],
+  diverSubs:["THE RED DIVERS ARE COMING!","THE RED DIVERS ARE COMING — FASTER!","THEY ARE NOT PULLING OUT!"],
   hGoal:"Alien ships are crossing your sky and raining plasma on the six bases below. You are the lone cannon in the middle. When the last base falls, the defense is over.",
   hFire:"FIRE: your shot streaks to the crosshair and bursts into a crackling energy sphere. Anything caught inside — ship or bomb — is destroyed, and blasts chain. The higher you catch a bomb, the more it pays.",
-  hAliens:"THE ALIENS: SAUCER 100 · DART 150 · JOKER 200 (wave 3) · TWIN 250 (wave 4) · PHANTOM 300 (wave 5) · CARRIER 300 (wave 6). Darts stoop low and strike point-blank. The Joker zigzags and laughs. The Twin drops pairs. The Phantom blinks — hit it while it's solid. The Carrier launches darts.",
+  hAliens:"THE ALIENS: SAUCER 100 · DART 150 · JOKER 200 (wave 3) · TWIN 250 (wave 4) · PHANTOM 300 (wave 5) · CARRIER 300 (wave 6). Darts stoop low and strike point-blank. The Joker zigzags and laughs. The Twin drops pairs. The Phantom blinks — hit it while it's solid. The Carrier launches darts. 👽 THE ALIEN 300 (wave 3) flies wild and drops no bombs — instead he pops smoke bombs: a cloud that hides everything behind it for 3 seconds while the world keeps moving.",
   hBombs:"PLASMA BOMBS: every bomb you intercept pays. Later waves bring SPLITTERS that break into two or three warheads mid-fall.",
   hCannon:"THE CANNON: a bomb landing on you knocks you out — you rebuild after a few seconds, but only while at least one base still stands.",
   hBonus:"BONUS: every 10,000 points earns a G-Bomb, and every 25,000 rebuilds one lost base. Surviving bases pay a wave bonus. Your best score is saved. Every 5th wave is a BONUS WAVE — 10× the family to rescue, double the trouble.",
@@ -255,9 +316,12 @@ es:{ tagline:"Un cañón. Seis bases. Defiende la línea.", bestLab:"MEJOR PUNTA
   waveNames:["PRIMER CONTACTO","SONDEO","PRIMERA TORMENTA","LOS QUE SE DIVIDEN","TEMPORADA DE PICADA","FUEGO CRUZADO","CLIMA PESADO","EL ENJAMBRE","ASALTO NOCTURNO","ALERTA MÁXIMA","GUERRA TOTAL","EL ÚLTIMO CIELO"],
   warn:"⚠ ¡ATENCIÓN! ⚠", bonusTag:"OLEADA DE BONO · 10× LA FAMILIA · DOBLE PROBLEMA",
   bonusThemes:[["¡REUNIÓN FAMILIAR!","¡Ay, se caen TODOS!"],["¡DOBLE PROBLEMA!","Ellos trajeron amigos. Los aliens también."],["¡LLEGAN LOS SUEGROS!","Nadie te avisó de tantos parientes."],["¡REVANCHA FAMILIAR!","Doble de todo. Sí, de todo."]],
+  showdownTag:"EVENTO DE PICADOS · CADA 10 OLEADAS · NO DEJAN DE VENIR",
+  diverBases:["¡DUELO DE PICADOS","¡TORMENTA ROJA","¡LLUVIA KAMIKAZE"],
+  diverSubs:["¡LLEGAN LOS PICADOS ROJOS!","¡LLEGAN LOS PICADOS ROJOS — MÁS RÁPIDO!","¡NO VAN A FRENAR!"],
   hGoal:"Naves alienígenas cruzan tu cielo y llueven plasma sobre las seis bases. Tú eres el único cañón en el centro. Cuando cae la última base, la defensa termina.",
   hFire:"DISPARO: tu tiro vuela hasta la mira y estalla en una esfera de energía. Todo lo que quede dentro — nave o bomba — se destruye, y las explosiones se encadenan. Cuanto más alto atrapes una bomba, más paga.",
-  hAliens:"LOS ALIENS: PLATILLO 100 · DARDO 150 · JOKER 200 (oleada 3) · GEMELO 250 (oleada 4) · FANTASMA 300 (oleada 5) · PORTANAVES 300 (oleada 6). Los dardos bajan en picada a quemarropa. El Joker zigzaguea y se ríe. El Gemelo suelta pares. El Fantasma parpadea — dale cuando esté sólido. El Portanaves lanza dardos.",
+  hAliens:"LOS ALIENS: PLATILLO 100 · DARDO 150 · JOKER 200 (oleada 3) · GEMELO 250 (oleada 4) · FANTASMA 300 (oleada 5) · PORTANAVES 300 (oleada 6). Los dardos bajan en picada a quemarropa. El Joker zigzaguea y se ríe. El Gemelo suelta pares. El Fantasma parpadea — dale cuando esté sólido. El Portanaves lanza dardos. 👽 EL EXTRATERRESTRE 300 (oleada 3) vuela loco y no suelta bombas — suelta bombas de humo: una nube que esconde todo lo que hay detrás por 3 segundos mientras el mundo sigue moviéndose.",
   hBombs:"BOMBAS DE PLASMA: cada bomba que interceptes paga. Las oleadas tardías traen DIVISORAS que se parten en dos o tres cabezas a mitad de caída.",
   hCannon:"EL CAÑÓN: una bomba que te cae encima te destruye — te reconstruyes en unos segundos, pero solo mientras quede al menos una base en pie.",
   hBonus:"BONO: cada 10.000 puntos ganas una Bomba G, y cada 25.000 reconstruye una base perdida. Las bases supervivientes pagan un bono por oleada. Tu mejor puntaje queda guardado. Cada 5.ª oleada es una OLEADA DE BONO — 10× la familia por rescatar, doble problema.",
@@ -274,6 +338,7 @@ function applyLang(){
   document.querySelectorAll("[data-i18n]").forEach(function(el){ el.textContent = T(el.getAttribute("data-i18n")); });
   $("togLang").textContent = (lang === "en") ? "ESPAÑOL" : "ENGLISH";
   $("togSound").textContent = soundOn ? T("soundOn") : T("soundOff");
+  $("stripSound").textContent = soundOn ? "🔊" : "🔇";
   $("hiBest").textContent = best;
   syncHud();
 }
@@ -573,6 +638,43 @@ function drawPhantom(c, x, y, sc, bank, t, solid){
   });
   c.restore();
 }
+function drawAlien(c, x, y, sc, bank, t){
+  /* 👽 a little pilot in a small craft: green head in a glass dome,
+     blinking hull lights, mint-green vector glow */
+  c.save(); c.translate(x, y); c.rotate(bank || 0);
+  glow(c, "#64ff9e", 1.8, function(){
+    c.beginPath(); c.ellipse(0, 2 * sc, 15 * sc, 5 * sc, 0, 0, Math.PI * 2); c.stroke();        // hull
+    c.beginPath(); c.ellipse(0, 3.6 * sc, 15 * sc, 5 * sc, 0, 0.15, Math.PI - 0.15); c.stroke(); // belly line
+    c.beginPath(); c.arc(0, -0.6 * sc, 8.2 * sc, Math.PI, 0); c.stroke();                      // dome
+  });
+  c.fillStyle = "#64ff9e";
+  c.beginPath(); c.arc(0, -4.2 * sc, 3.7 * sc, 0, Math.PI * 2); c.fill();                      // the pilot's head
+  c.fillStyle = "#06280f";
+  c.beginPath(); c.arc(-1.6 * sc, -4.7 * sc, 0.95 * sc, 0, Math.PI * 2); c.fill();              // two big eyes
+  c.beginPath(); c.arc(1.6 * sc, -4.7 * sc, 0.95 * sc, 0, Math.PI * 2); c.fill();
+  var blink = 0.55 + 0.45 * Math.sin(t * 7 + x * 0.07);
+  c.fillStyle = "rgba(255,209,102," + blink.toFixed(2) + ")";
+  [-9.5, 9.5].forEach(function(px){ c.beginPath(); c.arc(px * sc, 2.6 * sc, 1.5 * sc, 0, Math.PI * 2); c.fill(); });
+  c.restore();
+}
+function drawSmoke(c, sm){
+  /* layered soft puffs: swells fast, hangs near-opaque, thins as it fades */
+  var fadeIn = Math.min(1, sm.age / 0.25), fadeOut = Math.min(1, (sm.life - sm.age) / 0.9);
+  var al = 0.97 * Math.min(fadeIn, fadeOut);
+  if(al <= 0) return;
+  var R = sm.r * (0.55 + 0.45 * Math.min(1, sm.age / 0.35));
+  var puffs = [[0, 0, 0.95], [0.55, 0.12, 0.7], [-0.55, 0.1, 0.72], [0.28, -0.3, 0.62], [-0.3, -0.28, 0.6], [0.05, 0.34, 0.66], [-0.12, 0.05, 0.8], [0, -0.48, 0.6], [0.02, 0.52, 0.62], [0.42, 0.42, 0.55], [-0.42, 0.4, 0.55]];
+  for(var i = 0; i < puffs.length; i++){
+    var pf = puffs[i];
+    var px = sm.x + pf[0] * R + Math.sin(sm.seed + i * 1.7) * R * 0.05, py = sm.y + pf[1] * R, pr = R * pf[2];
+    var gr = c.createRadialGradient(px, py, pr * 0.1, px, py, pr);
+    gr.addColorStop(0, "rgba(174,184,174," + (al * 0.95).toFixed(3) + ")");
+    gr.addColorStop(0.7, "rgba(152,162,152," + (al * 0.72).toFixed(3) + ")");
+    gr.addColorStop(1, "rgba(142,152,142,0)");
+    c.fillStyle = gr;
+    c.beginPath(); c.arc(px, py, pr, 0, Math.PI * 2); c.fill();
+  }
+}
 function drawCarrier(c, x, y, sc, t){
   drawSaucerC(c, x, y, sc * 2.05, 0, t, "#ffb84d");
   c.save(); c.translate(x, y);
@@ -799,7 +901,8 @@ function newGame(){
     buf: null, dropLog: [], shotLog: [],
     zapSeq: null, zapSeqId: 0, bolts: [], rain: [],
     capsules: [], capLadder: 1, capSaved: {}, capSetPaid: false, capLeft: 0, capTimer: 0, capOrder: 0,
-    bonus: false, warnT: 0, capSpawned: 0,
+    bonus: false, showdown: false, variant: -1, diveSpdMul: 1, quota0: 0, warnT: 0, capSpawned: 0,
+    smokes: [],
     bases: BASE_FR.map(function(fr){ return { fr: fr, alive: true }; }),
     cannon: { alive: true, cool: 0, rebuildT: 0 },
     shots: [], booms: [], bombs: [], aliens: [], pops: [], parts: [],
@@ -812,25 +915,46 @@ function newGame(){
   syncHud();
 }
 
+/* DIVER EVENT variants (every 10th wave): shared showdown pressure,
+   escalating twists — gap multiplier/floor, dive probability, dive-speed
+   multiplier, dart cruise-speed multiplier. Cycled II, III… from wave 40. */
+var DIVER_VARIANTS = [
+  { gapMul: 0.50, gapFloor: 0.28, diveP: 0.95, diveSpd: 1.15, dartSpd: 1.15 },  /* DIVER SHOWDOWN */
+  { gapMul: 0.42, gapFloor: 0.24, diveP: 0.97, diveSpd: 1.30, dartSpd: 1.30 },  /* RED STORM */
+  { gapMul: 0.38, gapFloor: 0.22, diveP: 1.00, diveSpd: 1.45, dartSpd: 1.40 }   /* KAMIKAZE RAIN */
+];
+
 function startWave(){
   G.wave++;
   G.mult = Math.min(1 + Math.floor((G.wave - 1) / 2), 6);
   G.shots.length = 0; G.bombs.length = 0; G.aliens.length = 0; G.booms.length = 0;
-  G.shipsLeft = Math.min(6 + (G.wave - 1) * 2, 26);
-  G.spawnGap = Math.max(2.0 - G.wave * 0.11, 0.55);
+  /* Gary's staircase law: EVERY wave steps up a little — gap tightens,
+     speeds rise, dive pressure rises, quota grows. Monotonic, no
+     plateaus: where the #132 curves flattened (quota 26, gap 0.55,
+     diveP 0.6, dropScale 0.5), a slower tail keeps them creeping. */
+  var wv = G.wave;
+  G.shipsLeft = wv <= 11 ? 6 + (wv - 1) * 2 : 26 + (wv - 11);
+  G.spawnGap = 2.0 - wv * 0.11;
+  if(G.spawnGap < 0.55) G.spawnGap = Math.max(0.36, 0.55 - (wv - 13) * 0.02);
   G.spawnTimer = 0.9;
-  G.bombSpeed = (88 + G.wave * 12) * V;
-  G.mirv = G.wave >= 4 ? Math.min(0.08 + (G.wave - 3) * 0.045, 0.38) : 0;
-  G.speedScale = 1 + (G.wave - 1) * 0.05;
-  G.dropScale = Math.max(0.5, 1.15 - G.wave * 0.06);
-  G.diveP = Math.min(0.18 + G.wave * 0.035, 0.6);
+  G.bombSpeed = (88 + wv * 12) * V;
+  G.mirv = wv >= 4 ? Math.min(0.08 + (wv - 3) * 0.045, 0.38) : 0;
+  G.speedScale = 1 + (wv - 1) * 0.05;
+  G.dropScale = 1.15 - wv * 0.06;
+  if(G.dropScale < 0.5) G.dropScale = Math.max(0.36, 0.5 - (wv - 11) * 0.015);
+  G.diveP = Math.min(0.18 + wv * 0.035, 0.6);
+  if(wv > 12) G.diveP = Math.min(0.6 + (wv - 12) * 0.01, 0.75);
   G.phase = "combat";
   G.bannerT = 1.8;
   G.capLadder = 1;
   G.capSaved = {};
   G.capSetPaid = false;
-  /* every 5th wave is a BONUS WAVE: 10× the family, double the trouble */
-  G.bonus = (G.wave % 5 === 0);
+  /* every 10th wave is a DIVER EVENT; the other 5s stay family floods.
+     Event tuning stacks ON TOP of that wave's escalated base. */
+  G.showdown = (G.wave % 10 === 0);
+  G.variant = G.showdown ? ((G.wave / 10 - 1) % 3) : -1;
+  G.bonus = (G.wave % 5 === 0) && !G.showdown;
+  G.diveSpdMul = 1;
   G.warnT = 0;
   if(G.bonus){
     G.spawnGap = Math.max(G.spawnGap * 0.5, 0.28);
@@ -840,6 +964,17 @@ function startWave(){
     G.warnT = 2.6;
     SFX.klaxon();
   }
+  if(G.showdown){
+    var dv = DIVER_VARIANTS[G.variant];
+    G.shipsLeft = G.shipsLeft * 2;                 /* a much larger quota… */
+    G.spawnGap = Math.max(G.spawnGap * dv.gapMul, dv.gapFloor);
+    G.diveP = dv.diveP;                            /* …overwhelmingly divers (pickKind)… */
+    G.diveSpdMul = dv.diveSpd;                     /* …diving faster and faster */
+    G.spawnTimer = 2.3;
+    G.warnT = 2.6;
+    SFX.klaxon();
+  }
+  G.quota0 = G.shipsLeft;
   G.capLeft = G.bonus ? 30 : (G.wave >= 2 ? 2 + Math.floor(Math.random() * 3) : 0);
   G.capTimer = G.bonus ? 2.4 : 2.5 + Math.random() * 2.5;
   SFX.waveStart();
@@ -854,6 +989,8 @@ function syncHud(){
   $("hudZaps").textContent = "💥×" + z;
   $("zapCnt").textContent = "×" + z;
   $("zapBtn").classList.toggle("empty", z <= 0);
+  $("zapCntMini").textContent = "×" + z;
+  $("zapBtnMini").classList.toggle("empty", z <= 0);
 }
 
 /* named waves: 12-name ladder, then the names cycle with a roman tier */
@@ -863,6 +1000,7 @@ function roman(n){
   return s;
 }
 function waveName(n){
+  if(n % 10 === 0) return showdownTheme(n).name;   /* diver events own their title */
   if(n % 5 === 0) return bonusTheme(n).name;   /* bonus waves carry their theme as the title */
   var names = STR[lang].waveNames || STR.en.waveNames;
   var idx = (n - 1) % 12, tier = Math.floor((n - 1) / 12);
@@ -874,6 +1012,15 @@ function bonusTheme(n){
   var k = Math.ceil(n / 5);
   var th = themes[(k - 1) % 4], tier = Math.floor((k - 1) / 4);
   return { name: th[0] + (tier > 0 ? " " + roman(tier + 1) : ""), sub: th[1] };
+}
+/* diver events: three rotating crazes (SHOWDOWN / RED STORM / KAMIKAZE
+   RAIN), tiered II, III… as the cycle repeats from wave 40 */
+function showdownTheme(n){
+  var bases = STR[lang].diverBases || STR.en.diverBases;
+  var subs = STR[lang].diverSubs || STR.en.diverSubs;
+  var k = Math.max(1, Math.round(n / 10));
+  var idx = (k - 1) % 3, tier = Math.floor((k - 1) / 3);
+  return { name: bases[idx] + (tier > 0 ? " " + roman(tier + 1) : "") + "!", sub: subs[idx] };
 }
 
 /* award economy — checked the moment points land:
@@ -906,10 +1053,12 @@ function checkAwards(){
 }
 
 function zapDenied(){
-  var b = $("zapBtn");
-  b.classList.remove("denied");
-  void b.offsetWidth;
-  b.classList.add("denied");
+  /* shake whichever G-BOMB button is on screen (pill on desktop, dock on phone) */
+  [$("zapBtn"), $("zapBtnMini")].forEach(function(b){
+    b.classList.remove("denied");
+    void b.offsetWidth;
+    b.classList.add("denied");
+  });
 }
 
 /* G-BOMB — a ~0.9s event, not an instant wipe: a flash pulse, then a
@@ -1151,20 +1300,24 @@ function spawnBomb(sx, sy, kind, forcedFr, src){
 /* ---------------- the roster: one new type per wave ---------------- */
 function alienValue(kind){
   return kind === "dart" ? 150 : kind === "joker" ? 200 : kind === "twin" ? 250 :
-         (kind === "phantom" || kind === "carrier") ? 300 : 100;
+         (kind === "phantom" || kind === "carrier" || kind === "alien") ? 300 : 100;
 }
 function alienColor(kind){
   return kind === "dart" ? "#ff9f43" : kind === "joker" ? "#a6ff00" : kind === "phantom" ? "#c9fbff" :
-         kind === "carrier" ? "#ffb84d" : "#ff5ee1";
+         kind === "carrier" ? "#ffb84d" : kind === "alien" ? "#64ff9e" : "#ff5ee1";
 }
 function carrierAlive(){ return G.aliens.some(function(a){ return a.kind === "carrier"; }); }
 function pickKind(){
   var w = G.wave;
+  /* diver events: the red darts are the whole show (~85%), the rest of
+     the roster only guests — never dominant, the Alien included */
+  if(G.showdown && Math.random() < 0.85) return "dart";
   if(w >= 6 && Math.random() < 0.10 && !carrierAlive()) return "carrier";
   var r = Math.random(), acc = 0;
   if(w >= 3){ acc += 0.20; if(r < acc) return "joker"; }
   if(w >= 4){ acc += 0.18; if(r < acc) return "twin"; }
   if(w >= 5){ acc += 0.15; if(r < acc) return "phantom"; }
+  if(w >= 3){ acc += Math.min(0.05 + (w - 3) * 0.008, 0.12); if(r < acc) return "alien"; }
   return Math.random() < Math.min(0.3 + w * 0.02, 0.55) ? "dart" : "saucer";
 }
 function makeAlien(kind, dir){
@@ -1174,8 +1327,10 @@ function makeAlien(kind, dir){
   else if(kind === "twin"){ raw = 52 + Math.random() * 26; r = 24 * S; wobA = 4 * S; }
   else if(kind === "phantom"){ raw = 58 + Math.random() * 30; r = 17 * S; }
   else if(kind === "carrier"){ raw = 26 + Math.random() * 10; r = 34 * S; y = H * (0.05 + Math.random() * 0.06); wobA = 3 * S; }
+  else if(kind === "alien"){ raw = 62 + Math.random() * 26; r = 16 * S; wobA = (10 + Math.random() * 8) * S; }
   else { kind = "saucer"; raw = 58 + Math.random() * 36; r = 17 * S; }
   var spd = raw * V * G.speedScale;
+  if(kind === "dart" && G.showdown) spd *= DIVER_VARIANTS[G.variant].dartSpd;   /* diver events breed faster darts */
   return {
     kind: kind, dir: dir, x: 0, y: y, baseY: y,
     vx: dir * spd, vy: 0, spd: spd, age: 0, wobPh: Math.random() * 6.28,
@@ -1183,18 +1338,29 @@ function makeAlien(kind, dir){
     dropT: 0.9 + Math.random() * 1.5, mode: "cruise", dived: false,
     diveX: W * (0.15 + Math.random() * 0.7), tfr: 0.5, tx: 0, ty: 0, bank: 0,
     r: r, solid: true, blinkOff: Math.random() * 2, launchT: 2 + Math.random() * 2,
-    fakeT: 2 + Math.random() * 3, fakePh: 0, laughs: 0
+    fakeT: 2 + Math.random() * 3, fakePh: 0, laughs: 0,
+    smokeT: 5 + Math.random() * 3, wanderT: 1 + Math.random() * 1.5
   };
+}
+/* KAMIKAZE RAIN: darts commit almost the moment they're on screen —
+   their dive trigger sits just inside the entry edge, not mid-field */
+function tuneDive(a){
+  if(G.showdown && G.variant === 2 && a.kind === "dart"){
+    var f = 0.04 + Math.random() * 0.15;
+    a.diveX = a.dir > 0 ? W * f : W * (1 - f);
+  }
 }
 function spawnAlien(forceKind){
   var a = makeAlien(forceKind || pickKind(), Math.random() < 0.5 ? 1 : -1);
   a.x = a.dir > 0 ? -(a.r + 20 * S) : W + a.r + 20 * S;
+  tuneDive(a);
   G.aliens.push(a);
   return a;
 }
 function spawnAlienAt(kind, x, y, dir){
   var a = makeAlien(kind, dir);
   a.x = x; a.y = y; a.baseY = y;
+  tuneDive(a);
   G.aliens.push(a);
   return a;
 }
@@ -1217,6 +1383,13 @@ function update(dt){
   if(G.zapFlash > 0) G.zapFlash = Math.max(0, G.zapFlash - dt * 2.4);
   if(G.bannerT > 0) G.bannerT -= dt;
   if(G.warnT > 0) G.warnT -= dt;
+  /* 👽 smoke clouds: drift a little, thin out, gone at exactly ~3s.
+     Pure blind spot — nothing under them pauses or changes. */
+  for(var si = G.smokes.length - 1; si >= 0; si--){
+    var sm = G.smokes[si];
+    sm.age += dt; sm.x += sm.vx * dt; sm.y -= 3 * S * dt;
+    if(sm.age >= sm.life) G.smokes.splice(si, 1);
+  }
   /* sustained caps: popups + particles are per-frame canvas cost — bound them */
   if(G.pops.length > 24) G.pops.splice(0, G.pops.length - 24);
   if(G.parts.length > 420) G.parts.splice(0, G.parts.length - 420);
@@ -1290,7 +1463,33 @@ function update(dt){
     if(a.mode === "cruise"){
       var prevY = a.y;
       a.x += a.vx * dt;
-      if(a.kind === "joker"){
+      if(a.kind === "alien"){
+        /* 👽 the Alien wanders: re-picks a heading every second or two,
+           flips direction, drifts between sky bands, bounces off the
+           field edges instead of leaving. His only weapon is smoke. */
+        a.wanderT -= dt;
+        if(a.wanderT <= 0){
+          a.wanderT = 1 + Math.random() * 1.6;
+          /* outer bands always turn him back toward the field — he
+             roams the whole sky but never wanders off and despawns */
+          if(a.x < W * 0.28) a.dir = 1;
+          else if(a.x > W * 0.72) a.dir = -1;
+          else if(Math.random() < 0.45) a.dir = -a.dir;
+          a.vx = a.dir * a.spd * (0.55 + Math.random() * 0.6);
+          a.baseY = H * (0.08 + Math.random() * 0.3);
+        }
+        a.y += ((a.baseY + Math.sin(a.age * a.wobF + a.wobPh) * a.wobA) - a.y) * Math.min(1, dt * 2.2);
+        if(a.x > 0 && a.x < 34 * S && a.vx < 0){ a.dir = 1; a.vx = Math.abs(a.vx); }
+        if(a.x < W && a.x > W - 34 * S && a.vx > 0){ a.dir = -1; a.vx = -Math.abs(a.vx); }
+        if(G.phase === "combat"){
+          a.smokeT -= dt;
+          if(a.smokeT <= 0){
+            a.smokeT = 6 + Math.random() * 2;   /* next pop in ~6–8s, spent either way */
+            if(G.smokes.length < 2) G.smokes.push({ x: a.x, y: a.y + 10 * S, r: 84 * S, age: 0, life: 3, vx: (Math.random() * 16 - 8) * S, seed: Math.random() * 10 });
+          }
+        }
+      }
+      else if(a.kind === "joker"){
         /* erratic zigzag cruise; now and then it fakes a dive — tips down, pulls back up, drops nothing */
         var zz = (a.age * 1.5 + a.wobPh) % 2, tri = zz < 1 ? zz : 2 - zz, fo = 0;
         if(a.fakePh > 0){ a.fakePh -= dt; fo = Math.sin(Math.PI * Math.max(0, 1 - a.fakePh / 1.5)) * 85 * S; }
@@ -1312,8 +1511,9 @@ function update(dt){
           if(nd < 4) spawnAlienAt("dart", a.x, a.y + 26 * S, a.dir);
         }
       }
-      /* drop on a timer while over the field (pelican behavior) */
-      if(G.phase === "combat" && a.kind !== "carrier" && a.solid !== false && a.x > 26 && a.x < W - 26){
+      /* drop on a timer while over the field (pelican behavior) —
+         the Carrier launches instead, and the Alien NEVER drops bombs */
+      if(G.phase === "combat" && a.kind !== "carrier" && a.kind !== "alien" && a.solid !== false && a.x > 26 && a.x < W - 26){
         a.dropT -= dt;
         if(a.dropT <= 0){
           if(a.kind === "twin"){
@@ -1340,7 +1540,7 @@ function update(dt){
       if(a.x < -60 * S || a.x > W + 60 * S) G.aliens.splice(i, 1);
     }
     else if(a.mode === "dive"){
-      a.spd = Math.min(a.spd + 240 * V * dt, (a.kind === "dart" ? 300 : 230) * V * G.speedScale);
+      a.spd = Math.min(a.spd + 240 * V * dt, (a.kind === "dart" ? 300 : 230) * V * G.speedScale * (a.kind === "dart" ? G.diveSpdMul : 1));
       steerAlien(a, a.tx, a.ty, dt, 2.4);
       a.x += a.vx * dt; a.y += a.vy * dt;
       a.bank = Math.max(-0.5, Math.min(0.5, a.bank + ((a.vx > 0 ? 0.35 : -0.35) - a.bank) * Math.min(1, dt * 5)));
@@ -1580,10 +1780,14 @@ function render(){
       else if(a.kind === "twin") drawTwin(ctx, a.x, a.y, S, a.bank, G.time + a.wobPh);
       else if(a.kind === "phantom") drawPhantom(ctx, a.x, a.y, S, a.bank, G.time + a.wobPh, a.solid);
       else if(a.kind === "carrier") drawCarrier(ctx, a.x, a.y, S, G.time + a.wobPh);
+      else if(a.kind === "alien") drawAlien(ctx, a.x, a.y, S, a.bank, G.time + a.wobPh);
       else drawSaucer(ctx, a.x, a.y, S, a.bank, G.time + a.wobPh);
     });
     /* family capsules */
     G.capsules.forEach(function(cp){ drawCapsule(ctx, cp, tNow); });
+    /* 👽 smoke: ABOVE hostiles + capsules (a true blind spot), BELOW
+       shots, booms and popups — the player keeps their feedback */
+    G.smokes.forEach(function(sm){ drawSmoke(ctx, sm); });
     /* shots + target rings (Boardwalk) */
     G.shots.forEach(function(s){
       glow(ctx, "#9be9ff", 2, function(){ path(ctx, [[s.sx, s.sy], [s.x, s.y]]); });
@@ -1624,7 +1828,7 @@ function render(){
     });
     /* bonus-wave warning: flashing klaxon banner, theme + subtitle, before the storm */
     if(G.warnT > 0 && G.phase === "combat"){
-      var bt2 = bonusTheme(G.wave);
+      var bt2 = G.showdown ? showdownTheme(G.wave) : bonusTheme(G.wave);
       var fl = 0.55 + 0.45 * Math.sin(G.time * 14);
       ctx.globalAlpha = Math.min(1, G.warnT / 0.4);
       ctx.textAlign = "center";
@@ -1648,7 +1852,7 @@ function render(){
       ctx.shadowColor = "rgba(159,233,255,0.7)"; ctx.shadowBlur = 12;
       ctx.fillText(bt2.sub, W / 2, H * 0.28 + wf1 * 1.2 + wf2 * 1.3);
       ctx.fillStyle = "#b6ff5e";
-      ctx.fillText(T("bonusTag"), W / 2, H * 0.28 + wf1 * 1.2 + wf2 * 1.3 + wf3 * 1.6);
+      ctx.fillText(T(G.showdown ? "showdownTag" : "bonusTag"), W / 2, H * 0.28 + wf1 * 1.2 + wf2 * 1.3 + wf3 * 1.6);
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
@@ -1826,6 +2030,27 @@ $("zapBtn").addEventListener("pointerdown", function(e){
   zap();
 });
 $("zapBtn").addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); });
+$("zapBtnMini").addEventListener("pointerdown", function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  audio();
+  zap();
+});
+$("zapBtnMini").addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); });
+/* phone control strip — deliberate actions in dead space above the field.
+   Same targets as the pause overlay / intro controls, one shared state. */
+$("stripHome").addEventListener("click", function(){ quitToTitle(); });
+$("stripReset").addEventListener("click", function(){ closeAll(); startGame(); });
+$("stripPause").addEventListener("click", function(){
+  if(state === "playing") pauseGame();
+  else if(state === "paused") resumeGame();
+});
+$("stripSound").addEventListener("click", function(){
+  soundOn = !soundOn;
+  store("vdf_sound", soundOn ? "on" : "off");
+  applyLang();
+  if(soundOn){ audio(); beep(880, 0.08, "square", 0.09); }
+});
 
 /* debug handle for headless verification */
 window.VDEF = {
@@ -1865,6 +2090,12 @@ window.VDEF = {
   spawnCapsule: function(){ if(G) spawnCapsule(); },
   capsules: function(){ return G ? G.capsules.length : 0; },
   bonus: function(){ return G ? !!G.bonus : false; },
+  showdown: function(){ return G ? !!G.showdown : false; },
+  showdownTheme: function(n){ return showdownTheme(n); },
+  waveParams: function(){ return G ? { wave: G.wave, quota: G.quota0, shipsLeft: G.shipsLeft, gap: +G.spawnGap.toFixed(3), bombSpeed: Math.round(G.bombSpeed), diveP: +G.diveP.toFixed(3), dropScale: +G.dropScale.toFixed(3), speedScale: +G.speedScale.toFixed(3), bonus: !!G.bonus, showdown: !!G.showdown, variant: G.variant, diveSpdMul: G.diveSpdMul, capLeft: G.capLeft } : null; },
+  smokes: function(){ return G ? G.smokes.length : 0; },
+  smokeInfo: function(){ var sm2 = G && G.smokes[0]; return sm2 ? { age: +sm2.age.toFixed(2), life: sm2.life, r: Math.round(sm2.r), x: Math.round(sm2.x), y: Math.round(sm2.y) } : null; },
+  pokeSmoke: function(){ if(!G) return false; for(var i = 0; i < G.aliens.length; i++){ if(G.aliens[i].kind === "alien"){ G.aliens[i].smokeT = 0.05; return true; } } return false; },
   capLeft: function(){ return G ? G.capLeft : 0; },
   capSpawned: function(){ return G ? G.capSpawned : 0; },
   warnT: function(){ return G ? G.warnT : 0; },
@@ -1881,6 +2112,7 @@ window.VDEF = {
   spawnBombNow: function(x, y){ if(G) spawnBomb(x === undefined ? W * 0.3 : x, y === undefined ? 120 : y, "pod"); },
   boomAt: function(x, y){ if(G) makeBoom(x, y, boomR(), false, false); },
   bombInfo: function(){ return G && G.bombs.length ? { x: Math.round(G.bombs[0].x), y: Math.round(G.bombs[0].y), kind: G.bombs[0].kind } : null; },
+  bombNear: function(x, y, r){ if(!G) return null; for(var i = 0; i < G.bombs.length; i++){ var bm = G.bombs[i]; if(Math.hypot(bm.x - x, bm.y - y) < r) return { x: Math.round(bm.x), y: Math.round(bm.y), kind: bm.kind }; } return null; },
   alienKinds: function(){ return G ? G.aliens.map(function(a){ return a.kind; }) : []; },
   alienInfoKind: function(kind){
     if(!G) return null;
