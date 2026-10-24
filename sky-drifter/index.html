@@ -2041,6 +2041,16 @@ function uwTourAlt(u){
   return 0.80+0.05*Math.sin(u*0.30);
 }
 const uwBubbles=[]; let uwEmitAcc=0;
+/* the tank's census: every draw site below tallies what it actually put
+   on screen this frame, and drawUwNear (the last underwater pass of the
+   frame) publishes it — window.SD_UW is the probe's window into the
+   water: which of the three depth scenes holds, and how alive it is */
+const UW_COUNT={fish:0,jelly:0,dolphin:0,shark:0,octopus:0,ray:0,turtle:0,bubble:0,sparkle:0};
+function uwCountReset(){ for(const k in UW_COUNT)UW_COUNT[k]=0; }
+/* the DEEP's glow plankton: fixed stars of the lower water, drifting a
+   breath and pulsing on their own clocks */
+const UW_GLOW=[]; { const gr=mulberry(9021);
+  for(let i=0;i<22;i++)UW_GLOW.push({x:gr(),y:0.30+gr()*0.62,s:9+gr()*17,ph:gr()*TAU,sp:0.5+gr()*0.9}); }
 
 function uwFish(x,y,len,dir,wag,col,alpha){
   const u=len/20;
@@ -2058,14 +2068,22 @@ function uwFish(x,y,len,dir,wag,col,alpha){
 }
 const UW_SCHOOLS_FAR=[
   {y:0.30,speed:0.014,dir:1,seed:0.13,n:9,size:0.55,col:'150,205,230',a:0.50},
-  {y:0.45,speed:0.010,dir:-1,seed:0.55,n:12,size:0.48,col:'255,196,120',a:0.42}
+  {y:0.45,speed:0.010,dir:-1,seed:0.55,n:12,size:0.48,col:'255,196,120',a:0.42},
+  {y:0.36,speed:0.012,dir:-1,seed:0.71,n:10,size:0.50,col:'140,235,190',a:0.46},
+  {y:0.55,speed:0.008,dir:1,seed:0.33,n:14,size:0.44,col:'168,178,255',a:0.40,band:'deep'}
 ];
 const UW_SCHOOLS_NEAR=[
   {y:0.60,speed:0.024,dir:1,seed:0.38,n:8,size:0.95,col:'255,166,88',a:0.88},
   {y:0.70,speed:0.018,dir:-1,seed:0.81,n:11,size:0.85,col:'178,228,248',a:0.84},
-  {y:0.52,speed:0.030,dir:-1,seed:0.05,n:6,size:1.05,col:'255,128,148',a:0.82}
+  {y:0.52,speed:0.030,dir:-1,seed:0.05,n:6,size:1.05,col:'255,128,148',a:0.82},
+  {y:0.40,speed:0.026,dir:1,seed:0.62,n:9,size:0.90,col:'190,240,150',a:0.85,band:'shallow'},
+  {y:0.64,speed:0.021,dir:1,seed:0.27,n:10,size:0.80,col:'120,200,255',a:0.80,band:'mid'}
 ];
 function uwSchool(sc,t,uwA,panOff,scatter){
+  /* a banded school belongs to its scene: it fades in with its water
+     and rests (undrawn, uncounted) while the swimmer is elsewhere */
+  const bw=sc.band==='shallow'?UW_BAND.shallow:sc.band==='deep'?UW_BAND.deep:sc.band==='mid'?UW_BAND.mid:1;
+  if(bw<0.02)return;
   const p=((t*sc.speed+sc.seed)%1+1)%1;
   const lx=(sc.dir>0? lerp(-0.22,1.22,p) : lerp(1.22,-0.22,p))*W+(panOff||0);
   const ly=sc.y*H+Math.sin(t*0.45+sc.seed*9)*H*0.016;
@@ -2075,8 +2093,9 @@ function uwSchool(sc,t,uwA,panOff,scatter){
   for(let i=0;i<sc.n;i++){
     const ox=(-sc.dir*i*len*0.62+Math.sin(i*2.39)*len*0.3)*(1+scat*0.6);
     const oy=(Math.sin(i*1.71+sc.seed*20)*len*0.42+Math.sin(t*1.25+i*1.3)*len*0.06)*(1+scat*0.9);
-    uwFish(lx+ox,ly+oy,len*(0.82+((i*37)%10)*0.036),sc.dir,t*7+i*1.4+sc.seed*30,sc.col,sc.a*uwA);
+    uwFish(lx+ox,ly+oy,len*(0.82+((i*37)%10)*0.036),sc.dir,t*7+i*1.4+sc.seed*30,sc.col,sc.a*uwA*bw);
   }
+  UW_COUNT.fish+=sc.n;
 }
 function uwJelly(x,y,r,t,seed,alpha,fl){
   const pulse=1+(0.17+0.14*(fl||0))*Math.sin(t*(1.5+(fl||0)*1.4)+seed*7);   /* fl: the approach flare — swum at head-on, the bell pulses harder */
@@ -2097,6 +2116,9 @@ function uwJelly(x,y,r,t,seed,alpha,fl){
   ctx.restore();
 }
 const UW_JELLIES=[ {seed:0.12,r:0.030,sp:0.011}, {seed:0.47,r:0.021,sp:0.014}, {seed:0.71,r:0.037,sp:0.008}, {seed:0.90,r:0.017,sp:0.017} ];
+/* THE BLUE's own field: seven more bells adrift in the open mid-water,
+   bigger and closer than the deep crowd — the mid band is jelly home */
+const UW_JELLIES_BLUE=[ {seed:0.06,r:0.026,sp:0.009}, {seed:0.22,r:0.019,sp:0.013}, {seed:0.38,r:0.033,sp:0.007}, {seed:0.53,r:0.022,sp:0.011}, {seed:0.66,r:0.028,sp:0.008}, {seed:0.79,r:0.018,sp:0.015}, {seed:0.93,r:0.024,sp:0.010} ];
 function uwRay(x,y,s,tilt,flap,alpha){
   ctx.save(); ctx.translate(x,y); ctx.rotate(tilt); ctx.scale(s,s*(0.60+0.30*flap));
   ctx.strokeStyle='rgba(30,80,102,'+alpha+')'; ctx.lineWidth=2.2; ctx.lineCap='round';
@@ -2110,8 +2132,8 @@ function uwRay(x,y,s,tilt,flap,alpha){
   ctx.beginPath(); ctx.ellipse(2,0,15,4.5,0,0,TAU); ctx.fill();
   ctx.restore();
 }
-function uwShark(x,y,s,alpha){
-  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+function uwShark(x,y,s,alpha,dir,roll){
+  ctx.save(); ctx.translate(x,y); if(roll)ctx.rotate(roll); ctx.scale(s*(dir||1),s);
   ctx.fillStyle='rgba(16,52,80,'+alpha+')';
   ctx.beginPath();
   ctx.moveTo(100,0);
@@ -2155,6 +2177,7 @@ function drawUwPainting(img,alpha,zoom,par,cx,t){
 /* the back layer: the depth stack itself, its light, and the far life in it */
 function drawUwBack(RP,hy,cx,t){
   const uwA=S.uwF; if(uwA<=0.01)return;
+  uwCountReset();   /* the frame's census starts here; the near pass publishes it */
   const B=uwBands();
   ctx.save();
   if(uwImgs.mid.complete&&uwImgs.mid.naturalWidth>0){
@@ -2229,18 +2252,28 @@ function drawUwBack(RP,hy,cx,t){
   for(const sc of UW_SCHOOLS_FAR)uwSchool(sc,t,uwA,-uwPanS()*W*0.010);
   const shp=((t*0.006+0.31)%1+1)%1;
   uwShark(lerp(1.28,-0.28,shp)*W, H*0.335+Math.sin(t*0.045)*H*0.014, W*0.00115, 0.15*uwA*(1-B.shallow*0.45));
+  if(shp>0.16&&shp<0.84)UW_COUNT.shark++;   /* the far shadow, counted while it is actually on the water */
   const dCyc=t%52;
   if(dCyc<7){ const dp=dCyc/7;   /* dolphins live in the light: SHALLOW and the top of MID, never the DEEP */
     for(let i=0;i<3;i++){ const dx=lerp(-0.16,1.16,dp)*W - i*W*0.052;
       const dy=H*(0.105+i*0.024)+Math.sin(dp*Math.PI+i*0.7)*H*0.026;
-      uwDolphin(dx,dy,W*0.00085,Math.cos(dp*Math.PI+i*0.7)*0.22,0.38*uwA*clamp(B.shallow+B.mid*0.85,0,1)); } }
+      uwDolphin(dx,dy,W*0.00085,Math.cos(dp*Math.PI+i*0.7)*0.22,0.38*uwA*clamp(B.shallow+B.mid*0.85,0,1)); UW_COUNT.dolphin++; } }
   /* down in the DEEP the water fills with slow jelly light — the far
      edge of the jellyfish painting's own drift, swimming in front of it */
   if(B.deep>0.04){ for(let i=0;i<6;i++){ const sd=0.11+i*0.173;
       const cyc=((t*0.006*(1+i*0.13)+sd)%1+1)%1;
       const jx=((sd+t*0.002)%1.1-0.05)*W+Math.sin(t*0.16+i*2.4)*W*0.01;
       const jy=H*(0.86-cyc*0.55);
-      uwJelly(jx,jy,H*(0.016+(i%3)*0.005),t,i*7.3,Math.sin(cyc*Math.PI)*B.deep*uwA*0.5); } }
+      uwJelly(jx,jy,H*(0.016+(i%3)*0.005),t,i*7.3,Math.sin(cyc*Math.PI)*B.deep*uwA*0.5); UW_COUNT.jelly++; } }
+  /* glow plankton: the DEEP's own slow stars — soft motes that pulse
+     and drift in the dark under the jelly light */
+  if(B.deep>0.04){ ctx.save(); ctx.globalCompositeOperation='screen';
+    for(const g of UW_GLOW){ const gx=g.x*W+Math.sin(t*0.05*g.sp+g.ph)*W*0.008 - uwPanS()*W*0.008;
+      const gy=g.y*H+Math.sin(t*0.07*g.sp+g.ph*2)*H*0.010;
+      const ga=(0.05+0.16*(0.5+0.5*Math.sin(t*g.sp+g.ph)))*B.deep*uwA;
+      if(ga<=0.004)continue;
+      ctx.globalAlpha=ga; ctx.drawImage(uwBlobDeep,gx-g.s/2,gy-g.s/2,g.s,g.s); UW_COUNT.sparkle++; }
+    ctx.restore(); ctx.globalAlpha=1; }
   ctx.restore();
 }
 /* the near layer: the life that swims WITH you — jellyfish, the ray, the
@@ -2258,8 +2291,18 @@ function drawUwNear(RP,hy,cx,t){
     /* the near jellies belong to the DEEP: up in the light they thin
        to a rumour, down in the jellyfish water they are the crowd */
     const jFl=clamp(1-Math.hypot(jx-cx,jy-H*0.45)/(W*0.40),0,1)*sstep(0.30,0.75,S.effSpeed);   /* closing on one head-on: it flares its pulse and drifts aside off your line */
-    uwJelly(jx+(jx>=cx?1:-1)*jFl*W*0.028,jy,H*j.r,t,j.seed*40,Math.sin(cyc*Math.PI)*uwA*0.95*(0.16+0.84*UW_BAND.deep),jFl);
+    uwJelly(jx+(jx>=cx?1:-1)*jFl*W*0.028,jy,H*j.r,t,j.seed*40,Math.sin(cyc*Math.PI)*uwA*0.95*(0.16+0.84*UW_BAND.deep),jFl); UW_COUNT.jelly++;
   }
+  /* THE BLUE's jelly field: a loose glowing crowd in the open water,
+     pulsing as it drifts — full strength in MID, a rumour either side */
+  const blueW=0.18+0.82*UW_BAND.mid;
+  if(blueW>0.03){ for(const j of UW_JELLIES_BLUE){
+    const cyc=((t*j.sp+j.seed)%1+1)%1;
+    const jx=((j.seed+t*0.0028)%1.15-0.075)*W+Math.sin(t*0.18+j.seed*30)*W*0.014 - uwPanS()*W*0.018;
+    const jy=H*(0.78-cyc*0.52);
+    const ja=Math.sin(cyc*Math.PI)*uwA*0.85*blueW;
+    if(ja<0.02)continue;
+    uwJelly(jx,jy,H*j.r,t,j.seed*40,ja); UW_COUNT.jelly++; } }
   /* the ray's slow circuit: a wide lazy ellipse across the mid-water —
      a creature of SHALLOW and MID, gone when you sink to the jellies */
   const rxB=cx+Math.sin(t*0.062)*W*0.34 - uwPanS()*W*0.020, ry=H*0.56+Math.sin(t*0.104+1.2)*H*0.15;
@@ -2269,7 +2312,43 @@ function drawUwNear(RP,hy,cx,t){
   uwRayDodge=lerp(uwRayDodge,rProx,0.05);
   const rDir=rxB>=cx?1:-1, rx=rxB+rDir*uwRayDodge*W*0.085;
   const rTilt=Math.cos(t*0.062)*0.30 + uwRayDodge*0.38*rDir;
-  uwRay(rx,ry,H*0.0016,rTilt,Math.sin(t*1.05)*0.5+0.5,0.88*uwA*(1-UW_BAND.deep*0.85));
+  uwRay(rx,ry,H*0.0016,rTilt,Math.sin(t*1.05)*0.5+0.5,0.88*uwA*(1-UW_BAND.deep*0.85)); UW_COUNT.ray++;
+  /* a second, smaller ray keeps the first company on a slower circuit */
+  const r2x=cx+Math.sin(t*0.041+2.6)*W*0.38 - uwPanS()*W*0.020, r2y=H*0.66+Math.sin(t*0.083+0.4)*H*0.11;
+  uwRay(r2x,r2y,H*0.0011,Math.cos(t*0.041+2.6)*0.26,Math.sin(t*0.9+1.1)*0.5+0.5,0.66*uwA*(1-UW_BAND.deep*0.85)); UW_COUNT.ray++;
+  /* a second turtle works the mid-water on a long slow crossing */
+  const t2c=((t*0.006+0.57)%1+1)%1;
+  if(t2c<0.66){ const t2p=t2c/0.66;
+    uwTurtle(lerp(-0.16,1.16,t2p)*W,H*0.60+Math.sin(t*0.4)*H*0.01,H*0.00085,Math.sin(t*0.8+1.0)*0.05,0.5*uwA*Math.sin(t2p*Math.PI)*clamp(UW_BAND.mid+UW_BAND.shallow*0.6,0,1)); UW_COUNT.turtle++; }
+  /* THE POD: on its own slow schedule the dolphins come and swim
+     AROUND you — five strong, arcing over and under your line at near
+     depth and rolling with the turn. Up in the SHALLOWS the arc rides
+     high enough to break the surface skin and throw spray */
+  const podCyc=((t*0.0217+0.13)%1+1)%1;   /* ~46 s around */
+  if(podCyc<0.24){ const pp=podCyc/0.24, env=Math.sin(pp*Math.PI);
+    const podW=clamp(UW_BAND.mid+UW_BAND.shallow*0.9,0,1)*(1-UW_BAND.deep*0.85);
+    if(env>0.02&&podW>0.03){ const podCy=H*(0.46-UW_BAND.shallow*0.24);
+      for(let i=0;i<5;i++){ const q=pp-i*0.030; if(q<0)continue;
+        const dx=lerp(-0.30,1.30,q)*W - uwPanS()*W*0.02;
+        const dy=podCy+Math.sin(q*Math.PI*2+i*0.35)*H*0.21;
+        const dRoll=Math.cos(q*Math.PI*2+i*0.35)*0.38;
+        const dScale=W*0.00105*(0.85+0.30*(0.5+0.5*Math.sin(q*Math.PI*2+i*0.35+Math.PI/2)));
+        uwDolphin(dx,dy,dScale,dRoll,0.82*env*podW*uwA); UW_COUNT.dolphin++;
+        if(UW_BAND.shallow>0.40&&dy<H*0.06){ /* the breach: spray off the back as it breaks the skin */
+          ctx.strokeStyle='rgba(235,252,255,'+(0.5*env*uwA)+')'; ctx.lineWidth=1.6; ctx.lineCap='round';
+          for(let d2=0;d2<5;d2++){ const a2=-Math.PI*(0.2+0.15*d2)+Math.sin(t*3+d2)*0.1;
+            ctx.beginPath(); ctx.moveTo(dx+Math.cos(a2)*W*0.012,H*0.015);
+            ctx.lineTo(dx+Math.cos(a2)*W*0.030,H*0.015+Math.sin(a2)*H*0.030); ctx.stroke(); } } } } }
+  /* THE DEEP's shark: not the far shadow — THIS one owns the lower
+     water. On a ~38 s patience he crosses at mid-distance, big and
+     unhurried, graded against the light, and is gone again. He never
+     hurries and he never lunges: no threat down here, only majesty */
+  const shkCyc=((t*0.0263+0.47)%1+1)%1;
+  if(shkCyc<0.42){ const sp2=shkCyc/0.42, sEnv=Math.sin(sp2*Math.PI);
+    const shkW=clamp(UW_BAND.deep+UW_BAND.mid*0.30,0,1);
+    if(sEnv>0.02&&shkW>0.03){ const sx=lerp(1.26,-0.26,sp2)*W - uwPanS()*W*0.012;
+      const sy=H*0.42+Math.sin(t*0.05)*H*0.018;
+      uwShark(sx,sy,W*0.0015,0.36*sEnv*shkW*uwA,-1,Math.sin(t*0.45)*0.035); UW_COUNT.shark++; } }
   for(const sc of UW_SCHOOLS_NEAR)uwSchool(sc,t,uwA,-uwPanS()*W*0.030,'auto');
   /* foreground reef: dark shapes swaying gently along the bottom edge */
   for(const rf of UW_REEF){
@@ -2286,8 +2365,18 @@ function drawUwNear(RP,hy,cx,t){
       ctx.beginPath(); ctx.moveTo(bx+W*0.045,H*1.005);
       ctx.lineTo(bx+W*0.045+Math.cos(an)*H*0.035, H*1.005+Math.sin(an)*H*0.035+sway*0.3); ctx.stroke(); }
   }
+  /* THE SHALLOWS' resident: an octopus ANCHORED on the foreground
+     reef — it does not cross, it LIVES here: eight arms waving all
+     day, a slow blink now and then, its skin breathing plum to copper
+     and back. Full strength in the sunlit water, a rumour below MID */
+  const octW=clamp(UW_BAND.shallow+UW_BAND.mid*0.35,0,1);
+  if(octW>0.03){ const oBlink=Math.pow(Math.max(0,Math.sin(t*0.33+2.0)),28);
+    const oShim=0.5+0.5*Math.sin(t*0.21+1.3);
+    uwOctopus(W*0.70+Math.sin(t*0.8+53)*W*0.008, H*0.945, H*0.00125, Math.sin(t*0.5)*0.03, 0.62*uwA*octW, {blink:oBlink, shim:oShim, rip:1.35});
+    UW_COUNT.octopus++; }
   /* bubbles: ambient streams + reef vents, always rising past the camera */
   ctx.lineWidth=1.1;
+  UW_COUNT.bubble=uwBubbles.length;
   for(const b of uwBubbles){
     /* perspective bubbles: projected from the vanishing point like
        everything else in the stream — small and hazed when far,
@@ -2301,6 +2390,11 @@ function drawUwNear(RP,hy,cx,t){
     ctx.fillStyle='rgba(255,255,255,'+bA+')';
     ctx.beginPath(); ctx.arc(bx-br*0.32,by-br*0.32,Math.max(0.7,br*0.22),0,TAU); ctx.fill();
   }
+  /* publish the frame's census: the scene is whichever water holds
+     the most of the tank right now — shallows / blue / deep */
+  window.SD_UW={ scene: UW_BAND.deep>=UW_BAND.mid&&UW_BAND.deep>=UW_BAND.shallow?'deep':(UW_BAND.shallow>UW_BAND.mid?'shallows':'blue'),
+    alt:S.alt, weights:{shallows:UW_BAND.shallow, blue:UW_BAND.mid, deep:UW_BAND.deep, detail:UW_BAND.detail},
+    counts:Object.assign({},UW_COUNT) };
   ctx.restore();
 }
 /* the turtle: a slow resident of the reef floor, drawn in the same
@@ -2324,22 +2418,28 @@ function uwTurtle(x,y,s,tilt,alpha){
    a contact shadow grounding it to the floor, eight arms rippling.
    It minds its own business until a swimmer swoops low at it; then it
    slides aside toward the rocks, the way the real ones do */
-function uwOctopus(x,y,s,tilt,alpha){
+function uwOctopus(x,y,s,tilt,alpha,o){
+  /* o (the anchored resident's extra life): blink 0..1 closes the eyes
+     to slits, shim 0..1 breathes the skin from plum toward copper and
+     back, rip widens the arms' wave where it sits and waves all day */
+  const bl=o?o.blink||0:0, sh=o?o.shim||0:0, ripAmp=7*(o&&o.rip?o.rip:1);
+  const armC=Math.round(74+32*sh)+','+Math.round(40+12*sh)+','+Math.round(54-4*sh);
+  const bodyC=Math.round(88+34*sh)+','+Math.round(48+16*sh)+','+Math.round(62-4*sh);
   ctx.save(); ctx.translate(x,y); ctx.rotate(tilt); ctx.scale(s,s);
   ctx.globalAlpha=alpha*0.50; ctx.drawImage(softBlob,-56,-4,112,22); ctx.globalAlpha=1;   /* contact shadow on the floor */
-  ctx.strokeStyle='rgba(74,40,54,'+alpha+')'; ctx.lineCap='round';
+  ctx.strokeStyle='rgba('+armC+','+alpha+')'; ctx.lineCap='round';
   for(let a2=0;a2<8;a2++){ const ax=-30+a2*8.6, ph=a2*1.13;
-    const rip=Math.sin(S.flyT*2.2+ph)*7;
+    const rip=Math.sin(S.flyT*2.2+ph)*ripAmp;
     ctx.lineWidth=7.5-Math.abs(a2-3.5)*0.8;
     ctx.beginPath(); ctx.moveTo(ax,10);
     ctx.quadraticCurveTo(ax+rip*0.6,26,ax+rip+(a2-3.5)*3.2,38+((a2*29)%7)); ctx.stroke(); }
-  ctx.fillStyle='rgba(88,48,62,'+alpha+')';
+  ctx.fillStyle='rgba('+bodyC+','+alpha+')';
   ctx.beginPath(); ctx.ellipse(0,0,30,24,0,Math.PI,0);
   ctx.quadraticCurveTo(30,12,18,14); ctx.quadraticCurveTo(0,20,-18,14); ctx.quadraticCurveTo(-30,12,-30,0); ctx.closePath(); ctx.fill();
   ctx.fillStyle='rgba(230,190,200,'+(alpha*0.20)+')';
   ctx.beginPath(); ctx.ellipse(-8,-10,13,8,-0.2,0,TAU); ctx.fill();
   ctx.fillStyle='rgba(10,6,10,'+(alpha*0.85)+')';
-  ctx.beginPath(); ctx.arc(-9,2,2.6,0,TAU); ctx.arc(9,2,2.6,0,TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-9,2,2.6,Math.max(0.35,2.6*(1-bl*0.88)),0,0,TAU); ctx.ellipse(9,2,2.6,Math.max(0.35,2.6*(1-bl*0.88)),0,0,TAU); ctx.fill();
   ctx.restore();
 }
 /* the DETAIL layer: the reef floor CLOSE painting, woken only by low
@@ -2377,7 +2477,7 @@ function drawUwDetail(t){
   const tcyc=((t*0.008+0.23)%1+1)%1;
   if(tcyc<0.62){ const tReact=sstep(0.45,0.85,S.effSpeed);   /* a fast low pass hurries the turtle on its way and settles it toward the floor */
     const tx=lerp(-0.18,1.18,tcyc/0.62)*W + tReact*W*0.045, ty=H*0.80+Math.sin(t*0.5)*H*0.008 + tReact*H*0.016;
-    uwTurtle(tx,ty,H*0.0011,Math.sin(t*0.9)*0.06+tReact*0.05,0.5*dA*Math.sin(tcyc/0.62*Math.PI)); }
+    uwTurtle(tx,ty,H*0.0011,Math.sin(t*0.9)*0.06+tReact*0.05,0.5*dA*Math.sin(tcyc/0.62*Math.PI)); if(Math.sin(tcyc/0.62*Math.PI)>0.1)UW_COUNT.turtle++; }
   /* the octopus's slow round: the other way across the floor, longer
      gone than here — and a low fast swoop sends it sliding for the rocks */
   const ocyc=((t*0.005+0.61)%1+1)%1;
@@ -2385,7 +2485,7 @@ function drawUwDetail(t){
     const swoop=sstep(0.45,0.85,S.effSpeed)*(1-sstep(0.30,0.48,S.alt));
     uwOctDodge=lerp(uwOctDodge,swoop,0.05);
     const ox0=lerp(1.14,-0.14,op)*W, oDir=ox0>=W/2?1:-1;
-    uwOctopus(ox0+oDir*uwOctDodge*W*0.10, H*0.865+Math.sin(t*0.4)*H*0.004+uwOctDodge*H*0.012, H*0.0011, Math.sin(t*0.7)*0.04, 0.55*dA*Math.sin(op*Math.PI)); }
+    uwOctopus(ox0+oDir*uwOctDodge*W*0.10, H*0.865+Math.sin(t*0.4)*H*0.004+uwOctDodge*H*0.012, H*0.0011, Math.sin(t*0.7)*0.04, 0.55*dA*Math.sin(op*Math.PI)); if(Math.sin(op*Math.PI)>0.1)UW_COUNT.octopus++; }
   ctx.restore();
 }
 
@@ -3346,9 +3446,9 @@ function update(dt){
   /* ambient underwater bubbles: reef vents and corner streams, rising
      past the camera whenever the tank is on screen */
   if(S.uwF>0.03||S.gate===2){
-    uwEmitAcc+=dt*(9+(S.mode==='fly'?7+S.effSpeed*11:0));   /* ambient bubbles thicken with your own speed — the water answers the throttle */
+    uwEmitAcc+=dt*(13+(S.mode==='fly'?9+S.effSpeed*13:0));   /* ambient bubbles thicken with your own speed — the water answers the throttle */
     while(uwEmitAcc>1){ uwEmitAcc-=1;
-      if(uwBubbles.length<110){ const vent=rng();
+      if(uwBubbles.length<150){ const vent=rng();
         const bx= vent<0.18? 0.03+rng()*0.12 : vent<0.36? 0.85+rng()*0.12 : rng();
         uwBubbles.push({x:bx, y:1.02+rng()*0.05, r:1.5+rng()*3.6, sp:0.10+rng()*0.13, ph:rng()*TAU, z:0.25+rng()*0.75}); } }
   }
