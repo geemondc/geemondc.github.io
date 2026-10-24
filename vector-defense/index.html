@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Vector Defense</title>
+<style>
+  :root{
+    --ink:#eaffea; --dim:#9fd8a8; --acc:#b6ff5e; --warn:#ffd76a; --bad:#ff6a5e;
+    --panel:rgba(4,18,8,.88); --line:#3f7d4a; --btn:#0d2b16; --neon:#3dff6e;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:#000; color:var(--ink);
+    font-family:"Courier New", ui-monospace, Menlo, monospace;
+    overflow:hidden; overscroll-behavior:none;
+  }
+  button{ font-family:inherit; cursor:pointer; }
+  /* ---------- stage / canvas ---------- */
+  #stageWrap{ position:fixed; inset:0; z-index:0; background:#000; }
+  #cv{ display:block; width:100%; height:100%; touch-action:none; }
+  /* ---------- in-play HUD ---------- */
+  #hud{
+    position:fixed; top:0; left:0; right:0; z-index:5; display:none;
+    padding:8px 52px 0 12px; pointer-events:none;
+    justify-content:space-between; align-items:flex-start; gap:8px;
+    font-weight:bold; letter-spacing:.08em;
+  }
+  body.playing #hud{ display:flex; }
+  .hudBox{ min-width:86px; }
+  .hudBox.c{ text-align:center; } .hudBox.r{ text-align:right; }
+  .hudLab{ font-size:9px; letter-spacing:.26em; color:var(--dim); }
+  .hudVal{ font-size:clamp(19px,4.6vw,27px); color:var(--neon); text-shadow:0 0 10px rgba(61,255,110,.85),0 0 30px rgba(61,255,110,.4); line-height:1.05; }
+  .hudVal.wave{ color:#dffcff; text-shadow:0 0 10px rgba(159,233,255,.85),0 0 30px rgba(159,233,255,.35); }
+  #pauseBtn{
+    position:fixed; top:10px; right:10px; z-index:6; display:none;
+    background:var(--btn); color:var(--ink); border:1px solid var(--line);
+    border-radius:6px; width:44px; height:38px; font-size:14px; font-weight:bold;
+  }
+  body.playing #pauseBtn{ display:block; }
+  /* ---------- intro ---------- */
+  #intro{
+    position:fixed; inset:0; z-index:10; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.78) 55%, rgba(0,0,0,.94));
+    display:flex; flex-direction:column; align-items:center; padding:14px 14px 30px;
+  }
+  #heroCv{
+    width:min(880px,100%); aspect-ratio:3/2; display:block;
+    border:1px solid var(--line); border-radius:10px; background:#000;
+    box-shadow:0 0 34px rgba(61,255,110,.28), inset 0 0 0 1px rgba(0,0,0,.4);
+  }
+  h1.title{
+    margin:14px 0 2px; font-size:clamp(34px,8.6vw,68px); line-height:1; text-align:center;
+    letter-spacing:.12em; font-weight:bold; color:var(--ink);
+    text-shadow:0 0 10px rgba(160,255,180,.9),0 0 34px rgba(61,255,110,.55),0 0 70px rgba(61,255,110,.3);
+  }
+  #tagline{ margin:8px 0 0; font-size:clamp(14px,3.4vw,19px); letter-spacing:.08em; color:var(--acc); text-align:center; text-shadow:0 0 10px rgba(182,255,94,.6); }
+  #hiRow{ display:flex; gap:14px; margin:16px 0 4px; flex-wrap:wrap; justify-content:center; }
+  .hiBox{
+    border:1px solid var(--line); background:var(--panel); border-radius:8px;
+    padding:8px 18px; text-align:center; min-width:170px;
+  }
+  .hiBox .lab{ font-size:10px; letter-spacing:.24em; color:var(--dim); }
+  .hiBox .num{ font-size:26px; font-weight:bold; text-shadow:0 0 10px rgba(61,255,110,.8); }
+  #startBtn{
+    margin:16px 0 4px; background:#1d5c2a; color:#fff; border:2px solid var(--acc);
+    border-radius:10px; padding:16px 58px; font-size:clamp(24px,6vw,32px); font-weight:bold;
+    letter-spacing:.22em; text-shadow:0 0 12px rgba(255,255,255,.7);
+    box-shadow:0 0 26px rgba(61,255,110,.45);
+  }
+  #startBtn:active{ transform:scale(.97); }
+  #togRow{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:16px; max-width:880px; }
+  .tog{
+    background:var(--btn); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+    padding:10px 14px; font-size:13px; font-weight:bold; letter-spacing:.1em; min-height:44px;
+  }
+  .tog:active{ transform:scale(.96); }
+  #futureReady{ margin-top:20px; font-size:10px; letter-spacing:.34em; color:#5d8f6a; text-decoration:none; }
+  /* short desktop windows: shrink the hero so START + the whole toggle row fit without scrolling */
+  @media (max-height:940px) and (min-width:601px){
+    #heroCv{ width:min(640px,100%); }
+    h1.title{ margin-top:10px; }
+    #hiRow{ margin-top:10px; }
+    #startBtn{ margin-top:10px; }
+    #togRow{ margin-top:10px; }
+    #futureReady{ margin-top:12px; }
+  }
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.78); padding:16px;
+  }
+  .overlay.open{ display:flex; }
+  .sheet{
+    background:var(--panel); border:1px solid var(--acc); border-radius:12px;
+    max-width:620px; width:100%; max-height:88vh; overflow-y:auto; padding:20px 22px;
+    box-shadow:0 0 30px rgba(61,255,110,.25);
+  }
+  .sheet h2{ margin:0 0 12px; letter-spacing:.2em; font-size:20px; text-align:center; }
+  .sheet p, .sheet li{ font-size:14.5px; line-height:1.55; letter-spacing:.02em; }
+  .sheet ul{ margin:8px 0; padding-left:20px; }
+  .sheet .k{ color:var(--acc); font-weight:bold; }
+  .closeBtn, .bigBtn{
+    display:block; margin:16px auto 2px; background:#17451f; color:#fff; border:1px solid var(--acc);
+    border-radius:8px; padding:12px 30px; font-size:16px; font-weight:bold; letter-spacing:.14em; min-height:48px;
+  }
+  #qrImg{ display:block; margin:6px auto; width:min(240px,62vw); image-rendering:pixelated; border-radius:6px; background:#fff; padding:6px; }
+  #qrOverlay.big #qrImg{ width:min(78vmin,420px); }
+  #qrUrl{ text-align:center; font-size:12px; color:var(--dim); word-break:break-all; }
+  .statRow{ display:flex; justify-content:space-between; font-size:16px; padding:5px 2px; border-bottom:1px dashed #2c5a36; }
+</style>
+</head>
+<body>
+<div id="stageWrap"><canvas id="cv"></canvas></div>
+
+<div id="hud">
+  <div class="hudBox"><div class="hudLab" data-i18n="score">SCORE</div><div class="hudVal" id="hudScore">0</div></div>
+  <div class="hudBox c"><div class="hudLab" data-i18n="wave">WAVE</div><div class="hudVal wave" id="hudWave">1</div></div>
+  <div class="hudBox r"><div class="hudLab" data-i18n="best">BEST</div><div class="hudVal" id="hudBest">0</div></div>
+</div>
+<button id="pauseBtn" aria-label="Pause">| |</button>
+
+<section id="intro">
+  <canvas id="heroCv" width="880" height="587"></canvas>
+  <h1 class="title">VECTOR DEFENSE</h1>
+  <p id="tagline" data-i18n="tagline">One cannon. Six bases. Hold the line.</p>
+  <div id="hiRow">
+    <div class="hiBox"><div class="lab" data-i18n="bestLab">BEST SCORE</div><div class="num" id="hiBest">0</div></div>
+  </div>
+  <button id="startBtn" data-i18n="start">START</button>
+  <div id="togRow">
+    <button class="tog" id="togQR">QR</button>
+    <button class="tog" id="togLang">ESPAÑOL</button>
+    <button class="tog" id="togSound">SOUND: ON</button>
+    <button class="tog" id="togControls" data-i18n="controls">CONTROLS</button>
+    <button class="tog" id="togHelp" data-i18n="howto">HOW TO PLAY</button>
+  </div>
+  <a id="futureReady" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">FUTURE READY</a>
+</section>
+
+<div class="overlay" id="qrOverlay">
+  <div class="sheet" style="text-align:center">
+    <h2>VECTOR DEFENSE</h2>
+    <img id="qrImg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACWElEQVR4nO2bQYrjMBBFX7UEs5ShD5Cj2Ddr5mb2UXKAAWvZIFOzqHLiDMyQmcFE0KWFiZO3+CBK+r+kiPLkWN6eJSHQQAN9gyo+pioCbCKTPWD/KXeiNVCSqqoqFFWWAaBmdK4ZRlVVXbvRGih49VQRqBmWS0Pk0uw7mU4XEOhTIx9fSssCwDhvKDW38wUE+j/oqA0gqUyl/Rk9R0Cgvx9WW27j64BS31Vg24uuKFDPExDoX6Kb+T6sogCo39R3MBERGc4VEOiTI3v12PgUtToCFBrH7PxyrYG+Qc3IBIgMXlv6fQCvrQFkqpG3ukDxqEWyWGWPGdCZZBlMZ5Lq/HKtge7TU5rZQQvKc3FjaMF4XGO2ukB9tlTbXkw2R0kZ1xuiGrPVA4rNDKXBuILORW22dC7ejfLXl2sNdI9VZtlBxhWE8imHXsYypdMEBPoPLsPq6GE5vFdZ1FYnKAcf8bj+MeptJYx9qxvU/N8m3nTHHbzlLe6fetD6xVGzgx6r9or6JW9B5K1u0OpHW/Jx9bPj+zbGeBWJ08he0FufcMtKTQ1IKpCbQG66XBRfLF+uNVB3GeBxeA/GSX3zYs9gsRK+HkUPY03Wc7cty30i0XnqCb3feWKTPW+5MZSJW5X1oPWLoxlIZtzF7mWUFRnXd+tg3I+7OtAaqKF+54mkjFcRlsstgw3b/tqJ1kD34ebdrxKu7kHk4xrpuAv04YZaHYD63oTyQ5TSfJ1chujqdoHifVtVtdPIGbfsdxsffcJe0Fve4tDaxVpNh9P/cPBdoBL/CAo00FPQn6k1o4O7U6POAAAAAElFTkSuQmCC" alt="QR code linking to the Vector Defense game page" />
+    <p id="qrUrl">https://geemondc.github.io/vector-defense/</p>
+    <button class="closeBtn" data-close data-i18n="close">CLOSE</button>
+  </div>
+</div>
+
+<div class="overlay" id="controlsOverlay">
+  <div class="sheet">
+    <h2 data-i18n="controls">CONTROLS</h2>
+    <p><span class="k" data-i18n="hMouseLab">MOUSE</span><br /><span data-i18n="hMouse"></span></p>
+    <p><span class="k" data-i18n="hTouchLab">TOUCH</span><br /><span data-i18n="hTouch"></span></p>
+    <p><span class="k" data-i18n="hKeysLab">KEYBOARD</span><br /><span data-i18n="hKeys"></span></p>
+    <button class="closeBtn" data-close data-i18n="close">CLOSE</button>
+  </div>
+</div>
+
+<div class="overlay" id="helpOverlay">
+  <div class="sheet">
+    <h2 data-i18n="howto">HOW TO PLAY</h2>
+    <p data-i18n="hGoal"></p>
+    <ul>
+      <li data-i18n="hFire"></li>
+      <li data-i18n="hAliens"></li>
+      <li data-i18n="hBombs"></li>
+      <li data-i18n="hCannon"></li>
+      <li data-i18n="hBonus"></li>
+    </ul>
+    <button class="closeBtn" data-close data-i18n="close">CLOSE</button>
+  </div>
+</div>
+
+<div class="overlay" id="pauseOverlay">
+  <div class="sheet" style="text-align:center">
+    <h2 data-i18n="paused">PAUSED</h2>
+    <button class="bigBtn" id="resumeBtn" data-i18n="resume">RESUME</button>
+    <button class="bigBtn" id="restartBtn" data-i18n="again">RESTART</button>
+    <button class="bigBtn" id="quitBtn" data-i18n="quit">QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div class="overlay" id="overOverlay">
+  <div class="sheet" style="text-align:center">
+    <h2 data-i18n="gameover">DEFENSE OVER</h2>
+    <div class="statRow"><span data-i18n="score">SCORE</span><b id="ovScore">0</b></div>
+    <div class="statRow"><span data-i18n="wave">WAVE</span><b id="ovWave">1</b></div>
+    <div class="statRow"><span data-i18n="best">BEST</span><b id="ovBest">0</b></div>
+    <p id="ovNew" style="color:var(--warn);font-weight:bold;display:none" data-i18n="newBest">NEW BEST!</p>
+    <button class="bigBtn" id="againBtn" data-i18n="again">RESTART</button>
+    <button class="bigBtn" id="titleBtn" data-i18n="quit">QUIT TO TITLE</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================== I18N ============================== */
+var STR = {
+en:{ tagline:"One cannon. Six bases. Hold the line.", bestLab:"BEST SCORE", start:"START", howto:"HOW TO PLAY",
+  controls:"CONTROLS", close:"CLOSE", paused:"PAUSED", resume:"RESUME", quit:"QUIT TO TITLE",
+  gameover:"DEFENSE OVER", score:"SCORE", wave:"WAVE", best:"BEST", again:"RESTART", newBest:"NEW BEST!",
+  soundOn:"SOUND: ON", soundOff:"SOUND: OFF",
+  waveN:"WAVE", baseDown:"BASE DOWN!", cannonDown:"CANNON DOWN!", rebuilt:"REBUILT!", cannonBack:"CANNON BACK!",
+  waveBonus:"WAVE BONUS",
+  hGoal:"Alien ships are crossing your sky and raining plasma on the six bases below. You are the lone cannon in the middle. When the last base falls, the defense is over.",
+  hFire:"FIRE: your shot streaks to the crosshair and bursts into a crackling energy sphere. Anything caught inside — ship or bomb — is destroyed, and blasts chain. The higher you catch a bomb, the more it pays.",
+  hAliens:"THE ALIENS: saucers weave and bob across the sky; darts are faster and stoop low in diving runs to drop their plasma point-blank. Blast them for 100 points.",
+  hBombs:"PLASMA BOMBS: every bomb you intercept pays. Later waves bring SPLITTERS that break into two or three warheads mid-fall.",
+  hCannon:"THE CANNON: a bomb landing on you knocks you out — you rebuild after a few seconds, but only while at least one base still stands.",
+  hBonus:"BONUS: every 10,000 points rebuilds one lost base. Surviving bases pay a wave bonus. Your best score is saved.",
+  hMouseLab:"MOUSE", hMouse:"Move to aim the crosshair. Click to fire. Place the burst where the enemy WILL be — your shot takes a moment to arrive.",
+  hTouchLab:"TOUCH", hTouch:"Tap to fire at that point. Or drag to aim and release to fire. The crosshair follows your finger.",
+  hKeysLab:"KEYBOARD", hKeys:"Arrow keys move the crosshair, SPACE fires. P or ESC pauses. ENTER starts and restarts." },
+es:{ tagline:"Un cañón. Seis bases. Defiende la línea.", bestLab:"MEJOR PUNTAJE", start:"INICIAR", howto:"CÓMO JUGAR",
+  controls:"CONTROLES", close:"CERRAR", paused:"PAUSA", resume:"SEGUIR", quit:"VOLVER AL TÍTULO",
+  gameover:"FIN DE LA DEFENSA", score:"PUNTOS", wave:"OLEADA", best:"RÉCORD", again:"OTRA VEZ", newBest:"¡NUEVO RÉCORD!",
+  soundOn:"SONIDO: SÍ", soundOff:"SONIDO: NO",
+  waveN:"OLEADA", baseDown:"¡BASE CAÍDA!", cannonDown:"¡CAÑÓN CAÍDO!", rebuilt:"¡RECONSTRUIDA!", cannonBack:"¡CAÑÓN DE VUELTA!",
+  waveBonus:"BONO DE OLEADA",
+  hGoal:"Naves alienígenas cruzan tu cielo y llueven plasma sobre las seis bases. Tú eres el único cañón en el centro. Cuando cae la última base, la defensa termina.",
+  hFire:"DISPARO: tu tiro vuela hasta la mira y estalla en una esfera de energía. Todo lo que quede dentro — nave o bomba — se destruye, y las explosiones se encadenan. Cuanto más alto atrapes una bomba, más paga.",
+  hAliens:"LOS ALIENS: los platillos serpentean y flotan cruzando el cielo; los dardos son más rápidos y bajan en picada para soltar su plasma a quemarropa. Derríbalos por 100 puntos.",
+  hBombs:"BOMBAS DE PLASMA: cada bomba que interceptes paga. Las oleadas tardías traen DIVISORAS que se parten en dos o tres cabezas a mitad de caída.",
+  hCannon:"EL CAÑÓN: una bomba que te cae encima te destruye — te reconstruyes en unos segundos, pero solo mientras quede al menos una base en pie.",
+  hBonus:"BONO: cada 10.000 puntos reconstruye una base perdida. Las bases supervivientes pagan un bono por oleada. Tu mejor puntaje queda guardado.",
+  hMouseLab:"RATÓN", hMouse:"Mueve para apuntar la mira. Haz clic para disparar. Coloca la explosión donde el enemigo ESTARÁ — tu tiro tarda un momento en llegar.",
+  hTouchLab:"TÁCTIL", hTouch:"Toca para disparar en ese punto. O arrastra para apuntar y suelta para disparar. La mira sigue tu dedo.",
+  hKeysLab:"TECLADO", hKeys:"Las flechas mueven la mira, ESPACIO dispara. P o ESC pausa. ENTER inicia y reinicia." }
+};
+var lang = "en", soundOn = true;
+function T(k){ return STR[lang][k] || STR.en[k] || k; }
+function $(id){ return document.getElementById(id); }
+function applyLang(){
+  document.querySelectorAll("[data-i18n]").forEach(function(el){ el.textContent = T(el.getAttribute("data-i18n")); });
+  $("togLang").textContent = (lang === "en") ? "ESPAÑOL" : "ENGLISH";
+  $("togSound").textContent = soundOn ? T("soundOn") : T("soundOff");
+  $("hiBest").textContent = best;
+  syncHud();
+}
+
+/* ============================== STORAGE ============================== */
+function store(k, v){ try{ if(v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } }
+var best = parseInt(store("vectorDefenseBest") || "0", 10) || 0;
+lang = store("vdf_lang") || "en";
+soundOn = store("vdf_sound") !== "off";
+
+/* ============================== AUDIO (one-shot blips only) ============================== */
+var AC = null;
+function audio(){ if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} } if(AC && AC.state === "suspended") AC.resume(); return AC; }
+function beep(freq, dur, type, vol, slideTo){
+  if(!soundOn) return; var ac = audio(); if(!ac) return;
+  var o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+  o.type = type || "square"; o.frequency.setValueAtTime(freq, t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(24, slideTo), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noiseBurst(dur, vol, freq){
+  if(!soundOn) return; var ac = audio(); if(!ac) return;
+  var n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+  for(var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  var src = ac.createBufferSource(); src.buffer = buf;
+  var f = ac.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 900;
+  var g = ac.createGain(); g.gain.value = vol;
+  src.connect(f); f.connect(g); g.connect(ac.destination); src.start();
+}
+var SFX = {
+  fire:     function(){ beep(920, 0.16, "sawtooth", 0.07, 240); },
+  boom:     function(big){ noiseBurst(big ? 0.42 : 0.26, big ? 0.34 : 0.2, big ? 520 : 820); beep(big ? 74 : 96, 0.28, "sine", 0.2, 38); },
+  alien:    function(){ beep(1180, 0.14, "square", 0.08, 220); noiseBurst(0.14, 0.1, 1500); },
+  bombKill: function(){ beep(1560, 0.07, "square", 0.06, 900); },
+  baseLost: function(){ beep(233, 0.24, "sawtooth", 0.11, 208); setTimeout(function(){ beep(196, 0.4, "sawtooth", 0.11, 130); }, 190); },
+  rebuild:  function(){ beep(660, 0.1, "square", 0.08); setTimeout(function(){ beep(990, 0.15, "square", 0.08); }, 100); },
+  alarm:    function(){ beep(520, 0.15, "square", 0.06); setTimeout(function(){ beep(392, 0.18, "square", 0.06); }, 160); },
+  over:     function(){ beep(392, 0.3, "sawtooth", 0.1, 330); setTimeout(function(){ beep(262, 0.55, "sawtooth", 0.1, 130); }, 280); }
+};
+
+/* ============================== CANVAS / VIEW ============================== */
+var cv = $("cv"), ctx = cv.getContext("2d");
+var W = 0, H = 0, S = 1, V = 1, groundY = 0, groundH = 0;
+var BASE_FR = [0.07, 0.20, 0.33, 0.67, 0.80, 0.93], CANNON_FR = 0.5;
+function baseW(){ return Math.max(30, Math.min(58, W * 0.052)); }
+var surfPts = [];   // cratered surface polyline, as {fx, dy}
+function seedSurface(){
+  surfPts = [];
+  var craters = [];
+  for(var c = 0; c < 5; c++) craters.push(0.08 + Math.random() * 0.84);
+  for(var fx = 0; fx <= 1.0001; fx += 0.025){
+    var dy = (Math.random() - 0.5) * 3;
+    for(var k = 0; k < craters.length; k++){
+      var d = Math.abs(fx - craters[k]);
+      if(d < 0.035) dy += 7 * (1 - d / 0.035);
+    }
+    surfPts.push({ fx: fx, dy: dy });
+  }
+}
+var stars = [];
+function seedStars(){
+  stars = [];
+  for(var i = 0; i < 130; i++) stars.push({ x: Math.random(), y: Math.random() * 0.8, s: Math.random() < 0.82 ? 1.3 : 2.2, p: Math.random() * 6.28 });
+}
+
+/* ============================== SHARED VECTOR DRAWING ============================== */
+function glow(c, color, width, drawFn){
+  c.strokeStyle = color; c.lineJoin = "round"; c.lineCap = "round";
+  c.globalAlpha = 0.20; c.lineWidth = width * 3.2; drawFn();
+  c.globalAlpha = 1; c.lineWidth = width; drawFn();
+}
+function path(c, pts, close){
+  c.beginPath();
+  for(var i = 0; i < pts.length; i++){ if(i === 0) c.moveTo(pts[i][0], pts[i][1]); else c.lineTo(pts[i][0], pts[i][1]); }
+  if(close) c.closePath();
+  c.stroke();
+}
+function drawBaseShape(c, x, gy, bw, alive){
+  var bh = bw * 0.62;
+  if(alive){
+    glow(c, "#3dff6e", 1.8, function(){
+      c.beginPath(); c.arc(x, gy, bw * 0.5, Math.PI, 0); c.stroke();              // dome
+      c.beginPath(); c.moveTo(x - bw * 0.5, gy); c.lineTo(x + bw * 0.5, gy); c.stroke();
+      c.beginPath(); c.arc(x, gy, bw * 0.3, Math.PI, 0); c.stroke();              // inner dome
+      c.beginPath(); c.moveTo(x - bw * 0.13, gy); c.lineTo(x - bw * 0.13, gy - bh * 0.34);
+      c.lineTo(x + bw * 0.13, gy - bh * 0.34); c.lineTo(x + bw * 0.13, gy); c.stroke(); // door
+      c.beginPath(); c.moveTo(x, gy - bh); c.lineTo(x, gy - bh - bw * 0.2); c.stroke(); // antenna
+    });
+    c.fillStyle = "#b6ff5e";
+    c.beginPath(); c.arc(x, gy - bh - bw * 0.24, 1.8, 0, Math.PI * 2); c.fill();
+  } else {
+    c.globalAlpha = 0.55;
+    glow(c, "#3dff6e", 1.6, function(){
+      path(c, [[x - bw * 0.5, gy], [x - bw * 0.3, gy - bh * 0.3], [x - bw * 0.12, gy - bh * 0.1], [x + bw * 0.05, gy - bh * 0.38], [x + bw * 0.22, gy - bh * 0.12], [x + bw * 0.5, gy]]);
+      path(c, [[x - bw * 0.34, gy], [x - bw * 0.1, gy - bh * 0.2]]);
+      path(c, [[x + bw * 0.12, gy], [x + bw * 0.3, gy - bh * 0.22]]);
+    });
+    c.globalAlpha = 1;
+  }
+}
+function drawSaucer(c, x, y, sc, bank, t){
+  c.save(); c.translate(x, y); c.rotate(bank || 0);
+  glow(c, "#ff5ee1", 1.8, function(){
+    c.beginPath(); c.ellipse(0, 0, 17 * sc, 5.6 * sc, 0, 0, Math.PI * 2); c.stroke();       // hull
+    c.beginPath(); c.ellipse(0, 1.8 * sc, 17 * sc, 5.6 * sc, 0, 0.15, Math.PI - 0.15); c.stroke(); // hull belly line
+    c.beginPath(); c.arc(0, -2.4 * sc, 7.6 * sc, Math.PI, 0); c.stroke();                    // dome
+    c.beginPath(); c.moveTo(-4 * sc, -8.6 * sc); c.lineTo(0, -12.6 * sc); c.lineTo(4 * sc, -8.6 * sc); c.stroke(); // dome crest
+  });
+  var blink = 0.55 + 0.45 * Math.sin(t * 6 + x * 0.05);
+  c.fillStyle = "rgba(255,209,102," + blink.toFixed(2) + ")";
+  [-10, 0, 10].forEach(function(px){ c.beginPath(); c.arc(px * sc, 1.4 * sc, 1.7 * sc, 0, Math.PI * 2); c.fill(); });
+  c.restore();
+}
+function drawDart(c, x, y, sc, ang){
+  c.save(); c.translate(x, y); c.rotate(ang || 0);
+  glow(c, "#ff9f43", 1.8, function(){
+    path(c, [[13 * sc, 0], [-4 * sc, -3 * sc], [-11 * sc, -10 * sc], [-8 * sc, -1.5 * sc], [-13 * sc, 0], [-8 * sc, 1.5 * sc], [-11 * sc, 10 * sc], [-4 * sc, 3 * sc]], true);
+    path(c, [[3 * sc, -2.6 * sc], [3 * sc, 2.6 * sc]]);
+  });
+  c.fillStyle = "#dffcff";
+  c.beginPath(); c.arc(6.5 * sc, 0, 1.6 * sc, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+function drawCannonShape(c, x, gy, sc, aimAng, alive, t){
+  if(!alive){
+    c.globalAlpha = 0.6;
+    glow(c, "#9be9ff", 1.7, function(){
+      path(c, [[x - 15 * sc, gy], [x - 6 * sc, gy - 6 * sc], [x + 2 * sc, gy - 3 * sc], [x + 14 * sc, gy]]);
+      path(c, [[x - 2 * sc, gy - 4 * sc], [x + 10 * sc, gy - 9 * sc]]);
+    });
+    c.globalAlpha = 1; return;
+  }
+  glow(c, "#9be9ff", 2, function(){
+    path(c, [[x - 16 * sc, gy], [x - 9 * sc, gy - 9 * sc], [x + 9 * sc, gy - 9 * sc], [x + 16 * sc, gy]], true); // turret
+    c.beginPath(); c.arc(x, gy - 9 * sc, 6.4 * sc, Math.PI, 0); c.stroke();                                        // pivot dome
+  });
+  var mx = x + Math.cos(aimAng) * 21 * sc, my = (gy - 9 * sc) + Math.sin(aimAng) * 21 * sc;
+  glow(c, "#dffcff", 3, function(){ path(c, [[x, gy - 9 * sc], [mx, my]]); });                                     // barrel
+  c.fillStyle = "#dffcff";
+  c.beginPath(); c.arc(x, gy - 9 * sc, 2 * sc, 0, Math.PI * 2); c.fill();
+}
+function drawBoomSphere(c, x, y, r, age){
+  if(r < 2) return;
+  glow(c, "#ffd76a", 2, function(){ c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); });
+  glow(c, "#fff3d6", 1.4, function(){ c.beginPath(); c.arc(x, y, r * 0.6, 0, Math.PI * 2); c.stroke(); });
+  c.strokeStyle = "rgba(255,150,60,0.75)"; c.lineWidth = 1.2;
+  for(var k = 0; k < 2; k++){
+    c.beginPath(); c.ellipse(x, y, r, r * 0.36, age * 2.6 + k * Math.PI / 2, 0, Math.PI * 2); c.stroke();
+  }
+}
+
+/* ============================== HERO ART (drawn once) ============================== */
+function drawHero(){
+  var c = $("heroCv"), x = c.getContext("2d"), W2 = c.width, H2 = c.height;
+  x.fillStyle = "#000"; x.fillRect(0, 0, W2, H2);
+  var i;
+  for(i = 0; i < 120; i++){
+    x.fillStyle = "rgba(255,255,255," + (0.3 + Math.random() * 0.6).toFixed(2) + ")";
+    x.fillRect(Math.random() * W2, Math.random() * H2 * 0.62, Math.random() < 0.85 ? 1.6 : 2.6, Math.random() < 0.85 ? 1.6 : 2.6);
+  }
+  var gy = H2 - 64;
+  // planet surface
+  glow(x, "#3dff6e", 2.4, function(){
+    x.beginPath(); x.moveTo(0, gy + 6);
+    for(var fx = 0; fx <= 1.0001; fx += 0.025) x.lineTo(fx * W2, gy + 6 + Math.sin(fx * 40) * 2 + (Math.abs(fx - 0.62) < 0.03 ? 7 : 0));
+    x.stroke();
+  });
+  x.strokeStyle = "rgba(61,255,110,0.4)"; x.lineWidth = 1.2;
+  x.beginPath(); x.moveTo(0, gy + 22); x.lineTo(W2, gy + 20); x.stroke();
+  // bases + cannon
+  BASE_FR.forEach(function(fr){ drawBaseShape(x, fr * W2, gy + 4, 52, true); });
+  drawCannonShape(x, W2 * 0.5, gy + 4, 1.15, -Math.PI * 0.68, true, 0);
+  // shot streak + boom + crosshair
+  var bx = W2 * 0.66, by = H2 * 0.34;
+  glow(x, "#9be9ff", 2, function(){ path(x, [[W2 * 0.5 - 14, gy - 20], [bx, by]]); });
+  drawBoomSphere(x, bx, by, 54, 0.7);
+  x.strokeStyle = "#dffcff"; x.lineWidth = 2;
+  x.beginPath(); x.arc(bx, by, 12, 0, Math.PI * 2); x.stroke();
+  path(x, [[bx - 20, by], [bx - 6, by], [bx + 6, by], [bx + 20, by], [bx, by - 20], [bx, by - 6], [bx, by + 6], [bx, by + 20]]);
+  // aliens: two saucers cruising, one dart diving, bomb trails (the birds' paths, ported)
+  drawSaucer(x, W2 * 0.2, H2 * 0.2, 1.25, -0.08, 1.2);
+  drawSaucer(x, W2 * 0.82, H2 * 0.14, 1.05, 0.06, 3.4);
+  drawDart(x, W2 * 0.6, H2 * 0.18, 1.15, Math.PI * 0.32);
+  x.strokeStyle = "rgba(255,49,49,0.65)"; x.lineWidth = 2; x.setLineDash([5, 6]);
+  x.beginPath(); x.moveTo(W2 * 0.22, H2 * 0.24); x.lineTo(W2 * 0.34, gy - 8); x.stroke();
+  x.beginPath(); x.moveTo(W2 * 0.6, H2 * 0.24); x.lineTo(W2 * 0.68, gy - 8); x.stroke();
+  x.setLineDash([]);
+  x.fillStyle = "#ff3131";
+  x.beginPath(); x.arc(W2 * 0.34, gy - 8, 4, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.arc(W2 * 0.68, gy - 8, 4, 0, Math.PI * 2); x.fill();
+}
+
+/* ============================== GAME STATE ==============================
+   Mechanics ported from Boardwalk Defense into vector form:
+   fire() -> shot travels -> makeBoom() grow/hold/shrink sphere that
+   chain-destroys; spawnBomb() aimed by pickTarget(); MIRV splitters;
+   startWave() escalation; checkRebuild() bonus base every 10,000.
+   The BIRDS became the aliens: pelicans -> saucers cruising with a sine
+   bob, dropping on a timer; diving gulls -> darts that stoop low and
+   release point-blank, then pull out. */
+var state = "title";   // title | playing | paused | over
+var G = null;
+var aim = { x: 0, y: 0 };
+var keys = {};
+
+function basesAlive(){ return G ? G.bases.filter(function(b){ return b.alive; }).length : 0; }
+
+function newGame(){
+  G = {
+    score: 0, wave: 0, mult: 1, nextBaseAt: 10000,
+    bases: BASE_FR.map(function(fr){ return { fr: fr, alive: true }; }),
+    cannon: { alive: true, cool: 0, rebuildT: 0 },
+    shots: [], booms: [], bombs: [], aliens: [], pops: [], parts: [],
+    shipsLeft: 0, spawnTimer: 0, spawnGap: 1, bombSpeed: 110, mirv: 0,
+    speedScale: 1, dropScale: 1, diveP: 0.3,
+    shake: 0, flash: 0, time: 0, phase: "combat", clearTimer: 0, overTimer: 0, bannerT: 0
+  };
+  aim.x = W / 2; aim.y = H * 0.35;
+  startWave();
+  syncHud();
+}
+
+function startWave(){
+  G.wave++;
+  G.mult = Math.min(1 + Math.floor((G.wave - 1) / 2), 6);
+  G.shots.length = 0; G.bombs.length = 0; G.aliens.length = 0; G.booms.length = 0;
+  G.shipsLeft = Math.min(6 + G.wave * 2, 26);
+  G.spawnGap = Math.max(1.5 - G.wave * 0.11, 0.55);
+  G.spawnTimer = 0.9;
+  G.bombSpeed = (104 + G.wave * 11) * V;
+  G.mirv = G.wave >= 4 ? Math.min(0.08 + (G.wave - 3) * 0.045, 0.38) : 0;
+  G.speedScale = 1 + (G.wave - 1) * 0.05;
+  G.dropScale = Math.max(0.55, 1 - G.wave * 0.04);
+  G.diveP = Math.min(0.26 + G.wave * 0.03, 0.6);
+  G.phase = "combat";
+  G.bannerT = 1.8;
+  SFX.alarm();
+  syncHud();
+}
+
+function syncHud(){
+  $("hudScore").textContent = G ? G.score : 0;
+  $("hudWave").textContent = G ? Math.max(1, G.wave) : 1;
+  $("hudBest").textContent = best;
+}
+
+/* bonus base every 10,000 — Boardwalk's checkRebuild */
+function checkRebuild(){
+  if(G.score >= G.nextBaseAt){
+    G.nextBaseAt += 10000;
+    for(var i = 0; i < G.bases.length; i++){
+      if(!G.bases[i].alive){
+        G.bases[i].alive = true;
+        G.pops.push({ x: G.bases[i].fr * W, y: groundY - 58 * S, txt: T("rebuilt"), age: 0, big: true });
+        burst(G.bases[i].fr * W, groundY - 14 * S, "#3dff6e", 10);
+        SFX.rebuild();
+        break;
+      }
+    }
+  }
+}
+function addScore(base, x, y, heightBonus){
+  var pts = (base + (heightBonus || 0)) * G.mult;
+  G.score += pts;
+  if(x !== undefined) G.pops.push({ x: x, y: y, txt: "+" + pts, age: 0, big: false });
+  checkRebuild();
+  syncHud();
+}
+function burst(x, y, color, n){
+  for(var i = 0; i < n; i++){
+    var a = Math.random() * Math.PI * 2, sp = (40 + Math.random() * 130) * S;
+    G.parts.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30 * S,
+                   age: 0, life: 0.45 + Math.random() * 0.4, color: color,
+                   len: (4 + Math.random() * 7) * S, rot: a, vr: (Math.random() - 0.5) * 9 });
+  }
+}
+
+/* ---------------- Firing (Boardwalk fire/makeBoom) ---------------- */
+function fire(tx, ty){
+  if(state !== "playing" || !G || G.phase === "over") return;
+  if(!G.cannon.alive || G.cannon.cool > 0) return;
+  ty = Math.max(6, Math.min(ty, groundY - 12 * S));
+  tx = Math.max(4, Math.min(tx, W - 4));
+  var mx = CANNON_FR * W, my = groundY - 9 * S;
+  var d = Math.hypot(tx - mx, ty - my);
+  G.cannon.cool = 0.34;
+  G.shots.push({ sx: mx, sy: my, x: mx, y: my, tx: tx, ty: ty, t: 0, dur: Math.max(0.1, d / (1080 * V)) });
+  SFX.fire();
+}
+function makeBoom(x, y, r, chain, fromShot){
+  if(G.booms.length > 18) G.booms.splice(0, G.booms.length - 18);
+  G.booms.push({ x: x, y: y, r: 0, maxR: r, age: 0, grow: 0.26, hold: 0.3, shrink: 0.48, chain: !!chain, shot: !!fromShot, kills: 0 });
+}
+function boomR(){ return Math.max(34, Math.min(62, W * 0.055)); }
+
+/* ---------------- Spawning (Boardwalk pickTarget/spawnBomb) ---------------- */
+function pickTargetFr(){
+  var pool = [];
+  G.bases.forEach(function(b){ if(b.alive) pool.push(b.fr); });
+  if(G.cannon.alive) pool.push(CANNON_FR);
+  if(!pool.length) pool = [0.2 + Math.random() * 0.6];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function spawnBomb(sx, sy, kind, forcedFr){
+  var tfr = (forcedFr !== undefined) ? forcedFr : pickTargetFr();
+  var tx = tfr * W + (Math.random() * 18 - 9) * S, ty = groundY;
+  var dx = tx - sx, dy = ty - sy, len = Math.hypot(dx, dy) || 1;
+  var sp = G.bombSpeed * (0.85 + Math.random() * 0.35);
+  G.bombs.push({ x: sx, y: sy, vx: dx / len * sp, vy: dy / len * sp, kind: kind || "pod",
+                 split: kind === "mother", splitAt: 0.32 + Math.random() * 0.28,
+                 trail: [], wob: Math.random() * 6.28 });
+}
+function spawnAlien(){
+  var dir = Math.random() < 0.5 ? 1 : -1;
+  var dartP = Math.min(0.3 + G.wave * 0.02, 0.55);
+  var kind = Math.random() < dartP ? "dart" : "saucer";
+  var y = H * (0.09 + Math.random() * 0.26);
+  var spd = (kind === "dart" ? 118 + Math.random() * 46 : 58 + Math.random() * 36) * V * G.speedScale;
+  G.aliens.push({
+    kind: kind, dir: dir, x: dir > 0 ? -36 * S : W + 36 * S, y: y, baseY: y,
+    vx: dir * spd, vy: 0, spd: spd, age: 0, wobPh: Math.random() * 6.28,
+    wobF: 1.6 + Math.random() * 1.6, wobA: (8 + Math.random() * 15) * S,
+    dropT: 0.9 + Math.random() * 1.5, mode: "cruise", dived: false,
+    diveX: W * (0.15 + Math.random() * 0.7), tfr: 0.5, tx: 0, ty: 0, bank: 0,
+    r: (kind === "dart" ? 13 : 17) * S
+  });
+}
+function steerAlien(a, tx, ty, dt, turnRate){
+  var cur = Math.atan2(a.vy, a.vx), des = Math.atan2(ty - a.y, tx - a.x);
+  var diff = des - cur;
+  while(diff > Math.PI) diff -= Math.PI * 2;
+  while(diff < -Math.PI) diff += Math.PI * 2;
+  var maxTurn = turnRate * dt;
+  var na = cur + Math.max(-maxTurn, Math.min(maxTurn, diff));
+  a.vx = Math.cos(na) * a.spd; a.vy = Math.sin(na) * a.spd;
+}
+
+/* ---------------- Update ---------------- */
+function update(dt){
+  if(!G) return;
+  G.time += dt;
+  if(G.shake > 0) G.shake = Math.max(0, G.shake - dt * 26);
+  if(G.flash > 0) G.flash = Math.max(0, G.flash - dt * 2.2);
+  if(G.bannerT > 0) G.bannerT -= dt;
+  if(G.cannon.cool > 0) G.cannon.cool -= dt;
+  var i, j;
+
+  /* keyboard crosshair */
+  var kSpd = 460 * dt;
+  if(keys.ArrowLeft) aim.x -= kSpd; if(keys.ArrowRight) aim.x += kSpd;
+  if(keys.ArrowUp) aim.y -= kSpd; if(keys.ArrowDown) aim.y += kSpd;
+  aim.x = Math.max(4, Math.min(W - 4, aim.x)); aim.y = Math.max(4, Math.min(groundY - 6, aim.y));
+  if(keys[" "] && state === "playing") fire(aim.x, aim.y);
+
+  if(G.phase === "combat"){
+    /* alien spawner */
+    if(G.shipsLeft > 0){
+      G.spawnTimer -= dt;
+      if(G.spawnTimer <= 0){ spawnAlien(); G.shipsLeft--; G.spawnTimer = G.spawnGap * (0.65 + Math.random() * 0.7); }
+    }
+    /* wave clear? (Boardwalk) */
+    if(G.shipsLeft <= 0 && G.aliens.length === 0 && G.bombs.length === 0 && G.shots.length === 0){
+      var bonus = basesAlive() * 100 + (G.cannon.alive ? 50 : 0);
+      G.score += bonus;
+      G.pops.push({ x: W / 2, y: H * 0.36, txt: T("waveBonus") + " +" + bonus, age: 0, big: true });
+      checkRebuild(); syncHud();
+      SFX.rebuild();
+      G.phase = "clear"; G.clearTimer = 2.2;
+    }
+  }
+  else if(G.phase === "clear"){
+    G.clearTimer -= dt;
+    if(G.clearTimer <= 0) startWave();
+  }
+  else if(G.phase === "over"){
+    G.overTimer -= dt;
+    if(G.overTimer <= 0) showGameOver();
+  }
+
+  /* cannon rebuild — only while a base stands (Boardwalk checkRebuild idea) */
+  if(!G.cannon.alive && G.phase !== "over"){
+    if(basesAlive() > 0){
+      G.cannon.rebuildT -= dt;
+      if(G.cannon.rebuildT <= 0){
+        G.cannon.alive = true;
+        G.pops.push({ x: CANNON_FR * W, y: groundY - 52 * S, txt: T("cannonBack"), age: 0, big: true });
+        burst(CANNON_FR * W, groundY - 10 * S, "#9be9ff", 10);
+        SFX.rebuild();
+      }
+    }
+  }
+
+  /* aliens — the birds' flight, ported */
+  for(i = G.aliens.length - 1; i >= 0; i--){
+    var a = G.aliens[i];
+    a.age += dt;
+    if(a.mode === "cruise"){
+      var prevY = a.y;
+      a.x += a.vx * dt;
+      a.y = a.baseY + Math.sin(a.age * a.wobF + a.wobPh) * a.wobA;
+      var vyI = dt > 0 ? (a.y - prevY) / dt : 0;
+      var bTgt = Math.max(-0.3, Math.min(0.3, vyI * 0.0016)) * (a.dir > 0 ? 1 : -1) * (a.kind === "saucer" ? 1 : 0.4);
+      a.bank += (bTgt - a.bank) * Math.min(1, dt * 8);
+      /* drop on a timer while over the field (pelican behavior) */
+      if(G.phase === "combat" && a.x > 26 && a.x < W - 26){
+        a.dropT -= dt;
+        if(a.dropT <= 0){
+          spawnBomb(a.x, a.y + 9 * S, Math.random() < G.mirv ? "mother" : "pod");
+          a.dropT = (1.05 + Math.random() * 1.3) * G.dropScale;
+        }
+      }
+      /* peel off into a stoop (diving-gull behavior) */
+      if(!a.dived && G.phase === "combat" &&
+         ((a.dir > 0 && a.x > a.diveX) || (a.dir < 0 && a.x < a.diveX))){
+        a.dived = true;
+        if(Math.random() < G.diveP * (a.kind === "dart" ? 1.5 : 0.8)){
+          a.mode = "dive";
+          a.tfr = pickTargetFr();
+          a.tx = a.tfr * W; a.ty = groundY - 150 * S;
+          a.vy = a.spd * 0.25;
+        }
+      }
+      if(a.x < -60 * S || a.x > W + 60 * S) G.aliens.splice(i, 1);
+    }
+    else if(a.mode === "dive"){
+      a.spd = Math.min(a.spd + 240 * V * dt, (a.kind === "dart" ? 300 : 230) * V * G.speedScale);
+      steerAlien(a, a.tx, a.ty, dt, 2.4);
+      a.x += a.vx * dt; a.y += a.vy * dt;
+      a.bank = Math.max(-0.5, Math.min(0.5, a.bank + ((a.vx > 0 ? 0.35 : -0.35) - a.bank) * Math.min(1, dt * 5)));
+      /* point-blank release, then pull out */
+      if(a.y >= groundY - 165 * S || Math.hypot(a.tx - a.x, a.ty - a.y) < 34 * S){
+        if(G.phase === "combat") spawnBomb(a.x, a.y + 6 * S, "pod", a.tfr);
+        a.mode = "leave";
+        a.tx = a.x + a.dir * W * 0.45; a.ty = -70;
+        a.spd = Math.max(a.spd, 170 * V);
+      }
+      if(a.y >= groundY - 4){ /* stooped too far — crashes on the ground */
+        hitGround({ x: a.x, y: groundY, kind: "pod" });
+        burst(a.x, groundY - 8 * S, "#ff9f43", 10);
+        G.aliens.splice(i, 1);
+      }
+    }
+    else { /* leave */
+      steerAlien(a, a.tx, a.ty, dt, 1.9);
+      a.x += a.vx * dt; a.y += a.vy * dt;
+      if(a.x < -70 * S || a.x > W + 70 * S || a.y < -80) G.aliens.splice(i, 1);
+    }
+  }
+
+  /* shots (Boardwalk) */
+  for(i = G.shots.length - 1; i >= 0; i--){
+    var s = G.shots[i];
+    s.t += dt / s.dur;
+    if(s.t >= 1){ makeBoom(s.tx, s.ty, boomR(), false, true); SFX.boom(false); G.shots.splice(i, 1); }
+    else { s.x = s.sx + (s.tx - s.sx) * s.t; s.y = s.sy + (s.ty - s.sy) * s.t; }
+  }
+
+  /* explosions — kills chain (Boardwalk) */
+  for(i = G.booms.length - 1; i >= 0; i--){
+    var b = G.booms[i];
+    b.age += dt;
+    var total = b.grow + b.hold + b.shrink;
+    if(b.age < b.grow) b.r = b.maxR * (b.age / b.grow);
+    else if(b.age < b.grow + b.hold) b.r = b.maxR;
+    else if(b.age < total) b.r = b.maxR * (1 - (b.age - b.grow - b.hold) / b.shrink);
+    else { G.booms.splice(i, 1); continue; }
+    if(b.r < 4) continue;
+    /* bombs caught inside */
+    for(j = G.bombs.length - 1; j >= 0; j--){
+      var bm = G.bombs[j], dx = bm.x - b.x, dy = bm.y - b.y;
+      if(dx * dx + dy * dy < b.r * b.r){
+        G.bombs.splice(j, 1);
+        b.kills++;
+        var hb = Math.round(25 * Math.max(0, 1 - bm.y / groundY));   /* height bonus */
+        addScore(25, bm.x, bm.y, hb);
+        makeBoom(bm.x, bm.y, boomR() * 0.78, true);
+        burst(bm.x, bm.y, "#ff8fb5", 5);
+        SFX.bombKill();
+      }
+    }
+    /* aliens caught inside */
+    for(j = G.aliens.length - 1; j >= 0; j--){
+      var al = G.aliens[j], ax = al.x - b.x, ay = al.y - b.y, rr = b.r + al.r;
+      if(ax * ax + ay * ay < rr * rr){
+        G.aliens.splice(j, 1);
+        b.kills++;
+        addScore(100, al.x, al.y, 0);
+        makeBoom(al.x, al.y, boomR() * 0.78, true);
+        burst(al.x, al.y, al.kind === "dart" ? "#ff9f43" : "#ff5ee1", 9);
+        SFX.alien();
+      }
+    }
+  }
+
+  /* bombs */
+  for(i = G.bombs.length - 1; i >= 0; i--){
+    var m = G.bombs[i];
+    m.x += m.vx * dt; m.y += m.vy * dt;
+    m.trail.push({ x: m.x, y: m.y });
+    if(m.trail.length > 14) m.trail.shift();
+    /* MIRV split (Boardwalk) */
+    if(m.split && m.y > H * m.splitAt){
+      m.split = false;
+      var kids = (G.wave >= 7 && Math.random() < 0.3) ? 3 : 2;
+      for(var k = 0; k < kids; k++){
+        var cfr = pickTargetFr();
+        var ctx2 = cfr * W + (Math.random() * 18 - 9) * S, cty = groundY;
+        var ddx = ctx2 - m.x, ddy = cty - m.y, ln = Math.hypot(ddx, ddy) || 1;
+        var sp2 = Math.hypot(m.vx, m.vy);
+        G.bombs.push({ x: m.x, y: m.y, vx: ddx / ln * sp2, vy: ddy / ln * sp2, kind: "shard",
+                       split: false, splitAt: 1, trail: [], wob: Math.random() * 6.28 });
+      }
+      burst(m.x, m.y, "#ff3131", 4);
+      G.bombs.splice(i, 1);
+      continue;
+    }
+    if(m.y >= groundY - 2){
+      hitGround(m);
+      G.bombs.splice(i, 1);
+    }
+  }
+
+  /* particles + popups */
+  for(i = G.parts.length - 1; i >= 0; i--){
+    var p = G.parts[i];
+    p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 120 * S * dt; p.rot += p.vr * dt;
+    if(p.age > p.life) G.parts.splice(i, 1);
+  }
+  for(i = G.pops.length - 1; i >= 0; i--){
+    var pp = G.pops[i];
+    pp.age += dt; pp.y -= 24 * S * dt;
+    if(pp.age > 1.1) G.pops.splice(i, 1);
+  }
+}
+
+function hitGround(m){
+  makeBoom(m.x, groundY - 4 * S, boomR() * 0.82, false);
+  SFX.boom(true);
+  G.shake = 6; G.flash = 0.3;
+  burst(m.x, groundY - 6 * S, "#ffd76a", 10);
+  var bw = baseW();
+  for(var i = 0; i < G.bases.length; i++){
+    var bs = G.bases[i];
+    if(bs.alive && Math.abs(m.x - bs.fr * W) < bw * 0.62){
+      bs.alive = false;
+      burst(m.x, groundY - 14 * S, "#3dff6e", 16);
+      G.pops.push({ x: bs.fr * W, y: groundY - 62 * S, txt: T("baseDown"), age: 0, big: true });
+      SFX.baseLost();
+    }
+  }
+  if(G.cannon.alive && Math.abs(m.x - CANNON_FR * W) < 25 * S){
+    G.cannon.alive = false;
+    G.cannon.rebuildT = 3;
+    burst(m.x, groundY - 12 * S, "#9be9ff", 14);
+    G.pops.push({ x: CANNON_FR * W, y: groundY - 62 * S, txt: T("cannonDown"), age: 0, big: true });
+    SFX.baseLost();
+  }
+  if(basesAlive() === 0 && G.phase === "combat"){
+    G.phase = "over"; G.overTimer = 1.4;
+    if(G.score > best){ best = G.score; store("vectorDefenseBest", String(best)); }
+    SFX.over();
+    syncHud();
+  }
+}
+function showGameOver(){
+  G.phase = "shown";
+  state = "over";
+  $("ovScore").textContent = G.score;
+  $("ovWave").textContent = G.wave;
+  $("ovBest").textContent = best;
+  $("ovNew").style.display = (G.score >= best && G.score > 0) ? "block" : "none";
+  $("hiBest").textContent = best;
+  document.body.classList.remove("playing");
+  $("overOverlay").classList.add("open");
+}
+
+/* ============================== RENDER ============================== */
+function render(){
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+  var tNow = G ? G.time : performance.now() / 1000;
+  /* stars */
+  for(var i = 0; i < stars.length; i++){
+    var st = stars[i];
+    var tw = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(tNow * 1.7 + st.p));
+    ctx.fillStyle = "rgba(255,255,255," + (0.7 * tw).toFixed(3) + ")";
+    ctx.fillRect(st.x * W, st.y * (groundY || H), st.s, st.s);
+  }
+  ctx.save();
+  if(G && G.shake > 0) ctx.translate((Math.random() - 0.5) * G.shake, (Math.random() - 0.5) * G.shake);
+
+  /* planet surface */
+  glow(ctx, "#3dff6e", 2, function(){
+    ctx.beginPath();
+    for(var i2 = 0; i2 < surfPts.length; i2++){
+      var px = surfPts[i2].fx * W, py = groundY + surfPts[i2].dy;
+      if(i2 === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  });
+  ctx.strokeStyle = "rgba(61,255,110,0.35)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, groundY + groundH * 0.55); ctx.lineTo(W, groundY + groundH * 0.5); ctx.stroke();
+
+  /* bases + cannon */
+  var bw = baseW();
+  var baseList = G ? G.bases : BASE_FR.map(function(fr){ return { fr: fr, alive: true }; });
+  baseList.forEach(function(b){ drawBaseShape(ctx, b.fr * W, groundY, bw, b.alive); });
+  var aimAng = Math.atan2(aim.y - (groundY - 9 * S), aim.x - CANNON_FR * W);
+  aimAng = Math.max(-Math.PI + 0.12, Math.min(-0.12, aimAng));
+  drawCannonShape(ctx, CANNON_FR * W, groundY, S, aimAng, G ? G.cannon.alive : true, tNow);
+
+  if(G){
+    /* bomb trails + warheads */
+    G.bombs.forEach(function(m){
+      ctx.strokeStyle = m.kind === "mother" ? "rgba(255,49,49,0.75)" : "rgba(255,94,225,0.5)";
+      ctx.lineWidth = 1.6; ctx.setLineDash([2, 6]);
+      ctx.beginPath();
+      for(var j = 0; j < m.trail.length; j++){ var tp = m.trail[j]; if(j === 0) ctx.moveTo(tp.x, tp.y); else ctx.lineTo(tp.x, tp.y); }
+      ctx.stroke(); ctx.setLineDash([]);
+      var wr = m.kind === "mother" ? 4.6 : (m.kind === "shard" ? 3 : 3.8);
+      glow(ctx, "#ff3131", 1.6, function(){ ctx.beginPath(); ctx.arc(m.x, m.y, wr * S, 0, Math.PI * 2); ctx.stroke(); });
+      ctx.fillStyle = "#ffd7f4";
+      ctx.beginPath(); ctx.arc(m.x, m.y, 1.4 * S, 0, Math.PI * 2); ctx.fill();
+    });
+    /* aliens */
+    G.aliens.forEach(function(a){
+      if(a.kind === "saucer") drawSaucer(ctx, a.x, a.y, S, a.bank, G.time + a.wobPh);
+      else {
+        var ang = a.mode === "cruise" ? Math.atan2(Math.cos(a.age * a.wobF + a.wobPh) * a.wobA * a.wobF, a.vx) : Math.atan2(a.vy, a.vx);
+        drawDart(ctx, a.x, a.y, S, ang);
+      }
+    });
+    /* shots + target rings (Boardwalk) */
+    G.shots.forEach(function(s){
+      glow(ctx, "#9be9ff", 2, function(){ path(ctx, [[s.sx, s.sy], [s.x, s.y]]); });
+      ctx.fillStyle = "#dffcff";
+      ctx.beginPath(); ctx.arc(s.x, s.y, 3 * S, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(223,252,255,0.7)"; ctx.lineWidth = 1.3;
+      var rr = 7 * S;
+      ctx.beginPath(); ctx.arc(s.tx, s.ty, rr * 0.55, 0, Math.PI * 2); ctx.stroke();
+      path(ctx, [[s.tx - rr, s.ty], [s.tx - rr * 0.35, s.ty], [s.tx + rr * 0.35, s.ty], [s.tx + rr, s.ty],
+                 [s.tx, s.ty - rr], [s.tx, s.ty - rr * 0.35], [s.tx, s.ty + rr * 0.35], [s.tx, s.ty + rr]]);
+    });
+    /* explosion spheres */
+    G.booms.forEach(function(b){ drawBoomSphere(ctx, b.x, b.y, b.r, b.age); });
+    /* particles */
+    G.parts.forEach(function(p){
+      ctx.strokeStyle = p.color; ctx.globalAlpha = Math.max(0, 1 - p.age / p.life); ctx.lineWidth = 1.8;
+      path(ctx, [[p.x, p.y], [p.x + Math.cos(p.rot) * p.len, p.y + Math.sin(p.rot) * p.len]]);
+      ctx.globalAlpha = 1;
+    });
+    /* score popups */
+    G.pops.forEach(function(pp){
+      ctx.globalAlpha = Math.max(0, 1 - pp.age / 1.1);
+      ctx.fillStyle = pp.big ? "#ffd76a" : "#eaffea";
+      ctx.font = "bold " + (pp.big ? 19 : 14) + "px 'Courier New', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(pp.txt, pp.x, pp.y);
+      ctx.globalAlpha = 1;
+    });
+    /* wave banner */
+    if(G.bannerT > 0 && G.phase === "combat"){
+      ctx.globalAlpha = Math.min(1, G.bannerT / 0.6);
+      ctx.fillStyle = "#dffcff";
+      ctx.font = "bold " + Math.round(Math.max(26, W * 0.055)) + "px 'Courier New', monospace";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(159,233,255,0.8)"; ctx.shadowBlur = 22;
+      ctx.fillText(T("waveN") + " " + G.wave, W / 2, H * 0.4);
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+    if(G.flash > 0){
+      ctx.fillStyle = "rgba(255,60,60," + (G.flash * 0.35).toFixed(3) + ")";
+      ctx.fillRect(-10, -10, W + 20, H + 20);
+    }
+  }
+  ctx.restore();
+
+  /* crosshair */
+  if(state === "playing" && G && G.cannon.alive){
+    var cr = 10 * S;
+    glow(ctx, "#dffcff", 1.8, function(){
+      ctx.beginPath(); ctx.arc(aim.x, aim.y, cr * 0.62, 0, Math.PI * 2); ctx.stroke();
+      path(ctx, [[aim.x - cr, aim.y], [aim.x - cr * 0.35, aim.y], [aim.x + cr * 0.35, aim.y], [aim.x + cr, aim.y],
+                 [aim.x, aim.y - cr], [aim.x, aim.y - cr * 0.35], [aim.x, aim.y + cr * 0.35], [aim.x, aim.y + cr]]);
+    });
+  }
+}
+
+/* ============================== LOOP / RESIZE ============================== */
+var lastTs = 0;
+function frame(ts){
+  requestAnimationFrame(frame);
+  var dt = Math.min(0.033, lastTs ? (ts - lastTs) / 1000 : 0.016);
+  lastTs = ts;
+  if(state !== "paused"){ if(state === "playing" || state === "over") update(dt); render(); }
+}
+function resize(){
+  var wrap = $("stageWrap"), cw = wrap.clientWidth, ch = wrap.clientHeight;
+  var oldW = W, oldH = H;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = cw; H = ch;
+  S = Math.max(0.62, Math.min(1.25, Math.min(W, H) / 700));
+  V = Math.max(0.72, Math.min(1.3, H / 800));
+  groundH = Math.max(44, Math.min(74, H * 0.075));
+  groundY = H - groundH;
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if(G && oldW && oldH && (oldW !== W || oldH !== H)){
+    var rx = W / oldW, ry = H / oldH;
+    function sc(o){ o.x *= rx; o.y *= ry; if(o.tx !== undefined && o.sx === undefined){ o.tx *= rx; o.ty *= ry; } if(o.sx !== undefined){ o.sx *= rx; o.sy *= ry; o.tx *= rx; o.ty *= ry; } }
+    G.aliens.forEach(function(a){ sc(a); a.baseY *= ry; a.diveX *= rx; });
+    G.bombs.forEach(sc); G.shots.forEach(sc); G.booms.forEach(sc);
+    G.parts.forEach(sc); G.pops.forEach(sc);
+  }
+  if(!aim.x){ aim.x = W / 2; aim.y = H * 0.35; }
+}
+window.addEventListener("resize", resize);
+
+/* ============================== FLOW ============================== */
+function closeAll(){
+  document.querySelectorAll(".overlay").forEach(function(o){ o.classList.remove("open"); o.classList.remove("big"); });
+}
+function startGame(){
+  audio();
+  closeAll();
+  $("intro").style.display = "none";
+  document.body.classList.add("playing");
+  newGame();
+  state = "playing";
+}
+function quitToTitle(){
+  state = "title";
+  G = null;
+  closeAll();
+  document.body.classList.remove("playing");
+  $("intro").style.display = "flex";
+  $("hiBest").textContent = best;
+}
+function pauseGame(){
+  if(state !== "playing") return;
+  state = "paused";
+  $("pauseOverlay").classList.add("open");
+}
+function resumeGame(){
+  if(state !== "paused") return;
+  state = "playing";
+  $("pauseOverlay").classList.remove("open");
+}
+
+/* ============================== INPUT ============================== */
+var dragInfo = null;
+function ptrPos(e){
+  var r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+cv.addEventListener("pointermove", function(e){
+  var p = ptrPos(e);
+  aim.x = p.x; aim.y = p.y;
+  if(dragInfo) dragInfo.moved = Math.max(dragInfo.moved, Math.hypot(p.x - dragInfo.x, p.y - dragInfo.y));
+});
+cv.addEventListener("pointerdown", function(e){
+  if(state !== "playing") return;
+  e.preventDefault();
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  var p = ptrPos(e);
+  aim.x = p.x; aim.y = p.y;
+  dragInfo = { x: p.x, y: p.y, moved: 0 };
+  audio();
+  fire(p.x, p.y);   /* tap = instant fire */
+});
+cv.addEventListener("pointerup", function(e){
+  if(state !== "playing"){ dragInfo = null; return; }
+  var p = ptrPos(e);
+  aim.x = p.x; aim.y = p.y;
+  if(dragInfo && dragInfo.moved > 26) fire(p.x, p.y);   /* drag-aim, release to fire */
+  dragInfo = null;
+});
+cv.addEventListener("pointercancel", function(){ dragInfo = null; });
+window.addEventListener("keydown", function(e){
+  if(e.key.indexOf("Arrow") === 0){ keys[e.key] = true; if(state === "playing") e.preventDefault(); }
+  else if(e.key === " "){ keys[" "] = true; if(state === "playing") e.preventDefault(); }
+  else if(e.key === "p" || e.key === "P" || e.key === "Escape"){
+    if(state === "playing") pauseGame(); else if(state === "paused") resumeGame();
+  }
+  else if(e.key === "Enter"){
+    if(state === "title") startGame();
+    else if(state === "over"){ closeAll(); startGame(); }
+  }
+});
+window.addEventListener("keyup", function(e){
+  if(e.key.indexOf("Arrow") === 0) keys[e.key] = false;
+  else if(e.key === " ") keys[" "] = false;
+});
+
+/* ============================== UI WIRING ============================== */
+document.querySelectorAll("[data-close]").forEach(function(b){
+  b.addEventListener("click", function(){ b.closest(".overlay").classList.remove("open"); });
+});
+$("togQR").addEventListener("click", function(){ $("qrOverlay").classList.add("open"); });
+$("qrImg").addEventListener("click", function(){ $("qrOverlay").classList.toggle("big"); });
+$("togLang").addEventListener("click", function(){ lang = lang === "en" ? "es" : "en"; store("vdf_lang", lang); applyLang(); });
+$("togSound").addEventListener("click", function(){ soundOn = !soundOn; store("vdf_sound", soundOn ? "on" : "off"); applyLang(); if(soundOn){ audio(); beep(880, 0.08, "square", 0.09); } });
+$("togHelp").addEventListener("click", function(){ $("helpOverlay").classList.add("open"); });
+$("togControls").addEventListener("click", function(){ $("controlsOverlay").classList.add("open"); });
+$("startBtn").addEventListener("click", function(){ startGame(); });
+$("againBtn").addEventListener("click", function(){ closeAll(); startGame(); });
+$("restartBtn").addEventListener("click", function(){ closeAll(); startGame(); });
+$("titleBtn").addEventListener("click", function(){ quitToTitle(); });
+$("resumeBtn").addEventListener("click", function(){ resumeGame(); });
+$("quitBtn").addEventListener("click", function(){ quitToTitle(); });
+$("pauseBtn").addEventListener("click", function(){ if(state === "playing") pauseGame(); });
+
+/* debug handle for headless verification */
+window.VDEF = {
+  state: function(){ return state; },
+  phase: function(){ return G ? G.phase : null; },
+  score: function(){ return G ? G.score : 0; },
+  wave: function(){ return G ? G.wave : 0; },
+  aliens: function(){ return G ? G.aliens.length : 0; },
+  bombs: function(){ return G ? G.bombs.length : 0; },
+  booms: function(){ return G ? G.booms.length : 0; },
+  shots: function(){ return G ? G.shots.length : 0; },
+  bases: function(){ return G ? basesAlive() : 0; },
+  cannon: function(){ return G ? G.cannon.alive : null; },
+  best: function(){ return best; },
+  start: function(){ startGame(); },
+  fire: function(x, y){ aim.x = x; aim.y = y; fire(x, y); },
+  alienPos: function(){ return G && G.aliens.length ? { x: Math.round(G.aliens[0].x), y: Math.round(G.aliens[0].y), mode: G.aliens[0].mode, kind: G.aliens[0].kind } : null; },
+  killBase: function(i){ if(G && G.bases[i]) hitGround({ x: G.bases[i].fr * W, y: groundY, kind: "pod" }); },
+  killCannon: function(){ if(G) hitGround({ x: CANNON_FR * W, y: groundY, kind: "pod" }); },
+  setScore: function(n){ if(G){ G.score = n; syncHud(); } },
+  spawnAlienNow: function(){ if(G) spawnAlien(); },
+  clearField: function(){ if(G){ G.aliens.length = 0; G.bombs.length = 0; G.shipsLeft = 0; } }
+};
+
+seedSurface();
+seedStars();
+drawHero();
+applyLang();
+resize();
+requestAnimationFrame(resize);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
