@@ -348,7 +348,7 @@
       <div class="hudRow">
         <button id="exitBtn" aria-label="Exit flight and return to the introduction">✕ EXIT</button>
         <button id="musicBtn" aria-label="Open the music player">♪</button>
-        <button id="pilotPill" class="on" aria-label="Flight mode indicator. When it reads MANUAL, tap to hand flying back to the AUTO PILOT tour.">✈ AUTO PILOT</button>
+        <button id="pilotPill" class="on" aria-label="Flight mode. Tap to switch between AUTO PILOT and MANUAL. Manual keeps the world you are in.">✈ AUTO PILOT</button>
       </div>
       <button id="controlsBtn" aria-label="Open or close the controls sidebar">☰ CONTROLS</button>
     </div>
@@ -493,11 +493,11 @@
           <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed up in the sky — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light. (Underwater, full speed stays water and light.)</li>
           <li><b>🖱 Mouse:</b> the screen is a compass around its center — <b>point where you want to go</b>, no click needed. Above center climbs, below dives, the sides turn, the corners blend both — and the further from center you point, the stronger it answers. Dead center flies straight and level. <b>Hold the left button</b> for gas — and keep holding it pointed somewhere and the flight keeps <b>accelerating</b> that way: hold high underwater and you'll pitch up toward the light, burst out of the surface, and keep climbing through the air into space, one unbroken push. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
-          <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination, the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours. YOUR MUSIC at the very bottom takes your own YouTube links — paste one, tap it, and fly to your own soundtrack.</li>
-          <li><b>Climb high</b> through the clouds to change worlds. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
+          <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination — pick one and it STAYS yours as long as you want, or leave the worlds on 🔀 Auto and they rotate every 15 seconds while you steer — plus the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours. YOUR MUSIC at the very bottom takes your own YouTube links — paste one, tap it, and fly to your own soundtrack.</li>
+          <li><b>A world you pick is yours</b> — climb, dive, ride the surface underwater, it won't change on you until you pick another. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
           <li><b>Low is its own place:</b> descend with speed and you settle into a skim — flying fast just above the water, rooftops, dunes and Broadwalk. Touchdown is slow only: sink low with the gas off, let your speed settle (or hold <b>↓</b>) — LAND is waiting in the paint box (☰ CONTROLS). <b>↑</b> takes off again.</li>
           <li>Drag with a <b>second finger</b> (or hold <b>L</b>) to look around — even back over your shoulder at your own trails. There's no score and no way to lose. Just fly.</li>
-          <li><b>✈ Hands off:</b> Do nothing and the FLY WITH ME tour flies for you — that's AUTO PILOT. Touch the sky or press any key to take over (MANUAL). Tap AUTO PILOT up top to hand it back.</li>
+          <li><b>✈ Hands off:</b> Do nothing and the FLY WITH ME tour flies for you — that's AUTO PILOT. Touch the sky or press any key to take over (MANUAL) — and the world you're in stays put. Tap the pill up top to switch between MANUAL and AUTO PILOT whenever you like.</li>
         </ul>
       </div>
     </div>
@@ -3044,7 +3044,12 @@ function update(dt){
   /* rising through the surface: hold a climb near the top of the water
      and you break back into the sky you dove from, splash and all */
   if(S.biome==='underwater'&&flying&&!S.gate){
-    if(S.alt>1.04){ S.surfT+=dt; if(S.surfT>1.15)startSplash(S.uwPrev||'beach'); }
+    /* Gary (Oct 24): a world picked BY HAND is a lock — steering can
+       ride the surface all day and never bounce the flyer out. The
+       breach belongs to Auto and the tour; in a locked world the only
+       ways out are another world tap, the realm door, Auto, the tour. */
+    if(S.worldMode==='lock'){ S.surfT=0; if(S.alt>1.02)S.alt=1.02; }
+    else if(S.alt>1.04){ S.surfT+=dt; if(S.surfT>1.15)startSplash(S.uwPrev||'beach'); }
     else S.surfT=Math.max(0,S.surfT-dt*2);
   }
   S.skimF=lerp(S.skimF,sstep(0.16,0.06,S.alt)*sstep(0.55,0.9,S.effSpeed)*(flying?1:0),dt*3);
@@ -3104,9 +3109,10 @@ function update(dt){
   else if(S.gate&&S.gatePhase==='out'){ S.wash=Math.max(0,S.wash-dt/(S.gate===2?0.85:1.25)); if(S.wash<=0)S.gate=0; }
   else if(!S.gate){ S.wash=Math.max(0,S.wash-dt*0.85); }
   if(flying&&!S.pilot&&S.worldMode==='auto'&&!S.gate){
-    if(S.alt>=0.78&&S.alt<0.99){ S.highT+=dt; if(S.highT>2.6)startChange(nextBiome(),true); }
-    else S.highT=0;
-    S.tourT+=dt; if(S.tourT>75&&S.alt<0.9)startChange(nextBiome(),false);
+    /* 🔀 Auto (Gary, Oct 24): the worlds ROTATE on a plain 15-second
+       clock while you steer — no altitude tricks, no surprises. A
+       world picked by hand is a lock and never rotates. */
+    S.tourT+=dt; if(S.tourT>=15){ S.tourT=0; startChange(nextBiome(),true); }
   }
   /* FLY WITH ME tour travel: ~40 s a world, in CYCLE order from wherever
      the flight is, through the same gates manual flight uses — startChange
@@ -3381,7 +3387,7 @@ wireChips('trailChips',ch=>{ S.trailMode=ch.dataset.trail; applyTrail(); });
 wireChips('speedChips',ch=>{ S.speedMode=ch.dataset.speed; });
 wireChips('worldChips',ch=>{ const v=ch.dataset.world;
   if(v==='tour'){ engagePilot(); }   /* ✈ FLY WITH ME: the full autopilot tour — it steers AND travels */
-  else if(v==='auto'){ S.worldMode='auto'; S.tourT=0; disengagePilot(); syncPilotUI(); }   /* 🔀 Auto: worlds cycle while YOU steer */
+  else if(v==='auto'){ disengagePilot(); S.worldMode='auto'; S.tourT=0; syncPilotUI(); }   /* 🔀 Auto: worlds rotate every 15 s while YOU steer */
   else { S.worldMode='lock'; disengagePilot(); jumpTo(v); syncPilotUI(); } closePanel(); });
 /* the realm door: one tap through the splash gate, either way. LAND over
    land is a deliberate no-op — the lit button already says where you are */
@@ -3392,7 +3398,10 @@ document.querySelectorAll('.realmBtn').forEach(b=>b.addEventListener('click',()=
 function syncWindUI(){ $('soundBtn').classList.toggle('on',S.windOn); $('soundBtn').firstChild.textContent=S.windOn?'🔊':'🔇'; $('soundLine').textContent='Sound: '+(S.windOn?'On':'Off'); }
 $('soundLine').addEventListener('click',()=>{ wake(); audioInit(); S.windOn=!S.windOn; syncWindUI(); });
 $('controlsBtn').addEventListener('click',()=>{ wake(); audioInit(); togglePanel(); });
-$('pilotPill').addEventListener('click',()=>{ wake(); if(S.mode==='fly'&&!S.pilot)engagePilot(); });   /* the way back: tap MANUAL and the tour takes the sky again */
+$('pilotPill').addEventListener('click',()=>{ wake(); if(S.mode!=='fly')return;
+  if(S.pilot){ disengagePilot(); }   /* tap AUTO PILOT -> MANUAL: the tour hands over, and the world you are in STAYS (worldMode lock, set in disengagePilot) */
+  else engagePilot();                /* tap MANUAL -> the tour takes the sky again */
+});
 $('panelClose').addEventListener('click',()=>{ wake(); closePanel(); });
 panel.addEventListener('pointerdown',()=>{ S.panelPinned=true; wake(); });
 landBtn.addEventListener('click',()=>{ wake(); audioInit();
@@ -3432,7 +3441,7 @@ function syncRealm(){
   const wg=$('wxGrp'); if(wg)wg.classList.toggle('off',uw);   /* no weather to pick under the water */
 }
 function engagePilot(){ S.pilot=true; S.worldMode='auto'; S.ptourT=0; S.tourT=0; S.drift=false; syncPilotUI(); }
-function disengagePilot(){ if(!S.pilot)return; S.pilot=false; syncPilotUI(); }
+function disengagePilot(){ if(!S.pilot)return; S.pilot=false; S.worldMode='lock'; syncPilotUI(); }   /* taking MANUAL always lands on "this world, until I say otherwise" — Gary, Oct 24 */
 function startFlight(){
   document.body.classList.add('flying');
   const intro=$('intro'); intro.style.transition='opacity .6s ease'; intro.style.opacity='0';
