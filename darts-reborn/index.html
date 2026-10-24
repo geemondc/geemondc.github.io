@@ -208,6 +208,10 @@
       .mode-cell.on[data-mode="shanghai"]{ background:linear-gradient(180deg,#9a6cf5,#6d28d9); }
       .mode-cell.on[data-mode="halve"]{ background:linear-gradient(180deg,#f06bab,#c2255c); }
       .mode-cell.on[data-mode="baseball"]{ background:linear-gradient(180deg,#4a86e8,#1e4fa3); }
+      .mode-cell.on[data-mode="challenge"]{ background:linear-gradient(180deg,#3b9dff,#0d47a1); }
+      .mode-cell .msub{ display:block; font-size:10.5px; font-weight:600; opacity:.78; margin-top:2px; line-height:1.15; }
+      .mode-cell .mbest{ display:block; font-size:11.5px; font-weight:800; color:#b57d16; margin-top:3px; letter-spacing:.04em; }
+      .mode-cell.on .mbest{ color:#ffd34d; }
       /* START — static red pill, hard 3D base, sinks on press (no pulse) */
       #startBtn{
         align-self:center; width:min(100%, 300px); border:0; border-radius:999px; padding:14px 24px; margin-top:2px;
@@ -377,6 +381,46 @@
       #actionBtn:disabled{ filter:grayscale(.6) brightness(.7); box-shadow:none; }
       #actionBtn.stop{ background:linear-gradient(180deg,#e05246,#a92418); color:#fff; box-shadow:0 5px 0 #5f130c, 0 8px 18px rgba(0,0,0,.5); }
 
+      /* ---------- 501 CHALLENGE (Bull's Eye layout) ----------
+         Board fills the stage; a black score board rides at the right
+         on wide screens and compacts across the top on portrait phones.
+         DARTS + huge REMAINING + BEST + the FINISH line — nothing else. */
+      #chScore{ display:none; }
+      #game.challenge{ display:grid; grid-template-rows:auto auto 1fr auto; grid-template-columns:1fr 252px;
+        grid-template-areas:"top top" "line line" "stage score" "ctrl ctrl"; }
+      #game.challenge #topbar{ grid-area:top; }
+      #game.challenge #lineScore{ grid-area:line; }
+      #game.challenge #stageWrap{ grid-area:stage; }
+      #game.challenge #controlBar{ grid-area:ctrl; }
+      #game.challenge #scoreCards{ display:none; }
+      #game.challenge #chScore{
+        display:flex; grid-area:score; flex-direction:column; gap:14px; align-content:start;
+        background:linear-gradient(180deg,#14181d,#0a0d10); color:#f7ecd2;
+        padding:18px 16px; border-left:3px solid #000; z-index:5;
+      }
+      .ch-lab{ display:block; font-family:"Barlow Condensed"; font-weight:700; letter-spacing:.16em; font-size:14px; color:#c9a86a; }
+      .ch-num{ font-family:"Barlow Condensed"; font-weight:800; font-size:46px; line-height:1; color:#fff; }
+      .ch-big{ font-family:"Barlow Condensed"; font-weight:800; font-size:88px; line-height:.95; color:#fff; }
+      .ch-fin{ font-family:"Barlow Condensed"; font-weight:800; font-size:25px; line-height:1.15; color:#ffd34d; letter-spacing:.02em; border-top:2px solid rgba(255,211,77,.28); padding-top:10px; }
+      @media (max-width:760px){
+        #game.challenge{ grid-template-columns:1fr; grid-template-rows:auto auto auto 1fr auto;
+          grid-template-areas:"top" "line" "score" "stage" "ctrl"; }
+        #game.challenge #chScore{ flex-direction:row; align-items:center; gap:18px; padding:6px 14px; border-left:0; border-bottom:3px solid #000; }
+        .ch-num{ font-size:27px; } .ch-big{ font-size:42px; }
+        .ch-fin{ border-top:0; padding-top:0; font-size:19px; margin-left:auto; text-align:right; }
+      }
+      /* the ONE BIG BLUE BUTTON — round, dart on top, label under */
+      #game.challenge #actionBtn{
+        width:106px; height:106px; min-width:106px; border-radius:50%; padding:8px 4px; flex:none;
+        background:radial-gradient(circle at 35% 28%, #7cc2ff, #1e6fd9 55%, #0d47a1); color:#fff;
+        box-shadow:0 6px 0 #08306b, 0 12px 26px rgba(0,0,0,.55);
+        display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.02;
+      }
+      #game.challenge #actionBtn::before{ content:"🎯"; font-size:31px; line-height:1; }
+      #game.challenge #actionBtn.stop{ background:radial-gradient(circle at 35% 28%, #7cc2ff, #1e6fd9 55%, #0d47a1); color:#fff; box-shadow:0 6px 0 #08306b, 0 0 22px rgba(59,157,255,.65); }
+      #game.challenge #actionBtn:active{ transform:translateY(3px); box-shadow:0 2px 0 #08306b; }
+      #game.challenge #actionBtn:disabled{ filter:grayscale(.45) brightness(.72); box-shadow:0 6px 0 #08306b; }
+
       /* ---------- OVERLAYS ---------- */
       .overlay{
         position:fixed; inset:0; background:rgba(8,5,2,.72); z-index:40;
@@ -540,6 +584,11 @@
           <div class="mode-cell" data-mode="baseball" role="button" tabindex="0">
             <span class="mname" data-i18n="mnBaseball">BASEBALL</span>
           </div>
+          <div class="mode-cell" data-mode="challenge" role="button" tabindex="0">
+            <span class="mname" data-i18n="mnChallenge">🎯 501 CHALLENGE</span>
+            <span class="msub" data-i18n="mdChallenge">Fewest darts wins — stop the meters, watch it fly</span>
+            <span class="mbest" id="chBest"></span>
+          </div>
         </div>
 
         <button id="startBtn" data-i18n="startBtn">START GAME</button>
@@ -562,6 +611,12 @@
         <button class="tbtn" id="soundBtn2">SOUND: ON</button>
       </div>
       <div id="lineScore"></div>
+      <div id="chScore">
+        <div class="ch-cell"><span class="ch-lab" data-i18n="chDarts">DARTS</span><span class="ch-num" id="chDartsNum">0</span></div>
+        <div class="ch-cell"><span class="ch-lab" data-i18n="chRem">REMAINING</span><span class="ch-big" id="chRemNum">501</span></div>
+        <div class="ch-cell"><span class="ch-lab" data-i18n="chBest">BEST</span><span class="ch-num" id="chBestNum">—</span></div>
+        <div class="ch-fin" id="chFin"></div>
+      </div>
       <div id="stageWrap">
         <canvas id="cv"></canvas>
         <div id="callout"></div>
@@ -786,6 +841,18 @@
       return {
         data: mem,
         save: function(){ try { localStorage.setItem("atariDartsProfile", JSON.stringify(mem)); } catch(e){} }
+      };
+    })();
+    /* ---------------- 501 CHALLENGE record: fewest darts to finish, kept on this device ---------------- */
+    var chStore = (function(){
+      var mem = { best: 0 };
+      try {
+        var raw = localStorage.getItem("atariDartsChallenge");
+        if (raw) { var p = JSON.parse(raw); if (typeof p.best === "number" && p.best > 0) mem.best = p.best; }
+      } catch(e){}
+      return {
+        data: mem,
+        save: function(){ try { localStorage.setItem("atariDartsChallenge", JSON.stringify(mem)); } catch(e){} }
       };
     })();
     function esc(s){ return String(s).replace(/[&<>"']/g, function(ch){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]; }); }
@@ -1344,7 +1411,7 @@
     ];
     var G = null;
 
-    function isStdMode(m){ return m === "501" || m === "301"; }
+    function isStdMode(m){ return m === "501" || m === "301" || m === "challenge"; }
     function mkPlayer(castIdx, isCPU, name){
       return {
         def: isCPU ? CPU_DEF : CAST[castIdx], cast: castIdx, isCPU: !!isCPU, name: name,
@@ -1373,7 +1440,7 @@
         players: [p1, p2], cur: 0,
         dartIdx: 0, turnDarts: [], turnRuns: 0, turnPts: 0,
         turnSet: {}, turnTargetHits: 0, turnHitTarget: false,
-        turnStartRemaining: mode === "501" ? 501 : 301,
+        turnStartRemaining: (mode === "501" || mode === "challenge") ? 501 : 301,
         phase: "banner", phaseT: 0, time: 0,
         aim: { x: 0, y: 0 }, dragAim: false,
         dirStop: null, powStop: null, meterT: 0, lastWallTick: 0,
@@ -1461,6 +1528,8 @@
       refreshCheckout();
       if (curPlayer().isCPU) planCPU();
       updateHint(); updateActionBtn();
+      /* CHALLENGE: no drag-aim — the meters ARE the aim. Straight to ACCURACY. */
+      if (G.mode === "challenge"){ G.aim = { x: 0, y: 0 }; startMeters(); }
     }
     function planCPU(){
       var pl = curPlayer(), opp = G.players[1 - G.cur], target;
@@ -1525,10 +1594,19 @@
     }
     function stopPow(){
       G.powStop = powBallAt(G.meterT);
-      var landing = computeLanding(G.aim, G.dirStop, G.powStop);
-      var perfect = isPerfect(G.dirStop, G.powStop);
+      var landing, perfect;
+      if (G.mode === "challenge"){
+        /* Bull's Eye mapping: the two stops ARE the board point (aim locked
+           to the bull) + a few mm of natural scatter — fair, never cruel */
+        landing = computeLanding({ x: 0, y: 0 }, G.dirStop, G.powStop);
+        landing.x += gauss() * 3.2; landing.y += gauss() * 3.2;
+        perfect = isPerfect(G.dirStop, G.powStop);
+      } else {
+        landing = computeLanding(G.aim, G.dirStop, G.powStop);
+        perfect = isPerfect(G.dirStop, G.powStop);
+      }
       G.flight = {
-        t: 0, dur: 0.94 - G.powStop * 0.0034,
+        t: 0, dur: G.mode === "challenge" ? 0.32 : 0.94 - G.powStop * 0.0034,
         aim: { x: G.aim.x, y: G.aim.y }, landing: landing,
         dirErr: G.dirStop, powErr: G.powStop - 55, perfect: perfect,
         prevZ: 0, speed: 0, viewAtThrow: G.view
@@ -1827,7 +1905,7 @@
         }
       }
       /* Around the Clock: a perfect round earns another turn right away */
-      var stayTurn = (m === "clock" && total >= 3);
+      var stayTurn = (m === "clock" && total >= 3) || m === "challenge"; /* challenge is solo: never rotate away */
       if (!stayTurn) G.cur = 1 - G.cur;
       G.turnStartRemaining = curPlayer().remaining;
       refreshCheckout();
@@ -1839,7 +1917,7 @@
       hideTurnBanner();
       var tie = G.winner === -2;
       var w = tie ? null : G.players[G.winner];
-      if (!tie){
+      if (!tie && G.mode !== "challenge"){
         if (w.isCPU) store.data.cpu++;
         else store.data.wins[w.name] = (store.data.wins[w.name] || 0) + 1;
         store.save();
@@ -1891,6 +1969,17 @@
           (es ? "Mejor ronda: " : "Best round: ") + w.bestRound + "<br/>" +
           (es ? "Veces reducido a la mitad: " : "Times halved: ") + w.halvedCount + "<br/>" +
           (es ? "Dardos lanzados: " : "Darts thrown: ") + w.dartsThrown;
+      } else if (G.mode === "challenge"){
+        var used = w.dartsThrown;
+        var wasRec = !chStore.data.best || used < chStore.data.best;
+        if (wasRec){ chStore.data.best = used; chStore.save(); }
+        refreshChCard();
+        res.textContent = w.name + " " + t("wins");
+        stats.innerHTML =
+          (es ? "Dardos usados: " : "Darts used: ") + "<b>" + used + "</b><br/>" +
+          (es ? "Dardo de salida: " : "Checkout dart: ") + (w.checkoutDart || "—") + "<br/>" +
+          (wasRec ? "<span style='font-family:\"Barlow Condensed\";font-weight:800;font-size:22px;color:#0d7a3c;letter-spacing:.03em'>" + t("chNewRecord") + "</span>"
+                  : (es ? "Récord: " : "Best: ") + chStore.data.best + (es ? " dardos" : " darts"));
       } else {
         var avg = w.dartsThrown ? ((G.mode === "501" ? 501 : 301) / w.dartsThrown * 3) : 0;
         res.textContent = w.name + " " + t("wins");
@@ -2159,7 +2248,7 @@
         pubSignFrame(c, mx - 10, my - 28, mw + 20, mh + 40);
         pubSignPlaque(c, VW / 2, my - 24, 118);
         c.fillStyle = "#2a1802"; c.font = "800 13px 'Barlow Condensed'"; c.textAlign = "center";
-        c.fillText(lang === "es" ? "DIRECCIÓN" : "DIRECTION", VW / 2, my - 11);
+        c.fillText(G.mode === "challenge" ? (lang === "es" ? "PRECISIÓN" : "ACCURACY") : (lang === "es" ? "DIRECCIÓN" : "DIRECTION"), VW / 2, my - 11);
         /* perfect zone */
         var pz = mw * DIR_PERFECT;
         c.fillStyle = "#123f24"; rr(c, mx, my, mw, mh, 8); c.fill();
@@ -2828,6 +2917,21 @@
     I18N.en.bub3 = "180!"; I18N.es.bub3 = "\u00a1180!";
     I18N.en.bub4 = "SO CLOSE!"; I18N.es.bub4 = "\u00a1POR POCO!";
 
+    /* ---------------- i18n: 501 CHALLENGE (the Bull's Eye mode) ---------------- */
+    I18N.en.mnChallenge = "🎯 501 CHALLENGE";
+    I18N.en.mdChallenge = "Fewest darts wins — stop the meters, watch it fly";
+    I18N.es.mnChallenge = "🎯 RETO 501";
+    I18N.es.mdChallenge = "Gana con menos dardos: detén los medidores y mira cómo vuela";
+    I18N.en.chDarts = "DARTS"; I18N.es.chDarts = "DARDOS";
+    I18N.en.chRem = "REMAINING"; I18N.es.chRem = "QUEDAN";
+    I18N.en.chBest = "BEST"; I18N.es.chBest = "RÉCORD";
+    I18N.en.chFinish = "FINISH: "; I18N.es.chFinish = "SALIDA: ";
+    I18N.en.chNewRecord = "🏆 NEW RECORD!"; I18N.es.chNewRecord = "🏆 ¡NUEVO RÉCORD!";
+    I18N.en.hintChDir = "<b>ACCURACY</b> — the marker sweeps left ↔ right. <b>Stop it</b> where you want the dart to land — dead centre = the bull!";
+    I18N.es.hintChDir = "<b>PRECISIÓN</b> — el marcador va de izquierda a derecha. <b>Detenlo</b> donde quieres que caiga el dardo: ¡el centro exacto es la diana!";
+    I18N.en.hintChPow = "<b>POWER</b> — the marker sweeps up ↕ down to set the height. Mid = bull height · too soft it drops · too hard it flies high!";
+    I18N.es.hintChPow = "<b>POTENCIA</b> — el marcador sube ↕ y baja para fijar la altura. Al centro = altura de la diana · suave, cae · fuerte, vuela alto.";
+
     /* ---------------- DOM helpers & UI ---------------- */
     function $(id){ return document.getElementById(id); }
     function applyI18n(){
@@ -2841,6 +2945,7 @@
       $("boardBtn2").textContent = t("sbBtn");
       $("qrBtn2").textContent = t("qrLabel");
       renderShelf();
+      refreshChCard();
       syncSoundUI();
       if (G){ renderScore(); updateHint(); updateActionBtn(); updateViewBtn(); }
     }
@@ -2873,8 +2978,8 @@
       switch (G.phase){
         case "aim": h.innerHTML = G.view === "lat" ? t("hintAimLat") : t("hintAim"); break;
         case "routine": h.innerHTML = t("hintRoutine"); break;
-        case "dir": h.innerHTML = t("hintDir"); break;
-        case "pow": h.innerHTML = t("hintPow"); break;
+        case "dir": h.innerHTML = G.mode === "challenge" ? t("hintChDir") : t("hintDir"); break;
+        case "pow": h.innerHTML = G.mode === "challenge" ? t("hintChPow") : t("hintPow"); break;
         case "flight": case "release": h.innerHTML = t("hintFlight"); break;
         default: h.innerHTML = "";
       }
@@ -2891,6 +2996,28 @@
         case "impact": case "scorepause": b.disabled = false; b.textContent = t("skipBtn"); break;
         default: b.disabled = true; b.textContent = t("throwBtn");
       }
+    }
+    /* ---------------- 501 CHALLENGE scoreboard + intro card ----------------
+       The Bull's Eye board: DARTS thrown, REMAINING huge, the saved BEST,
+       and the FINISH line (from the game's own checkout solver) whenever
+       the remaining score can be finished with the darts left this visit. */
+    function renderChScore(){
+      var panel = $("chScore"); if (!panel) return;
+      if (!G || G.mode !== "challenge") return;
+      var pl = G.players[0];
+      $("chDartsNum").textContent = pl.dartsThrown;
+      $("chRemNum").textContent = pl.remaining;
+      $("chBestNum").textContent = chStore.data.best ? chStore.data.best : "—";
+      var fin = $("chFin"), co = null;
+      if (!G.over && pl.remaining <= 170) co = solveCheckout(pl.remaining, 3 - G.turnDarts.length);
+      if (co && co.length){
+        fin.style.display = "";
+        fin.textContent = t("chFinish") + co.map(function(x){ return x.notation; }).join(" · ");
+      } else fin.style.display = "none";
+    }
+    function refreshChCard(){
+      var el = $("chBest"); if (!el) return;
+      el.textContent = chStore.data.best ? (t("chBest") + ": " + chStore.data.best + " " + t("chDarts")) : "";
     }
     /* One portrait per cast friend — same look in the picker, on the
        scorecards, in the turn banner and on the winner's podium. */
@@ -3033,6 +3160,7 @@
         ls.innerHTML = ct + "</table>";
       } else ls.style.display = "none";
       updateActionBtn(); updateHint();
+      renderChScore();
     }
 
     /* ---------------- trophy shelf text (wins keyed by name) ---------------- */
@@ -3249,7 +3377,7 @@
     function syncModeUI(){
       document.querySelectorAll("#modeGrid .mode-cell").forEach(function(cell){
         var md = cell.getAttribute("data-mode");
-        cell.classList.toggle("on", md === "std" ? isStdMode(selMode) : selMode === md);
+        cell.classList.toggle("on", md === "std" ? (selMode === "501" || selMode === "301") : selMode === md);
       });
       document.querySelectorAll(".std-toggle button").forEach(function(b){
         b.classList.toggle("on", b.getAttribute("data-std") === stdPick);
@@ -3371,6 +3499,7 @@
       $("overModal").classList.add("hidden");
       $("pauseModal").classList.add("hidden");
       $("game").classList.remove("hidden");
+      $("game").classList.toggle("challenge", selMode === "challenge");
       resize();
       updateViewBtn(); syncSoundUI();
       renderScore();
@@ -3382,6 +3511,7 @@
     function toIntro(){
       hideCallout();
       $("game").classList.add("hidden");
+      $("game").classList.remove("challenge");
       $("pauseModal").classList.add("hidden");
       $("overModal").classList.add("hidden");
       hideTurnBanner();
