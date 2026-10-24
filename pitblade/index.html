@@ -126,6 +126,20 @@
     .attackBtn{width:80px;height:80px;font-size:11px;}
   }
   @media (orientation:landscape){ body.touch #arenaWrap{align-items:flex-start;padding-top:8px;} }
+
+  /* ============ HEALTH + COOLDOWN ROW (overhaul) ============ */
+  #hpRow{flex:0 0 auto;display:flex;gap:16px;padding:5px 12px 7px;border-bottom:1px solid var(--line);background:#04070c;}
+  .hpSide{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .hpTop{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.16em;color:#9fc6da;}
+  .hpNum{color:#eafcff;font-weight:800;}
+  .hpTrack{height:9px;border:1px solid var(--line);border-radius:5px;background:#0a141f;overflow:hidden;}
+  .hpFill{height:100%;width:100%;transition:width .18s ease;}
+  #hp1{background:linear-gradient(90deg,#1d7ea8,var(--cyan));box-shadow:0 0 8px rgba(63,217,255,.55);}
+  #hp2{background:linear-gradient(90deg,#1f9e44,var(--green));box-shadow:0 0 8px rgba(82,255,116,.55);}
+  .hpSide.hurt .hpFill{filter:brightness(2.4);}
+  .cdTrack{height:4px;border-radius:2px;background:#0a141f;overflow:hidden;}
+  .cdFill{height:100%;width:100%;background:#ffe9a8;opacity:.8;}
+  .attackBtn.cooling{filter:grayscale(.65) brightness(.55);}
 </style>
 </head>
 <body>
@@ -202,6 +216,18 @@
     <button class="hud-btn" id="hudHome" data-i18n="menu">MENU</button>
     <div class="scorebox s2"><span id="score2">0</span><span class="nm" id="name2">CPU</span></div>
   </div>
+  <div id="hpRow">
+    <div class="hpSide" id="hpSide1">
+      <div class="hpTop"><span><span data-i18n="blue">BLUE</span> · <span data-i18n="health">HEALTH</span></span><span class="hpNum" id="hpNum1">100</span></div>
+      <div class="hpTrack"><div class="hpFill" id="hp1"></div></div>
+      <div class="cdTrack"><div class="cdFill" id="cd1"></div></div>
+    </div>
+    <div class="hpSide" id="hpSide2">
+      <div class="hpTop"><span><span id="hpName2">CPU</span> · <span data-i18n="health">HEALTH</span></span><span class="hpNum" id="hpNum2">100</span></div>
+      <div class="hpTrack"><div class="hpFill" id="hp2"></div></div>
+      <div class="cdTrack"><div class="cdFill" id="cd2"></div></div>
+    </div>
+  </div>
   <div id="arenaWrap">
     <canvas id="arena" width="900" height="600"></canvas>
     <div id="banner"></div>
@@ -238,22 +264,25 @@ en:{
   firstTo:'FIRST TO', winsMatch:'WINS THE MATCH', start:'START DUEL', howto:'HOW TO PLAY',
   close:'CLOSE', qrTitle:'SCAN TO PLAY', qrTap:'Tap the code to enlarge it.',
   howTitle:'HOW TO PLAY', blue:'BLUE', green:'GREEN', cpu:'CPU', menu:'MENU', rematch:'REMATCH',
-  attack:'ATTACK',
+  attack:'ATTACK', health:'HEALTH',
   soundOn:'SOUND: ON', soundOff:'SOUND: OFF',
   pointBlue:'POINT — BLUE', pointGreen:'POINT — GREEN', pointCpu:'POINT — CPU',
   fallBlue:'BLUE FALLS!', fallGreen:'GREEN FALLS!', fallCpu:'CPU FALLS!',
   winsBlue:'BLUE WINS THE MATCH', winsGreen:'GREEN WINS THE MATCH', winsCpu:'CPU WINS THE MATCH',
-  controlsNote:'Two controls per knight — that\u2019s it. <b>Joystick</b> moves. Hold <b>ATTACK</b> — your sword swings left and right. Steer the swing with the stick.<br>Desktop: <b>BLUE (left)</b> — WASD stick · <b>SPACE</b> attack &nbsp;|&nbsp; <b>GREEN (right, 2P)</b> — Arrow stick · <b>ENTER</b> attack.',
+  controlsNote:'Dos controles por caballero — nada más. La <b>palanca</b> mueve. <b>ATACAR</b> — PRESIÓNALO: un barrido pesado, luego 3 segundos de recuperación. Golpea los <b>triángulos de su pecho</b> — tres golpes dan el punto. Serpientes, ratas y una cruz curativa de +25% lo mantienen vivo.<br>En computadora: <b>AZUL (izquierda)</b> — WASD es la palanca · <b>ESPACIO</b> para atacar &nbsp;|&nbsp; <b>VERDE (derecha, 2J)</b> — Flechas · <b>ENTER</b> para atacar.',
   how:[
-   '<p><b>One player by default:</b> you are <span class="p1c">BLUE, always the knight on the left</span>, dueling the <span class="p2c">COMPUTER</span> knight on the right. He moves, plants, swings, and shoves by the same rules you do — and he can be hit, shoved, and pitted just like you. Prefer a human rival? Pick <b>2 PLAYERS</b> on the intro screen and GREEN becomes Player 2, still starting on the right.</p>',
-   '<p>Your knights <b>always face each other automatically</b> — you never aim your body. And there are only <b>two controls</b> to learn:</p>',
+   '<p><b>Un jugador por defecto:</b> tú eres <span class="p1c">AZUL, siempre el caballero de la izquierda</span>, en duelo contra el caballero de la <span class="p2c">COMPUTADORA</span> a la derecha. Él se mueve, blande y empuja con las mismas reglas que tú — y puede ser golpeado, mordido, empujado y arrojado al foso igual que tú. ¿Prefieres un rival humano? Elige <b>2 JUGADORES</b> en la pantalla inicial y VERDE será el Jugador 2, siempre a la derecha.</p>',
+   '<p>Los caballeros <b>siempre se miran el uno al otro automáticamente</b> — nunca apuntas el cuerpo. Y solo hay <b>dos controles</b> que aprender:</p>',
    '<ul>',
-   '<li><b>JOYSTICK</b> — push it to move your knight around the arena.</li>',
-   '<li><b>ATTACK</b> — hold it down and your feet plant, and <b>your sword swings left and right on its own</b>, sweeping back and forth across your whole front — the button alone does the swinging, no stick needed. The stick only <b>steers</b> the swing: push it sideways and the sweep leans that way. A hit lands when the <b>sweeping blade crosses your rival</b>. Let go of ATTACK and your sword settles back to pointing forward, and the joystick moves you again.</li>',
+   '<li><b>PALANCA</b> — empújala para mover a tu caballero por la arena.</li>',
+   '<li><b>ATACAR — la HOJA PESADA.</b> No lo mantengas — <b>PRESIÓNALO</b>. Una presión compromete <b>un solo barrido completo</b>: tus pies se plantan y la espada barre una vez todo tu frente, de izquierda a derecha. Luego la hoja debe recuperarse — <b>un barrido cada 3 segundos</b>. Brilla <b>cuando está lista</b> y se ve <b>tenue mientras se recupera</b> (mira la barrita bajo tu salud). Un barrido desperdiciado te deja expuesto: calcula el momento.</li>',
+   '<li><b>SOLO GOLPES AL PECHO.</b> Un golpe cuenta solo cuando tu espada en movimiento cruza los <b>triángulos de su pecho</b>. Sus brazos no cuentan. Su espada no cuenta — las espadas que se encuentran solo <b>chocan</b> y se apartan.</li>',
    '</ul>',
-   '<p>That\u2019s the whole game: <b>stick moves; hold ATTACK — your sword swings left and right. Steer the swing with the stick.</b></p>',
-   '<p><b>Scoring:</b> land your sweeping blade on your rival while planted = a point. Bodies <b>bounce</b> off each other — shove your rival into a <span class="pitc">pit</span> and he falls = a point. Step in a pit yourself and you fall just the same. First to the target score wins the match.</p>',
-   '<p class="keys">On a phone: <b>1 PLAYER</b> — one joystick on the left, one big ATTACK button on the right. Just <b>press and hold ATTACK</b> and your sword swings left and right by itself; use the other thumb on the stick only to <b>steer</b> the swing toward either side. <b>2 PLAYERS</b> — each half of the screen carries that player\u2019s own joystick + ATTACK button.<br>On a desktop: <span class="p1c">BLUE</span> — WASD is the stick, hold SPACE to attack. <span class="p2c">GREEN (2P)</span> — Arrow keys are the stick, hold ENTER or RIGHT SHIFT to attack.</p>'
+   '<p><b>Salud:</b> cada caballero tiene <b>100 de salud</b> (las barras bajo el marcador). Un golpe al pecho cuesta <b>34</b> — así que <b>tres golpes al pecho dan el punto</b>. Ningún barrido solo da el punto por sí mismo.</p>',
+   '<p><b>La cruz +25%:</b> cada 10 segundos aparece una <b>cruz dorada verdosa</b> brillante en un lugar neutral. Camina sobre ella para <b>curar 25 de salud</b> (nunca más de 100). La computadora correrá por ella cuando esté herida.</p>',
+   '<p><b>Serpientes y ratas:</b> las alimañas del foso cazan a <b>ambos</b> caballeros. Una <b>mordida de rata cuesta 8 de salud</b>, una de <b>serpiente cuesta 14</b> — y una mordida puede acabar con un caballero herido. Tu espada en movimiento las mata: calcula un barrido cuando una se acerque.</p>',
+   '<p><b>Puntos:</b> tres golpes al pecho = un punto. Los cuerpos <b>rebotan</b> entre sí — empuja a tu rival a un <span class="pitc">foso</span> y caerá = un punto, al instante. Si pisas un foso tú, caes igual. El primero en llegar a la puntuación objetivo gana el combate.</p>',
+   '<p class="keys">En el teléfono: <b>1 JUGADOR</b> — una palanca a la izquierda y un gran botón de ATACAR a la derecha. <b>Toca</b> ATACAR para un barrido; usa la palanca para moverte e inclinar el barrido. <b>2 JUGADORES</b> — cada mitad de la pantalla lleva la palanca y el botón de ATACAR de ese jugador.<br>En computadora: <b>AZUL</b> — WASD es la palanca · <b>ESPACIO</b> para atacar &nbsp;|&nbsp; <b>VERDE (2J)</b> — Flechas · <b>ENTER</b> para atacar.</p>'
   ].join('')
 },
 es:{
@@ -264,7 +293,7 @@ es:{
   firstTo:'EL PRIMERO EN', winsMatch:'GANA EL COMBATE', start:'¡A LUCHAR!', howto:'CÓMO JUGAR',
   close:'CERRAR', qrTitle:'ESCANEA PARA JUGAR', qrTap:'Toca el código para agrandarlo.',
   howTitle:'CÓMO JUGAR', blue:'AZUL', green:'VERDE', cpu:'CPU', menu:'MENÚ', rematch:'REVANCHA',
-  attack:'ATACAR',
+  attack:'ATACAR', health:'SALUD',
   soundOn:'SONIDO: SÍ', soundOff:'SONIDO: NO',
   pointBlue:'PUNTO — AZUL', pointGreen:'PUNTO — VERDE', pointCpu:'PUNTO — CPU',
   fallBlue:'¡AZUL CAE!', fallGreen:'¡VERDE CAE!', fallCpu:'¡CPU CAE!',
@@ -298,6 +327,7 @@ function applyLang(){
   var is1p = (typeof gameMode==='undefined') || gameMode==='1P';
   document.getElementById('modeDesc').textContent = is1p ? d.modeDesc1 : d.modeDesc2;
   document.getElementById('name2').textContent = is1p ? d.cpu : d.green;
+  var _hpn=document.getElementById('hpName2'); if(_hpn) _hpn.textContent = is1p ? d.cpu : d.green;
   document.querySelectorAll('.attackBtn').forEach(function(b){ b.innerHTML=d.attack+'<br>⚔'; });
 }
 
@@ -354,9 +384,12 @@ var keys={};
 /* touch joystick state per player: analog dx/dy (-1..1) + attack (the old stance) */
 var touchIn=[ {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0}, {dx:0,dy:0,stance:0,up:0,down:0,left:0,right:0} ];
 var SWING_MAX=1.22; /* the swing arc: ±70° from the heading */
+var SWING_DUR=0.6, SWING_CD=3.0; /* HEAVY BLADE: one committed sweep of ~0.6s, next swing ready 3.0s after the swing starts */
+var critters=[], critTimer=8, pickup=null, pickupTimer=10;
 
 function mkKnight(x,y,cx,cy,color,glow,line){
   return { x:cx,y:cy, sx:x,sy:y, cx:cx,cy:cy, spawnT:1, vx:0,vy:0, face:0, sword:0, prevSword:0, swingVel:0, swingT:0, stance:false,
+           hp:100, swPhase:'idle', swT:0, swStart:-99, swBias:0, swFrom:0, cdReadyAt:0, hurtT:0, atkPrev:false, whooshed:false, hitDone:false,
            fallT:0, fallPit:null, scale:1, spin:0, color:color, glow:glow, line:line, whooshCd:0 };
 }
 /* marks: P1 always LEFT (165,300), rival always RIGHT (735,300).
@@ -401,7 +434,9 @@ function computeField(){
 function guardAngle(k,opp){ return Math.atan2(opp.y-k.y, opp.x-k.x); }
 function resetPositions(){
   for(var i=0;i<2;i++){ var k=K[i];
-    k.x=k.cx; k.y=k.cy; k.spawnT=0; k.vx=0; k.vy=0; k.stance=false; k.fallT=0; k.fallPit=null; k.scale=1; k.spin=0; k.swingVel=0; k.swingT=0; }
+    k.x=k.cx; k.y=k.cy; k.spawnT=0; k.vx=0; k.vy=0; k.stance=false; k.fallT=0; k.fallPit=null; k.scale=1; k.spin=0; k.swingVel=0; k.swingT=0;
+    k.hp=100; k.swPhase='idle'; k.swT=0; k.swStart=-99; k.swBias=0; k.swFrom=0; k.cdReadyAt=0; k.hurtT=0; k.atkPrev=false; k.whooshed=false; k.hitDone=false; }
+  critters.length=0; critTimer=8; pickup=null; pickupTimer=10; syncHp();
   K[0].face=guardAngle(K[0],K[1]); K[0].sword=K[0].face; K[0].prevSword=K[0].sword;
   K[1].face=guardAngle(K[1],K[0]); K[1].sword=K[1].face; K[1].prevSword=K[1].sword;
   sparks.length=0;
@@ -420,8 +455,8 @@ function showBanner(txt,color,hold){
 /* ---------- input: ONE joystick + ONE attack button per player ----------
    Desktop: the directional keys ARE the stick (WASD = P1, arrows = P2);
    SPACE (P1) / ENTER or RIGHT SHIFT (P2) is the ATTACK button.
-   Holding ATTACK plants the feet AND swings the sword by itself — the
-   blade sweeps left↔right on its own; the stick only steers the sweep. */
+   ATTACK is a PRESS (edge-detected in step()): one press commits ONE
+   heavy sweep; the stick's sideways push at the press leans the sweep. */
 function readInput(i){
   var dx=0, dy=0, stance=false, t=touchIn[i];
   if(i===0){
@@ -454,8 +489,8 @@ function readInput(i){
    plants + swings when in sword range, and charges a shove when the human
    is near a pit. Human-like mistakes: aim error, hesitation, occasional
    whiffed stance and imperfect pit sense — dangerous, never perfect. */
-var ai={ think:0, dx:0, dy:0, stance:false, aimErr:0, side:-1, baseAim:0, sweepPh:0 };
-function aiReset(){ ai.think=0; ai.dx=0; ai.dy=0; ai.stance=false; ai.aimErr=0; ai.side=Math.random()<0.5?-1:1; ai.baseAim=0; ai.sweepPh=Math.random()*Math.PI*2; }
+var ai={ think:0, dx:0, dy:0, atkUntil:0, aimErr:0, side:-1 };
+function aiReset(){ ai.think=0; ai.dx=0; ai.dy=0; ai.atkUntil=0; ai.aimErr=0; ai.side=Math.random()<0.5?-1:1; }
 function aiInput(dt){
   var me=K[1], opp=K[0];
   ai.think-=dt;
@@ -467,16 +502,23 @@ function aiInput(dt){
     if(d1<d0) pit=PITS[1];
     var pitDist=Math.min(d0,d1);
     var r=Math.random();
+    /* the CPU obeys the HEAVY BLADE exactly like the human: he may only
+       press when his own cooldown is ready and no sweep is running */
+    var cdReady = (me.swPhase!=='swing') && (timeNow>=me.cdReadyAt);
     if(pitDist<130 && dist<210 && r>0.18){
-      /* human is near a pit: charge the shove, no stance */
-      ai.dx=dx/dist; ai.dy=dy/dist; ai.stance=false;
-    }else if(dist>185){
-      /* close the distance, favouring the side away from the target pit so
-         body contact pushes the human toward it */
+      /* human is near a pit: charge the shove, no swing */
+      ai.dx=dx/dist; ai.dy=dy/dist;
+    }else if(pickup && me.hp<55 && Math.hypot(pickup.x-me.x,pickup.y-me.y) < Math.hypot(pickup.x-opp.x,pickup.y-opp.y)){
+      /* hurt, and the +25% cross is closer to him than to the human: go take it */
+      var px2=pickup.x-me.x, py2=pickup.y-me.y, pm2=Math.hypot(px2,py2)||1;
+      ai.dx=px2/pm2; ai.dy=py2/pm2;
+    }else if(dist>150){
+      /* close the distance (the 150 gate matches the HALVED blade's reach),
+         favouring the side away from the target pit so body contact pushes
+         the human toward it */
       var sx=pit.x-opp.x, sy=pit.y-opp.y, sm=Math.hypot(sx,sy)||1;
       var tx=opp.x-sx/sm*BODY_R*2.1, ty=opp.y-sy/sm*BODY_R*2.1;
-      /* route around any pit blocking the straight line: aim at a waypoint
-         above/below the pit instead of walking through it */
+      /* route around any pit blocking the straight line */
       for(var pi=0;pi<2;pi++){ var pp=PITS[pi];
         var vx=tx-me.x, vy=ty-me.y, vv=vx*vx+vy*vy||1;
         var tt=Math.max(0,Math.min(1,((pp.x-me.x)*vx+(pp.y-me.y)*vy)/vv));
@@ -487,23 +529,21 @@ function aiInput(dt){
       }
       var mx=tx-me.x, my=ty-me.y, mm=Math.hypot(mx,my)||1;
       if(mm<24){ ai.dx=dx/dist; ai.dy=dy/dist; } else { ai.dx=mx/mm; ai.dy=my/mm; }
-      ai.stance=false;
       if(r<0.07){ ai.dx=0; ai.dy=0; } /* hesitation mistake */
     }else{
-      /* in sword range: mostly plant and swing at the human… */
-      if(r<0.68){
-        ai.stance=true;
+      /* in sword range: press ONLY when the heavy blade is ready… */
+      if(cdReady && r<0.68){
         ai.aimErr=(Math.random()-0.5)*0.5 + (Math.random()<0.14?(Math.random()-0.5)*0.9:0); /* aim error, sometimes big */
-        /* aim from the sword HAND (the grip rides with the blade), not the
-           body centre, or a straight-on swing passes beside the rival */
+        /* aim from the sword HAND (the grip rides with the blade); the
+           direction becomes the committed sweep's stick bias at the press */
         var hs=swordSeg(me), hx=hs[0].x, hy=hs[0].y;
         var base=Math.atan2(opp.y-hy,opp.x-hx)+ai.aimErr;
-        ai.baseAim=base; /* the per-frame sweep below works the blade around this aim line */
         ai.dx=Math.cos(base); ai.dy=Math.sin(base);
+        ai.atkUntil=timeNow+0.12; /* THE PRESS — a brief level step() edge-detects */
       }else if(r<0.82){
-        ai.stance=false; ai.dx=dx/dist; ai.dy=dy/dist; /* step in for a shove instead */
+        ai.dx=dx/dist; ai.dy=dy/dist; /* blade recovering: step in for a shove instead */
       }else{
-        ai.stance=false; ai.dx=-dy/dist*0.7+dx/dist*0.3; ai.dy=dx/dist*0.7+dy/dist*0.3; /* reposition / whiff */
+        ai.dx=-dy/dist*0.7+dx/dist*0.3; ai.dy=dx/dist*0.7+dy/dist*0.3; /* reposition / whiff */
         var nm=Math.hypot(ai.dx,ai.dy)||1; ai.dx/=nm; ai.dy/=nm;
       }
     }
@@ -515,19 +555,11 @@ function aiInput(dt){
       var rl=Math.hypot(gx,gy)||1, ux=gx/rl, uy=gy/rl;
       var inward=ai.dx*ux+ai.dy*uy;
       if(inward<0){ ai.dx-=inward*ux; ai.dy-=inward*uy; }
-      ai.dx+=ux*0.85; ai.dy+=uy*0.85; ai.stance=false;
+      ai.dx+=ux*0.85; ai.dy+=uy*0.85; ai.atkUntil=0;
       var gm=Math.hypot(ai.dx,ai.dy); if(gm>1){ ai.dx/=gm; ai.dy/=gm; }
     }
   }
-  /* planted: the button-held sweep in step() swings his blade exactly like
-     the human's — same ±70° arc, same speed, same swept-hit rule. His
-     oscillating aim line only steers that sweep, biasing its centre toward
-     the rival — no ability the human knight doesn't have. */
-  if(ai.stance){
-    var swA=ai.baseAim+Math.sin(timeNow*2.4+ai.sweepPh)*0.95;
-    ai.dx=Math.cos(swA); ai.dy=Math.sin(swA);
-  }
-  return {dx:ai.dx, dy:ai.dy, stance:ai.stance, active:(ai.dx!==0||ai.dy!==0)};
+  return {dx:ai.dx, dy:ai.dy, stance:(timeNow<ai.atkUntil), active:(ai.dx!==0||ai.dy!==0)};
 }
 window.addEventListener('keydown',function(e){
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].indexOf(e.code)>=0) e.preventDefault();
@@ -571,18 +603,44 @@ function swordSegAt(k, ang){
      a fixed point while the arms point stiffly forward. */
   var c=Math.cos(k.face), s=Math.sin(k.face);
   var hx=k.x + Math.cos(ang)*5.5*SCALE + (-s)*(-1.75*SCALE), hy=k.y + Math.sin(ang)*5.5*SCALE + c*(-1.75*SCALE);
-  var L = (k.stance?50:44)*SCALE; /* sword ≈ 55–60% of the whole figure, body ≈ 40–45% — per Gary's traced frames */
+  var L = (k.stance?25:22)*SCALE; /* OVERHAUL: the blade is HALVED (was 50/44) — a short, heavy pitblade; reach is precious now */
   return [ {x:hx, y:hy}, {x:hx+Math.cos(ang)*L, y:hy+Math.sin(ang)*L} ];
 }
+/* CHEST-TRIANGLE HITS ONLY (Gary's overhaul ruling): a hit counts only
+   when the blade crosses one of the defender's three torso CHEVRON
+   triangles — the same triangles drawKnight draws — never the arms,
+   never the blade, never the spine. Figure-local coords, facing +x. */
+var CHEST_TRIS=[ [[-5,-7.2],[2.5,0],[-5,7.2]], [[0,-5.4],[7,0],[0,5.4]], [[4,-3.6],[10.5,0],[4,3.6]] ];
+function chestTrisWorld(k){
+  var c=Math.cos(k.face), s=Math.sin(k.face), out=[];
+  for(var i=0;i<3;i++){ var tri=[];
+    for(var j=0;j<3;j++){ var lx=CHEST_TRIS[i][j][0]*SCALE, ly=CHEST_TRIS[i][j][1]*SCALE;
+      tri.push({ x:k.x + c*lx - s*ly, y:k.y + s*lx + c*ly }); }
+    out.push(tri); }
+  return out;
+}
+function ptInTri(p,a,b,c2){
+  function sg(ax,ay,bx,by,px,py){ return (bx-ax)*(py-ay)-(by-ay)*(px-ax); }
+  var d1=sg(a.x,a.y,b.x,b.y,p.x,p.y), d2=sg(b.x,b.y,c2.x,c2.y,p.x,p.y), d3=sg(c2.x,c2.y,a.x,a.y,p.x,p.y);
+  var neg=(d1<0)||(d2<0)||(d3<0), pos=(d1>0)||(d2>0)||(d3>0);
+  return !(neg&&pos);
+}
+function segTriHit(p1,p2,tri){
+  if(ptInTri(p1,tri[0],tri[1],tri[2])) return {x:p1.x, y:p1.y};
+  if(ptInTri(p2,tri[0],tri[1],tri[2])) return {x:p2.x, y:p2.y};
+  for(var i=0;i<3;i++){ var q=segInt(p1,p2,tri[i],tri[(i+1)%3]); if(q) return q; }
+  return null;
+}
 /* the SWEPT blade is the danger zone: sample the blade at every angle it
-   travelled through this frame — a hit lands when the sweep crosses the body */
+   travelled through this frame — a hit lands when the sweep crosses a
+   chest triangle; returns the exact hit point for the burst */
 function sweptBladeHit(atk, def){
-  var bs=bodySeg(def);
+  var tris=chestTrisWorld(def);
   var dAng=((atk.sword-atk.prevSword+Math.PI*3)%(Math.PI*2))-Math.PI;
   var steps=Math.max(1,Math.ceil(Math.abs(dAng)/0.10));
   for(var i=0;i<=steps;i++){
     var ss=swordSegAt(atk, atk.prevSword+dAng*(i/steps));
-    if(segSegDist(ss[0],ss[1],bs[0],bs[1])<8.5*SCALE) return ss[1];
+    for(var j=0;j<3;j++){ var hit=segTriHit(ss[0],ss[1],tris[j]); if(hit) return hit; }
   }
   return null;
 }
@@ -663,13 +721,142 @@ function startFall(k, pit){
   showBanner(fallTxt(K.indexOf(k)),'#ffb59d',0.8);
 }
 
+/* ---------- health, critters, pickup (Gary's overhaul) ---------- */
+var hitstopT=0;
+function syncHp(){
+  for(var i=0;i<2;i++){
+    var f=document.getElementById('hp'+(i+1)); if(f) f.style.width=Math.max(0,K[i].hp)+'%';
+    var num=document.getElementById('hpNum'+(i+1)); if(num) num.textContent=Math.max(0,Math.ceil(K[i].hp));
+  }
+}
+function syncCd(){
+  for(var i=0;i<2;i++){ var k=K[i];
+    var f=document.getElementById('cd'+(i+1));
+    if(f){ var frac;
+      if(k.swPhase==='swing') frac=1;
+      else { var rem=k.cdReadyAt-timeNow; frac = rem<=0 ? 1 : Math.max(0, Math.min(1, 1 - rem/(SWING_CD-SWING_DUR))); }
+      f.style.width=(frac*100).toFixed(1)+'%';
+    }
+    var side=document.getElementById('hpSide'+(i+1));
+    if(side) side.classList.toggle('hurt', k.hurtT>0);
+    var btn=document.getElementById('atk'+(i+1));
+    if(btn) btn.classList.toggle('cooling', k.swPhase!=='swing' && timeNow<k.cdReadyAt);
+  }
+}
+/* a chest hit: -34 health. THREE hits take the point. A non-lethal hit
+   stops the duel for a heartbeat (hitstop) and flashes the victim — only
+   a LETHAL hit (or a pit fall) scores the point. */
+function applyHit(atkIdx, p){
+  K[atkIdx].hitDone=true;
+  var def=K[1-atkIdx];
+  def.hp=Math.max(0, def.hp-34); def.hurtT=0.4;
+  burst(p.x,p.y,def.color,20); burst(p.x,p.y,'#ffffff',8);
+  sfx.zap(); syncHp();
+  if(def.hp<=0){ window._hitWinner=atkIdx; state='freeze'; freezeT=0.30; }
+  else { state='hitstop'; hitstopT=0.13; }
+}
+/* critters: snakes & rats hunt BOTH knights (nearest first). They spawn
+   from the arena edges — first ~8s into a point, then every ~11±4s, max
+   2 alive — steer wide of the pits, bite once, then flee to an edge and
+   vanish. A swinging blade kills them. */
+function spawnCritter(){
+  if(critters.length>=2) return;
+  var edge=Math.floor(Math.random()*4), x, y;
+  if(edge===0){ x=MARG+30+Math.random()*(VW-MARG*2-60); y=MARG+24; }
+  else if(edge===1){ x=MARG+30+Math.random()*(VW-MARG*2-60); y=VH-MARG-24; }
+  else if(edge===2){ x=MARG+24; y=MARG+30+Math.random()*(VH-MARG*2-60); }
+  else { x=VW-MARG-24; y=MARG+30+Math.random()*(VH-MARG*2-60); }
+  var type=Math.random()<0.5?'rat':'snake';
+  critters.push({ type:type, x:x, y:y, dir:0, flee:false, fx:0, fy:0, ph:Math.random()*Math.PI*2,
+    biteCd:0, speed:(type==='rat'?118:72), dmg:(type==='rat'?8:14), hist:[{x:x,y:y}] });
+}
+function biteKnight(c,k){
+  k.hp=Math.max(0,k.hp-c.dmg); k.hurtT=0.4; c.biteCd=1.2;
+  burst(c.x,c.y,'#ff5040',10); burst(c.x,c.y,k.color,5);
+  sfx.clink(); syncHp();
+  if(k.hp<=0){ window._hitWinner=1-K.indexOf(k); state='freeze'; freezeT=0.30; }
+  /* after the bite it flees: nearest edge point */
+  var cands=[[c.x,MARG+8],[c.x,VH-MARG-8],[MARG+8,c.y],[VW-MARG-8,c.y]], bd=1e18;
+  for(var oi=0;oi<4;oi++){ var dd=Math.hypot(cands[oi][0]-c.x, cands[oi][1]-c.y);
+    if(dd<bd){ bd=dd; c.fx=cands[oi][0]; c.fy=cands[oi][1]; } }
+  c.flee=true;
+}
+function stepCritters(dt){
+  critTimer-=dt;
+  if(critTimer<=0){ spawnCritter(); critTimer=11+(Math.random()*8-4); }
+  for(var i=critters.length-1;i>=0;i--){ var c=critters[i];
+    c.ph+=dt*(c.type==='rat'?13:7);
+    if(c.biteCd>0) c.biteCd-=dt;
+    var tx, ty, tgt=null;
+    if(c.flee){ tx=c.fx; ty=c.fy;
+      if(Math.hypot(c.x-tx,c.y-ty)<16){ critters.splice(i,1); continue; }
+    }else{
+      tgt=(Math.hypot(c.x-K[0].x,c.y-K[0].y) < Math.hypot(c.x-K[1].x,c.y-K[1].y)) ? K[0] : K[1];
+      tx=tgt.x; ty=tgt.y;
+    }
+    var dx=tx-c.x, dy=ty-c.y, dm=Math.hypot(dx,dy)||1; dx/=dm; dy/=dm;
+    /* pit avoidance: veer away from the pit mouths */
+    for(var pi=0;pi<2;pi++){ var p=PITS[pi], pdx=c.x-p.x, pdy=c.y-p.y, pd=Math.hypot(pdx,pdy), danger=p.s*0.5+16;
+      if(pd<danger && pd>0.01){ var w=(danger-pd)/danger*1.7; dx+=pdx/pd*w; dy+=pdy/pd*w; } }
+    var mm=Math.hypot(dx,dy)||1; dx/=mm; dy/=mm;
+    var wob=Math.sin(c.ph)*(c.type==='snake'?0.45:0.25);
+    var cs=Math.cos(wob), sn=Math.sin(wob);
+    var rx=dx*cs-dy*sn, ry=dx*sn+dy*cs;
+    c.x+=rx*c.speed*dt; c.y+=ry*c.speed*dt; c.dir=Math.atan2(ry,rx);
+    if(c.x<MARG+8)c.x=MARG+8; if(c.x>VW-MARG-8)c.x=VW-MARG-8;
+    if(c.y<MARG+8)c.y=MARG+8; if(c.y>VH-MARG-8)c.y=VH-MARG-8;
+    /* trail by DISTANCE, not frames: a point every ~4px travelled, so
+       the snake's body reads as a real slithering length (~55px) */
+    if(!c.hist.length || Math.hypot(c.x-c.hist[0].x, c.y-c.hist[0].y)>=4) c.hist.unshift({x:c.x,y:c.y});
+    var maxH=(c.type==='snake')?14:6; if(c.hist.length>maxH) c.hist.pop();
+    /* bite the hunted knight on contact, once */
+    if(!c.flee && c.biteCd<=0 && tgt && Math.hypot(c.x-tgt.x,c.y-tgt.y)<BODY_R+7){
+      biteKnight(c,tgt);
+      if(state!=='fight') return;
+    }
+  }
+  /* a SWINGING blade kills any critter it touches */
+  for(var ci=critters.length-1;ci>=0;ci--){ var cc=critters[ci];
+    for(var n2=0;n2<2;n2++){ if(!K[n2].stance) continue;
+      var ss2=swordSeg(K[n2]);
+      if(segSegDist(ss2[0],ss2[1],{x:cc.x,y:cc.y},{x:cc.x,y:cc.y})<10){
+        burst(cc.x,cc.y, cc.type==='snake'?'#37e05a':'#b09a7a', 14);
+        sfx.clink(); critters.splice(ci,1); break; } }
+  }
+}
+/* the +25% cross: every 10s of a point, one glowing capsule on a NEUTRAL
+   spot — far from both knights, clear of the pits, inside the walls.
+   Walk over it: +25 health, capped at 100. */
+function spawnPickup(){
+  for(var i=0;i<20;i++){
+    var x=MARG+60+Math.random()*(VW-MARG*2-120), y=MARG+60+Math.random()*(VH-MARG*2-120);
+    if(Math.hypot(x-K[0].x,y-K[0].y)<140) continue;
+    if(Math.hypot(x-K[1].x,y-K[1].y)<140) continue;
+    if(Math.hypot(x-PITS[0].x,y-PITS[0].y)<120) continue;
+    if(Math.hypot(x-PITS[1].x,y-PITS[1].y)<120) continue;
+    pickup={x:x, y:y, ph:Math.random()*6}; return;
+  }
+}
+function stepPickup(dt){
+  if(pickup){ pickup.ph+=dt;
+    for(var n=0;n<2;n++){ var k=K[n];
+      if(Math.hypot(k.x-pickup.x,k.y-pickup.y)<BODY_R+6){
+        k.hp=Math.min(100,k.hp+25);
+        burst(pickup.x,pickup.y,'#7dff8a',18); burst(pickup.x,pickup.y,'#ffffff',6);
+        sfx.chime(); pickup=null; pickupTimer=10; syncHp(); break;
+      } }
+  }else{ pickupTimer-=dt; if(pickupTimer<=0) spawnPickup(); }
+}
+
 /* ---------- update ---------- */
 function step(dt){
   timeNow+=dt;
   for(var j=sparks.length-1;j>=0;j--){ var s=sparks[j]; s.x+=s.vx*dt; s.y+=s.vy*dt; s.vx*=0.86; s.vy*=0.86; s.life-=dt; if(s.life<=0) sparks.splice(j,1); }
   if(bannerT>0){ bannerT-=dt; if(bannerT<=0) document.getElementById('banner').classList.remove('show'); }
 
+  for(var hi=0;hi<2;hi++){ if(K[hi].hurtT>0) K[hi].hurtT-=dt; }
   if(state==='freeze'){ freezeT-=dt; if(freezeT<=0){ state='point'; awardPoint(window._hitWinner); } return; }
+  if(state==='hitstop'){ hitstopT-=dt; if(hitstopT<=0) state='fight'; return; }
   if(state==='point') return;
   if(state==='fall'){
     var fk=null; for(var q=0;q<2;q++) if(K[q].fallT>0) fk=K[q];
@@ -692,7 +879,7 @@ function step(dt){
       if(sk.spawnT<1){ sk.spawnT=Math.min(1, sk.spawnT+dt/1.15);
         var se=1-Math.pow(1-sk.spawnT,3);
         sk.x=sk.cx+(sk.sx-sk.cx)*se; sk.y=sk.cy+(sk.sy-sk.cy)*se; }
-      sk.face=guardAngle(sk,K[1-sn]); sk.sword=sk.face; sk.prevSword=sk.sword; sk.swingVel=0; sk.stance=false; sk.vx=0; sk.vy=0;
+      sk.face=guardAngle(sk,K[1-sn]); sk.sword=sk.face; sk.prevSword=sk.sword; sk.swingVel=0; sk.stance=false; sk.vx=0; sk.vy=0; sk.atkPrev=false; sk.swPhase='idle';
     }
     return;
   }
@@ -701,45 +888,42 @@ function step(dt){
   for(var n=0;n<2;n++){
     var k=K[n], o=K[1-n], inpN=inp[n];
     k.face=guardAngle(k,o); /* AUTO-FACE: always toward the rival */
-    var wasStance=k.stance;
-    k.stance=inpN.stance;
     k.prevSword=k.sword;
-    if(k.stance){
-      k.vx=0; k.vy=0; /* feet planted — no movement at all */
-      /* THE BUTTON IS THE SWING: holding ATTACK sweeps the blade on its own,
-         continuously — left extreme, through centre, to right extreme and
-         back — across the full ±70° front arc, travelling through every
-         angle in between. NO stick input is required: button alone swings.
-         The sweep is a sine whose peak angular speed equals the established
-         fencing swing speed (5.2 rad/s), tracked through the same rate
-         limit as before. The stick only STEERS: its sideways component
-         (relative to the heading) biases the arc's centre up to ~25°
-         toward the pushed side. Release ATTACK and the sword settles back
-         to pointing forward (the guard branch below). */
-      if(!wasStance) k.swingT=0;
-      k.swingT+=dt;
-      var bias=0;
-      if(inpN.active){
-        var lat=-Math.sin(k.face)*inpN.dx + Math.cos(k.face)*inpN.dy; /* stick deflection sideways from the heading, -1..1 */
-        bias=Math.max(-1,Math.min(1,lat))*0.44; /* up to ~25° */
-      }
-      var sweepOff=bias + Math.sin(k.swingT*(5.2/SWING_MAX))*SWING_MAX;
-      if(sweepOff>SWING_MAX) sweepOff=SWING_MAX;
-      if(sweepOff<-SWING_MAX) sweepOff=-SWING_MAX;
-      var goal=k.face+sweepOff;
-      var diff=((goal-k.sword+Math.PI*3)%(Math.PI*2))-Math.PI;
-      var maxTurn=5.2*dt, turn=Math.max(-maxTurn,Math.min(maxTurn,diff)); /* fencing swing speed */
-      k.sword+=turn;
-      k.swingVel=dt>0?turn/dt:0;
-      if(Math.abs(k.swingVel)>1.4 && k.whooshCd<=0){ sfx.whoosh(); k.whooshCd=0.24; }
+    /* THE HEAVY BLADE (Gary's overhaul): ATTACK is a PRESS, not a hold.
+       A press while the blade is ready commits ONE committed sweep
+       (~0.6s, feet planted the whole time); the blade then recovers
+       until 3.0s from the swing's start. Presses during recovery do
+       nothing. The stick's sideways push at the moment of the press
+       leans the sweep's centre up to ~25°, as before. */
+    var atkNow=!!inpN.stance;
+    var atkEdge=atkNow && !k.atkPrev; k.atkPrev=atkNow;
+    if(k.swPhase!=='swing' && atkEdge && timeNow>=k.cdReadyAt){
+      k.swPhase='swing'; k.swT=0; k.swStart=timeNow; k.cdReadyAt=timeNow+SWING_CD; k.hitDone=false;
+      k.whooshed=false; k.swFrom=k.sword;
+      var lat0=0;
+      if(inpN.active) lat0=Math.max(-1,Math.min(1,-Math.sin(k.face)*inpN.dx + Math.cos(k.face)*inpN.dy));
+      k.swBias=lat0*0.44;
+    }
+    if(k.swPhase==='swing'){
+      k.stance=true; k.vx=0; k.vy=0; /* feet planted for the whole sweep */
+      k.swT+=dt;
+      var ph=Math.min(1, k.swT/SWING_DUR);
+      /* phase-mapped path: -cos curve from the left extreme (-70°) through
+         centre to the right extreme (+70°), peaking in speed mid-sweep */
+      var goalS=k.face + k.swBias - Math.cos(Math.PI*ph)*SWING_MAX;
+      var blend=Math.min(1, k.swT/0.08); /* ease off the guard angle — no pop at the press */
+      var dFrom=((goalS-k.swFrom+Math.PI*3)%(Math.PI*2))-Math.PI;
+      k.sword=k.swFrom + dFrom*blend;
+      if(ph>=0.5 && !k.whooshed){ sfx.whoosh(); k.whooshed=true; }
+      if(ph>=1) k.swPhase='recover';
     }else{
-      k.swingVel=0;
-      if(wasStance) k.sword=k.face; /* snap back handled smoothly below too */
+      k.stance=false;
       var diffG=((k.face-k.sword+Math.PI*3)%(Math.PI*2))-Math.PI;
       k.sword+=diffG*Math.min(1,dt*7); /* settle back to ready guard */
       k.vx=inpN.dx*SPEED; k.vy=inpN.dy*SPEED;
       k.x+=k.vx*dt; k.y+=k.vy*dt;
     }
+    k.swingVel=dt>0?(((k.sword-k.prevSword+Math.PI*3)%(Math.PI*2))-Math.PI)/dt:0;
     if(k.whooshCd>0) k.whooshCd-=dt;
     /* walls */
     if(k.x<MARG+BODY_R){k.x=MARG+BODY_R;} if(k.x>VW-MARG-BODY_R){k.x=VW-MARG-BODY_R;}
@@ -769,16 +953,13 @@ function step(dt){
       if(Math.abs(kk.x-pit.x)<mh && Math.abs(kk.y-pit.y)<mh){ startFall(kk,pit); return; }
     }
   }
-  /* blade hits — attacker must be planted (blade committed). The hit lands
-     when the SWEEPING blade crosses the rival's body, not just where it ends */
+  /* blade hits — attacker must be mid-sweep (blade committed). The hit
+     lands when the SWEEPING blade crosses the rival's CHEST TRIANGLES —
+     applyHit handles the -34, the hitstop, and the lethal freeze */
   for(var t=0;t<2;t++){ var atk=K[t], def=K[1-t];
-    if(!atk.stance) continue;
-    var tip=sweptBladeHit(atk,def);
-    if(tip){
-      burst(tip.x,tip.y,def.color,20); burst(tip.x,tip.y,'#ffffff',8);
-      sfx.zap(); window._hitWinner=t; state='freeze'; freezeT=0.30;
-      return;
-    }
+    if(!atk.stance || atk.hitDone) continue; /* ONE wound per committed sweep — the blade cannot re-trigger as it dwells */
+    var hitP=sweptBladeHit(atk,def);
+    if(hitP){ applyHit(t, hitP); return; }
   }
   /* blade clash — ANY time the swords touch (Gary, Oct 24, from the
      original: contact throws a little burst of spark DOTS at the touch
@@ -799,6 +980,9 @@ function step(dt){
       fast.prevSword=fast.sword;
     }
   }
+  /* vermin + the healing cross live on fight time */
+  stepCritters(dt);
+  stepPickup(dt);
 }
 
 /* ---------- drawing ---------- */
@@ -903,7 +1087,8 @@ function drawKnight(k){
   ctx.rotate(k.face);
   ctx.scale(SCALE,SCALE); /* warriors at 3× — local figure faces +x: body at the rear, sword forward */
   /* THIN, PALE lines — near-white with a light player tint only. No bloom. */
-  ctx.strokeStyle=k.line; ctx.fillStyle=k.line;
+  var lineCol = k.hurtT>0 ? ((Math.floor(timeNow*18)%2===0)?'#ffffff':'#ff4040') : k.line; /* hurt flash */
+  ctx.strokeStyle=lineCol; ctx.fillStyle=lineCol;
   ctx.shadowBlur=0; ctx.lineCap='round'; ctx.lineJoin='round';
   function L(pts,close){ ctx.beginPath(); ctx.moveTo(pts[0],pts[1]);
     for(var i=2;i<pts.length;i+=2) ctx.lineTo(pts[i],pts[i+1]);
@@ -960,27 +1145,35 @@ function drawKnight(k){
     var dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, px=-dy/len, py=dx/len;
     L([ax+px*wa, ay+py*wa, bx+px*wb, by+py*wb, bx-px*wb, by-py*wb, ax-px*wa, ay-py*wa], true);
   }
-  function drawArm(sx,sy,sideSign){
-    var dx=glx-sx, dy=gly-sy, dist=Math.hypot(dx,dy)||0.001;
-    var d=Math.max(1.2, Math.min(dist, L1+L2-0.02));
+  function drawArm(sx,sy,sideSign,hx2,hy2){
+    var dx=hx2-sx, dy=hy2-sy, dist=Math.hypot(dx,dy)||0.001;
+    /* ELBOW BEND (Gary's overhaul): the reach is solved SLACK — as if the
+       hand rested 14% short of its grip — so the elbow NEVER locks
+       straight; and the swing flexes it further, the extra bend peaking
+       mid-sweep (flexAmt runs 0 -> 1 -> 0 across the sweep). */
+    var flexAmt=0;
+    if(k.swPhase==='swing') flexAmt=Math.sin(Math.PI*Math.min(1,k.swT/SWING_DUR));
+    var d=Math.max(1.2, Math.min(dist*(0.86-0.10*flexAmt), L1+L2-0.02));
     var ux=dx/dist, uy=dy/dist;
     var a=(L1*L1 - L2*L2 + d*d)/(2*d), h=Math.sqrt(Math.max(0, L1*L1 - a*a));
     var px=-uy*sideSign, py=ux*sideSign; /* the bend: always the arm's own side */
     var ex=sx + ux*a + px*h, ey=sy + uy*a + py*h; /* the elbow */
     var dux=(ex-sx)/L1, duy=(ey-sy)/L1;           /* upper-arm direction */
-    var dfx=(glx-ex)/L2, dfy=(gly-ey)/L2;        /* forearm direction */
-    /* shoulder plate — a compact triangle IN THE ARM'S OWN FRAME,
-       hugging the shoulder joint (a fixed-axis plate poked outside the
-       body outline at guard and read as stray triangles) */
+    var fdx=hx2-ex, fdy=hy2-ey, fl=Math.hypot(fdx,fdy)||1; fdx/=fl; fdy/=fl; /* forearm direction */
+    /* shoulder plate — a compact triangle IN THE ARM'S OWN FRAME */
     L([sx+dux*2.3, sy+duy*2.3, sx-dux*1.9-duy*2.1, sy-duy*1.9+dux*2.1, sx-dux*1.9+duy*2.1, sy-duy*1.9-dux*2.1], true);
-    boneQuad(sx,sy, ex,ey, 1.1, 0.65);           /* upper arm — quadrilateral */
-    /* elbow — a TRIANGLE bridging both bones, apex pointing outward */
-    L([ex-dux*1.2, ey-duy*1.2, ex+px*1.7, ey+py*1.7, ex+dfx*1.2, ey+dfy*1.2], true);
-    boneQuad(ex,ey, glx,gly, 0.6, 0.38);         /* forearm — quadrilateral */
+    boneQuad(sx,sy, ex,ey, 1.5, 0.9);            /* upper arm — thicker quadrilateral */
+    /* elbow — a BIGGER TRIANGLE bridging both bones, apex pointing outward */
+    L([ex-dux*1.3, ey-duy*1.3, ex+px*2.2, ey+py*2.2, ex+fdx*1.3, ey+fdy*1.3], true);
+    boneQuad(ex,ey, hx2,hy2, 0.85, 0.55);        /* forearm — thicker quadrilateral */
   }
-  ctx.lineWidth=0.5;
-  drawArm(-4,-7.5,-1);
-  drawArm(-4, 7.5, 1);
+  /* staggered two-hand grip: the front hand sits ON the grip point, the
+     rear hand 2.0 figure-units BEHIND it along the blade's own line */
+  var swRel=((k.sword-k.face+Math.PI*3)%(Math.PI*2))-Math.PI;
+  var rhx=glx-Math.cos(swRel)*2.0, rhy=gly-Math.sin(swRel)*2.0;
+  ctx.lineWidth=0.6;
+  drawArm(-4,-7.5,-1, rhx,rhy);
+  drawArm(-4, 7.5, 1, glx,gly);
   ctx.restore();
   /* ===== THE SWORD — two long THIN lines from the grip converging to a
      sharp tip (a very thin triangle), 2 short cross-ties near the base
@@ -992,7 +1185,8 @@ function drawKnight(k){
   var ax=hx+px*hw, ay=hy+py*hw, bx=hx-px*hw, by=hy-py*hw;
   ctx.save();
   if(k.fallT>0) ctx.globalAlpha=Math.max(0.08,1-k.fallT*0.95);
-  ctx.strokeStyle=k.line; ctx.shadowBlur=0; ctx.lineCap='round';
+  if(k.swPhase!=='swing' && timeNow<k.cdReadyAt) ctx.globalAlpha*=0.32; /* blade DIM while the heavy swing recovers */
+  ctx.strokeStyle=lineCol; ctx.shadowBlur=0; ctx.lineCap='round';
   ctx.lineWidth=1.9;
   line(ax,ay,tx,ty); /* rail A */
   line(bx,by,tx,ty); /* rail B */
@@ -1005,11 +1199,66 @@ function drawKnight(k){
   if(k.stance){ ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(tx,ty,2.4,0,Math.PI*2); ctx.fill(); }
   ctx.restore();
 }
+function drawCritters(){
+  for(var i=0;i<critters.length;i++){ var c=critters[i];
+    ctx.save(); ctx.shadowBlur=0; ctx.lineCap='round'; ctx.lineJoin='round';
+    if(c.type==='snake'){
+      /* tapering sine-trail body: per-segment strokes, thick at the head,
+         thinning to the tail, following the slither history */
+      var pts=c.hist;
+      for(var j=0;j<pts.length-1;j++){
+        ctx.strokeStyle='#37e05a';
+        ctx.lineWidth=0.8+3.0*(1-j/Math.max(1,pts.length-1));
+        line(pts[j].x,pts[j].y,pts[j+1].x,pts[j+1].y);
+      }
+      /* head — a small triangle on the travel line */
+      var a=c.dir||0;
+      ctx.fillStyle='#37e05a';
+      ctx.beginPath();
+      ctx.moveTo(c.x+Math.cos(a)*8, c.y+Math.sin(a)*8);
+      ctx.lineTo(c.x+Math.cos(a+2.5)*6, c.y+Math.sin(a+2.5)*6);
+      ctx.lineTo(c.x+Math.cos(a-2.5)*6, c.y+Math.sin(a-2.5)*6);
+      ctx.closePath(); ctx.fill();
+      /* tongue flick */
+      if(Math.sin(c.ph*2)>0.55){ ctx.strokeStyle='#ff5a7a'; ctx.lineWidth=1.4;
+        line(c.x+Math.cos(a)*8, c.y+Math.sin(a)*8, c.x+Math.cos(a)*14, c.y+Math.sin(a)*14); }
+    }else{ /* rat — grey-brown oval, tail curve, ear bumps, scurry ticks */
+      ctx.translate(c.x,c.y); ctx.rotate(c.dir||0);
+      ctx.strokeStyle='#b09a7a';
+      ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(-9,0);
+      ctx.quadraticCurveTo(-16, Math.sin(c.ph)*4, -22, Math.cos(c.ph*0.7)*5); ctx.stroke();
+      ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(0,0,10,6,0,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6,-4); ctx.lineTo(13,0); ctx.lineTo(6,4); ctx.stroke();
+      ctx.beginPath(); ctx.arc(4,-5,2.2,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(4,5,2.2,0,Math.PI*2); ctx.stroke();
+      ctx.lineWidth=1.3; var lp=Math.sin(c.ph)*3;
+      line(-4,-6,-4-lp,-9); line(3,-6,3+lp,-9); line(-4,6,-4+lp,9); line(3,6,3-lp,9);
+    }
+    ctx.restore();
+  }
+}
+function drawPickup(){
+  if(!pickup) return;
+  var pu=1+Math.sin(pickup.ph*5)*0.10;
+  ctx.save(); ctx.translate(pickup.x,pickup.y); ctx.scale(pu,pu);
+  ctx.shadowColor='#7dff8a'; ctx.shadowBlur=16;
+  ctx.strokeStyle='#d8ffb0'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.ellipse(0,0,17,11,0,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=3;
+  line(-7,0,7,0); line(0,-7,0,7); /* the white cross */
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#baffc4'; ctx.font='700 11px ui-monospace,monospace';
+  ctx.textAlign='center'; ctx.fillText('+25%', 0, -20);
+  ctx.restore();
+}
 function draw(){
   ctx.clearRect(0,0,VW,VH);
   ctx.fillStyle='#000'; ctx.fillRect(0,0,VW,VH);
   drawArena(); drawPits();
   drawKnight(K[0]); drawKnight(K[1]);
+  drawCritters(); drawPickup(); syncCd();
   /* sparks */
   for(var i=0;i<sparks.length;i++){ var sp=sparks[i];
     if(sp.dot){ /* clash dots: tiny specks that hang and fade, as in the original */
@@ -1136,7 +1385,16 @@ window.__pb={ K:K, PITS:PITS, state:function(){return state;}, score:function(){
   setMode:function(m){ gameMode=(m==='2P')?'2P':'1P';
     document.querySelectorAll('#modeSeg button').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-m')===gameMode); });
     applyLang(); },
-  setTarget:function(t){ target=t; } };
+  setTarget:function(t){ target=t; },
+  critters:function(){ return critters; },
+  pickup:function(){ return pickup; },
+  hp:function(){ return [K[0].hp, K[1].hp]; },
+  swing:function(i){ var k=K[i||0]; return { phase:k.swPhase, t:k.swT, start:k.swStart, cdReadyAt:k.cdReadyAt, now:timeNow, stance:k.stance, sword:k.sword, face:k.face, hurtT:k.hurtT, hitDone:k.hitDone }; },
+  chestTris:chestTrisWorld, sweptBladeHit:sweptBladeHit, applyHit:applyHit,
+  spawnCritter:spawnCritter, spawnPickup:spawnPickup, syncHp:syncHp,
+  setHp:function(i,v){ K[i].hp=v; syncHp(); },
+  setPos:function(i,x,y){ K[i].x=x; K[i].y=y; },
+  timeNow:function(){ return timeNow; } };
 </script>
 </body>
 </html>
