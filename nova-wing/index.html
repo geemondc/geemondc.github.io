@@ -363,6 +363,7 @@ function newRun(){
     turboBtnHeld:false, turbo:0, turboFuel:100,
     player:{ pos:v3(0,0,0), yaw:0, pitch:0, roll:0, speed:16, boost:0 },
     steer:{ x:0, y:0, active:false },
+    aim:{ x:0, y:0, on:false, touch:false, recenter:false },
     enemies:[], bolts:[], ebolts:[], frags:[], bursts:[], sparks:[], popups:[], torps:[],
     torpAmmo:3, fireHeld:false, fireCd:0,
     lockTarget:null, lockTime:0, lockBeepCd:0,
@@ -395,8 +396,8 @@ var STR = {
     startLine:"All yours, Nova Wing. Light 'em up.",
     reachedRound:function(w,k){ return "YOU REACHED ROUND " + w + " — " + k + " KILLS"; },
     bestSession:"BEST THIS SESSION: ",
-    how1:'<span class="k">STEER</span> — touch and hold anywhere on the sky: your ship turns toward your thumb — above center climbs, below dives, sides bank. The whole screen is your windshield now. Hold the turn and she accelerates.',
-    how2:'<span class="k">FIRE + TURBO</span> — hold the FIRE button with your right thumb (or mouse / spacebar) and let them have it. Hold TURBO (or Shift) to surge — zoom right at a pack, or blow straight through it and leave it behind. Zooming is half the fun.',
+    how1:'<span class="k">POINT TO AIM</span> — your sight sits right under your mouse or fingertip. Point at a fighter and you are aiming at it — your ship turns toward where you point, and the sight never leaves your pointer. Keyboard pilots: arrow keys / WASD steer the compass way, and the sight rides the nose.',
+    how2:'<span class="k">FIRE + TURBO</span> — hold the mouse button down, keep your finger on the sky, or hold the FIRE button (or spacebar): whatever you are pointing at gets shot. Hold TURBO (or Shift) to surge — zoom right at a pack, or blow straight through it and leave it behind. Zooming is half the fun.',
     how3:'<span class="k">TORPEDO</span> — hold your crosshair on a fighter until it locks, then hit TORP. One shot, one kill.',
     how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through, and it is a miniature of your windshield: a dot sits exactly where the fighter is from your nose. Below center means BELOW you — pitch down and it is right there in the glass. Any solid dot inside the SECOND ring is already on your screen — look for its green glow. Fighters still outside your view sit hollow on the rim, and bright arrows at the screen edges point the way to them.',
     how5:'<span class="k">THE LOOP</span> — shoot down 10 fighters to clear the round. Round 1 is gentle: slow fighters, one hit kills them, and each fires a single slow shot you can watch all the way in. Every round they come quicker and fire more, faster shots. Clear every 3rd round to earn an EXTRA SHIP. Enemy fire eats shield, then hull — lose your hull, lose a ship. Out of ships, run over.',
@@ -416,8 +417,8 @@ var STR = {
     startLine:"Todo tuyo, Nova Wing. ¡A por ellos!",
     reachedRound:function(w,k){ return "LLEGASTE A LA RONDA " + w + " — " + k + " BAJAS"; },
     bestSession:"RÉCORD DE LA SESIÓN: ",
-    how1:'<span class="k">PILOTAR</span> — toca y mantén en cualquier parte del cielo: tu nave gira hacia tu pulgar — arriba sube, abajo baja, a los lados se inclina. Ahora toda la pantalla es tu cabina. Mantén el giro y acelera.',
-    how2:'<span class="k">FUEGO + TURBO</span> — mantén el botón FUEGO con el pulgar derecho (o el ratón / barra espaciadora) y dales. Mantén TURBO (o Mayús) para acelerar: lánzate hacia un grupo o atraviésalo y déjalo atrás. Acelerar es la mitad de la diversión.',
+    how1:'<span class="k">APUNTA AL TOCAR</span> — la mira está justo bajo tu ratón o tu dedo. Apunta a un caza y ya lo estás apuntando: tu nave gira hacia donde apuntas y la mira nunca deja tu puntero. Con teclado: las flechas / WASD pilotan como brújula y la mira va en el morro.',
+    how2:'<span class="k">FUEGO + TURBO</span> — mantén el botón del ratón, el dedo en el cielo o el botón FUEGO (o la barra espaciadora): lo que apuntas recibe los disparos. Mantén TURBO (o Mayús) para acelerar: lánzate hacia un grupo o atraviésalo y déjalo atrás. Acelerar es la mitad de la diversión.',
     how3:'<span class="k">TORPEDO</span> — mantén la mira sobre un caza hasta fijarlo y pulsa TORP. Un disparo, una baja.',
     how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente, y es una miniatura de tu cabina: cada punto está exactamente donde está el caza desde tu morro. Debajo del centro significa DEBAJO de ti: inclínate hacia abajo y estará en el cristal. Todo punto sólido dentro del SEGUNDO anillo ya está en tu pantalla: busca su brillo verde. Los cazas aún fuera de tu vista quedan huecos en el borde, y flechas brillantes en los bordes de la pantalla indican el camino hacia ellos.',
     how5:'<span class="k">EL CICLO</span> — derriba 10 cazas para superar la ronda. La ronda 1 es suave: cazas lentos, caen de un solo tiro, y cada uno dispara un solo tiro lento que ves venir desde lejos. Cada ronda vienen más rápido y disparan más, con tiros más veloces. Supera cada 3ª ronda y ganas una NAVE EXTRA. El fuego enemigo consume el escudo y luego el casco: perder el casco es perder una nave. Sin naves, se acabó.',
@@ -455,6 +456,18 @@ function roundMaxShots(r, key){
   return key==="ace" ? Math.ceil(s*1.5) : s;
 }
 function roundFireGap(r){ return clamp(2.9 - (r-1)*0.22, 1.05, 2.9); }       /* seconds between a fighter's shots */
+
+/* Gary: enemies move 15% slower — EVERY enemy movement runs through
+   this one factor: spawn speed (base and the per-round growth curve
+   together), turn rate, and weave rate. Player speed, TURBO and
+   fireball/bolt speeds are NOT touched. */
+var ENEMY_SLOW = 0.85;
+/* engagement ramp: fighters DWELL in the windshield as sustained,
+   shootable targets — a long, steady hold early that tightens every
+   round as the weave grows and the lines get evasive */
+function roundDwell(r){ return clamp(7.6 - (r-1)*0.45, 3.0, 7.6); }          /* seconds holding station in view */
+function roundWeaveAmp(r){ return clamp(2.2 + (r-1)*0.85, 2.2, 10.5); }       /* station drift, world units */
+function roundWeaveFreq(r){ return clamp(0.55 + (r-1)*0.07, 0.55, 1.25); }   /* weave pace */
 
 function startRound(n){
   G.round = n;
@@ -501,7 +514,7 @@ function roundComposition(){
    Nobody spawns in a blind zone. */
 function spawnPosAhead(dist){
   var basis = camBasis();
-  var bearing = rand(-0.42, 0.42), elev = rand(-0.30, 0.26);
+  var bearing = rand(-0.42, 0.42), elev = rand(-0.24, 0.28);
   if(Math.random() < 0.18){ bearing = rand(-0.8, 0.8); elev = rand(-0.5, 0.42); }  /* occasional wide entry, still near the cone */
   var dir = vnorm(vadd(
     vadd(vscale(basis.F, Math.cos(bearing)*Math.cos(elev)), vscale(basis.R, Math.sin(bearing)*Math.cos(elev))),
@@ -519,8 +532,13 @@ function spawnEnemy(){
     key:key, model:m, pos:pos, size: key==="ace" ? 1.9 : 1.75,
     heading: vnorm(vsub(G.player.pos, pos)),
     roll:0, hp: (G.round===1 && key==="fighter") ? 1 : m.hp,
-    speed: m.speed * rand(0.9,1.12) * spdF,
-    state:"approach", stateT: rand(3,5), fireCd: rand(1.5,3.0),
+    speed: m.speed * rand(0.9,1.12) * spdF * ENEMY_SLOW,
+    /* the station this fighter will hold in the nose frame: combat
+       distance, mid-field around the view center — never the bottom
+       band over the scope and gauges */
+    anchorB: rand(-0.34, 0.34), anchorE: rand(-0.08, 0.24), anchorD: rand(48, 68),
+    phase: rand(0, Math.PI*2),
+    state:"approach", stateT: rand(4,6), fireCd: rand(1.5,3.0),
     shots:0, maxShots: roundMaxShots(G.round, key),
     wob: rand(0, Math.PI*2), flash:0, strafeDir: Math.random()<0.5?-1:1
   });
@@ -628,19 +646,29 @@ function killEnemy(e, byTorp){
 }
 
 /* ---------------- combat ---------------- */
+/* POINT-AT-IT AIM: the gunsight lives under the pointer — the mouse
+   cursor, or the fingertip while it is down. Until a pointer speaks,
+   the sight is the screen center (keyboard pilots aim with the nose,
+   exactly as before). Hitscan, lock-on and the laser beams all use
+   this one point, so what you point at is what you shoot at. */
+function aimX(){ return (G && G.aim.on) ? G.aim.x : VCX; }
+function aimY(){ return (G && G.aim.on) ? G.aim.y : VCY; }
 function playerFire(){
   var basis = camBasis();
-  /* laser beams from lower corners to crosshair */
+  /* laser beams from lower corners to the sight */
   G.bolts.push({ ttl:0.07, side:-1 });
   G.bolts.push({ ttl:0.07, side: 1 });
   AudioSys.laser();
-  /* hitscan: enemy whose projection sits inside the crosshair ring */
+  /* hitscan: enemy whose projection sits inside the sight ring. The
+     hit window is generous early and tightens a little each round */
+  var ax = aimX(), ay = aimY();
+  var hitGrace = clamp(1.22 - 0.025*(G.round-1), 0.98, 1.22);
   var best=null, bestD=1e9;
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i]; if(e.dead) continue;
     var pr = project(e.pos, basis); if(!pr) continue;
-    var d = Math.hypot(pr.x-VCX, pr.y-VCY);
-    var hitR = clamp(pr.scale * e.model.radius * (e.size||1) * 0.95, 7, 110);
+    var d = Math.hypot(pr.x-ax, pr.y-ay);
+    var hitR = clamp(pr.scale * e.model.radius * (e.size||1) * 0.95 * hitGrace, 8, 130);
     if(d < hitR && d < bestD){ bestD = d; best = e; }
   }
   if(best){
@@ -700,6 +728,15 @@ function hurtPlayer(dmg){
 function update(dt){
   var p = G.player;
   G.t += dt;
+
+  /* a lifted fingertip lets the sight glide back to the nose; a mouse
+     leaves the sight parked under the cursor, where it belongs */
+  if(G.aim.on && G.aim.recenter){
+    var ease = 1 - Math.pow(0.001, dt);
+    G.aim.x = lerp(G.aim.x, VCX, ease);
+    G.aim.y = lerp(G.aim.y, VCY, ease);
+    if(Math.hypot(G.aim.x-VCX, G.aim.y-VCY) < 3){ G.aim.on = false; G.aim.recenter = false; }
+  }
 
   /* --- compass steering: offset from center steers, distance = strength,
          holding off-center builds boost (turn + speed) --- */
@@ -761,29 +798,50 @@ function update(dt){
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i]; if(e.dead) continue;
     e.flash = Math.max(0, e.flash - dt);
-    e.wob += dt*2.2;
+    e.wob += dt*2.2*ENEMY_SLOW;
     var toPlayer = vsub(p.pos, e.pos);
     var dist = vlen(toPlayer);
-    var desired;
     e.stateT -= dt;
+    /* the fighter's station: a point in the nose frame at combat
+       distance, mid-field around the view center, drifting on a weave
+       whose size and pace grow with the round — round 1 flies nearly
+       straight, readable lines; later rounds snake */
+    var weaveA = roundWeaveAmp(G.round), weaveF = roundWeaveFreq(G.round) * ENEMY_SLOW;
+    var aOffX = Math.tan(e.anchorB)*e.anchorD + Math.sin(G.t*weaveF + e.phase)*weaveA;
+    var aOffY = Math.tan(e.anchorE)*e.anchorD + Math.cos(G.t*weaveF*0.83 + e.phase*1.7)*weaveA*0.55;
+    var anchorPt = vadd(p.pos, vadd(vscale(basis.F, e.anchorD), vadd(vscale(basis.R, aOffX), vscale(basis.U, aOffY))));
+    var pVel = vscale(basis.F, p.speed);
+    var vel, desired;
     if(e.state==="approach"){
-      /* dive at the player and HOLD the dive until the pass actually happens —
-         no veering off early, so the ship grows big in the player's face */
-      var off = v3(Math.sin(e.wob)*4.5*e.strafeDir, Math.cos(e.wob*0.8)*3, 0);
-      desired = vnorm(vadd(toPlayer, off));
-      if(dist < 16){ e.state="pass"; e.stateT = rand(0.8,1.3); }
-    } else if(e.state==="pass"){
-      desired = vnorm(vadd(e.heading, v3(e.strafeDir*0.9, 0.35*Math.sin(e.wob), 0)));
-      if(e.stateT<=0){ e.state="return"; e.stateT = rand(1.4,2.2); }
-    } else { /* return: swing to a point AHEAD of the player, then dive back in
-                through the front of the view — never loiter behind */
-      var aimPt = vadd(p.pos, vscale(basis.F, 55));
-      var toAim = vsub(aimPt, e.pos);
-      desired = vnorm(vadd(vscale(toAim, 0.9), v3(e.strafeDir*0.5, 0.2*Math.sin(e.wob), 0)));
-      if(e.stateT<=0 || vlen(toAim) < 30){ e.state="approach"; e.stateT = rand(3,5); }
+      /* close on the station riding the player's own velocity, so the
+         fighter grows readable in the glass instead of flashing past */
+      var toA = vsub(anchorPt, e.pos);
+      vel = vadd(pVel, vscale(vnorm(toA), e.speed*1.15));
+      desired = vnorm(vel);
+      if(vlen(toA) < 7 || e.stateT<=0){ e.state="dwell"; e.stateT = roundDwell(G.round)*rand(0.85,1.2); }
+    } else if(e.state==="dwell"){
+      /* hold station in the windshield, nose on the player, and shoot —
+         a sustained target you can track and finish */
+      var toS = vsub(anchorPt, e.pos);
+      vel = vadd(pVel, vscale(vnorm(toS), clamp(vlen(toS)*1.5, 0, e.speed*1.3)));
+      desired = vnorm(toPlayer);
+      if(e.stateT<=0){ e.state="break"; e.stateT = rand(1.1,1.9); }
+    } else { /* break: peel off wide and behind, then re-approach fresh */
+      var bPt = vadd(p.pos, vadd(vscale(basis.R, e.strafeDir*130), vadd(vscale(basis.U, 16), vscale(basis.F, -55))));
+      var toB = vsub(bPt, e.pos);
+      vel = vadd(pVel, vscale(vnorm(toB), e.speed*1.45));
+      desired = vnorm(vel);
+      if(e.stateT<=0){
+        e.anchorB = rand(-0.34,0.34); e.anchorE = rand(-0.08,0.24); e.anchorD = rand(48,68);
+        e.state = "approach"; e.stateT = rand(4,6);
+      }
     }
-    /* turn toward desired with a capped rate -> real 3D maneuvering */
-    var maxTurn = (e.key==="ace" ? 1.95 : 1.5) * dt;
+    /* combat-distance floor: nobody parks on the windshield — inside
+       26 units a fighter is shoved back out, so it can never fill the
+       glass or sit on top of the scope and gauges */
+    if(dist < 26) vel = vadd(pVel, vscale(vnorm(vsub(e.pos, p.pos)), e.speed*1.5));
+    /* turn the nose toward desired with a capped rate -> real 3D maneuvering */
+    var maxTurn = (e.key==="ace" ? 1.95 : 1.5) * ENEMY_SLOW * dt;
     var cur = e.heading;
     var cross = vcross(cur, desired);
     var sinA = vlen(cross), cosA = clamp(vdot(cur, desired), -1, 1);
@@ -799,7 +857,12 @@ function update(dt){
     } else {
       e.roll = lerp(e.roll, 0, 0.08);
     }
-    e.pos = vadd(e.pos, vscale(e.heading, e.speed*dt));
+    e.pos = vadd(e.pos, vscale(vel, dt));
+    /* hard floor: never closer than 20 units, whatever the geometry */
+    if(vlen(vsub(e.pos, p.pos)) < 20){
+      var awayDir = vnorm(vsub(e.pos, p.pos));
+      e.pos = vadd(p.pos, vscale(awayDir, 20));
+    }
 
     /* enemy fire: only when the player is in their forward cone AND the
        fighter is in the player's forward hemisphere — no invisible back-shots.
@@ -842,12 +905,13 @@ function update(dt){
   for(var l=0;l<G.bolts.length;l++) G.bolts[l].ttl -= dt;
   G.bolts = G.bolts.filter(function(b){ return b.ttl>0; });
 
-  /* --- torpedo lock --- */
+  /* --- torpedo lock: hold the SIGHT on a fighter to lock it --- */
   var lockCand = null, lockD = 1e9;
+  var lax = aimX(), lay = aimY();
   for(var k=0;k<G.enemies.length;k++){
     var en = G.enemies[k];
     var pr2 = project(en.pos, basis); if(!pr2) continue;
-    var dd = Math.hypot(pr2.x-VCX, pr2.y-VCY);
+    var dd = Math.hypot(pr2.x-lax, pr2.y-lay);
     var lr = clamp(pr2.scale*en.model.radius*(en.size||1)*1.25, 12, 130);
     if(dd < lr && dd < lockD){ lockD = dd; lockCand = en; }
   }
@@ -1154,8 +1218,9 @@ function drawHUD(basis){
   ctx.fillText(S().shield + " " + Math.ceil(G.shield), W/2, gy+11);
   /* (HULL now lives as a slim floating bar beside the SENSOR scope) */
 
-  /* crosshair */
-  var cxp = VCX, cyp = VCY;
+  /* the gunsight: sits under the pointer (mouse cursor or fingertip);
+     screen center only until a pointer speaks */
+  var cxp = aimX(), cyp = aimY();
   var locked = G.lockTarget && G.lockTime>=0.7;
   var chColor = locked ? "#ffb02e" : (G.lockTarget ? "#ff8296" : "#4da6ff");
   ctx.strokeStyle = chColor; ctx.lineWidth = 1.8;
@@ -1500,9 +1565,9 @@ function render(){
     ctx.strokeStyle = "#2f7bff"; ctx.lineWidth = 3;
     ctx.shadowBlur = 14; ctx.shadowColor = "#2f7bff";
     ctx.globalAlpha = clamp(bolt.ttl/0.07, 0, 1);
-    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(VCX, VCY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(aimX(), aimY()); ctx.stroke();
     ctx.strokeStyle = "#d8ecff"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(VCX, VCY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(aimX(), aimY()); ctx.stroke();
     ctx.globalAlpha = 1; ctx.shadowBlur = 0;
   }
 
@@ -1581,7 +1646,11 @@ function startGame(){
   comms("BRAIDS", S().startLine, "#7dffb0");
 }
 
-/* ---------------- input: compass steering ---------------- */
+/* ---------------- input: point-at-it aim + compass steering ----------------
+   The pointer IS the aim: the sight sits under the mouse cursor or the
+   fingertip, the ship turns toward where you point, and while the
+   button / finger is down the lasers fire at the sight. Point at a
+   fighter and you are shooting at that fighter. */
 function setSteerFromPoint(x, y){
   /* full-screen compass: offset from screen center steers — a thumb
      low on the screen dives toward fighters coming in from below */
@@ -1589,20 +1658,31 @@ function setSteerFromPoint(x, y){
   G.steer.y = clamp((y - VCY) / (H*0.36), -1.2, 1.2);
   G.steer.active = true;
 }
+function setAimFromPoint(x, y, type){
+  G.aim.x = x; G.aim.y = y; G.aim.on = true;
+  G.aim.touch = (type !== "mouse");
+  G.aim.recenter = false;
+}
 cv.addEventListener("pointerdown", function(ev){
   AudioSys.ensure();
   if(!G) return;
   cv.setPointerCapture(ev.pointerId);
   setSteerFromPoint(ev.clientX, ev.clientY);
-  if(ev.pointerType==="mouse") G.fireHeld = true;
+  setAimFromPoint(ev.clientX, ev.clientY, ev.pointerType);
+  G.fireHeld = true;   /* mouse click or touch: pointing fires */
 });
 cv.addEventListener("pointermove", function(ev){
   if(!G) return;
-  if(ev.pointerType==="mouse" || G.steer.active) setSteerFromPoint(ev.clientX, ev.clientY);
+  if(ev.pointerType==="mouse") setAimFromPoint(ev.clientX, ev.clientY, "mouse");
+  if(ev.pointerType==="mouse" || G.steer.active){
+    setSteerFromPoint(ev.clientX, ev.clientY);
+    setAimFromPoint(ev.clientX, ev.clientY, ev.pointerType);
+  }
 });
 function endPointer(ev){
   if(!G) return;
-  if(ev.pointerType==="mouse"){ G.fireHeld = fireBtn.classList.contains("held"); }
+  G.fireHeld = fireBtn.classList.contains("held");
+  if(G.aim.touch) G.aim.recenter = true;
   G.steer.active = false; G.steer.x = 0; G.steer.y = 0;
 }
 cv.addEventListener("pointerup", endPointer);
