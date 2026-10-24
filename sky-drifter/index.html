@@ -111,6 +111,11 @@
       .ymItem .ymX { opacity: .75; font-weight: 900; padding: 0 2px; }
       .ymEmpty { font-size: 11.5px; opacity: .5; margin: 0; }
       #ymHint { font-size: 10.5px; line-height: 1.45; opacity: .55; margin: 0; }
+      /* SKYWRITING — the little plane that writes in the sky */
+      #swInput { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18);
+        border-radius: 10px; color: #fff; font-family: inherit; font-size: 12.5px; padding: 8px 9px; outline: none; width: 100%; box-sizing: border-box; }
+      #swInput::placeholder { color: rgba(255,255,255,.45); }
+      #swHint { font-size: 10.5px; line-height: 1.45; opacity: .55; margin: 0; }
       /* the music warning — shown when a pasted song cannot play in the sky */
       #musicToast { position: fixed; left: 50%; bottom: 108px; transform: translate(-50%, 16px); z-index: 80;
         max-width: min(92vw, 440px); background: rgba(20,16,28,.93); border: 1px solid rgba(255,176,58,.65);
@@ -445,6 +450,16 @@
             <div id="ymQueue"></div>
             <p id="ymHint">Your songs, your sky — tap one to fly to it. Some videos won't play inside other pages (their owners block it): if that happens, the sky will tell you and skip to the next.</p>
           </div>
+          <div class="grp" id="skywritingGrp"><p class="glabel">✈️ SKYWRITING</p>
+            <div class="chips" id="swChips">
+              <button class="chip on" data-sw="off">Off</button>
+              <button class="chip" data-sw="affirm">✨ Affirmations</button>
+              <button class="chip" data-sw="mine">✏️ My words</button>
+              <button class="chip" data-sw="shapes">💛 Shapes</button>
+            </div>
+            <input id="swInput" type="text" maxlength="60" autocomplete="off" placeholder="Your words for the sky…">
+            <p id="swHint">About once a minute, a little plane drifts by and writes in the sky — softly, then it's gone. Affirmations, your own words, or just hearts and smileys.</p>
+          </div>
         </div>
         <button id="soundLine">Sound: On</button>
     </div>
@@ -494,6 +509,7 @@
           <li><b>🖱 Mouse:</b> the screen is a compass around its center — <b>point where you want to go</b>, no click needed. Above center climbs, below dives, the sides turn, the corners blend both — and the further from center you point, the stronger it answers. Dead center flies straight and level. <b>Hold the left button</b> for gas — and keep holding it pointed somewhere and the flight keeps <b>accelerating</b> that way: hold high underwater and you'll pitch up toward the light, burst out of the surface, and keep climbing through the air into space, one unbroken push. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
           <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination — pick one and it STAYS yours as long as you want, or leave the worlds on 🔀 Auto and they rotate every 15 seconds while you steer — plus the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours. YOUR MUSIC at the very bottom takes your own YouTube links — paste one, tap it, and fly to your own soundtrack.</li>
+          <li><b>✈️ Skywriting</b> (also in the paint box): about once a minute a little plane drifts by and writes something kind in smoke — affirmations, your own words, or just hearts and smileys. Soft and brief, like a good thought passing. Off whenever you want the sky to yourself.</li>
           <li><b>A world you pick is yours</b> — climb, dive, ride the surface underwater, it won't change on you until you pick another. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
           <li><b>Low is its own place:</b> descend with speed and you settle into a skim — flying fast just above the water, rooftops, dunes and Broadwalk. Touchdown is slow only: sink low with the gas off, let your speed settle (or hold <b>↓</b>) — LAND is waiting in the paint box (☰ CONTROLS). <b>↑</b> takes off again.</li>
           <li>Drag with a <b>second finger</b> (or hold <b>L</b>) to look around — even back over your shoulder at your own trails. There's no score and no way to lose. Just fly.</li>
@@ -2559,6 +2575,8 @@ function render(){
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].mid,RP,hy,H*0.045,0.22,mixCa(RP.mid,RP.hazeC,0.3,S.biomeBlend));
 
+  drawSkywriting();   /* the little plane and its smoke, hanging in the far sky */
+
   /* ---- weather front wall on the horizon ---- */
   if(S.weatherMode==='auto'&&S.wxSegT<7&&S.mode==='fly'){
     const wf=1-S.wxSegT/7, isRain=S.wxNext==='rain', isSnow=S.wxNext==='snow';
@@ -3167,6 +3185,8 @@ function update(dt){
     if(S.ptourT>=dur){ S.ptourT=0; startChange(nextBiome(),true); }
   }
 
+  swTick(dt);   /* skywriting: schedule and advance the little plane's passes */
+
   /* ---- weather fronts ---- */
   if(S.weatherMode==='auto'&&flying){
     S.wxSegT-=dt*(0.65+S.effSpeed*0.65);
@@ -3752,6 +3772,147 @@ function ymAddFromInput(){
 }
 $('ymAdd').addEventListener('click',()=>{ wake(); ymAddFromInput(); });
 $('ymInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); ymAddFromInput(); } });
+
+/* ================= SKYWRITING (Gary, Oct 24) =================
+   About once a minute a little plane drifts across the sky and writes —
+   softly, in smoke that lingers a few breaths and dissolves. A positive
+   suggestion passing almost without being noticed: affirmations from
+   Gary's chiropractic-school walls, words of your own, or nothing but
+   hearts and smileys. Off by default; the toggle lives in CONTROLS. */
+const SW_POOL=[
+  "Confidence is a placebo",
+  "Have something to look forward to — so you don't need an alarm clock",
+  "Don't be afraid to fail",
+  "Do not do to others what you don't want done to you",
+  "A calm mind, a fit body, a house full of love — can't be bought, must be earned",
+  "The opposite of success is not failure — it's boredom",
+  "1% better every day",
+  "The body achieves what the mind believes",
+  "Slow down and breathe",
+  "Gratitude turns what you have into enough",
+  "Do good, and feel good",
+];
+const SW_SHAPES=['heart','smiley','star','sun'];
+const SW={ mode:'off', custom:'', nextAt:15, pass:null, lastText:'', dir:1 };
+try{ const sv=JSON.parse(localStorage.getItem('sdSkywriteV1')||'null');
+  if(sv){ if(sv.mode)SW.mode=sv.mode; if(typeof sv.custom==='string')SW.custom=sv.custom; } }catch(e){}
+function swSave(){ try{ localStorage.setItem('sdSkywriteV1',JSON.stringify({mode:SW.mode,custom:SW.custom})); }catch(e){} }
+if($('swInput'))$('swInput').value=SW.custom;
+syncChips('swChips','sw',SW.mode);
+wireChips('swChips',ch=>{ SW.mode=ch.dataset.sw; swSave();
+  if(SW.mode!=='off'&&S.mode==='fly')SW.nextAt=Math.min(SW.nextAt,S.flyT+6); });
+if($('swInput'))$('swInput').addEventListener('input',e=>{ SW.custom=e.target.value; swSave(); });
+
+const swCv=document.createElement('canvas'); const swCx=swCv.getContext('2d');
+function swRenderText(text){
+  let fs=96, lines=[text];
+  swCx.font='800 '+fs+'px "Trebuchet MS","Segoe UI",system-ui,sans-serif';
+  if(swCx.measureText(text).width>1320&&text.indexOf(' ')>=0){
+    const words=text.split(' '); let best=1e9, bi=1;
+    for(let i=1;i<words.length;i++){ const a=words.slice(0,i).join(' '), b=words.slice(i).join(' ');
+      const d=Math.abs(swCx.measureText(a).width-swCx.measureText(b).width); if(d<best){ best=d; bi=i; } }
+    lines=[words.slice(0,bi).join(' '), words.slice(bi).join(' ')];
+  }
+  let mw=0; for(const L of lines)mw=Math.max(mw,swCx.measureText(L).width);
+  if(mw>1360){ fs=Math.floor(fs*1360/mw); swCx.font='800 '+fs+'px "Trebuchet MS","Segoe UI",system-ui,sans-serif';
+    mw=0; for(const L of lines)mw=Math.max(mw,swCx.measureText(L).width); }
+  const lh=fs*1.22, pad=fs*0.55;
+  swCv.width=Math.ceil(mw+pad*2); swCv.height=Math.ceil(lh*lines.length+pad*1.4);
+  const c=swCx; c.font='800 '+fs+'px "Trebuchet MS","Segoe UI",system-ui,sans-serif';
+  c.textAlign='center'; c.textBaseline='middle';
+  c.shadowColor='rgba(255,255,255,0.95)'; c.shadowBlur=fs*0.16;
+  c.fillStyle='#ffffff';
+  lines.forEach((L,i)=>{ c.fillText(L,swCv.width/2,pad*0.7+lh*(i+0.5)); c.fillText(L,swCv.width/2,pad*0.7+lh*(i+0.5)); });
+  return { w:swCv.width, h:swCv.height };
+}
+function swRenderShape(kind){
+  const S2=440; swCv.width=S2; swCv.height=S2; const c=swCx;
+  c.clearRect(0,0,S2,S2); c.strokeStyle='#ffffff'; c.fillStyle='#ffffff';
+  c.shadowColor='rgba(255,255,255,0.95)'; c.shadowBlur=16;
+  c.lineWidth=26; c.lineCap='round'; c.lineJoin='round';
+  const draw=()=>{ if(kind==='heart'){ c.beginPath();
+      c.moveTo(S2/2,S2*0.86);
+      c.bezierCurveTo(-S2*0.08,S2*0.42,S2*0.14,S2*0.02,S2/2,S2*0.30);
+      c.bezierCurveTo(S2*0.86,S2*0.02,S2*1.08,S2*0.42,S2/2,S2*0.86); c.fill(); }
+    else if(kind==='smiley'){ c.beginPath(); c.arc(S2/2,S2/2,S2*0.36,0,TAU); c.stroke();
+      c.beginPath(); c.arc(S2*0.385,S2*0.42,13,0,TAU); c.fill();
+      c.beginPath(); c.arc(S2*0.615,S2*0.42,13,0,TAU); c.fill();
+      c.beginPath(); c.arc(S2/2,S2*0.52,S2*0.20,Math.PI*0.15,Math.PI*0.85); c.stroke(); }
+    else if(kind==='star'){ c.beginPath();
+      for(let i=0;i<5;i++){ const a=-Math.PI/2+i*TAU/5, a2=a+TAU/10;
+        c.lineTo(S2/2+Math.cos(a)*S2*0.38,S2/2+Math.sin(a)*S2*0.38);
+        c.lineTo(S2/2+Math.cos(a2)*S2*0.16,S2/2+Math.sin(a2)*S2*0.16); }
+      c.closePath(); c.fill(); }
+    else { c.beginPath(); c.arc(S2/2,S2/2,S2*0.17,0,TAU); c.fill();
+      for(let i=0;i<8;i++){ const a=i*TAU/8;
+        c.beginPath(); c.moveTo(S2/2+Math.cos(a)*S2*0.24,S2/2+Math.sin(a)*S2*0.24);
+        c.lineTo(S2/2+Math.cos(a)*S2*0.36,S2/2+Math.sin(a)*S2*0.36); c.stroke(); } } };
+  draw(); draw();
+  return { w:S2, h:S2 };
+}
+function swStart(){
+  let kind=null, dims=null;
+  if(SW.mode==='affirm'){ let pool=SW_POOL.filter(x=>x!==SW.lastText); if(!pool.length)pool=SW_POOL;
+    const text=pool[Math.floor(Math.random()*pool.length)]; SW.lastText=text; kind='text'; dims=swRenderText(text); }
+  else if(SW.mode==='mine'&&SW.custom.trim()){ kind='text'; dims=swRenderText(SW.custom.trim().slice(0,60)); }
+  else { kind='shape'; const sh=SW_SHAPES[Math.floor(Math.random()*SW_SHAPES.length)]; dims=swRenderShape(sh); }
+  const scale=kind==='text'? Math.min(1,(W*0.86)/dims.w,(H*0.30)/dims.h) : Math.min(1,(H*0.30)/dims.h);
+  const bw=dims.w*scale, bh=dims.h*scale;
+  const writeDur=clamp(bw/(W*0.05),7,24);
+  SW.dir=kind==='text'?1:(Math.random()<0.5?1:-1);
+  const x0=(W-bw)/2;   /* the writing block is centered; only the reveal direction differs */
+  SW.pass={ t:0, phase:'write', writeDur, hold:11, fade:15, bw, bh, x0,
+    y:H*(0.15+Math.random()*0.08)-bh/2, puffs:[] };
+  SW.nextAt=S.flyT+70;
+}
+function swTick(dt){
+  const P=SW.pass;
+  if(P){ P.t+=dt;
+    if(P.phase==='write'){ const px=swPlaneX(); P.puffs.push({x:px,y:P.y+P.bh/2+(Math.random()-0.5)*6,r:5+Math.random()*4,a:0.5,age:0});
+      if(P.t>=P.writeDur){ P.phase='hold'; P.t=0; } }
+    else if(P.phase==='hold'){ if(P.t>=P.hold){ P.phase='fade'; P.t=0; } }
+    else if(P.phase==='fade'){ if(P.t>=P.fade)SW.pass=null; }
+    if(P){ for(const pf of P.puffs)pf.age+=dt; P.puffs=P.puffs.filter(pf=>pf.age<2.4); }
+  }
+  if(SW.nextAt-S.flyT>90)SW.nextAt=S.flyT+20;   /* flyT reset self-heal */
+  if(!SW.pass&&SW.mode!=='off'&&S.mode==='fly'&&S.biome!=='underwater'&&(S.spaceF||0)<0.5&&S.flyT>=SW.nextAt)swStart();
+}
+function swPlaneX(){ const P=SW.pass; if(!P)return -100;
+  const f=clamp(P.t/P.writeDur,0,1);
+  return P.dir>0? P.x0-46+f*(P.bw+92) : P.x0+P.bw+46-f*(P.bw+92); }
+function drawSkywriting(){
+  const P=SW.pass; if(!P)return;
+  const fadeA=P.phase==='fade'? 1-P.t/P.fade : 1;
+  const drift=P.phase==='fade'? P.t*1.1 : 0;
+  const grow=P.phase==='fade'? 1+P.t*0.002 : 1;
+  const y=P.y-drift, bw=P.bw*grow, bh=P.bh*grow, x0=P.x0-(bw-P.bw)/2;
+  /* the smoke puffs at the plane's tail */
+  for(const pf of P.puffs){ const a=pf.a*(1-pf.age/2.4)*fadeA; if(a<=0.01)continue;
+    const r=pf.r+pf.age*13;
+    ctx.save(); ctx.globalAlpha=a*0.5; ctx.drawImage(softBlobW,pf.x-r,P.y+P.bh/2-r,r*2,r*2); ctx.restore(); }
+  /* the writing itself, revealed behind the plane while it writes */
+  ctx.save();
+  ctx.globalAlpha=0.82*fadeA;
+  if(P.phase==='write'){ const px=swPlaneX();
+    ctx.beginPath();
+    if(P.dir>0)ctx.rect(0,0,px+8,H); else ctx.rect(px-8,0,W,H);
+    ctx.clip(); }
+  ctx.drawImage(swCv,x0,y,bw,bh);
+  ctx.restore();
+  /* the little plane */
+  if(P.phase==='write'){ const px=swPlaneX(), py=P.y+P.bh/2+Math.sin(S.flyT*2.2)*2.5;
+    const s=Math.max(15,H*0.021), d=SW.dir;
+    const night=(S.hour>18.5||S.hour<5.5);
+    ctx.save(); ctx.translate(px,py); ctx.scale(d,1);
+    ctx.fillStyle=night?'rgba(232,242,255,0.92)':'rgba(38,64,94,0.88)';
+    ctx.beginPath(); ctx.ellipse(0,0,s*1.12,s*0.30,0,0,TAU); ctx.fill();           /* fuselage */
+    ctx.beginPath(); ctx.ellipse(s*0.08,s*0.16,s*0.60,s*0.13,-0.25,0,TAU); ctx.fill(); /* wing */
+    ctx.beginPath(); ctx.moveTo(-s*0.92,-s*0.05); ctx.lineTo(-s*1.22,-s*0.52); ctx.lineTo(-s*0.62,-s*0.30); ctx.closePath(); ctx.fill(); /* tail */
+    ctx.strokeStyle=night?'rgba(232,242,255,0.55)':'rgba(38,64,94,0.5)'; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.arc(s*1.22,0,s*0.40,Math.sin(S.flyT*40)*0.4,Math.PI*2+Math.sin(S.flyT*40)*0.4); ctx.stroke(); /* prop blur */
+    ctx.restore(); }
+}
+window.__SW=SW; window.__swNow=()=>{ if(!SW.pass)swStart(); };
 renderYmQueue();
 
 /* ============================== boot ============================== */
