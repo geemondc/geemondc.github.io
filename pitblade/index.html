@@ -765,8 +765,8 @@ function step(dt){
      apply residual knockback stored separately */
   /* pit check */
   for(var m=0;m<2;m++){ var kk=K[m];
-    for(var pi=0;pi<2;pi++){ var pit=PITS[pi], h=pit.s/2;
-      if(Math.hypot(kk.x-pit.x,kk.y-pit.y)<h){ startFall(kk,pit); return; }
+    for(var pi=0;pi<2;pi++){ var pit=PITS[pi], mh=pit.s*0.33;
+      if(Math.abs(kk.x-pit.x)<mh && Math.abs(kk.y-pit.y)<mh){ startFall(kk,pit); return; }
     }
   }
   /* blade hits — attacker must be planted (blade committed). The hit lands
@@ -803,17 +803,35 @@ function step(dt){
 
 /* ---------- drawing ---------- */
 function line(x1,y1,x2,y2){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+/* Gary's board redesign (Oct 24, from his blue artwork): a deep-blue LIVING
+   floor — a cellular bubble pattern in indigo blues, rendered once to an
+   offscreen canvas with a fixed seed so it never shimmers. Kept at pattern
+   contrast, never louder than the knights. */
+var floorPat=null, floorPatW=0, floorPatH=0;
+function buildFloor(){
+  floorPat=document.createElement('canvas'); floorPat.width=VW; floorPat.height=VH;
+  var c=floorPat.getContext('2d'); var seed=1979;
+  function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
+  c.fillStyle='#070d2b'; c.fillRect(0,0,VW,VH);
+  for(var i=0;i<300;i++){ var x=rnd()*VW, y=rnd()*VH, r=5+rnd()*20;
+    c.beginPath(); c.arc(x,y,r,0,Math.PI*2);
+    c.strokeStyle='rgba(80,130,255,'+(0.05+rnd()*0.09).toFixed(3)+')'; c.lineWidth=1+rnd()*1.5; c.stroke(); }
+  for(var j=0;j<120;j++){ var x2=rnd()*VW, y2=rnd()*VH, r2=2+rnd()*5;
+    c.beginPath(); c.arc(x2,y2,r2,0,Math.PI*2);
+    c.fillStyle='rgba(90,150,255,'+(0.05+rnd()*0.08).toFixed(3)+')'; c.fill(); }
+  for(var k2=0;k2<16;k2++){ var x3=rnd()*VW, y3=rnd()*VH, r3=28+rnd()*46;
+    c.beginPath(); c.arc(x3,y3,r3,0,Math.PI*2);
+    c.strokeStyle='rgba(70,120,255,0.05)'; c.lineWidth=2; c.stroke(); }
+  floorPatW=VW; floorPatH=VH;
+}
 function drawArena(){
-  /* printed-overlay dungeon floor tint */
-  ctx.fillStyle='#070a10'; ctx.fillRect(0,0,VW,VH);
-  ctx.strokeStyle='rgba(140,120,90,0.055)'; ctx.lineWidth=1;
-  var gs=75;
-  for(var gx=0;gx<=VW;gx+=gs) line(gx,0,gx,VH);
-  for(var gy=0;gy<=VH;gy+=gs) line(0,gy,VW,gy);
-  ctx.strokeStyle='rgba(140,120,90,0.04)';
-  line(0,VH,VW,0); line(VW,VH,0,0);
-  ctx.fillStyle='rgba(90,70,40,0.05)';
-  ctx.beginPath(); ctx.arc(VW/2,VH/2,120,0,Math.PI*2); ctx.fill();
+  if(!floorPat || floorPatW!==VW || floorPatH!==VH) buildFloor();
+  ctx.drawImage(floorPat,0,0);
+  /* faint center medallion rings, echoing the art's symmetry */
+  ctx.strokeStyle='rgba(90,140,255,0.10)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(VW/2,VH/2,120,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(90,140,255,0.06)';
+  ctx.beginPath(); ctx.arc(VW/2,VH/2,84,0,Math.PI*2); ctx.stroke();
   /* arena border */
   ctx.strokeStyle='rgba(63,217,255,0.85)'; ctx.lineWidth=2; ctx.shadowColor='#3fd9ff'; ctx.shadowBlur=10;
   ctx.strokeRect(MARG,MARG,VW-MARG*2,VH-MARG*2);
@@ -843,21 +861,39 @@ function drawArena(){
   ctx.strokeStyle='#2fe07a'; ctx.shadowColor='#2fe07a'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(VW-66,VH-66,15,0,Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(VW-66,VH-66,8,0,Math.PI*2); ctx.stroke();
+  /* side medallions on the border midpoints — red ring, green heart — the
+     knobs on the side edges of Gary's artwork */
+  ctx.strokeStyle='#e0342b'; ctx.shadowColor='#e0342b'; ctx.lineWidth=2; ctx.shadowBlur=8;
+  [MARG,VW-MARG].forEach(function(mx){
+    ctx.beginPath(); ctx.arc(mx,VH/2,11,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='#2fe07a'; ctx.shadowColor='#2fe07a';
+    ctx.beginPath(); ctx.arc(mx,VH/2,5,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='#e0342b'; ctx.shadowColor='#e0342b';
+  });
   ctx.shadowBlur=0;
 }
 function drawPits(){
-  /* two big bottomless CIRCLES (Gary, Oct 24: circles, not squares, with a
-     little layering) — a soft seat ring where the hole meets the floor, a
-     radial falloff into pure black at the center so it reads DEEP, and one
-     faint lip line. Restrained: no ticks, no frame, no decoration. */
-  for(var i=0;i<2;i++){ var p=PITS[i], h=p.s/2;
-    ctx.beginPath(); ctx.arc(p.x,p.y,h+6,0,Math.PI*2);
-    ctx.strokeStyle='rgba(120,160,200,0.10)'; ctx.lineWidth=11; ctx.stroke();
-    var g=ctx.createRadialGradient(p.x,p.y,h*0.25,p.x,p.y,h);
-    g.addColorStop(0,'#000000'); g.addColorStop(0.82,'#000000'); g.addColorStop(1,'#0a0e16');
+  /* Gary's pit (Oct 24, from his artwork): a circular MEDALLION — seat ring,
+     a ring of radiating slats, a well falling off into black — with a SQUARE
+     black mouth at its center. Circle outside, square in the middle. The
+     lethal opening is the square (see the pit check in the physics step). */
+  for(var i=0;i<2;i++){ var p=PITS[i], h=p.s/2, mh=p.s*0.33;
+    var g=ctx.createRadialGradient(p.x,p.y,10,p.x,p.y,h);
+    g.addColorStop(0,'#000000'); g.addColorStop(0.72,'#01020a'); g.addColorStop(1,'#0a1440');
     ctx.beginPath(); ctx.arc(p.x,p.y,h,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x,p.y,h+7,0,Math.PI*2);
+    ctx.strokeStyle='rgba(80,130,255,0.22)'; ctx.lineWidth=3; ctx.stroke();
+    ctx.strokeStyle='rgba(120,170,255,0.35)'; ctx.lineWidth=3;
+    for(var s2=0;s2<28;s2++){ var a=s2/28*Math.PI*2;
+      line(p.x+Math.cos(a)*(h-14), p.y+Math.sin(a)*(h-14), p.x+Math.cos(a)*(h-3), p.y+Math.sin(a)*(h-3)); }
     ctx.beginPath(); ctx.arc(p.x,p.y,h-1.5,0,Math.PI*2);
-    ctx.strokeStyle='rgba(150,190,230,0.15)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='rgba(150,190,255,0.18)'; ctx.lineWidth=2; ctx.stroke();
+    /* the square mouth */
+    ctx.strokeStyle='rgba(120,170,255,0.10)'; ctx.lineWidth=7;
+    ctx.strokeRect(p.x-mh,p.y-mh,mh*2,mh*2);
+    ctx.fillStyle='#000000'; ctx.fillRect(p.x-mh,p.y-mh,mh*2,mh*2);
+    ctx.strokeStyle='rgba(170,205,255,0.30)'; ctx.lineWidth=2;
+    ctx.strokeRect(p.x-mh,p.y-mh,mh*2,mh*2);
   }
 }
 function drawKnight(k){
