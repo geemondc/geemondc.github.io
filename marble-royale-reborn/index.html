@@ -260,6 +260,24 @@
       #callout.surge{ color:#ffb03a; } #callout.stumble{ color:#9adfff; } #callout.surprise{ color:#ffe95e; font-size:clamp(24px,6vw,46px); } #callout.out{ color:#ff8a5e; font-size:clamp(24px,6vw,46px); }
       @keyframes callpop{ 0%{ opacity:0; transform:translateX(-50%) scale(.55); } 12%{ opacity:1; transform:translateX(-50%) scale(1.12); } 22%{ transform:translateX(-50%) scale(1); } 82%{ opacity:1; } 100%{ opacity:0; transform:translateX(-50%) scale(1.02) translateY(-6px); } }
       #ticker{ position:absolute; left:0; right:0; bottom:0; background:rgba(18,9,2,.82); color:#ffe9bd; font-weight:900; font-size:13.5px; padding:5px 12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; line-height:1.35; z-index:4; }
+      /* LIVE POSITION TOWER — 1st–5th at a glance, pinned to the track's left edge */
+      #tower{ position:absolute; left:6px; top:50%; transform:translateY(-50%); z-index:3; display:none; background:rgba(18,9,2,.80); border:2px solid rgba(255,210,140,.6); border-radius:11px; padding:5px 7px 6px; line-height:1.3; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+      #tower.on{ display:block; }
+      #tower .th{ font-family:"Baloo 2",sans-serif; font-weight:800; font-size:10px; letter-spacing:.14em; color:#ffd98a; text-align:center; }
+      #tower .trow{ display:flex; align-items:center; gap:4px; font-size:12.5px; font-weight:900; color:#fff; white-space:nowrap; padding:1.5px 3px; border-radius:6px; min-width:106px; }
+      #tower .trow .tpk{ font-family:"Baloo 2",sans-serif; font-size:9.5px; font-weight:800; color:#2a1a0c; background:#e8c98f; border-radius:4px; padding:1px 0; width:25px; text-align:center; flex:none; }
+      #tower .trow.p1 .tpk{ background:#ffd23e; }
+      #tower .trow .cdot{ width:12px; height:12px; flex:none; }
+      #tower .trow.mine{ background:rgba(255,210,62,.20); box-shadow:inset 0 0 0 1.5px rgba(255,210,62,.9); }
+      .bk{ margin-left:auto; display:inline-flex; gap:2px; padding-left:4px; }
+      .bava{ width:14px; height:14px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-family:"Baloo 2",sans-serif; font-weight:800; font-size:8.5px; box-shadow:inset -1px -2px 3px rgba(0,0,0,.3); text-shadow:0 1px 1px rgba(0,0,0,.4); flex:none; }
+      /* FINAL STANDINGS 1–5 on the photo-finish card */
+      .finstand{ margin-top:11px; border-top:2px dashed var(--line); padding-top:8px; text-align:left; }
+      .finstand .orow{ font-size:15px; padding:3px 4px; border-radius:8px; }
+      .finstand .orow .rk{ width:36px; text-align:left; font-size:13px; color:var(--accent-d); }
+      @media (prefers-color-scheme: dark){ .finstand .orow .rk{ color:var(--accent); } }
+      .finstand .orow .cdot{ width:12px; height:12px; }
+      .finstand .orow.f1{ background:rgba(255,210,62,.18); }
       .surpriseline{ text-align:center; font-weight:900; color:var(--teal); margin:2px 0 10px; font-size:15px; }
       .recap{ background:var(--panel2); border:2px dashed var(--gold); border-radius:12px; padding:9px 12px; font-weight:800; font-size:14.5px; margin-top:9px; line-height:1.45; }
       .orderlist{ display:none; margin-top:8px; }
@@ -411,6 +429,7 @@
           <div id="banner"></div>
           <div id="callout"></div>
           <div id="ticker"><span id="tickerTxt">🎙️ Welcome to Marble Royale!</span></div>
+          <div id="tower" aria-label="Live standings 1st to 5th"></div>
           <div class="ovl" id="ovCount"><div id="countNum">3</div></div>
           <div class="ovl" id="ovPanel">
             <div class="ovcard">
@@ -2537,12 +2556,42 @@ function refreshRaceHUD(){
     const c=COLORWAYS[G.marbles[e.mi].colorIdx];
     return '<span class="tp out"><span class="rk">❌</span><span class="cdot" style="background:'+marbleColor(c)+'"></span><span class="nm">'+c.name.split(" ")[0]+'</span></span>';
   }).join("");
+  renderTower(order);
   const leadMi=order.length?order[0].mi:-1;
   if(G.hudLeader>=0 && leadMi>=0 && leadMi!==G.hudLeader && G.state==="race"){
     const ts=el("topStrip"); ts.classList.remove("flash"); void ts.offsetWidth; ts.classList.add("flash");
   }
   if(leadMi>=0) G.hudLeader=leadMi;
   renderScoreboards();
+}
+
+/* ---------------- LIVE POSITION TOWER ----------------
+   Gary: follow who's winning the WHOLE race — a 1ST–5TH rail pinned to
+   the track, fed by the SAME honest order refreshRaceHUD computes
+   (finished by place, then distance). Backed marbles wear a ⭐, a gold
+   frame, and their backers' avatar chips — the same G.backed map the
+   on-track rooting markers use, so tower and track can never disagree. */
+const PLACE_LBL=["1ST","2ND","3RD","4TH","5TH"];
+function backerChips(map,ci){
+  const bk=(map&&map[ci])||[];
+  if(!bk.length) return "";
+  return '<span class="bk">'+bk.map(pi=>{ const a=AVATARS[G.players[pi].ava]; return '<span class="bava" style="background:'+a.color+'">'+a.init+'</span>'; }).join("")+'</span>';
+}
+let _towerSig="";
+function renderTower(order){
+  const tw=el("tower"); if(!tw) return;
+  const live=(G.state==="count"||G.state==="race");
+  if(!live||!order||!order.length){ tw.classList.remove("on"); _towerSig=""; return; }
+  const top=order.slice(0,5);
+  const sig=top.map(r=>G.marbles[r.mi].colorIdx+(r.finished?"F":"")+(((G.backed||{})[G.marbles[r.mi].colorIdx]||[]).join("."))).join(",");
+  tw.classList.add("on");
+  if(sig===_towerSig) return;
+  _towerSig=sig;
+  tw.innerHTML='<div class="th">🏁 LIVE</div>'+top.map((r,i)=>{
+    const ci=G.marbles[r.mi].colorIdx, c=COLORWAYS[ci];
+    const mine=!!((G.backed||{})[ci]||[]).length;
+    return '<div class="trow'+(i===0?" p1":"")+(mine?" mine":"")+'"><span class="tpk">'+PLACE_LBL[i]+'</span>'+dotHTML(ci)+'<span>'+(mine?"⭐":"")+c.name.split(" ")[0]+'</span>'+backerChips(G.backed,ci)+'</div>';
+  }).join("");
 }
 
 /* ---------------- race flow ---------------- */
@@ -2590,6 +2639,7 @@ function startCountdown(){
   el("ovPanel").classList.remove("on");
   G.state="count"; G.countT=3.6; G._goBeep=false;
   el("ovCount").classList.add("on");
+  refreshRaceHUD(); // tower up for the countdown — grid order, ⭐ on your picks
 }
 function betLabel(bet){
   if(bet.type==="COMBO") return comboLabel(bet.legs||["WIN","PLACE","SHOW"]);
@@ -2731,6 +2781,7 @@ function startCelebration(){
 }
 function settleRace(){
   G.state="done"; G.endShown=true;
+  const _tw=el("tower"); if(_tw) _tw.classList.remove("on"); _towerSig="";
   AudioSys.setRoll(0); AudioSys.setCrowd(0); AudioSys.crowd();
   const order=G.finishOrder.map(mi=>G.marbles[mi].colorIdx);
   // append finishes to the form
@@ -2788,6 +2839,15 @@ function settleRace(){
       +'<div class="pblock '+cls+'">'+(k+1)+'</div></div>';
   };
   const podium3='<div class="podium3">'+pstep(1,"s","🥈")+pstep(0,"g","🥇")+pstep(2,"b","🥉")+'</div>';
+  /* ---- 🏁 FINAL STANDINGS 1–5 — the tower's final word, in the open ----
+     Same settlement `order` the payouts used; backers from the settled
+     bet records, so a ⭐ here is a ticket that was really on that marble. */
+  const finBackers={};
+  results.players.forEach(rec=>rec.bets.forEach(b=>b.picks.forEach(ci=>{ const arr=(finBackers[ci]=finBackers[ci]||[]); if(!arr.includes(rec.pi)) arr.push(rec.pi); })));
+  const stand5='<div class="finstand"><div class="rchead">🏁 FINAL STANDINGS</div>'+order.slice(0,5).map((ci,k)=>{
+    const c=COLORWAYS[ci], mine=!!(finBackers[ci]||[]).length;
+    return '<div class="orow'+(k===0?" f1":"")+'"><span class="rk">'+PLACE_LBL[k]+'</span>'+dotHTML(ci)+'<span>'+(mine?"⭐":"")+c.name+'</span>'+backerChips(finBackers,ci)+'</div>';
+  }).join("")+'</div>';
   /* ---- 💰 PAYOUT STRIP — what each podium spot actually paid, leg prices ---- */
   const payLegs=[["WIN","PLACE","SHOW"],["PLACE","SHOW"],["SHOW"]], medals=["🥇","🥈","🥉"];
   const paystrip=order.length?'<div class="paystrip"><span class="ph">💰 WHAT THE PODIUM PAID</span><br/>'+[0,1,2].filter(k=>order[k]!=null).map(k=>{
@@ -2868,7 +2928,7 @@ function settleRace(){
     if(parts.length){ G.lastRecap=parts.join(" · "); recapHTML='<div class="recap">📖 RACE STORY — '+G.lastRecap+'</div>'; }
   }
   el("ovTitle").textContent="📸 PHOTO FINISH — RACE "+G.race;
-  el("ovBody").innerHTML=podium3+paystrip+recapHTML+raceCard+stand+(ceremonyNotes?'<div class="verdict">'+ceremonyNotes+'</div>':"")+'<div class="verdict">'+extra+'</div>';
+  el("ovBody").innerHTML=podium3+paystrip+stand5+recapHTML+raceCard+stand+(ceremonyNotes?'<div class="verdict">'+ceremonyNotes+'</div>':"")+'<div class="verdict">'+extra+'</div>';
   const allOut=G.players.every(p=>p.walked||p.busted);
   el("ovBtn").textContent=(G.race>=10||allOut)?"🏆 FINAL RESULTS":"▶ NEXT RACE";
   el("ovPanel").classList.add("on");
