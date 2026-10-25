@@ -235,7 +235,7 @@
    STAR CASTLE REBORN — faithful to the 1980 Cinematronics game
    Vector line art only. Documented mechanics:
    - 3 rings x 12 segments, 2 hits each, 10/20/30 pts
-   - 3 homing mines, ~10 s hunt; torpedo through a full gap
+   - 2 smart sparks (Gary's ruling, Oct 25), ~10 s hunt; torpedo through a full gap
    - outer-ring wipe shifts the rings outward
    - cannon kill = extra ship + faster new castle
    ============================================================ */
@@ -322,7 +322,7 @@ var Snd = {
 'use strict';
 /* ---------------- Field & constants ---------------- */
 var FW=1000, FH=1000, CX=500, CY=500;
-var RING_R=[205,156,107], RING_PTS=[10,20,30];
+var RING_R=[150,113,76], RING_PTS=[10,20,30];
 var RING_COL=['#ff4030','#ff9a2e','#ffd94d'];
 var RING_CORE=['#ff4030','#ff9a2e','#ffd94d'];
 var SEG_N=12, SEG_STEP=Math.PI*2/SEG_N, SEG_GAP=0.045;
@@ -343,7 +343,7 @@ if(window.visualViewport) window.visualViewport.addEventListener('resize', fitCa
 if('ResizeObserver' in window) new ResizeObserver(fitCanvas).observe(stageWrap);
 
 var stars=[];
-for(var si=0; si<120; si++) stars.push({x:Math.random()*FW, y:Math.random()*FH, r:Math.random()*1.6+0.5, p:Math.random()*6.28});
+for(var si=0; si<48; si++) stars.push({x:Math.random()*FW, y:Math.random()*FH, r:Math.random()*1.6+0.5, p:Math.random()*6.28});
 
 /* ---------------- State ---------------- */
 var phase='attract';           // attract | play | seq | over
@@ -369,7 +369,7 @@ function newCastle(level){
   ];
   mines=[]; torpedo=null; torpCd=0.6; bullets=[];
   Snd.stopHiss();
-  for(var i=0;i<3;i++) spawnMine(i*4);
+  for(var i=0;i<2;i++) spawnMine(i*6);
   mineTimer=2.2;
 }
 function castleBase(){ return 1 + 0.22*(castleLevel-1); }
@@ -523,7 +523,7 @@ function collideShipWithRings(){
   if(dc<4) return;
   var ux=dx/dc, uy=dy/dc;
   for(var r=0;r<3;r++){
-    var rad=RING_R[r], band=19; /* segment half-thickness 11 + ship clearance 8 */
+    var rad=RING_R[r], band=15; /* thin line (~2) + ship clearance; < half the 37-unit ring spacing so the faces never overlap */
     if(Math.abs(dc-rad)>=band) continue;
     var idx=segIndex(r, Math.atan2(dy,dx));
     if(rings[r].segs[idx]<=0) continue;
@@ -709,7 +709,7 @@ function update(dt){
 
     /* --- mines --- */
     mineTimer-=dt;
-    if(mines.length<3 && mineTimer<=0 && phase==='play'){ spawnMine(Math.floor(Math.random()*SEG_N)); mineTimer=2.2; }
+    if(mines.length<2 && mineTimer<=0 && phase==='play'){ spawnMine(Math.floor(Math.random()*SEG_N)); mineTimer=2.2; }
     for(var mj=mines.length-1; mj>=0; mj--){
       var m=mines[mj];
       m.spin+=dt*4;
@@ -796,27 +796,26 @@ function stroke2(color, lw){
 }
 function drawRings(sc){
   for(var r=0;r<3;r++){
-    var ring=rings[r], rad=RING_R[r]*sc, half=11*sc;
+    var ring=rings[r], rad=RING_R[r]*sc, col=RING_COL[r];
     for(var i=0;i<SEG_N;i++){
       var hp=ring.segs[i]; if(hp<=0) continue;
       var a0=ring.rot + i*SEG_STEP + SEG_GAP, a1=ring.rot + (i+1)*SEG_STEP - SEG_GAP;
-      // straight-chord polygon segment, as on the original vector display —
-      // flat outer and inner edges joined by radial end lines, no arcs
-      var c0=Math.cos(a0), s0=Math.sin(a0), c1=Math.cos(a1), s1=Math.sin(a1);
-      ctx.beginPath();
-      ctx.moveTo(CX+c0*(rad+half), CY+s0*(rad+half));
-      ctx.lineTo(CX+c1*(rad+half), CY+s1*(rad+half));
-      ctx.lineTo(CX+c1*(rad-half), CY+s1*(rad-half));
-      ctx.lineTo(CX+c0*(rad-half), CY+s0*(rad-half));
-      ctx.closePath();
-      if(hp===1){
-        var fl = ring.flash[i]>0 ? 1 : 0.72+0.28*Math.sin(elapsed*22+i);
-        ctx.globalAlpha=fl;
-        stroke2(RING_CORE[r], 2.4);
-        ctx.globalAlpha=1;
-      } else {
-        stroke2(RING_COL[r], 2.4);
-      }
+      // ONE thin straight-chord line per segment, as on the original vector
+      // display — the color bleeds outside the line like a kid coloring
+      // outside the lines: two wide faint aura passes under a bright core.
+      var x0=CX+Math.cos(a0)*rad, y0=CY+Math.sin(a0)*rad;
+      var x1=CX+Math.cos(a1)*rad, y1=CY+Math.sin(a1)*rad;
+      ctx.strokeStyle=col; ctx.lineCap='round';
+      ctx.globalAlpha=0.07; ctx.lineWidth=13*sc;
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      ctx.globalAlpha=0.13; ctx.lineWidth=6.5*sc;
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      var fl = (hp===1) ? (ring.flash[i]>0 ? 1 : 0.72+0.28*Math.sin(elapsed*22+i)) : 1;
+      ctx.globalAlpha=fl; ctx.lineWidth=3.1*sc;
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      ctx.globalAlpha=fl*0.5; ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.2*sc;
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      ctx.globalAlpha=1;
     }
   }
 }
@@ -825,29 +824,28 @@ function drawCannon(sc){
   ctx.translate(CX, CY);
   ctx.scale(sc, sc);
   ctx.rotate(cannon.a);
-  // fat angular arrowhead / chevron fortress, thin yellow outline only —
-  // pointed nose, swept-back notched wing shoulders, stepped tail prongs
+  ctx.scale(1.38, 1.38);
+  // the villain: a pale yellow spaceship in 4 outline parts — a middle
+  // diamond, two rhombus wings sweeping back, and a weird 6-sided rear.
+  // Nose toward +X; the outlines overlap, as on the original display.
+  var VIL='#f5ffa8';
+  // back end: the weird 6-sided figure
   ctx.beginPath();
-  ctx.moveTo(37,0);
-  ctx.lineTo(17,14);
-  ctx.lineTo(-4,26);
-  ctx.lineTo(-13,15);
-  ctx.lineTo(-25,20);
-  ctx.lineTo(-19,0);
-  ctx.lineTo(-25,-20);
-  ctx.lineTo(-13,-15);
-  ctx.lineTo(-4,-26);
-  ctx.lineTo(17,-14);
-  ctx.closePath();
-  stroke2('#ffd94d', 2.4);
-  // inner chevron facet echoing the nose
+  ctx.moveTo(-12,-9); ctx.lineTo(-24,-9); ctx.lineTo(-30,0);
+  ctx.lineTo(-24,9); ctx.lineTo(-12,9); ctx.lineTo(-7,0);
+  ctx.closePath(); stroke2(VIL, 2.2);
+  // upper wing: a rhombus sweeping back
   ctx.beginPath();
-  ctx.moveTo(21,0);
-  ctx.lineTo(7,8.5);
-  ctx.lineTo(-6,0);
-  ctx.lineTo(7,-8.5);
-  ctx.closePath();
-  stroke2('#ffd94d', 1.8);
+  ctx.moveTo(8,-3); ctx.lineTo(-10,-24); ctx.lineTo(-26,-17); ctx.lineTo(-8,4);
+  ctx.closePath(); stroke2(VIL, 2.2);
+  // lower wing: the matching rhombus
+  ctx.beginPath();
+  ctx.moveTo(8,3); ctx.lineTo(-10,24); ctx.lineTo(-26,17); ctx.lineTo(-8,-4);
+  ctx.closePath(); stroke2(VIL, 2.2);
+  // middle section: a slim diamond running to the nose
+  ctx.beginPath();
+  ctx.moveTo(30,0); ctx.lineTo(8,6); ctx.lineTo(-8,0); ctx.lineTo(8,-6);
+  ctx.closePath(); stroke2(VIL, 2.4);
   ctx.restore();
 }
 function drawShip(){
@@ -891,10 +889,27 @@ function drawMine(m){
   stroke2(col, 1.8);
   ctx.restore();
 }
+var fieldGrad=null;
 function draw(){
   ctx.setTransform(cv.width/FW, 0, 0, cv.width/FW, 0, 0);
-  ctx.fillStyle='#000';
+  // deep blue outer space — a blue wash, brightest at the center
+  if(!fieldGrad){
+    fieldGrad=ctx.createRadialGradient(CX,CY,60, CX,CY,720);
+    fieldGrad.addColorStop(0,'#0a1f42');
+    fieldGrad.addColorStop(0.5,'#051230');
+    fieldGrad.addColorStop(1,'#01020a');
+  }
+  ctx.fillStyle=fieldGrad;
   ctx.fillRect(0,0,FW,FH);
+  // stars: bright electric blue points with a soft halo, gentle twinkle
+  for(var sti=0; sti<stars.length; sti++){
+    var st=stars[sti];
+    ctx.globalAlpha=0.16; ctx.fillStyle='#2e7bff';
+    ctx.beginPath(); ctx.arc(st.x, st.y, st.r*4, 0, 6.283); ctx.fill();
+    ctx.globalAlpha=0.75+0.25*Math.sin(elapsed*2+st.p); ctx.fillStyle='#a8d4ff';
+    ctx.beginPath(); ctx.arc(st.x, st.y, st.r*1.6, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha=1;
   // pulses
   for(var u=0;u<pulses.length;u++){
     var pu=pulses[u];
@@ -928,7 +943,7 @@ function draw(){
     ctx.beginPath();
     ctx.moveTo(bl.x-Math.cos(ba)*6, bl.y-Math.sin(ba)*6);
     ctx.lineTo(bl.x+Math.cos(ba)*6, bl.y+Math.sin(ba)*6);
-    stroke2('#ffffff', 2.4);
+    stroke2('#dff2ff', 2.8);
   }
   drawShip();
   for(var q=0;q<particles.length;q++){
@@ -1031,7 +1046,7 @@ document.getElementById('tglHow').addEventListener('click', function(){
     '<p>Every shield segment takes <b>two hits</b>. Segments score <span class="pts-r"><b>10</b> (outer red)</span> · <span class="pts-o"><b>20</b> (orange)</span> · <span class="pts-y"><b>30</b> (inner yellow)</span>.</p>' +
     '<p>Destroy the cannon and you earn an <b>extra ship</b> — then a faster castle rises.</p>' +
     '<p>Careful: the moment your gap lines up, the cannon fires its torpedo straight back through it. One hit and you are gone.</p>' +
-    '<p>Three homing mines ride the rings and chase you for about ten seconds. Shoot them or outrun them — they score nothing.</p>' +
+    '<p>Two smart sparks ride the rings and chase you for about ten seconds. Shoot them or outrun them — they score nothing.</p>' +
     '<p>Do <b>not</b> wipe out the whole outer ring: the rings shift outward and a fresh inner ring grows back.</p>');
 });
 
