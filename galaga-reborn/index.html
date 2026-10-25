@@ -49,17 +49,25 @@
   .hubLink b{color:var(--cyan);}
 
   /* ---------- GAME ---------- */
-  #game{display:none; min-height:100dvh; flex-direction:column; max-width:520px; margin:0 auto;}
-  #hud{display:flex; justify-content:space-between; align-items:flex-end; gap:8px; padding:8px 12px 6px;}
+  #game{display:none; position:fixed; inset:0; width:100%; height:100dvh; flex-direction:column; overflow:hidden;
+    background:radial-gradient(900px 500px at 50% -10%, #1b1440 0%, transparent 60%), var(--bg);}
+  #hud{flex:0 0 auto; width:100%; display:flex; justify-content:space-between; align-items:flex-end; gap:8px; padding:8px 12px 6px;}
   .hudCell{text-align:center; min-width:0;}
   .hudCell .lab{font-family:"Press Start 2P",monospace; font-size:8px; color:var(--red); letter-spacing:1px;}
   .hudCell .val{font-family:"Press Start 2P",monospace; font-size:clamp(12px,4vw,16px); color:#fff; margin-top:4px;}
   .hudCell .val.hi{color:var(--yellow);}
   #stageVal{color:var(--cyan);}
-  #cvWrap{position:relative; margin:0 auto; width:100%;}
-  canvas{display:block; width:100%; height:auto; background:#000; touch-action:none; outline:none;
+  #cvWrap{position:relative; flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center;
+    background-image:radial-gradient(1.5px 1.5px at 24px 36px, rgba(255,255,255,.85) 50%, transparent 52%),
+      radial-gradient(1px 1px at 130px 90px, rgba(159,216,255,.8) 50%, transparent 52%),
+      radial-gradient(1px 1px at 70px 170px, rgba(255,255,255,.5) 50%, transparent 52%),
+      radial-gradient(2px 2px at 190px 215px, rgba(255,210,62,.45) 50%, transparent 52%),
+      radial-gradient(1px 1px at 232px 60px, rgba(255,255,255,.65) 50%, transparent 52%),
+      radial-gradient(1px 1px at 44px 252px, rgba(255,95,210,.4) 50%, transparent 52%);
+    background-size:260px 300px;}
+  canvas{display:block; flex:0 0 auto; background:#000; touch-action:none; outline:none;
     border-top:2px solid #26265a; border-bottom:2px solid #26265a;}
-  #deck{display:flex; gap:10px; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); align-items:stretch;}
+  #deck{flex:0 0 auto; width:100%; display:flex; gap:10px; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); align-items:stretch;}
   .deckBtn{border:2px solid #34346b; background:#12122e; color:#fff; border-radius:14px;
     font-size:24px; font-weight:900; padding:14px 0; flex:1; user-select:none; -webkit-user-select:none; touch-action:none;}
   .deckBtn:active{background:#23235c;}
@@ -214,14 +222,14 @@ const isChallengingStage = st => st>=3 && (st-3)%4===0;
 function slotPos(a){
   const b = 1 + 0.07*Math.sin(G.t*0.85);                       // breathing
   const cx = W/2 + Math.sin(G.t*0.5)*20;                      // sway
-  return { x: cx + (a.col-4.5)*37*b, y: 128 + (a.row-2)*35*b };
+  return { x: cx + (a.col-4.5)*37*b, y: 122 + (a.row-1.5)*35*b };
 }
 function buildFormation(){
   const defs=[];
   for(let c=3;c<=6;c++) defs.push({type:'boss', row:0, col:c});
-  for(let r=1;r<=2;r++) for(let c=1;c<=8;c++) defs.push({type:'butterfly', row:r, col:c});
-  for(let r=3;r<=4;r++) for(let c=0;c<=9;c++) defs.push({type:'bee', row:r, col:c});
-  return defs; // 4 + 16 + 20 = 40
+  for(let c=1;c<=8;c++) defs.push({type:'butterfly', row:1, col:c});
+  for(let r=2;r<=3;r++) for(let c=0;c<=9;c++) defs.push({type:'bee', row:r, col:c});
+  return defs; // 4 + 8 + 20 = 32 — Gary's arcade grid: bosses / butterflies / bees x2 rows
 }
 function makeAlien(type,row,col){
   return { type, row, col, hp: type==='boss'?2:1, x:-40, y:-40, angle:0,
@@ -549,7 +557,10 @@ function update(dt){
     const c=G.captured;
     if(c.state==='parked'){
       const b=c.boss;
-      if(b && !b.dead){ const s=slotPos(b); c.x=s.x+38; c.y=s.y; }
+      if(b && !b.dead){
+        if(b.state==='form'){ const s=slotPos(b); c.x=s.x+38; c.y=s.y; }
+        else { c.x=b.x+38; c.y=b.y; }  /* rides beside its captor through the dive — the rescue moment */
+      }
     } else if(c.state==='rescuing'){
       c.t+=dt; c.y+=120*dt; c.x+=Math.sin(c.t*5)*30*dt;
       if(c.y>=H-64){
@@ -628,54 +639,137 @@ function update(dt){
 }
 
 /* ---------------- drawing ---------------- */
+/* ---------------- pixel sprites: arcade silhouettes ----------------
+   Crisp block-drawn insects after the 1981 originals (Gary's refs):
+   bee = yellow body / blue wings, butterfly = red wings / blue-white
+   body, boss = green body / purple wings / gold crown, visibly larger.
+   Two frames each — wings up / wings down — flipped by the flap clock. */
+function drawPx(g, map, pal, u, cx, cy){
+  const h=map.length, w=map[0].length;
+  const ox=cx-w*u/2, oy=cy-h*u/2;
+  for(let r=0;r<h;r++){ const row=map[r];
+    for(let c=0;c<row.length;c++){ const col=pal[row[c]]; if(!col) continue;
+      g.fillStyle=col; g.fillRect(ox+c*u, oy+r*u, u+0.04, u+0.04); } }
+}
+const PAL = {
+  bee:      { B:'#2e6bff', b:'#6ec3ff', Y:'#ffd23e', W:'#ffffff', R:'#ff3355', O:'#ff9f1a', K:'#181828' },
+  butterfly:{ R:'#ff3355', B:'#2255ff', W:'#ffffff', K:'#181828' },
+  boss:     { P:'#b04dff', G:'#39d353', W:'#ffffff', R:'#ff3355', Y:'#ffd23e', K:'#141020' },
+  bossHurt: { P:'#7a5cff', G:'#3ec6ff', W:'#ffffff', R:'#ff3355', Y:'#ffd23e', K:'#141020' },
+  fighter:  { W:'#eef1ff', C:'#37e2ff', R:'#ff3355', K:'#14101e' }
+};
+const BEE_A = [
+"......K..K......",
+".......KK.......",
+"..BB...YY...BB..",
+".BBBb.YWWY.bBBB.",
+".BBBBbYYYYbBBBB.",
+"..BBB.YRRY.BBB..",
+"...B..YOOY..B...",
+"......YOOY......",
+"......YRRY......",
+".......YY.......",
+".......YY......."];
+const BEE_B = [
+"......K..K......",
+".......KK.......",
+".......YY.......",
+"......YWWY......",
+"..BB..YYYY..BB..",
+".BBBB.YRRY.BBBB.",
+".BBBB.YOOY.BBBB.",
+"...B..YRRY..B...",
+"......YOOY......",
+".......YY.......",
+".......YY......."];
+const BUT_A = [
+"......K..K......",
+".......KK.......",
+".RRR...BB...RRR.",
+"RRRRR..BB..RRRRR",
+"RRWRRR.BB.RRRWRR",
+"RRRRRR.BB.RRRRRR",
+".RRRR..BB..RRRR.",
+"..RR...BB...RR..",
+".......BB.......",
+"......B..B......"];
+const BUT_B = [
+"......K..K......",
+".......KK.......",
+".......BB.......",
+"......BBBB......",
+".RRR...BB...RRR.",
+"RRRRR..BB..RRRRR",
+"RRWRRR.BB.RRRWRR",
+"RRRRRR.BB.RRRRRR",
+".RRRR..BB..RRRR.",
+"..RR...BB...RR.."];
+const BOSS_A = [
+".......Y..Y.......",
+"......YY..YY......",
+"......YYYYYY......",
+"..PP...GGGG...PP..",
+".PPPP.GWWWWG.PPPP.",
+"PPPPP.GGGGGG.PPPPP",
+"PPPPP.GKGGKG.PPPPP",
+".PPP..GGGGGG..PPP.",
+"..P...GGRRGG...P..",
+"......GGGGGG......",
+"......GG..GG......",
+".......G..G......."];
+const BOSS_B = [
+".......Y..Y.......",
+"......YY..YY......",
+"......YYYYYY......",
+"..PP...GGGG...PP..",
+".PPPP.GWWWWG.PPPP.",
+"..PP..GGGGGG..PP..",
+".PPPP.GKGGKG.PPPP.",
+"PPPPP.GGGGGG.PPPPP",
+".PPP..GGRRGG..PPP.",
+"..P...GGGGGG...P..",
+"......GG..GG......",
+".......G..G......."];
+const FIGHTER_MAP = [
+".......WW.......",
+".......WW.......",
+"......WWWW......",
+"......WCCW......",
+".....WWWWWW.....",
+".....WWRRWW.....",
+"....WWWRRWWW....",
+"...WWRRRRRRWW...",
+"..WW.WRRRRW.WW..",
+".WWK.WWRRWW.KWW.",
+".WKK........KKW.",
+"..K..........K.."];
+const SPR = { bee:[BEE_A,BEE_B], butterfly:[BUT_A,BUT_B], boss:[BOSS_A,BOSS_B] };
 function drawFighterShape(x,y,small){
-  const s=small?0.62:1;
-  ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
-  ctx.fillStyle='#e8ecff';
-  ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(3,-4); ctx.lineTo(3,8); ctx.lineTo(9,13);
-  ctx.lineTo(15,13); ctx.lineTo(15,5); ctx.lineTo(10,0); ctx.lineTo(10,13); ctx.lineTo(-10,13);
-  ctx.lineTo(-10,0); ctx.lineTo(-15,5); ctx.lineTo(-15,13); ctx.lineTo(-9,13); ctx.lineTo(-3,8);
-  ctx.lineTo(-3,-4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#ff3355'; ctx.fillRect(-2,-9,4,15);
-  ctx.fillStyle='#37e2ff'; ctx.fillRect(-1.6,-13,3.2,4);
-  ctx.fillStyle='#ffd23e'; ctx.fillRect(-13,9,5,3); ctx.fillRect(8,9,5,3);
+  ctx.save(); ctx.translate(x,y);
+  drawPx(ctx, FIGHTER_MAP, PAL.fighter, small?1.3:2, 0, 0);
   ctx.restore();
 }
 function drawAlien(a){
   if(a.delay>0 && (a.state==='enter'||a.state==='challenge')) return;
   ctx.save(); ctx.translate(a.x,a.y);
   if(a.state==='dive'||a.state==='enter'||a.state==='challenge'||a.state==='beamgo') ctx.rotate(a.angle||0);
-  const flap=Math.sin(a.flap)*3;
-  if(a.type==='bee'){
-    ctx.fillStyle='#59c2ff';
-    ctx.fillRect(-14,-4-flap,9,6); ctx.fillRect(5,-4-flap,9,6);
-    ctx.fillStyle='#ffd23e';
-    ctx.fillRect(-4,-10,8,20); ctx.fillRect(-6,-2,12,4);
-    ctx.fillStyle='#2255ff'; ctx.fillRect(-4,-12,8,5);
-    ctx.fillStyle='#111'; ctx.fillRect(-2.4,-10.4,1.8,1.8); ctx.fillRect(1,-10.4,1.8,1.8);
-  } else if(a.type==='butterfly'){
-    ctx.fillStyle='#ff3355';
-    ctx.beginPath(); ctx.ellipse(-9,-3-flap,7,5,-0.5,0,6.3); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(9,-3-flap,7,5,0.5,0,6.3); ctx.fill();
-    ctx.fillStyle='#ff7a92';
-    ctx.beginPath(); ctx.ellipse(-8,4+flap*.5,5,4,0.4,0,6.3); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(8,4+flap*.5,5,4,-0.4,0,6.3); ctx.fill();
-    ctx.fillStyle='#2255ff'; ctx.fillRect(-3.4,-11,6.8,22);
-    ctx.fillStyle='#9fd8ff'; ctx.fillRect(-1.2,-8,2.4,5);
-  } else { /* boss galaga */
-    const hurt = a.hp===1;
-    ctx.fillStyle= hurt? '#3ec6ff' : '#39d353';
-    ctx.beginPath(); ctx.ellipse(-10,-2-flap,8,6,-0.4,0,6.3); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(10,-2-flap,8,6,0.4,0,6.3); ctx.fill();
-    ctx.fillStyle='#b04dff';
-    ctx.beginPath(); ctx.ellipse(-9,5+flap*.5,6,4,0.4,0,6.3); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(9,5+flap*.5,6,4,-0.4,0,6.3); ctx.fill();
-    ctx.fillStyle= hurt? '#2b9fd8' : '#2fae4e'; ctx.fillRect(-5,-12,10,24);
-    ctx.fillStyle='#ff5fd2'; ctx.fillRect(-5,-4,10,4);
-    ctx.fillStyle='#ffd23e'; ctx.fillRect(-1.4,-16,2.8,5);
-    ctx.fillStyle='#fff'; ctx.fillRect(-3,-9,2,2); ctx.fillRect(1.4,-9,2,2);
-  }
+  const frame = Math.sin(a.flap)>0 ? 0 : 1;
+  const pal = a.type==='boss' ? (a.hp===1 ? PAL.bossHurt : PAL.boss) : PAL[a.type];
+  drawPx(ctx, SPR[a.type][frame], pal, a.type==='boss'?2.15:2, 0, 0);
   ctx.restore();
+}
+function spriteImg(type){
+  const map=SPR[type][0], pal=(type==='boss'?PAL.boss:PAL[type]), u=2;
+  const c=document.createElement('canvas'); c.width=map[0].length*u; c.height=map.length*u;
+  drawPx(c.getContext('2d'), map, pal, u, c.width/2, c.height/2);
+  return '<img src="'+c.toDataURL()+'" width="'+c.width+'" height="'+c.height+'" alt="" style="vertical-align:middle; image-rendering:pixelated;">';
+}
+function scoreRows(){
+  return '<tr><td>'+spriteImg('bee')+' Bee</td><td>50</td><td>100</td></tr>'
+       + '<tr><td>'+spriteImg('butterfly')+' Butterfly</td><td>80</td><td>160</td></tr>'
+       + '<tr><td>'+spriteImg('boss')+' Boss Galaga (2 hits!)</td><td>150</td><td>400</td></tr>'
+       + '<tr><td>Boss diving &mdash; escorts shot first</td><td colspan="2">400 / 800 / 1600</td></tr>'
+       + '<tr><td>Challenging Stage alien</td><td colspan="2">100</td></tr>';
 }
 function drawBeam(){
   const ev=G.beamEvent; if(!ev) return;
@@ -716,7 +810,12 @@ function draw(){
   drawBeam();
   /* captured fighter (parked / rescuing) */
   if(G.captured && G.captured.state!=='gone'){
-    drawFighterShape(G.captured.x, G.captured.y, true);
+    const cb=G.captured.boss;
+    if(G.captured.state==='parked' && cb && cb.state==='dive'){
+      ctx.save(); ctx.translate(G.captured.x,G.captured.y); ctx.rotate(cb.angle||0);
+      ctx.translate(-G.captured.x,-G.captured.y);
+      drawFighterShape(G.captured.x, G.captured.y, true); ctx.restore();
+    } else drawFighterShape(G.captured.x, G.captured.y, true);
   }
   G.aliens.forEach(drawAlien);
   /* player */
@@ -866,11 +965,10 @@ const HOW_HTML = `<h2>HOW TO PLAY</h2>
 <p><b>Fire:</b> press &amp; hold anywhere (or hold FIRE / SPACE). Max <b>2 shots</b> on screen per fighter — just like the 1981 original.</p>
 <p><b>Tractor beam:</b> a Boss Galaga will hover and beam your fighter up. It costs that fighter — but shoot that same Boss <b>while it is diving</b> and your fighter flies back down and docks beside you: <b>DUAL FIGHTER</b>, double firepower! Shoot the Boss in formation instead, and the captured fighter is lost.</p>
 <p><b>Challenging Stage</b> (stages 3, 7, 11…): waves fly through and nobody shoots back. 100 a hit, 1,000 per perfect group, <b>10,000 PERFECT!!</b> for all 40.</p>
+<p style="text-align:center" class="px">&mdash; SCORE &mdash;</p>
 <table>
-<tr><td>🟡 Bee</td><td>50 / 100 diving</td></tr>
-<tr><td>🔴 Butterfly</td><td>80 / 160 diving</td></tr>
-<tr><td>🟢 Boss Galaga (2 hits!)</td><td>150 / 400 diving</td></tr>
-<tr><td>Boss + escorts shot first</td><td>800 / 1600</td></tr>
+<tr><td></td><td>FORMATION</td><td>DIVING</td></tr>
+${scoreRows()}
 </table>
 <p>Extra fighter at <b>20,000</b>. Stage pennants collect at the bottom right.</p>`;
 $('howBtn').onclick=()=>openModal(HOW_HTML);
@@ -900,10 +998,26 @@ function stopToIntro(){
   if(rafId) cancelAnimationFrame(rafId);
   $('game').style.display='none'; $('intro').style.display='flex';
 }
+/* full-screen stage: the canvas backing store stays 448x576 (all game
+   logic untouched); only its CSS box is fitted to the largest 448:576
+   rectangle the stage area offers, so the playfield touches the edges
+   of the limiting axis on phone, tablet and desktop alike */
+function fitCanvas(){
+  const wrap=$('cvWrap'); if(!wrap) return;
+  const aw=wrap.clientWidth, ah=wrap.clientHeight;
+  if(aw<20||ah<20) return;
+  const s=Math.min(aw/W, ah/H);
+  cv.style.width=Math.max(1,Math.floor(W*s))+'px';
+  cv.style.height=Math.max(1,Math.floor(H*s))+'px';
+}
+window.addEventListener('resize', fitCanvas);
+window.addEventListener('orientationchange', ()=>setTimeout(fitCanvas,80));
+
 function startGame(){
   ac();
   G=newGame(); G.run=true; G.hi=Math.max(G.hi||0, parseInt($('hiVal').textContent)||0);
   $('intro').style.display='none'; $('game').style.display='flex';
+  fitCanvas(); setTimeout(fitCanvas, 60);
   updateHUD(); startStage();
   G.lastTs=performance.now();
   if(rafId) cancelAnimationFrame(rafId);
