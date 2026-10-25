@@ -4762,5 +4762,44 @@ body.clean #hudEye{position:fixed;top:max(12px,env(safe-area-inset-top));left:ca
     if(ev.key==='h' || ev.key==='H'){ apply(!document.body.classList.contains('clean')); } });
 })();
 </script>
+
+<script>
+/* STAY-AWAKE (Gary, Oct 25): on the treadmill he never touches the phone, so
+   iOS Auto-Lock dimmed the screen mid-flight. While flying, hold a Screen
+   Wake Lock so the display stays on; release it back at the intro. If the
+   browser refuses (rare in-app), a one-time toast names the Settings fix. */
+(function(){
+  var lock=null, toasted=false;
+  window.SD_WAKE={state:'idle'};
+  function flying(){ return document.body.classList.contains('flying'); }
+  function toast(msg){ var t=document.getElementById('musicToast');
+    if(!t) return; t.textContent=msg; t.style.opacity='1';
+    setTimeout(function(){ t.style.opacity='0'; }, 3600); }
+  function want(){
+    if(!flying()){ drop(); return; }
+    if(!('wakeLock' in navigator)){ window.SD_WAKE.state='unsupported';
+      if(!toasted){ toasted=true; toast('Stay-awake not supported in this browser \u2014 Settings \u203a Display \u203a Auto-Lock \u203a Never keeps the sky on'); }
+      return; }
+    if(lock) return;
+    navigator.wakeLock.request('screen').then(function(l){
+      lock=l; window.SD_WAKE.state='on';
+      if(!toasted){ toasted=true; toast('\uD83D\uDD12 Screen stay-on: ON \u2014 drift away'); }
+      l.addEventListener('release', function(){ lock=null;
+        if(window.SD_WAKE.state==='on') window.SD_WAKE.state='released';
+        if(flying() && document.visibilityState==='visible') want(); });
+    }).catch(function(){ window.SD_WAKE.state='denied';
+      if(!toasted){ toasted=true; toast('Stay-awake was refused \u2014 if the screen still sleeps: Low Power Mode off, or Settings \u203a Display \u203a Auto-Lock \u203a Never'); } });
+  }
+  function drop(){ if(lock){ try{ lock.release(); }catch(e){} lock=null; }
+    if(window.SD_WAKE.state==='on') window.SD_WAKE.state='off'; }
+  var fly=document.getElementById('flyBtn');
+  if(fly) fly.addEventListener('click', function(){ setTimeout(want, 60); });
+  document.addEventListener('pointerdown', function(){ if(flying()) want(); }, {passive:true});
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible') want(); });
+  new MutationObserver(function(){ if(flying()) want(); else drop(); })
+    .observe(document.body, {attributes:true, attributeFilter:['class']});
+})();
+</script>
 </body>
 </html>
