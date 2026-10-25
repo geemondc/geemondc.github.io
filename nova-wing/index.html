@@ -1177,14 +1177,223 @@ function update(dt){
   G.shake = Math.max(0, G.shake - dt*26);
 }
 
-/* ---------------- starfield ---------------- */
+/* ---------------- space: three living layers (Gary, Oct 25) -------
+   FAR  — pre-rendered galaxy smudges + distant traffic silhouettes in
+          a huge, slow wrap box; their lazy drift against the nearer
+          layers IS the parallax, and the 3-D.
+   MID  — the classic star points + a slower tinted mote layer.
+   NEAR — colored flight dust: short streaks along the flight path, so
+          just flying around feels like moving through a living sky.
+   Every texture is pre-rendered ONCE to an offscreen sprite; per frame
+   the whole sky is drawImage + fillRect + short lines — no gradients,
+   no shadowBlur in the ambient layers, so density stays free. */
+function makeSprite(w, h, fn){
+  var c = document.createElement("canvas"); c.width = w; c.height = h;
+  fn(c.getContext("2d"), w, h);
+  return c;
+}
+function shadeHex(hex, f){
+  var n = parseInt(hex.slice(1), 16);
+  var r = clamp(Math.round(((n>>16)&255) * f), 0, 255),
+      g = clamp(Math.round(((n>>8)&255) * f), 0, 255),
+      b = clamp(Math.round((n&255) * f), 0, 255);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+/* a soft black radial blob: drawn UNDER a ship it dims the stars
+   behind the hull, so the ship sits IN the sky instead of pasted ON
+   it — cheap occlusion shading, a shadow cast on the far backdrop */
+var shadowBlobSprite = makeSprite(128, 128, function(g){
+  var gr = g.createRadialGradient(64,64,4, 64,64,62);
+  gr.addColorStop(0, "rgba(0,0,0,0.62)");
+  gr.addColorStop(0.55, "rgba(0,0,0,0.34)");
+  gr.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = gr; g.fillRect(0,0,128,128);
+});
+function makeGalaxySprite(kind, core, arm, dust){
+  return makeSprite(256, 256, function(g){
+    var cx = 128, cy = 128;
+    g.globalCompositeOperation = "lighter";
+    var coreGr = g.createRadialGradient(cx,cy,1, cx,cy, kind===1 ? 66 : 44);
+    coreGr.addColorStop(0, core);
+    coreGr.addColorStop(0.35, arm);
+    coreGr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = coreGr;
+    g.save(); g.translate(cx,cy); g.rotate(kind===1 ? 0.6 : 0.2); g.scale(1, kind===1 ? 0.52 : 0.78); g.translate(-cx,-cy);
+    g.beginPath(); g.arc(cx, cy, kind===1 ? 96 : 62, 0, Math.PI*2); g.fill();
+    g.restore();
+    if(kind !== 1){
+      /* spiral arms: hundreds of dust grains wound along two arms */
+      for(var a=0;a<2;a++){
+        for(var i2=0;i2<210;i2++){
+          var t = Math.pow(Math.random(), 0.72);
+          var ang = a*Math.PI + t*3.9 + rand(-0.14,0.14);
+          var r = 10 + t*104 + rand(-6,6);
+          var x = cx + Math.cos(ang)*r, y = cy + Math.sin(ang)*r*0.78;
+          var al = (1-t)*0.5 + 0.08;
+          g.fillStyle = (Math.random()<0.24 ? dust : arm);
+          g.globalAlpha = al;
+          g.fillRect(x, y, rand(1,2.6), rand(1,2.6));
+        }
+      }
+    } else {
+      /* elliptical: a smooth lenticular smudge with a dusty lane */
+      for(var j=0;j<260;j++){
+        var t2 = Math.pow(Math.random(), 0.6);
+        var an = rand(0, Math.PI*2);
+        var rr = t2*104;
+        var ex = cx + Math.cos(an)*rr, ey = cy + Math.sin(an)*rr*0.5;
+        g.fillStyle = Math.random()<0.2 ? dust : arm;
+        g.globalAlpha = (1-t2)*0.32 + 0.06;
+        g.fillRect(ex, ey, rand(1,2.4), rand(1,2.4));
+      }
+    }
+    /* a dusting of foreground-bright stars caught in the disc */
+    g.globalAlpha = 1;
+    for(var k=0;k<46;k++){
+      var an2 = rand(0, Math.PI*2), rr2 = Math.pow(Math.random(),0.6)*108;
+      g.fillStyle = "rgba(255,255,255," + rand(0.25,0.7).toFixed(2) + ")";
+      g.fillRect(cx + Math.cos(an2)*rr2, cy + Math.sin(an2)*rr2*0.7, 1.3, 1.3);
+    }
+    g.globalAlpha = 1;
+  });
+}
+var galaxySprites = [
+  makeGalaxySprite(0, "rgba(230,238,255,0.95)", "rgba(126,150,255,0.78)", "rgba(255,178,230,0.8)"),
+  makeGalaxySprite(1, "rgba(255,244,220,0.95)", "rgba(255,196,120,0.72)", "rgba(255,160,120,0.75)"),
+  makeGalaxySprite(2, "rgba(225,255,248,0.95)", "rgba(110,230,205,0.72)", "rgba(150,170,255,0.8)")
+];
+/* one distant cargo hauler: a dark silhouette with lit windows and a
+   pale rim along its top edge — traffic in the deep background */
+var trafficSprite = makeSprite(160, 48, function(g){
+  g.fillStyle = "rgba(10,15,24,0.94)";
+  g.beginPath();
+  g.moveTo(6,26); g.lineTo(26,17); g.lineTo(104,14); g.lineTo(138,19);
+  g.lineTo(154,26); g.lineTo(138,31); g.lineTo(102,35); g.lineTo(28,33);
+  g.closePath(); g.fill();
+  g.strokeStyle = "rgba(170,205,240,0.55)"; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(26,17); g.lineTo(104,14); g.lineTo(138,19); g.stroke();
+  g.fillStyle = "rgba(140,170,200,0.8)";
+  g.fillRect(112,20,16,9); g.fillRect(52,29,20,5);
+  g.fillStyle = "rgba(255,205,130,0.95)";
+  var wx = [38, 50, 62, 84, 96];
+  for(var i=0;i<wx.length;i++) g.fillRect(wx[i], 22, 2.4, 2.4);
+  var eg = g.createRadialGradient(6,26,0, 6,26,9);
+  eg.addColorStop(0, "rgba(150,240,255,0.9)"); eg.addColorStop(1, "rgba(150,240,255,0)");
+  g.fillStyle = eg; g.beginPath(); g.arc(6,26,9,0,Math.PI*2); g.fill();
+});
+
+function wrapRel(v, B){ return ((v % B) + B*1.5) % B - B/2; }
+
+var GAL_BOX = 1500;
+var galaxies = [];
+(function(){
+  var defs = [
+    { s:0, sz:300, a:0.66 }, { s:1, sz:225, a:0.58 }, { s:2, sz:335, a:0.62 },
+    { s:0, sz:185, a:0.50 }, { s:1, sz:265, a:0.60 }, { s:2, sz:205, a:0.54 }
+  ];
+  for(var i=0;i<defs.length;i++){
+    galaxies.push({ pos: v3(rand(-740,740), rand(-740,740), rand(-740,740)),
+      spr: defs[i].s, size: defs[i].sz, alpha: defs[i].a,
+      rot: rand(0, Math.PI*2), rotV: rand(-0.004, 0.004) });
+  }
+})();
+function drawGalaxies(basis){
+  var p = G.player.pos;
+  /* nearest three only — the far sky stays cheap even in software
+     rasterizers, and three smudges in frame is plenty of company */
+  var cand = [];
+  for(var i=0;i<galaxies.length;i++){
+    var g = galaxies[i];
+    var wp = vadd(p, v3(
+      wrapRel(g.pos.x - p.x, GAL_BOX),
+      wrapRel(g.pos.y - p.y, GAL_BOX),
+      wrapRel(g.pos.z - p.z, GAL_BOX)
+    ));
+    var pr = project(wp, basis);
+    if(!pr) continue;
+    var d = pr.scale * g.size;
+    if(d < 26 || d > 300) continue;
+    if(pr.x < -d || pr.x > W+d || pr.y < -d || pr.y > H+d) continue;
+    cand.push({ g: g, pr: pr, d: d });
+  }
+  cand.sort(function(a2, b2){ return a2.pr.z - b2.pr.z; });
+  for(var c=0;c<cand.length && c<3;c++){
+    var cc = cand[c];
+    ctx.save();
+    ctx.globalAlpha = cc.g.alpha * clamp(1.5 - cc.pr.z/640, 0.45, 1);
+    ctx.translate(cc.pr.x, cc.pr.y);
+    ctx.rotate(cc.g.rot);
+    ctx.drawImage(galaxySprites[cc.g.spr], -cc.d/2, -cc.d/2, cc.d, cc.d);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+/* distant traffic: two haulers on long slow crossings of the deep
+   field, positioned analytically off G.t — no state, no cost */
+var traffic = [];
+(function(){
+  for(var i=0;i<2;i++){
+    traffic.push({
+      base: v3(rand(-620,620), rand(-520,520), rand(-620,620)),
+      vel: v3(rand(6,11) * (i ? -1 : 1), rand(-1.2,1.2), rand(-2,2)),
+      flip: i===1, ph: rand(0, 6.28)
+    });
+  }
+})();
+function drawTraffic(basis){
+  var p = G.player.pos;
+  for(var i=0;i<traffic.length;i++){
+    var t = traffic[i];
+    var wp = vadd(p, v3(
+      wrapRel(t.base.x + t.vel.x*G.t - p.x, GAL_BOX),
+      wrapRel(t.base.y + t.vel.y*G.t - p.y, GAL_BOX),
+      wrapRel(t.base.z + t.vel.z*G.t - p.z, GAL_BOX)
+    ));
+    var pr = project(wp, basis);
+    if(!pr) continue;
+    var wpx = pr.scale * 46;
+    if(wpx < 9 || wpx > 140) continue;
+    if(pr.x < -wpx || pr.x > W+wpx || pr.y < -wpx || pr.y > H+wpx) continue;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.translate(pr.x, pr.y);
+    if(t.flip) ctx.scale(-1, 1);
+    ctx.drawImage(trafficSprite, -wpx/2, -wpx*0.15, wpx, wpx*0.3);
+    ctx.restore();
+    /* one slow nav-beacon blink on the hull */
+    if(Math.sin(G.t*2.2 + t.ph) > 0.72){
+      ctx.fillStyle = "rgba(255,80,70,0.9)";
+      ctx.beginPath(); ctx.arc(pr.x, pr.y - wpx*0.14, 1.8, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------- starfield: mid + near layers ---------------- */
 var stars = [];
 (function(){
-  for(var i=0;i<240;i++){
+  for(var i=0;i<320;i++){
     stars.push({ pos: v3(rand(-260,260), rand(-260,260), rand(-260,260)), bright: rand(0.3,1) });
   }
 })();
+var MOTE_TINTS = ["214,240,255", "255,226,178", "255,205,235", "198,255,220"];
+var motes = [];
+(function(){
+  for(var i=0;i<220;i++){
+    motes.push({ pos: v3(rand(-150,150), rand(-150,150), rand(-150,150)),
+      bright: rand(0.25,0.9), tint: Math.floor(rand(0,4)) });
+  }
+})();
+var DUST_TINTS = ["159,232,255", "168,255,201", "255,217,160", "255,183,234"];
+var dust = [];
+(function(){
+  for(var i=0;i<180;i++){
+    dust.push({ pos: v3(rand(-65,65), rand(-65,65), rand(-65,65)),
+      bright: rand(0.3,1), tint: Math.floor(rand(0,4)) });
+  }
+})();
 function drawStars(basis){
+  drawGalaxies(basis);
   var p = G.player.pos;
   for(var i=0;i<stars.length;i++){
     var s = stars[i];
@@ -1202,6 +1411,57 @@ function drawStars(basis){
     var sz = pr.z < 40 ? 2 : 1.4;
     ctx.fillRect(pr.x, pr.y, sz, sz);
   }
+  drawTraffic(basis);
+  /* MID motes: tinted, bigger, in a tighter box — they sweep past
+     slower than the dust, faster than the stars */
+  for(var m=0;m<motes.length;m++){
+    var mo = motes[m];
+    var wp2 = vadd(p, v3(
+      wrapRel(mo.pos.x - p.x, 300),
+      wrapRel(mo.pos.y - p.y, 300),
+      wrapRel(mo.pos.z - p.z, 300)
+    ));
+    var pr2 = project(wp2, basis);
+    if(!pr2) continue;
+    var a2 = mo.bright * clamp(1.5 - pr2.z/210, 0.1, 1) * 0.8;
+    ctx.fillStyle = "rgba(" + MOTE_TINTS[mo.tint] + "," + a2.toFixed(2) + ")";
+    var sz2 = pr2.z < 60 ? 2.4 : 1.8;
+    ctx.fillRect(pr2.x, pr2.y, sz2, sz2);
+  }
+  /* NEAR flight dust: colored streaks lying along the flight path —
+     the layer that makes plain flying feel fast and alive. Strokes
+     are batched by tint x width x alpha bucket (<=24 stroke calls
+     for the whole layer) so 180 streaks cost almost nothing. */
+  ctx.lineCap = "round";
+  var dustBuckets = {};
+  for(var d2=0;d2<dust.length;d2++){
+    var du = dust[d2];
+    var wp3 = vadd(p, v3(
+      wrapRel(du.pos.x - p.x, 130),
+      wrapRel(du.pos.y - p.y, 130),
+      wrapRel(du.pos.z - p.z, 130)
+    ));
+    var pr3 = project(wp3, basis);
+    if(!pr3 || pr3.z < 4.5) continue;
+    var a3 = du.bright * clamp(1.25 - pr3.z/95, 0, 0.85);
+    if(a3 <= 0.03) continue;
+    var prT = project(vadd(wp3, vscale(basis.F, 3.4)), basis);
+    if(!prT) continue;
+    var bk = du.tint*6 + (pr3.z < 26 ? 3 : 0) + (a3 < 0.3 ? 0 : (a3 < 0.6 ? 1 : 2));
+    var arr = dustBuckets[bk] || (dustBuckets[bk] = []);
+    arr.push(prT.x, prT.y, pr3.x, pr3.y);
+  }
+  for(var bkKey in dustBuckets){
+    var bkN = +bkKey, segs = dustBuckets[bkKey];
+    var bkTint = Math.floor(bkN/6), bkWide = (bkN % 6) >= 3, bkA = [0.28, 0.52, 0.8][bkN % 3];
+    ctx.strokeStyle = "rgba(" + DUST_TINTS[bkTint] + "," + bkA + ")";
+    ctx.lineWidth = bkWide ? 2 : 1.3;
+    ctx.beginPath();
+    for(var ds=0;ds<segs.length;ds+=4){
+      ctx.moveTo(segs[ds], segs[ds+1]); ctx.lineTo(segs[ds+2], segs[ds+3]);
+    }
+    ctx.stroke();
+  }
 }
 
 /* ---------------- render ---------------- */
@@ -1216,6 +1476,37 @@ function drawShip(e, basis){
   var color = e.flash>0 ? "#ffffff" : e.model.color;
   var lw = clamp(pts[0].scale*0.028, 1.0, 2.8);
   ctx.lineCap = "round";
+  /* --- depth shading (Gary): the hull casts a soft occlusion shadow
+     on the sky behind it, a dark offset copy of the wireframe sits
+     beneath as its shadow side, and one thin bright pass rims the
+     top — the ship reads as a BODY at a depth, not ink on glass */
+  var shCx = 0, shCy = 0;
+  for(var sq=0;sq<pts.length;sq++){ shCx += pts[sq].x; shCy += pts[sq].y; }
+  shCx /= pts.length; shCy /= pts.length;
+  var shR = pts[0].scale * e.model.radius * (e.size||1);
+  if(shR > 7 && pts[0].z < 230){
+    var bS = shR * 2.9;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(shadowBlobSprite, shCx + shR*0.16 - bS/2, shCy + shR*0.22 - bS/2, bS, bS);
+    ctx.globalAlpha = 1;
+  }
+  ctx.strokeStyle = shadeHex(color === "#ffffff" ? e.model.color : color, 0.3);
+  ctx.globalAlpha = 0.55; ctx.lineWidth = lw; ctx.shadowBlur = 0;
+  ctx.beginPath();
+  for(var sj=0;sj<e.model.edges.length;sj++){
+    var sa = pts[e.model.edges[sj][0]], sb = pts[e.model.edges[sj][1]];
+    ctx.moveTo(sa.x+2.3, sa.y+2.9); ctx.lineTo(sb.x+2.3, sb.y+2.9);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = shadeHex(e.model.color, 1.9);
+  ctx.globalAlpha = 0.35; ctx.lineWidth = Math.max(1, lw*0.55);
+  ctx.beginPath();
+  for(var sj2=0;sj2<e.model.edges.length;sj2++){
+    var sa2 = pts[e.model.edges[sj2][0]], sb2 = pts[e.model.edges[sj2][1]];
+    ctx.moveTo(sa2.x-1.1, sa2.y-1.2); ctx.lineTo(sb2.x-1.1, sb2.y-1.2);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
   for(var j=0;j<e.model.edges.length;j++){
     var a = pts[e.model.edges[j][0]], b = pts[e.model.edges[j][1]];
     /* glow pass (near ships only) then core pass */
@@ -1727,6 +2018,14 @@ function render(){
     if(!dp) continue;
     var drPx = clamp(dp.scale * drw.r, 3, 110);
     var dCol = drw.flash>0 ? "#ffffff" : (drw.kind==="rock" ? "#9aa3ad" : "#aebfd0");
+    /* the same occlusion shadow the ships get — junk sits at its own
+       depth in the sky instead of floating on top of it */
+    if(drPx > 8){
+      var dbS = drPx * 3.0;
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(shadowBlobSprite, dp.x + drPx*0.22 - dbS/2, dp.y + drPx*0.3 - dbS/2, dbS, dbS);
+      ctx.globalAlpha = 1;
+    }
     ctx.save();
     ctx.translate(dp.x, dp.y);
     ctx.rotate(drw.rot);
