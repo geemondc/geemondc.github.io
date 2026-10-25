@@ -43,12 +43,13 @@
   body.playing #pauseBtn{ display:block; }
   /* ---------- super zapper button ---------- */
   #zapBtn{
-    /* Gary, Oct 24: the GEE-BOMB lives just below the central gun — bottom
-       center, under the cannon — not parked in the corner. (Phone hides this
-       pill entirely; the top strip's compact button serves there.) */
+    /* Gary, Oct 24 + Oct 25: the GEE-BOMB lives just below the central gun —
+       bottom center, under the cannon — not parked in the corner. ONE button
+       on every screen: the phone's top-strip mini-button was retired Oct 25
+       (Gary: it sat "so far to the right... interfering with stuff"). */
     position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom)); z-index:6; display:none;
     align-items:center; justify-content:center; gap:6px;
-    min-width:158px; height:62px; padding:0 18px; border-radius:32px;
+    min-width:158px; height:62px; padding:0 18px; border-radius:32px; white-space:nowrap;
     background:radial-gradient(circle at 50% 36%, #431806, #1c0d04);
     border:2px solid var(--warn); color:#fff; font-size:19px; font-weight:bold; letter-spacing:.07em; line-height:1;
     box-shadow:0 0 22px rgba(255,215,106,.5), inset 0 0 14px rgba(255,150,40,.35);
@@ -60,11 +61,12 @@
   #zapBtn.empty{ opacity:.42; filter:grayscale(.85); box-shadow:none; }
   #zapBtn.denied{ animation:zapShake .3s; }
   @keyframes zapShake{ 0%,100%{ transform:translateX(-50%); } 25%{ transform:translateX(calc(-50% - 5px)); } 75%{ transform:translateX(calc(-50% + 5px)); } }
-  /* ---------- phone control strip + compact G-BOMB dock ----------
+  /* ---------- phone control strip ----------
      On narrow screens every touch on the field fires the cannon, so the
      phone gets a slim fixed strip across the top that the game treats as
-     dead space: menu / reset / pause / mute / G-BOMB live there, the
-     canvas starts BELOW it, and the bottom pill + floating pause retire. */
+     dead space: menu / reset / pause / mute live there, the canvas starts
+     BELOW it, and the floating pause retires. The G-BOMB is NOT here —
+     it lives under the gun at bottom-center (see #zapBtn). */
   #ctrlStrip{
     position:fixed; top:0; left:0; right:0; z-index:8; display:none;
     height:calc(46px + env(safe-area-inset-top, 0px));
@@ -79,31 +81,16 @@
     touch-action:manipulation; -webkit-user-select:none; user-select:none;
   }
   .stripBtn:active{ transform:scale(.94); }
-  #zapBtnMini{
-    position:relative; margin-left:auto; flex:0 0 auto;
-    align-items:center; justify-content:center; display:flex;
-    width:40px; height:40px; border-radius:50%;
-    background:radial-gradient(circle at 50% 36%, #431806, #1c0d04);
-    border:2px solid var(--warn); color:#fff; font-size:20px; line-height:1;
-    box-shadow:0 0 16px rgba(255,215,106,.5), inset 0 0 10px rgba(255,150,40,.35);
-    touch-action:none; -webkit-user-select:none; user-select:none;
-  }
-  #zapBtnMini:active{ transform:scale(.94); }
-  #zapCntMini{
-    position:absolute; bottom:-4px; right:-4px;
-    background:#1c0d04; border:1px solid var(--warn); border-radius:9px;
-    color:var(--warn); font-size:11px; font-weight:bold; line-height:1.25; padding:0 5px;
-    text-shadow:0 0 6px rgba(255,215,106,.8);
-  }
-  #zapBtnMini.empty{ opacity:.42; filter:grayscale(.85); box-shadow:none; }
-  #zapBtnMini.denied{ animation:zapShake .3s; }
+
   @media (max-width:600px){
     #stageWrap{ top:calc(46px + env(safe-area-inset-top, 0px)); }
     #hud{ top:calc(46px + env(safe-area-inset-top, 0px)); padding:6px 12px 0 12px; }
     .hudBox{ min-width:0; }
     .hudLab{ letter-spacing:.14em; }
     body.playing #ctrlStrip{ display:flex; }
-    body.playing #zapBtn{ display:none; }
+    /* one G-BOMB button on phone too: the same pill, sized for thumbs,
+       tucked into the ground band right under the gun */
+    #zapBtn{ height:56px; min-width:204px; font-size:17px; bottom:calc(6px + env(safe-area-inset-bottom)); }
     body.playing #pauseBtn{ display:none; }
     /* the pause sheet starts BELOW the strip: the strip is dead-space
        controls and must stay tappable while paused, or its own pause
@@ -196,7 +183,6 @@
   <button class="stripBtn" id="stripReset" aria-label="Restart run">🔁</button>
   <button class="stripBtn" id="stripPause" aria-label="Pause">❚❚</button>
   <button class="stripBtn" id="stripSound" aria-label="Sound on/off">🔊</button>
-  <button id="zapBtnMini" aria-label="Gee-Bomb">💥<span id="zapCntMini">×3</span></button>
 </div>
 <button id="pauseBtn" aria-label="Pause">| |</button>
 <button id="zapBtn" aria-label="Gee-Bomb">💥 GEE-BOMB <span id="zapCnt">×3</span></button>
@@ -992,8 +978,6 @@ function syncHud(){
   $("hudZaps").textContent = "💥×" + z;
   $("zapCnt").textContent = "×" + z;
   $("zapBtn").classList.toggle("empty", z <= 0);
-  $("zapCntMini").textContent = "×" + z;
-  $("zapBtnMini").classList.toggle("empty", z <= 0);
 }
 
 /* named waves: 12-name ladder, then the names cycle with a roman tier */
@@ -1053,8 +1037,8 @@ function checkAwards(){
 }
 
 function zapDenied(){
-  /* shake whichever G-BOMB button is on screen (pill on desktop, dock on phone) */
-  [$("zapBtn"), $("zapBtnMini")].forEach(function(b){
+  /* shake the one G-BOMB button (bottom-center, right under the gun) */
+  [$("zapBtn")].forEach(function(b){
     b.classList.remove("denied");
     void b.offsetWidth;
     b.classList.add("denied");
@@ -2036,13 +2020,6 @@ $("zapBtn").addEventListener("pointerdown", function(e){
   zap();
 });
 $("zapBtn").addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); });
-$("zapBtnMini").addEventListener("pointerdown", function(e){
-  e.preventDefault();
-  e.stopPropagation();
-  audio();
-  zap();
-});
-$("zapBtnMini").addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); });
 /* phone control strip — deliberate actions in dead space above the field.
    Same targets as the pause overlay / intro controls, one shared state. */
 $("stripHome").addEventListener("click", function(){ quitToTitle(); });
