@@ -365,6 +365,7 @@ function newRun(){
     steer:{ x:0, y:0, active:false },
     aim:{ x:0, y:0, on:false, touch:false, recenter:false },
     enemies:[], bolts:[], ebolts:[], frags:[], bursts:[], sparks:[], popups:[], torps:[],
+    drifters:[], driftCd:6, bonus:false, junkWarned:false,
     torpAmmo:3, fireHeld:false, fireCd:0,
     lockTarget:null, lockTime:0, lockBeepCd:0,
     shake:0, flashRed:0, flashWhite:0,
@@ -385,6 +386,9 @@ var STR = {
     score:"SCORE", best:"BEST", round:"ROUND", kills:"KILLS", ships:"SHIPS", shield:"SHIELD", hull:"HULL", sensor:"SENSOR", lock:"LOCK",
     shd:"SHD", hul:"HUL", torpNote:"LOCK + TORP = ONE-HIT KILL",
     roundClear:"ROUND CLEAR", extraShip:"EXTRA SHIP", shieldDown:"SHIELD DOWN", hullCrit:"HULL CRITICAL",
+    bonusWord:"BONUS ROUND", bonusSub:"DOUBLE POINTS — THEY CAN'T SHOOT!",
+    bonusTorpMsg:"Bonus cleared! +1 torpedo!", blocked:"BLOCKED",
+    junkInbound:"Space junk drifting through — it blocks your shots!",
     shipLost:"SHIP LOST", finalScore:"FINAL SCORE", flyAgain:"FLY AGAIN",
     fire:"FIRE", qrTitle:"SCAN TO PLAY", close:"CLOSE",
     roundInbound:function(n){ return "ROUND " + n + " — fighters inbound"; },
@@ -400,12 +404,15 @@ var STR = {
     how2:'<span class="k">FIRE + TURBO</span> — hold the mouse button down, keep your finger on the sky, or hold the FIRE button (or spacebar): whatever you are pointing at gets shot. Hold TURBO (or Shift) to surge — zoom right at a pack, or blow straight through it and leave it behind. Zooming is half the fun.',
     how3:'<span class="k">TORPEDO</span> — hold your crosshair on a fighter until it locks, then hit TORP. One shot, one kill.',
     how4:'<span class="k">RADAR</span> — the SENSOR scope floats low over the action, drawn see-through, and it is a miniature of your windshield: a dot sits exactly where the fighter is from your nose. Below center means BELOW you — pitch down and it is right there in the glass. Any solid dot inside the SECOND ring is already on your screen — look for its green glow. Fighters still outside your view sit hollow on the rim, and bright arrows at the screen edges point the way to them.',
-    how5:'<span class="k">THE LOOP</span> — shoot down 10 fighters to clear the round. Round 1 is gentle: slow fighters, one hit kills them, and each fires a single slow shot you can watch all the way in. Every round they come quicker and fire more, faster shots. Clear every 3rd round to earn an EXTRA SHIP. Enemy fire eats shield, then hull — lose your hull, lose a ship. Out of ships, run over.',
+    how5:'<span class="k">THE LOOP</span> — shoot down the fighters to clear the round — and every round needs MORE kills than the last: 10, then 12, then 14... Round 1 is gentle: slow fighters, one hit kills them, calm readable lines, and they DON\'T shoot back. From round 2 they answer with RED LASERS, and every round they fly more erratic, roaming further and further to the edges of your screen. Every 5th round is a BONUS ROUND with a silly name: nobody shoots at you, kills pay DOUBLE, and clearing it earns +1 torpedo. Watch for SPACE JUNK from round 2 — tumbling asteroids and dead satellites block your shots, and bumping one costs shield. Clear every 3rd round to earn an EXTRA SHIP. Enemy fire eats shield, then hull — lose your hull, lose a ship. Out of ships, run over.',
     how6:'<span class="k">THE ACE</span> — the curved-wing ACE is worth 500. Fast and mean — lock a torpedo on him.' },
   es:{ subtitle:"DUELO ESPACIAL VECTORIAL", start:"INICIAR", sound:"SONIDO", on:"SÍ", off:"NO", how:"CÓMO VOLAR", gotit:"ENTENDIDO",
     score:"PUNTOS", best:"RÉCORD", round:"RONDA", kills:"BAJAS", ships:"NAVES", shield:"ESCUDO", hull:"CASCO", sensor:"SENSOR", lock:"FIJADO",
     shd:"ESC", hul:"CAS", torpNote:"FIJADO + TORP = MUERTE SEGURA",
     roundClear:"¡RONDA SUPERADA!", extraShip:"¡NAVE EXTRA!", shieldDown:"¡ESCUDO CAÍDO!", hullCrit:"¡CASCO CRÍTICO!",
+    bonusWord:"RONDA BONUS", bonusSub:"¡PUNTOS DOBLES — NO PUEDEN DISPARAR!",
+    bonusTorpMsg:"¡Bonus superado! ¡+1 torpedo!", blocked:"¡BLOQUEADO!",
+    junkInbound:"¡Chatarra espacial a la deriva — bloquea tus disparos!",
     shipLost:"NAVE PERDIDA", finalScore:"PUNTUACIÓN FINAL", flyAgain:"VOLAR OTRA VEZ",
     fire:"FUEGO", qrTitle:"ESCANEA PARA JUGAR", close:"CERRAR",
     roundInbound:function(n){ return "RONDA " + n + " — cazas en camino"; },
@@ -421,7 +428,7 @@ var STR = {
     how2:'<span class="k">FUEGO + TURBO</span> — mantén el botón del ratón, el dedo en el cielo o el botón FUEGO (o la barra espaciadora): lo que apuntas recibe los disparos. Mantén TURBO (o Mayús) para acelerar: lánzate hacia un grupo o atraviésalo y déjalo atrás. Acelerar es la mitad de la diversión.',
     how3:'<span class="k">TORPEDO</span> — mantén la mira sobre un caza hasta fijarlo y pulsa TORP. Un disparo, una baja.',
     how4:'<span class="k">RADAR</span> — el SENSOR flota abajo sobre la acción, dibujado transparente, y es una miniatura de tu cabina: cada punto está exactamente donde está el caza desde tu morro. Debajo del centro significa DEBAJO de ti: inclínate hacia abajo y estará en el cristal. Todo punto sólido dentro del SEGUNDO anillo ya está en tu pantalla: busca su brillo verde. Los cazas aún fuera de tu vista quedan huecos en el borde, y flechas brillantes en los bordes de la pantalla indican el camino hacia ellos.',
-    how5:'<span class="k">EL CICLO</span> — derriba 10 cazas para superar la ronda. La ronda 1 es suave: cazas lentos, caen de un solo tiro, y cada uno dispara un solo tiro lento que ves venir desde lejos. Cada ronda vienen más rápido y disparan más, con tiros más veloces. Supera cada 3ª ronda y ganas una NAVE EXTRA. El fuego enemigo consume el escudo y luego el casco: perder el casco es perder una nave. Sin naves, se acabó.',
+    how5:'<span class="k">EL CICLO</span> — derriba cazas para superar la ronda — y cada ronda pide MÁS bajas que la anterior: 10, luego 12, luego 14... La ronda 1 es suave: cazas lentos, caen de un solo tiro, líneas tranquilas y legibles, y NO devuelven el fuego. Desde la ronda 2 responden con LÁSERES ROJOS, y cada ronda vuelan más erráticos, llegando cada vez más lejos, hasta los bordes de tu pantalla. Cada 5ª ronda es una RONDA BONUS con un nombre gracioso: nadie te dispara, las bajas pagan DOBLE y superarla da +1 torpedo. Cuidado con la CHATARRA ESPACIAL desde la ronda 2: asteroides y satélites muertos bloquean tus disparos, y chocar con uno cuesta escudo. Supera cada 3ª ronda y ganas una NAVE EXTRA. El fuego enemigo consume el escudo y luego el casco: perder el casco es perder una nave. Sin naves, se acabó.',
     how6:'<span class="k">EL AS</span> — el AS de alas curvas vale 500. Rápido y peligroso: fíjale un torpedo.' }
 };
 function S(){ return STR[LANG]; }
@@ -443,12 +450,17 @@ function crewSay(kind){
 }
 
 /* ---------------- rounds: Gary's loop ----------------
-   10 kills clears the round. Fighters keep coming until the quota
-   is met. Every round everything steps up a little — approach speed,
-   fireball speed, shots per fighter, fire rate — a smooth ramp,
-   never a cliff. Round 1 is deliberately gentle: slow one-hit
-   fighters, one slow shot each. Clearing every 3rd round = +1 ship. */
-var KILLS_PER_ROUND = 10;
+   The kill quota GROWS every round: 10, 12, 14, ... Fighters keep
+   coming until the quota is met. Every round everything steps up a
+   little — approach speed, bolt speed, shots per fighter, fire rate,
+   weave, jink and how far out to the screen edges they roam — a
+   smooth ramp, never a cliff. Round 1 is deliberately CALM: slow
+   one-hit fighters on gentle readable lines, and NOBODY fires back.
+   From round 2 they answer with RED LASERS. Every 5th round is a
+   BONUS round (silly name, nobody shoots, kills pay double, clear
+   it for +1 torpedo). From round 2, space junk drifts through and
+   interrupts. Clearing every 3rd round = +1 ship. */
+function killsToClear(r){ return 10 + (r-1)*2; }                             /* r1 10 → r2 12 → r3 14 → r10 28 */
 function roundSpeedFactor(r){ return 0.70 + Math.min(0.06*(r-1), 0.62); }   /* r1 .70 → r6 1.00 → r12 1.32 */
 function roundBoltSpeed(r){ return Math.min(34 + (r-1)*6, 95); }            /* r1 34 → r5 58 → r11 94 */
 function roundMaxShots(r, key){
@@ -466,18 +478,55 @@ var ENEMY_SLOW = 0.85;
    shootable targets — a long, steady hold early that tightens every
    round as the weave grows and the lines get evasive */
 function roundDwell(r){ return clamp(7.6 - (r-1)*0.45, 3.0, 7.6); }          /* seconds holding station in view */
-function roundWeaveAmp(r){ return clamp(2.2 + (r-1)*0.85, 2.2, 10.5); }       /* station drift, world units */
-function roundWeaveFreq(r){ return clamp(0.55 + (r-1)*0.07, 0.55, 1.25); }   /* weave pace */
+/* Gary's escalation (Oct 25): "Level 1 they don't fly too crazy, but
+   each level they fly further to the extremes of the screen." So the
+   wildness is a CURVE, not a switch: round 1 keeps the original
+   gentle weave (amp 2.2, freq 0.55), whisper-quiet jinks and the
+   original ±0.55 station spread — every round after stretches all
+   three toward the edges of the glass. */
+function roundWeaveAmp(r){ return clamp(2.2 + (r-1)*1.05, 2.2, 13); }        /* r1 2.2 → r5 6.4 → r10 11.7 */
+function roundWeaveFreq(r){ return clamp(0.55 + (r-1)*0.075, 0.55, 1.5); }   /* r1 0.55 → r10 1.23 */
+function roundAnchorSpread(r){ return clamp(0.55 + (r-1)*0.064, 0.55, 1.0); } /* station bearing ±: r1 0.55 → r8 1.0 */
+function roundAnchorElev(r){ var t = Math.min(r-1, 12); return [-0.16 - 0.0117*t, 0.34 + 0.02*t]; } /* r1 [-.16,.34] → r13 [-.30,.58] */
+function roundJinkGap(r){ return [Math.max(0.55, 2.6 - 0.24*(r-1)), Math.max(1.6, 4.2 - 0.30*(r-1))]; } /* seconds between jinks: r1 [2.6,4.2] → r10 [0.55,1.6] */
+function roundJinkMag(r){ return clamp(3 + (r-1)*2.2, 3, 24); }             /* jink kick strength cap: r1 3 (a nudge) → r10 22.8 */
+
+/* ---------------- bonus rounds: every 5th, funny name, no fire,
+   double points, +1 torpedo for clearing ---------------- */
+function isBonusRound(r){ return r % 5 === 0; }
+var BONUS_NAMES_EN = ["THE SPACE JUNK JAMBOREE", "DOUBLE TROUBLE BUBBLE", "THE GREAT GALACTIC GARAGE SALE", "THE COSMIC COMEDY CLUB", "PARADE OF THE CONFUSED CRUISERS"];
+var BONUS_NAMES_ES = ["LA FIESTA DE LA CHATARRA ESPACIAL", "DOBLE PROBLEMA DE BURBUJAS", "LA GRAN VENTA DE GARAJE GALÁCTICA", "EL CLUB DE LA COMEDIA CÓSMICA", "EL DESFILE DE LOS CRUCEROS CONFUNDIDOS"];
+function romanNum(n){ var R=[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]], out=""; for(var i=0;i<R.length;i++){ while(n>=R[i][0]){ out+=R[i][1]; n-=R[i][0]; } } return out; }
+function bonusName(r){
+  var names = (LANG==="es") ? BONUS_NAMES_ES : BONUS_NAMES_EN;
+  var k = r/5 - 1;                                   /* 0-based bonus index */
+  var name = names[k % names.length];
+  var cycle = Math.floor(k / names.length);
+  if(cycle > 0) name += (LANG==="es" ? " — PARTE " : " — PART ") + romanNum(cycle+1);
+  return name;
+}
+
+/* ---------------- universal clutter: tumbling asteroids and the odd
+   dead satellite drift across the field from round 2 on. They never
+   shoot — they INTERRUPT: they block the player's shots and a bump
+   costs shield. Spawn gap shrinks as rounds rise. ---------------- */
+var DRIFT_MAX = 4;
+function driftSpawnGap(r){ return clamp(9 - (r-2)*0.625, 4, 9); }           /* r2 9s → r10 4s */
 
 function startRound(n){
   G.round = n;
   G.roundKills = 0;
-  G.roundState = "banner"; G.roundTimer = 2.0;
+  G.bonus = isBonusRound(n);
+  G.drifters.length = 0;                         /* clean sky for every new round */
+  G.driftCd = rand(2.5, 4.5);                    /* first junk drifts in early (round 2+) */
+  G.junkWarned = false;
+  G.roundState = "banner"; G.roundTimer = G.bonus ? 2.8 : 2.0;   /* bonus names get a beat longer to read */
   G.lastClearExtra = false;
   G.spawnCd = 0;                                 /* first fighter appears the moment the banner drops */
   G.torpAmmo = Math.min(6, G.torpAmmo + 1);
   AudioSys.waveHorn();
   comms("CONTROL", S().roundInbound(n), "#37e6ff");
+  if(G.bonus) comms("CONTROL", "★ " + S().bonusWord + " — " + bonusName(n) + " ★", "#ffb02e");
   if(n>1) crewSay("round");
 }
 function roundCleared(){
@@ -492,6 +541,12 @@ function roundCleared(){
   G.shield = Math.min(100, G.shield + 25);
   G.score += 250;
   comms("CONTROL", S().roundCleared, "#37e6ff");
+  if(G.bonus){
+    /* the visible bonus reward: +1 torpedo on top of the round-start one */
+    G.torpAmmo = Math.min(6, G.torpAmmo + 1);
+    document.getElementById("torpCount").textContent = "× " + G.torpAmmo;
+    comms("CONTROL", S().bonusTorpMsg, "#ffb02e");
+  }
   if(G.round % 3 === 0){
     G.ships++;
     G.lastClearExtra = true;
@@ -541,7 +596,8 @@ function spawnEnemy(){
     driftPh: rand(0, Math.PI*2), driftF: rand(0.3, 0.7), weaveJit: rand(0.85, 1.15),
     state:"approach", stateT: rand(4,6), fireCd: rand(1.5,3.0),
     shots:0, maxShots: roundMaxShots(G.round, key),
-    wob: rand(0, Math.PI*2), flash:0, strafeDir: Math.random()<0.5?-1:1
+    wob: rand(0, Math.PI*2), flash:0, strafeDir: Math.random()<0.5?-1:1,
+    jinkT: rand(1.2, 3.0), jinkV: v3(0,0,0)
   };
   G.enemies.push(ne); pickAnchor(ne);
   if(key==="ace") comms("CONTROL", S().aceInbound, "#ffb02e");
@@ -561,7 +617,10 @@ function anchorWorld(B, E, D, basis, ppos){
 function pickAnchor(e){
   var basis = camBasis(), best = null, bestScore = -1;
   for(var t=0;t<14;t++){
-    var B = rand(-0.55, 0.55), E = rand(-0.16, 0.34), D = rand(48, 68);
+    /* how far out toward the screen edges stations may sit grows with
+       the round (Gary: further to the extremes each level) */
+    var spread = roundAnchorSpread(G.round), eRg = roundAnchorElev(G.round);
+    var B = rand(-spread, spread), E = rand(eRg[0], eRg[1]), D = rand(48, 68);
     var pt = anchorWorld(B, E, D, basis, G.player.pos), minD = 1e9;
     for(var i=0;i<G.enemies.length;i++){
       var o = G.enemies[i]; if(o===e || o.dead) continue;
@@ -572,6 +631,41 @@ function pickAnchor(e){
     if(minD > bestScore){ bestScore = minD; best = [B,E,D]; }
   }
   if(best){ e.anchorB=best[0]; e.anchorE=best[1]; e.anchorD=best[2]; }
+}
+
+/* a piece of the universe crossing the playfield: it spawns off to
+   one side of the nose cone and sweeps laterally across the glass,
+   riding part of the player's own forward speed so it lingers long
+   enough to get in the way. Relative paths are never aimed AT the
+   player — it's traffic, not an attacker. */
+function spawnDrifter(){
+  var basis = camBasis(), p = G.player;
+  var kind = Math.random() < 0.72 ? "rock" : "sat";
+  var side = Math.random() < 0.5 ? -1 : 1;
+  var D = rand(55, 85);
+  var pos = vadd(p.pos, vadd(
+    vscale(basis.F, D),
+    vadd(vscale(basis.R, side * rand(52, 78)), vscale(basis.U, rand(-12, 26)))
+  ));
+  var vel = vadd(
+    vscale(basis.F, p.speed * rand(0.55, 0.8)),
+    vadd(vscale(basis.R, rand(9, 15) * -side), vscale(basis.U, rand(-2.5, 2.5)))
+  );
+  var verts = [], nv = 7 + Math.floor(Math.random()*3);
+  for(var i=0;i<nv;i++){
+    var a = i/nv*Math.PI*2, rr = rand(0.68, 1.25);
+    verts.push([Math.cos(a)*rr, Math.sin(a)*rr]);
+  }
+  G.drifters.push({
+    kind: kind, pos: pos, vel: vel,
+    r: kind==="rock" ? rand(2.6, 4.2) : 3.4,
+    rot: rand(0, 6.28), rotV: rand(-0.9, 0.9),
+    verts: verts, flash: 0, life: 45
+  });
+  if(!G.junkWarned){
+    G.junkWarned = true;
+    comms("CONTROL", S().junkInbound, "#c8ccd2");
+  }
 }
 
 /* ---------------- camera / projection ---------------- */
@@ -663,6 +757,7 @@ function explode(e, big){
 function killEnemy(e, byTorp){
   explode(e, byTorp || e.key==="ace");
   var total = e.model.score + (byTorp?50:0);
+  if(G.bonus) total *= 2;                        /* bonus round: every kill pays double */
   G.score += total;
   G.kills++;
   G.roundKills++;
@@ -671,7 +766,7 @@ function killEnemy(e, byTorp){
   if(pr) G.popups.push({ x:pr.x, y:pr.y, text:(e.key==="ace" ? "ACE +" : "+") + total, ttl:0.9, color: e.key==="ace" ? "#ffb02e" : "#7dffb0" });
   if(G.lockTarget===e){ G.lockTarget=null; G.lockTime=0; }
   if(Math.random()<0.45) crewSay("kill");
-  if(G.roundState==="fight" && G.roundKills>=KILLS_PER_ROUND) roundCleared();
+  if(G.roundState==="fight" && G.roundKills>=killsToClear(G.round)) roundCleared();
 }
 
 /* ---------------- combat ---------------- */
@@ -692,15 +787,35 @@ function playerFire(){
      hit window is generous early and tightens a little each round */
   var ax = aimX(), ay = aimY();
   var hitGrace = clamp(1.22 - 0.025*(G.round-1), 0.98, 1.22);
-  var best=null, bestD=1e9;
+  var best=null, bestD=1e9, bestZ=1e9;
   for(var i=0;i<G.enemies.length;i++){
     var e = G.enemies[i]; if(e.dead) continue;
     var pr = project(e.pos, basis); if(!pr) continue;
     var d = Math.hypot(pr.x-ax, pr.y-ay);
     var hitR = clamp(pr.scale * e.model.radius * (e.size||1) * 0.95 * hitGrace, 8, 130);
-    if(d < hitR && d < bestD){ bestD = d; best = e; }
+    if(d < hitR && d < bestD){ bestD = d; best = e; bestZ = pr.z; }
   }
-  if(best){
+  /* universal clutter INTERRUPTS: a drifter sitting under the sight
+     and IN FRONT OF the target eats the shot — the beam stops at the
+     first solid thing along the line */
+  var rock=null, rockD=1e9, rockZ=1e9, rockPr=null;
+  for(var ri=0;ri<G.drifters.length;ri++){
+    var dr = G.drifters[ri];
+    var rp = project(dr.pos, basis); if(!rp) continue;
+    var rd = Math.hypot(rp.x-ax, rp.y-ay);
+    var rHit = clamp(rp.scale * dr.r * 1.05, 8, 150);
+    if(rd < rHit && rd < rockD){ rockD = rd; rock = dr; rockZ = rp.z; rockPr = rp; }
+  }
+  if(rock && (!best || rockZ < bestZ)){
+    rock.flash = 0.12;
+    for(var rs=0;rs<5;rs++){
+      G.sparks.push({ pos: v3(rock.pos.x, rock.pos.y, rock.pos.z),
+        vel: v3(rand(-8,8), rand(-8,8), rand(-8,8)), life: rand(0.2,0.45),
+        star: false, color: "#c8ccd2" });
+    }
+    if(rockPr) G.popups.push({ x:rockPr.x, y:rockPr.y - 10, text:S().blocked, ttl:0.7, color:"#c8ccd2" });
+    AudioSys.tone(150, 65, 0.09, "square", 0.13);   /* dull clang off the rock */
+  } else if(best){
     best.hp -= 1; best.flash = 0.09;
     if(best.hp<=0) killEnemy(best, false);
     else AudioSys.tone(500,300,0.05,"square",0.06);
@@ -800,15 +915,15 @@ function update(dt){
     G.shield = Math.min(100, G.shield + 3.2*dt);
   }
 
-  /* --- rounds: fighters keep coming until the 10-kill quota is met --- */
+  /* --- rounds: fighters keep coming until the kill quota is met --- */
   if(G.roundState==="banner"){
     G.roundTimer -= dt;
     if(G.roundTimer<=0) G.roundState = "fight";
   } else if(G.roundState==="fight"){
-    if(G.roundKills < KILLS_PER_ROUND){
+    if(G.roundKills < killsToClear(G.round)){
       G.spawnCd -= dt;
       var cap = Math.min(5 + G.round, 14);
-      if(G.spawnCd<=0 && G.enemies.length < cap && (G.roundKills + G.enemies.length) < KILLS_PER_ROUND + 2){
+      if(G.spawnCd<=0 && G.enemies.length < cap && (G.roundKills + G.enemies.length) < killsToClear(G.round) + 2){
         spawnEnemy(); G.spawnCd = rand(0.3, 0.7);
       }
     }
@@ -857,7 +972,7 @@ function update(dt){
       desired = vnorm(toPlayer);
       if(e.stateT<=0){ e.state="break"; e.stateT = rand(1.1,1.9); }
     } else { /* break: peel off wide and behind, then re-approach fresh */
-      var bPt = vadd(p.pos, vadd(vscale(basis.R, e.strafeDir*130), vadd(vscale(basis.U, 16), vscale(basis.F, -55))));
+      var bPt = vadd(p.pos, vadd(vscale(basis.R, e.strafeDir*175), vadd(vscale(basis.U, 16), vscale(basis.F, -55))));
       var toB = vsub(bPt, e.pos);
       vel = vadd(pVel, vscale(vnorm(toB), e.speed*1.45));
       desired = vnorm(vel);
@@ -866,6 +981,19 @@ function update(dt){
         e.state = "approach"; e.stateT = rand(4,6);
       }
     }
+    /* Gary: ERRATIC flight — sharp random jink kicks on each fighter's
+       own clock, on top of the weave. Both the rate and the kick GROW
+       with the round: round 1 gets a rare nudge (mag <= 3), by round
+       10 the kicks come ~every second at full strength. */
+    e.jinkT -= dt;
+    if(e.jinkT<=0){
+      var jg = roundJinkGap(G.round), jm = roundJinkMag(G.round);
+      e.jinkT = rand(jg[0], jg[1]);
+      var jk = vadd(vscale(basis.R, rand(-1,1)), vscale(basis.U, rand(-0.6,0.6)));
+      e.jinkV = vscale(vnorm(jk), rand(jm*0.4, jm) * (e.key==="ace" ? 1.3 : 1));
+    }
+    e.jinkV = vscale(e.jinkV, Math.max(0, 1 - dt*3.5));
+    vel = vadd(vel, e.jinkV);
     /* combat-distance floor: nobody parks on the windshield — inside
        26 units a fighter is shoved back out, so it can never fill the
        glass or sit on top of the scope and gauges */
@@ -902,14 +1030,17 @@ function update(dt){
       e.pos = vadd(p.pos, vscale(awayDir, 20));
     }
 
-    /* enemy fire: only when the player is in their forward cone AND the
-       fighter is in the player's forward hemisphere — no invisible back-shots.
-       Each fighter carries a per-life shot budget for the round: 1 in
-       round 1, stepping up every round after. */
+    /* enemy fire: GARY'S RULES — nobody fires back in round 1; from
+       round 2 they answer with RED LASERS; and on a BONUS round the
+       sky stays friendly — nobody shoots at all. Only when the player
+       is in their forward cone AND the fighter is in the player's
+       forward hemisphere — no invisible back-shots. Each fighter
+       carries a per-life shot budget for the round, stepping up
+       every round. */
     e.fireCd -= dt;
     var facing = vdot(e.heading, vnorm(toPlayer));
     var inFront = vdot(basis.F, vnorm(vsub(e.pos, p.pos))) > 0.02;
-    if(e.fireCd<=0 && e.shots < e.maxShots && facing > 0.86 && dist < 85 && dist > 9 && inFront){
+    if(G.round>=2 && !G.bonus && e.fireCd<=0 && e.shots < e.maxShots && facing > 0.86 && dist < 85 && dist > 9 && inFront){
       enemyShoot(e);
       e.shots++;
       e.fireCd = roundFireGap(G.round) * rand(0.85, 1.2) * (e.key==="ace" ? 0.65 : 1);
@@ -954,6 +1085,32 @@ function update(dt){
     if(vlen(vsub(eb.pos, p.pos)) < 3.4){ eb.life = 0; hurtPlayer(7); }
   }
   G.ebolts = G.ebolts.filter(function(b){ return b.life>0; });
+
+  /* --- universal clutter: drift, tumble, interrupt --- */
+  if(G.round>=2 && G.roundState==="fight"){
+    G.driftCd -= dt;
+    if(G.driftCd<=0 && G.drifters.length < DRIFT_MAX){
+      spawnDrifter();
+      G.driftCd = driftSpawnGap(G.round) * rand(0.8, 1.25);
+    }
+  }
+  for(var di=0;di<G.drifters.length;di++){
+    var drf = G.drifters[di];
+    drf.pos = vadd(drf.pos, vscale(drf.vel, dt));
+    drf.rot += drf.rotV * dt;
+    drf.flash = Math.max(0, drf.flash - dt);
+    drf.life -= dt;
+    /* bump: flying into junk costs shield like a hit — then the rock
+       is knocked aside and a grace window keeps it from chain-draining */
+    var dDist = vlen(vsub(drf.pos, p.pos));
+    if(dDist < drf.r + 2.2 && G.invuln<=0){
+      hurtPlayer(10);
+      G.invuln = Math.max(G.invuln, 0.9);
+      drf.vel = vadd(drf.vel, vscale(vnorm(vsub(drf.pos, p.pos)), 12));
+    }
+    if(dDist > 170 || vdot(vsub(drf.pos, p.pos), basis.F) < -18) drf.life = 0;
+  }
+  G.drifters = G.drifters.filter(function(d){ return d.life>0; });
 
   /* --- player laser visuals --- */
   for(var l=0;l<G.bolts.length;l++) G.bolts[l].ttl -= dt;
@@ -1237,7 +1394,11 @@ function drawHUD(basis){
   ctx.font = "700 21px Orbitron, sans-serif";
   ctx.fillText(String(G.round), W-pad, pad+19);
   ctx.font = "500 12px Orbitron, sans-serif"; ctx.fillStyle = "#7dffb0";
-  ctx.fillText(S().kills + " " + G.roundKills + "/" + KILLS_PER_ROUND, W-pad, pad+46);
+  ctx.fillText(S().kills + " " + G.roundKills + "/" + killsToClear(G.round), W-pad, pad+46);
+  if(G.bonus){
+    ctx.font = "700 12px Orbitron, sans-serif"; ctx.fillStyle = "#ffb02e"; ctx.shadowBlur = 8; ctx.shadowColor = "#ffb02e";
+    ctx.fillText("★ " + S().bonusWord + " ×2", W-pad, pad+64);
+  }
   ctx.shadowBlur = 0;
 
   /* SHIELD trapezoid gauge top-center (the '83 frame) */
@@ -1425,10 +1586,29 @@ function drawHUD(basis){
 
   /* round banner */
   if(G.roundState==="banner"){
-    ctx.font = "900 40px Orbitron, sans-serif"; ctx.textAlign = "center";
-    ctx.fillStyle = "#eafff1"; ctx.shadowBlur = 22; ctx.shadowColor = "#39ff6a";
-    ctx.fillText(S().round + " " + G.round, W/2, VCY - 20);
-    ctx.shadowBlur = 0;
+    ctx.textAlign = "center";
+    if(G.bonus){
+      /* bonus rounds wear their funny name in gold */
+      ctx.font = "900 30px Orbitron, sans-serif";
+      ctx.fillStyle = "#ffd27a"; ctx.shadowBlur = 22; ctx.shadowColor = "#ffb02e";
+      ctx.fillText("★ " + S().bonusWord + " " + G.round + " ★", W/2, VCY - 52);
+      var bName = bonusName(G.round), bSize = 23;
+      ctx.font = "900 " + bSize + "px Orbitron, sans-serif";
+      while(ctx.measureText(bName).width > W - 24 && bSize > 11){
+        bSize -= 2; ctx.font = "900 " + bSize + "px Orbitron, sans-serif";
+      }
+      ctx.fillStyle = "#ffe9b8";
+      ctx.fillText(bName, W/2, VCY - 12);
+      ctx.font = "700 14px Orbitron, sans-serif";
+      ctx.fillStyle = "#7dffb0"; ctx.shadowBlur = 12; ctx.shadowColor = "#39ff6a";
+      ctx.fillText(S().bonusSub, W/2, VCY + 22);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.font = "900 40px Orbitron, sans-serif";
+      ctx.fillStyle = "#eafff1"; ctx.shadowBlur = 22; ctx.shadowColor = "#39ff6a";
+      ctx.fillText(S().round + " " + G.round, W/2, VCY - 20);
+      ctx.shadowBlur = 0;
+    }
   } else if(G.roundState==="clear"){
     ctx.font = "900 30px Orbitron, sans-serif"; ctx.textAlign = "center";
     ctx.fillStyle = "#baffd2"; ctx.shadowBlur = 18; ctx.shadowColor = "#39ff6a";
@@ -1520,27 +1700,71 @@ function render(){
     ctx.globalAlpha = 1;
   }
 
-  /* enemy fireballs: glowing orbs with a short trail — shoot them down
-     by shooting the fighter, not the ball; they just have to miss you */
+  /* enemy RED LASERS (Gary): bright red streaks along the shot's path —
+     they read as lasers, never orbs */
   for(var i=0;i<G.ebolts.length;i++){
     var eb = G.ebolts[i];
-    var tail = vsub(eb.pos, vscale(eb.vel, 0.055));
+    var tail = vsub(eb.pos, vscale(eb.vel, 0.085));
     var p1 = project(eb.pos, basis);
-    if(p1){
-      var fr2 = clamp(p1.scale*0.30, 3, 10) * (0.9 + 0.2*Math.sin(G.t*31 + eb.pos.x));
-      var grd = ctx.createRadialGradient(p1.x, p1.y, 0, p1.x, p1.y, fr2*2.1);
-      grd.addColorStop(0, "rgba(255,240,200,0.95)");
-      grd.addColorStop(0.35, "rgba(255,150,40,0.9)");
-      grd.addColorStop(1, "rgba(255,40,20,0)");
-      ctx.fillStyle = grd;
-      ctx.beginPath(); ctx.arc(p1.x, p1.y, fr2*2.1, 0, Math.PI*2); ctx.fill();
-      var p2 = project(tail, basis);
-      if(p2){
-        ctx.strokeStyle = "rgba(255,90,40,.55)"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
-      }
+    var p2 = project(tail, basis);
+    if(p1 && p2){
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,30,30,.35)"; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
+      ctx.strokeStyle = "#ff2a2a"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(p2.x,p2.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
+      ctx.fillStyle = "#ffd9d9";
+      ctx.beginPath(); ctx.arc(p1.x, p1.y, 2.2, 0, Math.PI*2); ctx.fill();
     }
   }
+
+  /* universal clutter: tumbling rocks and dead satellites — plain
+     gray vector shapes, drawn in the world so shots and ships alike
+     have to reckon with them */
+  for(var di2=0;di2<G.drifters.length;di2++){
+    var drw = G.drifters[di2];
+    var dp = project(drw.pos, basis);
+    if(!dp) continue;
+    var drPx = clamp(dp.scale * drw.r, 3, 110);
+    var dCol = drw.flash>0 ? "#ffffff" : (drw.kind==="rock" ? "#9aa3ad" : "#aebfd0");
+    ctx.save();
+    ctx.translate(dp.x, dp.y);
+    ctx.rotate(drw.rot);
+    ctx.lineWidth = 2; ctx.strokeStyle = dCol;
+    ctx.shadowBlur = 8; ctx.shadowColor = dCol;
+    if(drw.kind==="rock"){
+      ctx.beginPath();
+      for(var dv=0;dv<drw.verts.length;dv++){
+        var vx = drw.verts[dv][0]*drPx, vy = drw.verts[dv][1]*drPx;
+        if(dv===0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(130,140,150,.18)"; ctx.fill();
+      ctx.stroke();
+      /* one crater dimple so the tumble reads */
+      ctx.beginPath(); ctx.arc(drPx*0.25, -drPx*0.15, drPx*0.22, 0, Math.PI*2);
+      ctx.strokeStyle = "rgba(154,163,173,.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+    } else {
+      /* dead satellite: body, two panel wings, a drooping dish */
+      ctx.fillStyle = "rgba(150,170,195,.20)";
+      ctx.fillRect(-drPx*0.55, -drPx*0.32, drPx*1.1, drPx*0.64);
+      ctx.strokeRect(-drPx*0.55, -drPx*0.32, drPx*1.1, drPx*0.64);
+      ctx.strokeRect(-drPx*2.1, -drPx*0.26, drPx*1.4, drPx*0.52);
+      ctx.strokeRect( drPx*0.7, -drPx*0.26, drPx*1.4, drPx*0.52);
+      ctx.beginPath();
+      ctx.moveTo(-drPx*1.4, 0); ctx.lineTo(-drPx*0.55, 0);
+      ctx.moveTo( drPx*0.55, 0); ctx.lineTo( drPx*0.7, 0);
+      ctx.moveTo(0, -drPx*0.32); ctx.lineTo(drPx*0.3, -drPx*0.85);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(drPx*0.42, -drPx*0.95, drPx*0.28, 0, Math.PI*2); ctx.stroke();
+      if(Math.floor(G.t*2)%2===0){   /* one sad little blinking beacon */
+        ctx.fillStyle = "#ff5040"; ctx.shadowColor = "#ff5040"; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(0, -drPx*0.45, 2.2, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  ctx.shadowBlur = 0;
 
   /* torpedoes */
   for(var t=0;t<G.torps.length;t++){
