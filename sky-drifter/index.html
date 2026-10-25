@@ -405,6 +405,7 @@
         <button id="exitBtn" aria-label="Exit flight and return to the introduction">✕ EXIT</button>
         <button id="musicBtn" aria-label="Open the music player">♪</button>
         <button id="pilotPill" class="on" aria-label="Flight mode. Tap to switch between AUTO PILOT and MANUAL. Manual keeps the world you are in.">✈ AUTO PILOT</button>
+        <button id="hudEye" aria-label="Hide or show the controls" title="Hide / show controls">👁</button>
       </div>
       <button id="controlsBtn" aria-label="Open or close the controls sidebar">☰ CONTROLS</button>
     </div>
@@ -4735,6 +4736,31 @@ function frame(now){
   try{ update(dt); render(); }catch(err){ /* a single bad frame is swallowed — the sky keeps moving */ }
 }
 requestAnimationFrame(frame);
+</script>
+
+<style>
+/* CLEAN SKY (Gary, Oct 25): the eye hides every control; tap it again to bring them back */
+#hudEye{width:41px;height:41px;border-radius:50%;cursor:pointer;color:#fff;font-family:inherit;border:1px solid rgba(255,255,255,.5);font-size:17px;line-height:1;padding:0;background:rgba(16,6,34,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(5,0,20,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+#hudEye:active{transform:scale(.95)}
+#exitBtn,#musicBtn,#pilotPill,#controlsBtn,#panel,#radioBar,#flightStrip,#altMeter,#biomeLabel,#videoDrag{transition:opacity .25s ease}
+body.clean #exitBtn,body.clean #musicBtn,body.clean #pilotPill,body.clean #controlsBtn,body.clean #panel,body.clean #radioBar,body.clean #flightStrip,body.clean #altMeter,body.clean #biomeLabel,body.clean #videoDrag{opacity:0!important;pointer-events:none!important}
+body.clean #hudEye{position:fixed;top:max(12px,env(safe-area-inset-top));left:calc(12px + env(safe-area-inset-left));opacity:.38;z-index:60}
+</style>
+<script>
+/* CLEAN SKY toggle: one tap on the eye hides everything so the phone shows
+   only the living world; the dimmed eye stays in the corner as the way back.
+   The choice persists (sdCleanV1). Desktop: H key works too. */
+(function(){
+  var eye=document.getElementById('hudEye'); if(!eye) return;
+  function apply(on){ document.body.classList.toggle('clean', !!on);
+    try{ localStorage.setItem('sdCleanV1', on?'1':'0'); }catch(e){} }
+  var start=false; try{ start=localStorage.getItem('sdCleanV1')==='1'; }catch(e){}
+  if(start) document.body.classList.add('clean');
+  eye.addEventListener('click', function(ev){ ev.stopPropagation();
+    apply(!document.body.classList.contains('clean')); });
+  document.addEventListener('keydown', function(ev){
+    if(ev.key==='h' || ev.key==='H'){ apply(!document.body.classList.contains('clean')); } });
+})();
 </script>
 </body>
 </html>
