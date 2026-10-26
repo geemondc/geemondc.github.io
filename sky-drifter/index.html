@@ -125,12 +125,12 @@
       #musicToast.show { opacity: 1; transform: translate(-50%, 0); }
       .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 1px; }
       /* the realm door: two big always-visible buttons atop the WORLD group */
-      #realmToggle { display: flex; gap: 6px; }
+      #realmToggle { display: grid; grid-template-columns: .78fr 1.3fr .82fr; gap: 5px; }   /* three realms, one row (Gary, Oct 26) */
       .grp.off { opacity: .38; pointer-events: none; }   /* WEATHER sleeps while submerged */
       .realmBtn {
         flex: 1 1 0; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.09); color: #fff;
-        font-family: inherit; font-weight: 800; font-size: 15px; letter-spacing: .4px; line-height: 1;
-        padding: 13px 4px; border-radius: 14px; cursor: pointer; white-space: nowrap;
+        font-family: inherit; font-weight: 800; font-size: 11px; letter-spacing: 0; line-height: 1;
+        padding: 12px 1px; border-radius: 14px; cursor: pointer; white-space: nowrap; min-width: 0; overflow: hidden;
         transition: background .2s, transform .15s, box-shadow .2s;
       }
       .realmBtn:active { transform: scale(.96); }
@@ -486,6 +486,7 @@
             <div id="realmToggle">
               <button class="realmBtn on" data-realm="land">🌍 LAND</button>
               <button class="realmBtn" data-realm="underwater">🫧 UNDERWATER</button>
+              <button class="realmBtn" data-realm="space">🚀 SPACE</button>
             </div>
             <div class="chips" id="worldChips">
             <button class="chip" data-world="tour">✈ FLY WITH ME</button>
@@ -4073,6 +4074,8 @@ function update(dt){
     document.querySelectorAll('#altBars i').forEach((el,i)=>el.classList.toggle('on',i<n)); }
   const dEl=$('depthTag');
   if(dEl){ const uwOn=flying&&S.uwF>0.5; const dw=uwOn?(S.alt>=0.58?'🌊 THE SHALLOWS':S.alt>=0.33?'🪸 THE REEF':'🐙 THE DEEP'):''; if(dEl.textContent!==dw)dEl.textContent=dw; dEl.style.opacity=uwOn?'1':'0'; }
+  const spB=document.querySelector('.realmBtn[data-realm="space"]');
+  if(spB){ const spOn=S.biome!=='underwater'&&(spaceRun||S.alt>=1.0); if(spB.classList.contains('on')!==spOn)syncRealm(); }
   /* LAND appears when LOW and SLOW: no gas on, speed settled back down.
      Touchdown is a slow thing only — descend WITH speed and you skim.
      There is no landing in the water: the tank is flown, not parked. */
@@ -4274,7 +4277,8 @@ wireChips('worldChips',ch=>{ const v=ch.dataset.world;
 /* the realm door: one tap through the splash gate, either way. LAND over
    land is a deliberate no-op — the lit button already says where you are */
 document.querySelectorAll('.realmBtn').forEach(b=>b.addEventListener('click',()=>{ wake(); audioInit();
-  if(b.dataset.realm==='underwater'){ S.worldMode='lock'; disengagePilot(); if(S.biome!=='underwater')jumpTo('underwater'); syncPilotUI(); closePanel(); }
+  if(b.dataset.realm==='space'){ S.worldMode='lock'; disengagePilot(); spaceRun=true; showLabel('🚀 SPACE — climbing…'); syncPilotUI(); closePanel(); }
+  else if(b.dataset.realm==='underwater'){ S.worldMode='lock'; disengagePilot(); if(S.biome!=='underwater')jumpTo('underwater'); syncPilotUI(); closePanel(); }
   else if(S.biome==='underwater'){ S.worldMode='lock'; disengagePilot(); jumpTo(S.uwPrev||'beach'); syncPilotUI(); closePanel(); }
 }));
 function syncWindUI(){ $('soundBtn').classList.toggle('on',S.windOn); $('soundBtn').firstChild.textContent=S.windOn?'🔊':'🔇'; $('soundLine').textContent='Sound: '+(S.windOn?'On':'Off'); }
@@ -4319,7 +4323,8 @@ function syncPilotUI(){
 }
 function syncRealm(){
   const uw=S.biome==='underwater';
-  document.querySelectorAll('.realmBtn').forEach(b=>b.classList.toggle('on',(b.dataset.realm==='underwater')===uw));
+  const sp=!uw&&(spaceRun||S.alt>=1.0);   /* three realms now (Gary, Oct 26): LAND / UNDERWATER / SPACE */
+  document.querySelectorAll('.realmBtn').forEach(b=>b.classList.toggle('on', b.dataset.realm==='space'?sp : b.dataset.realm==='underwater'?uw : (!uw&&!sp)));
   const wg=$('wxGrp'); if(wg)wg.classList.toggle('off',uw);   /* no weather to pick under the water */
 }
 function engagePilot(){ S.pilot=true; S.worldMode='auto'; S.ptourT=0; S.tourT=0; S.drift=false; syncPilotUI(); }
