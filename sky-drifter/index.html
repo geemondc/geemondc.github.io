@@ -3780,6 +3780,12 @@ function update(dt){
          structure Gary asked for: up climbs, down dives, left and right
          bank — and diagonals blend in proportion. */
       const mr=dt*(1.9-0.8*S.warpF)*(1-S.warpF*0.45)*(1+S.holdBoost*0.9);
+      /* Gary's law (Oct 27): the stick answers in ITS direction from the
+         first frame — push up and any downward pitch is cancelled on the
+         spot, never carried through zero by the ease; same for down,
+         left and right. Same-direction moves keep the smooth ease. */
+      if(S.pitch*JOY.ty<0&&Math.abs(JOY.ty)>0.08)S.pitch=0;
+      if(S.bank*JOY.tx<0&&Math.abs(JOY.tx)>0.08)S.bank=0;
       S.bank=lerp(S.bank,JOY.tx,mr); S.pitch=lerp(S.pitch,JOY.ty,mr);
     } else if(S.drift){
       S.bank=lerp(S.bank,Math.sin(t*0.13)*0.55,dt*0.8);
@@ -3798,6 +3804,8 @@ function update(dt){
       const R=Math.max(1,Math.min(W,H)*0.42);
       const tx=shapeStick(clamp((spT.x-spT.sx)/R,-1,1)), ty=shapeStick(clamp((spT.sy-spT.y)/R,-1,1));
       const mr=dt*(1.9-0.8*S.warpF)*(1-S.warpF*0.45)*(1+S.holdBoost*0.9);   /* heavier damping: eases onto the target, never twitches past it — and a held push answers faster and faster */
+      if(S.pitch*ty<0&&Math.abs(ty)>0.08)S.pitch=0;   /* Gary's law: answer in the stick's direction from the first frame */
+      if(S.bank*tx<0&&Math.abs(tx)>0.08)S.bank=0;
       S.bank=lerp(S.bank,tx,mr); S.pitch=lerp(S.pitch,ty,mr);
     } else if(!steerHeld){
       if(S.mouseGas&&!JOY.on){ /* PRESS AND POINT: while the button is held, the last
@@ -3808,7 +3816,10 @@ function update(dt){
          held state itself is the command now: top edge keeps climbing into
          space, side edges keep turning, until the button is released. */
         const mr=dt*(1.9-0.8*S.warpF)*(1+S.holdBoost*0.9);
-        S.bank=lerp(S.bank,clamp(mouseTX,-1,1),mr); S.pitch=lerp(S.pitch,clamp(mouseTY,-1,1),mr); }
+        const mTX=clamp(mouseTX,-1,1), mTY=clamp(mouseTY,-1,1);
+        if(S.pitch*mTY<0&&Math.abs(mTY)>0.08)S.pitch=0;   /* Gary's law: answer in the stick's direction from the first frame */
+        if(S.bank*mTX<0&&Math.abs(mTX)>0.08)S.bank=0;
+        S.bank=lerp(S.bank,mTX,mr); S.pitch=lerp(S.pitch,mTY,mr); }
       else if(!JOY.on&&S.flyT-mouseFreshT<2.5){ S.bank=lerp(S.bank,mouseTX,dt*1.8); S.pitch=lerp(S.pitch,mouseTY,dt*1.8); }   /* with the joystick on, the cursor's resting place is not a command — the stick is */
       else { S.pitch=lerp(S.pitch,0,dt*0.8); S.bank=lerp(S.bank,0,dt*1.1); }   /* released: the flight gently settles back toward level */
     }
@@ -3900,17 +3911,15 @@ function update(dt){
     else S.surfT=Math.max(0,S.surfT-dt*2);
   }
   S.skimF=lerp(S.skimF,sstep(0.16,0.06,S.alt)*sstep(0.55,0.9,S.effSpeed)*(flying?1:0),dt*3);
-  /* WARP: MAXIMUM SPEED is the trigger, however you reach it — the gas
-     pinned to the stop, OR genuinely flat-out velocity: a screaming dive
-     feeds effSpeed past the level-flight ceiling (full gas settles at
-     1.02), so speed itself counts. Keying the melt to the throttle alone
-     meant any flight whose gas topped out under 0.97 — a hard one-finger
-     push most of all — could fly flat-out forever and never warp. Hold
-     max speed for a sustained moment and the flight melts into the
-     Tempest rainbow; ease off the speed and it melts back out. */
-  const atMax=flying&&S.biome!=='underwater'&&(S.throttle>0.97||S.effSpeed>=1.0);   /* the water never melts: full speed underwater stays painterly — streaming water and light toward the surface, never the neon tunnel */
-  if(atMax)S.warpT+=dt; else S.warpT=Math.max(0,S.warpT-dt*1.5);
-  S.warpF=lerp(S.warpF,S.warpT>0.9?1:0,dt*(S.warpT>0.9?1.3:0.7));
+  /* WARP — Gary's law (Oct 27): light speed belongs to the CLIMB alone.
+     Hold the stick UP — a real climb push — continuously for 2 full
+     seconds and the flight melts into the Tempest rainbow. Speed never
+     triggers it, throttle never triggers it, and holding left or right
+     NEVER triggers it. Break the up-hold and the count resets to zero;
+     ease off and it melts back out. */
+  const upPush=joyHeldNow?JOY.ty:(keys.up?1:((!steerHeld&&S.mouseGas)?clamp(mouseTY,-1,1):0));   /* the water never melts: full speed underwater stays painterly — streaming water and light toward the surface, never the neon tunnel */
+  if(flying&&!S.pilot&&S.biome!=='underwater'&&upPush>=0.75)S.upHoldT=(S.upHoldT||0)+dt; else S.upHoldT=0;
+  S.warpF=lerp(S.warpF,S.upHoldT>=2?1:0,dt*(S.upHoldT>=2?1.3:0.7));
   S.diveF=lerp(S.diveF,sstep(0.42,0.95,-S.pitch)*(flying?1:0),dt*2.4);
   /* the camera chases the controls through a soft spring — no robotic steps.
      Underwater the spring itself goes dreamy: slower, heavier, drifting. */
