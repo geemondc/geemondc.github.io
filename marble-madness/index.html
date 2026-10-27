@@ -113,6 +113,7 @@ window.addEventListener('resize', resize); resize();
 
 const TW = 64, TH = 32, ZH = 26;              // iso tile px, height unit px
 const isoX = (x,y)=> (x-y)*TW/2;
+function zoomZ(){ return W < 760 ? 0.34 : 0.55; }   // Gary: zoom out 3x — see where you can go
 const isoY = (x,y,z)=> (x+y)*TH/2 - z*ZH;
 
 /* ---------- audio: tiny synth, arcade chirps ---------- */
@@ -405,7 +406,7 @@ function respawn(){
   M.z = s ? s.h : 2; M.grounded = true;
 }
 function popup(txt, x, y, z){ const el = document.createElement('div'); el.className='pop'; el.textContent = txt;
-  const sx = W/2 + isoX(x,y) - G.camX, sy = H*0.42 + isoY(x,y,z) - G.camY;
+  const zz = zoomZ(); const sx = W/2 + (isoX(x,y) - G.camX)*zz, sy = H*0.38 + (isoY(x,y,z) - G.camY)*zz;
   el.style.left = sx+'px'; el.style.top = sy+'px'; document.getElementById('popups').appendChild(el); setTimeout(()=>el.remove(), 1150); }
 function addScore(n, x, y, z){ G.score += n; if (x !== undefined) popup('+'+n.toLocaleString(), x, y, z); }
 
@@ -601,16 +602,18 @@ function drawShadow(x, y, zSurf, zBall, OX, OY){
   ctx.beginPath(); ctx.ellipse(sx, sy, r, r*0.45, 0, 0, 6.29); ctx.fillStyle = `rgba(5,5,25,${a})`; ctx.fill();
 }
 function render(t){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
   const C = COURSES[G.race];
   const bg = ctx.createRadialGradient(W/2, H*0.35, 60, W/2, H*0.4, Math.max(W,H)*0.85);
   bg.addColorStop(0, '#232a5e'); bg.addColorStop(0.55, '#12163a'); bg.addColorStop(1, '#070818');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   const OX = W/2 - G.camX + (G.shake ? (Math.random()-0.5)*G.shake : 0);
-  const OY = H*0.42 - G.camY + (G.shake ? (Math.random()-0.5)*G.shake : 0);
+  const OY = H*0.38 - G.camY + (G.shake ? (Math.random()-0.5)*G.shake : 0);
+  const ZZ = zoomZ(); ctx.save(); ctx.translate(W/2, H*0.38); ctx.scale(ZZ, ZZ); ctx.translate(-W/2, -H*0.38);
   const sorted = [...C.plats].sort((a,b)=> (a.x+a.y)-(b.x+b.y) || a.h-b.h);
   for (const p of sorted) drawPlat(p, C, t, OX, OY);
   drawFlags(C, t, OX, OY);
-  if (G.mode === 'title') return;
+  if (G.mode === 'title'){ ctx.restore(); return; }
   // acid blobs
   for (const a of ENTS.acids){ const s = surfaceAt(C, a.x, a.y, 1e9, t); const az = s ? s.h : 1; drawShadow(a.x, a.y, az, az, OX, OY);
     const px = OX+isoX(a.x,a.y), py = OY+isoY(a.x,a.y,az)-6; ctx.beginPath(); ctx.ellipse(px, py, 15, 9+Math.sin(t*3+a.cx)*2, 0, 0, 6.29); ctx.fillStyle = '#39e04c'; ctx.fill(); ctx.beginPath(); ctx.arc(px-5, py-4, 3.4, 0, 6.29); ctx.fillStyle = '#baffc0'; ctx.fill(); }
@@ -645,12 +648,13 @@ function render(t){
   for (const s of ENTS.steelies){ if (s.dead) continue; drawShadow(s.x, s.y, s.z, s.z, OX, OY); drawSphere(s.x, s.y, s.z, 14, '#9aa2b5', '#3a3f4d', '#0c0e14', OX, OY, t*3+s.x); }
   // the marble
   if (!M.dead){ const s = surfaceAt(C, M.x, M.y, M.z, t); drawShadow(M.x, M.y, s ? s.h : M.z-2, M.z, OX, OY);
-    const sq = M.squash > 0 ? 0.78 : 1; ctx.save(); const mp = [OX+isoX(M.x,M.y), OY+isoY(M.x,M.y,M.z)]; ctx.translate(mp[0], mp[1]-8); ctx.scale(1, sq); ctx.translate(-mp[0], -(mp[1]-8)); drawSphere(M.x, M.y, M.z, 15, '#bfe0ff', '#2f6fe4', '#0a2560', OX, OY, Math.atan2(M.vy, M.vx) + G.dist*2); ctx.restore(); }
+    const sq = M.squash > 0 ? 0.78 : 1; ctx.save(); const mp = [OX+isoX(M.x,M.y), OY+isoY(M.x,M.y,M.z)]; ctx.translate(mp[0], mp[1]-8); ctx.scale(1, sq); ctx.translate(-mp[0], -(mp[1]-8)); drawSphere(M.x, M.y, M.z, 17.5, '#bfe0ff', '#2f6fe4', '#0a2560', OX, OY, Math.atan2(M.vy, M.vx) + G.dist*2); ctx.restore(); }
   // the broom (arcade death ritual)
   if (G.broom){ const b = G.broom; const px = OX+isoX(b.x,b.y), py = OY+isoY(b.x,b.y,b.z)-4;
     ctx.fillStyle = '#7db8ff'; for (let i=0;i<4;i++){ const a = i*1.7 + b.t*3; ctx.beginPath(); ctx.arc(px+Math.cos(a)*7, py+Math.sin(a)*3, 2.6, 0, 6.29); ctx.fill(); }
     const sw = Math.sin(b.t*16)*9; ctx.strokeStyle = '#a8742c'; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(px+16+sw, py-26); ctx.lineTo(px+3, py-4); ctx.stroke();
     ctx.fillStyle = '#e8c95a'; poly([[px-4,py-6],[px+9,py-6],[px+13,py+3],[px-7,py+3]], '#e8c95a'); }
+  ctx.restore();
   // roller ball spin visual
   ballEl.style.transform = `translateX(-50%) rotate(${Math.atan2(ROLL.y, ROLL.x)*57.3 + 90}deg)`;
   ballEl.style.filter = `brightness(${1 + Math.min(0.35, Math.hypot(ROLL.x, ROLL.y)/60)})`;
@@ -753,7 +757,7 @@ function loop(now){
   }
   // camera follows the marble (title drifts over Practice)
   if (G.mode === 'title'){ const C = COURSES[0]; G.camX += ((isoX(7,10) + Math.sin(t*0.11)*160) - G.camX) * 0.02; G.camY += ((isoY(7,10,2) + Math.cos(t*0.09)*60) - G.camY) * 0.02; }
-  else { G.camX += (isoX(M.x, M.y) - G.camX) * Math.min(1, dt*7); G.camY += (isoY(M.x, M.y, M.z) - G.camY) * Math.min(1, dt*7); }
+  else { G.camX += (isoX(M.x, M.y) - G.camX) * Math.min(1, dt*7); G.camY += (isoY(M.x, M.y, M.z) + 170 - G.camY) * Math.min(1, dt*7); }
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt*22);
   // HUD
   scoreEl.textContent = G.score.toLocaleString();
