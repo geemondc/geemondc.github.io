@@ -113,7 +113,7 @@ window.addEventListener('resize', resize); resize();
 
 const TW = 64, TH = 32, ZH = 26;              // iso tile px, height unit px
 const isoX = (x,y)=> (x-y)*TW/2;
-function zoomZ(){ return W < 760 ? 0.34 : 0.55; }   // Gary: zoom out 3x — see where you can go
+function zoomZ(){ return W < 760 ? 0.30 : 0.45; }   // Gary #237: centered snap-cam carries the view; zoom keeps tiles BIG (0.14 test read as a thin ribbon — rejected on sight)   // Gary: zoom out 3x — see where you can go
 const isoY = (x,y,z)=> (x+y)*TH/2 - z*ZH;
 
 /* ---------- audio: tiny synth, arcade chirps ---------- */
@@ -303,6 +303,9 @@ COURSES.push({ name:'ULTIMATE', plats:[
    greenLight:{x0:3.6,x1:9.4,y:38.6,z:0.9,sp:0.45} });
 
 for (const c of COURSES){ c.minH = Math.min(...c.plats.map(p=>p.h)) ; }
+// Gary #237: wider track on the first two races — room to stay on it
+for (const ci of [0,1]){ for (const p of COURSES[ci].plats){ if (!p.t || p.t === 'goal' || p.t === 'bridge'){ p.x -= 0.5; p.w += 1; } } }
+if (COURSES[0].jumpZone){ COURSES[0].jumpZone.x -= 0.5; COURSES[0].jumpZone.w += 1; }
 
 /* ---------- surface sampling ---------- */
 let vanishPhase = 0;   // global timer for disappearing tiles
@@ -406,7 +409,7 @@ function respawn(){
   M.z = s ? s.h : 2; M.grounded = true;
 }
 function popup(txt, x, y, z){ const el = document.createElement('div'); el.className='pop'; el.textContent = txt;
-  const zz = zoomZ(); const sx = W/2 + (isoX(x,y) - G.camX)*zz, sy = H*0.38 + (isoY(x,y,z) - G.camY)*zz;
+  const zz = zoomZ(); const sx = W/2 + (isoX(x,y) - G.camX)*zz, sy = H*0.5 + (isoY(x,y,z) - G.camY)*zz;
   el.style.left = sx+'px'; el.style.top = sy+'px'; document.getElementById('popups').appendChild(el); setTimeout(()=>el.remove(), 1150); }
 function addScore(n, x, y, z){ G.score += n; if (x !== undefined) popup('+'+n.toLocaleString(), x, y, z); }
 
@@ -608,8 +611,8 @@ function render(t){
   bg.addColorStop(0, '#232a5e'); bg.addColorStop(0.55, '#12163a'); bg.addColorStop(1, '#070818');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   const OX = W/2 - G.camX + (G.shake ? (Math.random()-0.5)*G.shake : 0);
-  const OY = H*0.38 - G.camY + (G.shake ? (Math.random()-0.5)*G.shake : 0);
-  const ZZ = zoomZ(); ctx.save(); ctx.translate(W/2, H*0.38); ctx.scale(ZZ, ZZ); ctx.translate(-W/2, -H*0.38);
+  const OY = H*0.5 - G.camY + (G.shake ? (Math.random()-0.5)*G.shake : 0);
+  const ZZ = zoomZ(); ctx.save(); ctx.translate(W/2, H*0.5); ctx.scale(ZZ, ZZ); ctx.translate(-W/2, -H*0.5);
   const sorted = [...C.plats].sort((a,b)=> (a.x+a.y)-(b.x+b.y) || a.h-b.h);
   for (const p of sorted) drawPlat(p, C, t, OX, OY);
   drawFlags(C, t, OX, OY);
@@ -645,10 +648,10 @@ function render(t){
     const a = [OX+isoX(gx,gl.y-0.5), OY+isoY(gx,gl.y-0.5,gl.z)], b = [OX+isoX(gx,gl.y+0.6), OY+isoY(gx,gl.y+0.6,gl.z)];
     ctx.strokeStyle = 'rgba(60,255,110,0.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(a[0], a[1]-4); ctx.lineTo(b[0], b[1]-4); ctx.stroke(); }
   // steelies
-  for (const s of ENTS.steelies){ if (s.dead) continue; drawShadow(s.x, s.y, s.z, s.z, OX, OY); drawSphere(s.x, s.y, s.z, 14, '#9aa2b5', '#3a3f4d', '#0c0e14', OX, OY, t*3+s.x); }
+  for (const s of ENTS.steelies){ if (s.dead) continue; drawShadow(s.x, s.y, s.z, s.z, OX, OY); drawSphere(s.x, s.y, s.z, 7.5/zoomZ(), '#9aa2b5', '#3a3f4d', '#0c0e14', OX, OY, t*3+s.x); }
   // the marble
   if (!M.dead){ const s = surfaceAt(C, M.x, M.y, M.z, t); drawShadow(M.x, M.y, s ? s.h : M.z-2, M.z, OX, OY);
-    const sq = M.squash > 0 ? 0.78 : 1; ctx.save(); const mp = [OX+isoX(M.x,M.y), OY+isoY(M.x,M.y,M.z)]; ctx.translate(mp[0], mp[1]-8); ctx.scale(1, sq); ctx.translate(-mp[0], -(mp[1]-8)); drawSphere(M.x, M.y, M.z, 17.5, '#bfe0ff', '#2f6fe4', '#0a2560', OX, OY, Math.atan2(M.vy, M.vx) + G.dist*2); ctx.restore(); }
+    const sq = M.squash > 0 ? 0.78 : 1; ctx.save(); const mp = [OX+isoX(M.x,M.y), OY+isoY(M.x,M.y,M.z)]; ctx.translate(mp[0], mp[1]-8); ctx.scale(1, sq); ctx.translate(-mp[0], -(mp[1]-8)); drawSphere(M.x, M.y, M.z, 11/zoomZ(), '#bfe0ff', '#2f6fe4', '#0a2560', OX, OY, Math.atan2(M.vy, M.vx) + G.dist*2); ctx.restore(); }
   // the broom (arcade death ritual)
   if (G.broom){ const b = G.broom; const px = OX+isoX(b.x,b.y), py = OY+isoY(b.x,b.y,b.z)-4;
     ctx.fillStyle = '#7db8ff'; for (let i=0;i<4;i++){ const a = i*1.7 + b.t*3; ctx.beginPath(); ctx.arc(px+Math.cos(a)*7, py+Math.sin(a)*3, 2.6, 0, 6.29); ctx.fill(); }
@@ -757,7 +760,7 @@ function loop(now){
   }
   // camera follows the marble (title drifts over Practice)
   if (G.mode === 'title'){ const C = COURSES[0]; G.camX += ((isoX(7,10) + Math.sin(t*0.11)*160) - G.camX) * 0.02; G.camY += ((isoY(7,10,2) + Math.cos(t*0.09)*60) - G.camY) * 0.02; }
-  else { G.camX += (isoX(M.x, M.y) - G.camX) * Math.min(1, dt*7); G.camY += (isoY(M.x, M.y, M.z) + 170 - G.camY) * Math.min(1, dt*7); }
+  else { G.camX = isoX(M.x, M.y); G.camY = isoY(M.x, M.y, M.z); }   // Gary #237: marble stays at screen center, always
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt*22);
   // HUD
   scoreEl.textContent = G.score.toLocaleString();
