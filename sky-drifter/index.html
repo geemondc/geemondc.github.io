@@ -3341,6 +3341,74 @@ function render(){
   if(S.biome==='sanjose'&&inSpace<0.5)drawCRVista(RP,hy,cx);
   if(S.biome==='desert'&&inSpace<0.5)drawDesertVista(RP,hy,cx);
   if(S.biome==='north'&&inSpace<0.5)drawNorthVista(RP,hy,cx);
+  /* ---- NORTH POLE FIREWORKS — NP-FIREWORKS-2026-10-27 (Daily WOW Oct 27):
+         Gary's Oct 25 direction for the next North Pole pass — "more of a
+         colorful FIREWORKS feel, a real LIGHT SHOW, not just curtains."
+         Five rockets on a slow 44-second cycle, staggered so the sky is
+         never a barrage: one rises on a spark trail, then blooms into a
+         colored starburst that drifts, droops and twinkles out, with a
+         faint wash of its color reflected on the snowfields below.
+         NORTH POLE ONLY — the Aurora Horizon keeps its own curtains while
+         its redundancy question stays open. It sits AFTER the vista
+         paintings in paint order, so the bursts stay in front of the
+         R2 painting (which otherwise paints over the sky) and behind
+         the ground and sprites. Night-gated like the curtains
+         and faded out as you climb toward space; deterministic (no
+         per-frame rng), so the show never flickers or stutters. ---- */
+  if(S.biome==='north'&&RP.starF>0.06&&inSpace<0.5){
+    const fwFade=clamp(1-inSpace*2,0,1)*(0.55+0.45*RP.starF);
+    const FW=[{x:0.24,off:0,rot:0.0},{x:0.40,off:9,rot:1.3},{x:0.56,off:18,rot:2.6},{x:0.72,off:27,rot:0.7},{x:0.88,off:36,rot:2.0}];
+    const FWC=['255,215,106','255,106,213','106,232,255','183,140,255','125,255,176'];
+    const FWCYC=44, RISE=2.4, BURST=3.6;
+    ctx.save();   /* NOTE: deliberately NOT 'lighter' like the aurora curtains:
+      'lighter' can only add light, and over the North Pole's already-bright
+      teal halo the sparks washed out to near-white and vanished (verified
+      by frame probe Oct 27: the block ran, zero warm pixels reached the
+      canvas). Fireworks are sparks, not light — normal compositing keeps
+      their gold/magenta/cyan colors readable against the bright sky. */
+    for(let fi=0;fi<FW.length;fi++){ const fw=FW[fi];
+      const p=((t+fw.off)%FWCYC+FWCYC)%FWCYC;
+      const bx=fw.x*W, apexY=hy*0.42;   /* anchored to the visible sky, not a
+        fixed drop from the horizon: hy rides with pitch, so a fixed offset
+        used to push the burst off the top of the screen (or behind the HUD
+        pills) whenever the flyer pitched up — the show now lives at 42% of
+        the way from the horizon to the top, whatever the pitch */
+      if(p<RISE){ /* the climb: a bright head on a fading spark trail */
+        const k=p/RISE, ry=hy+(apexY-hy)*(k*k*0.9+k*0.1);
+        ctx.strokeStyle='rgba(255,240,200,'+(0.55*fwFade*(1-k*0.4))+')'; ctx.lineWidth=Math.max(1,H*0.0016);
+        ctx.beginPath(); ctx.moveTo(bx,ry+H*0.05); ctx.lineTo(bx,ry+H*0.012+Math.sin(t*9+fi)*2); ctx.stroke();
+        ctx.fillStyle='rgba(255,250,220,'+(0.95*fwFade)+')';
+        ctx.beginPath(); ctx.arc(bx,ry,Math.max(2,H*0.0045),0,TAU); ctx.fill();
+        for(let e=0;e<5;e++){ const ey=ry+H*(0.012+e*0.014);
+          ctx.fillStyle='rgba(255,210,120,'+(0.5*fwFade*(1-e/6))+')';
+          ctx.fillRect(bx-1+Math.sin(t*7+e*2.1+fi)*3,ey,2,2); }
+      } else if(p<RISE+BURST){ /* the bloom: golden-angle sparks, drifting out and drooping */
+        const a=p-RISE, k=a/BURST, ease=1-Math.exp(-a*1.5);
+        if(a<0.7){ const fg=ctx.createRadialGradient(bx,apexY,0,bx,apexY,H*0.17);
+          fg.addColorStop(0,'rgba(255,245,210,'+(0.5*fwFade*(1-a/0.7))+')'); fg.addColorStop(1,'rgba(255,245,210,0)');
+          ctx.fillStyle=fg; ctx.fillRect(bx-H*0.17,apexY-H*0.17,H*0.34,H*0.34); }
+        const wash=ctx.createRadialGradient(bx,hy,0,bx,hy,H*0.24);
+        wash.addColorStop(0,'rgba('+FWC[fi%5]+','+(0.07*fwFade*(1-k))+')'); wash.addColorStop(1,'rgba('+FWC[fi%5]+',0)');
+        ctx.fillStyle=wash; ctx.fillRect(bx-H*0.24,hy-H*0.24,H*0.48,H*0.48);
+        for(let i=0;i<60;i++){
+          const ang=i*2.39996+fw.rot, sp=0.35+0.65*(0.5+0.5*Math.sin(i*12.9898+fi*78.233));
+          const R=Math.min(H*0.15,hy*0.42)*sp*ease;   /* capped so the bloom fits the visible sky */
+          const sx=bx+Math.cos(ang)*R, sy=apexY+Math.sin(ang)*R+a*a*H*0.012;
+          const tw=0.8+0.2*Math.sin(a*9+i*1.7);
+          const sa=fwFade*(1-k*0.6)*tw;
+          /* streaks, not just dots: a short trail behind each spark is what
+             reads as FIREWORKS at phone size — dots alone vanished into the
+             bright aurora sky (probe Oct 27) */
+          ctx.strokeStyle='rgba('+FWC[(i+fi)%5]+','+sa+')'; ctx.lineWidth=Math.max(1.2,H*0.0022);
+          ctx.beginPath(); ctx.moveTo(sx-Math.cos(ang)*H*0.012,sy-Math.sin(ang)*H*0.012); ctx.lineTo(sx,sy); ctx.stroke();
+          ctx.fillStyle='rgba('+FWC[(i+fi)%5]+','+sa+')';
+          const sr=Math.max(1.8,H*0.0045*(0.7+0.6*sp));
+          ctx.beginPath(); ctx.arc(sx,sy,sr,0,TAU); ctx.fill(); }
+      }
+    }
+    ctx.restore();
+  }
+
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].mid,RP,hy,H*0.045,0.22,mixCa(RP.mid,RP.hazeC,0.3,S.biomeBlend));
 
