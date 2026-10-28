@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Zoltar Speaks — A Carnival Wish</title>
+<meta name="description" content="An unofficial fan tribute: a carnival fortune machine. Insert a free quarter, make a wish, aim the coin, and collect your fortune.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#d9a441; --gold-hi:#f4d488; --gold-deep:#8a6420;
+    --wood:#2e1c0e; --wood-hi:#4a2e17;
+    --red:#a31621; --red-hi:#e5323e;
+    --ink:#f3e9d2;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family:'Nunito',system-ui,sans-serif; color:#f3e9d2; min-height:100dvh;
+    background:
+      radial-gradient(1200px 500px at 50% -8%, rgba(64,86,166,.35), transparent 60%),
+      radial-gradient(900px 420px at 85% 22%, rgba(217,164,65,.10), transparent 55%),
+      radial-gradient(700px 380px at 10% 30%, rgba(163,22,33,.10), transparent 55%),
+      linear-gradient(180deg,#04060f 0%, #070d22 46%, #0a0f24 78%, #05070f 100%);
+    overflow-x:hidden;
+  }
+  /* distant blurred carnival lights + boardwalk suggestion */
+  .bokeh{ position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .bokeh i{ position:absolute; border-radius:50%; filter:blur(7px); opacity:.5; background:radial-gradient(circle,#ffd98a, rgba(255,180,80,.25) 60%, transparent 70%); }
+  .boardwalk{ position:fixed; left:0; right:0; bottom:0; height:15vh; z-index:0; pointer-events:none; opacity:.5;
+    background:repeating-linear-gradient(90deg, rgba(70,48,26,.35) 0 46px, rgba(20,12,6,.5) 46px 50px), linear-gradient(180deg, transparent, rgba(8,5,2,.85)); }
+  .haze{ position:fixed; inset:0; z-index:0; pointer-events:none; background:radial-gradient(80% 46% at 50% 42%, transparent 55%, rgba(2,3,8,.55)); }
+
+  .wrap{ position:relative; z-index:1; max-width:480px; margin:0 auto; padding:10px 10px calc(20px + env(safe-area-inset-bottom)); }
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* top utility bar */
+  .topbar{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:2px 2px 10px; }
+  .util-btn{ font-family:'Nunito',sans-serif; font-weight:800; font-size:14px; color:var(--gold-hi);
+    background:rgba(20,12,6,.72); border:1.5px solid rgba(217,164,65,.55); border-radius:999px;
+    padding:9px 16px; min-height:44px; cursor:pointer; }
+  .util-btn:hover{ border-color:var(--gold-hi); }
+  .util-btn:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible{
+    outline:3px solid #ffd76a; outline-offset:2px; }
+
+  /* cabinet stage */
+  .stage{ position:relative; width:min(94vw,430px); margin:0 auto; aspect-ratio:400/620; filter:drop-shadow(0 24px 34px rgba(0,0,0,.6)); }
+  .stage svg{ display:block; width:100%; height:100%; }
+  .bulb{ fill:#8a6420; transition:fill .3s; }
+  .booth-lit .bulb{ fill:#ffca66; }
+  .chasing .bulb{ animation:bulbChase .72s linear infinite; }
+  .chasing .bulb:nth-of-type(2n){ animation-delay:.18s; } .chasing .bulb:nth-of-type(3n){ animation-delay:.36s; }
+  .chasing .bulb:nth-of-type(4n){ animation-delay:.54s; }
+  @keyframes bulbChase{ 0%,100%{ fill:#ffca66; } 50%{ fill:#7a5518; } }
+  #headG{ transform-origin:200px 292px; animation:idleSway 9s ease-in-out infinite alternate; }
+  @keyframes idleSway{ from{ transform:rotate(-.55deg); } to{ transform:rotate(.55deg); } }
+  #jawG{ transition:transform .45s cubic-bezier(.6,-0.2,.3,1.4); }
+  .jaw-open #jawG{ transform:translateY(7px); }
+  .jaw-chomp #jawG{ animation:chomp 1.15s ease-in-out 2; }
+  @keyframes chomp{ 0%,100%{ transform:translateY(2px);} 45%{ transform:translateY(8px);} }
+  #eyeGlowL,#eyeGlowR,#pupilL,#pupilR,#eyeHalo{ opacity:0; transition:opacity .8s ease; }
+  .eyes-lit #eyeGlowL,.eyes-lit #eyeGlowR,.eyes-lit #pupilL,.eyes-lit #pupilR{ opacity:1; }
+  .eyes-lit #eyeHalo{ opacity:.45; }
+  #winLight{ opacity:.06; transition:opacity 1.1s ease; }
+  .eyes-lit #winLight{ opacity:.22; }
+  #deckBtnGlow{ opacity:0; transition:opacity .4s; }
+  .aiming #deckBtnGlow{ opacity:.85; }
+  #rampArm{ transition:transform .18s ease; }
+  .guiding #rampArm{ transition:transform .9s cubic-bezier(.4,0,.2,1); }
+  #coinG{ opacity:0; }
+  .coin-ready #coinG{ opacity:1; }
+
+  /* quarter tray button (overlaid on the cabinet) */
+  #trayQuarter{ position:absolute; left:19.5%; top:72.6%; width:16%; aspect-ratio:1; border-radius:50%;
+    border:2px solid #8a6420; cursor:pointer; z-index:4;
+    background:radial-gradient(circle at 34% 30%, #ffe9ad, #d9a441 55%, #9a742a 90%);
+    color:#5c3d10; font-family:'Cinzel',serif; font-weight:900; font-size:clamp(13px,4.4vw,19px);
+    box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 -3px 6px rgba(0,0,0,.3); }
+  #trayQuarter:disabled{ opacity:.35; cursor:default; }
+  #trayQuarter:not(:disabled):hover{ filter:brightness(1.08); }
+
+  /* dispensed ticket (emerges from the slot) */
+  .slot-clip{ position:absolute; left:0; right:0; top:88.2%; height:150px; overflow:hidden; z-index:5; pointer-events:none; }
+  #popTicket{ pointer-events:auto; position:absolute; left:50%; top:0; width:158px; height:108px;
+    transform:translate(-50%,-112%); transition:transform 2.6s cubic-bezier(.25,.7,.3,1);
+    border:none; cursor:pointer; padding:0; background:none; }
+  #popTicket.fed{ transform:translate(-50%,10%); }
+  #popTicket .mini-front{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    width:100%; height:100%; border-radius:6px; color:var(--gold-hi);
+    background:linear-gradient(160deg,#7e1420,#5c0d16 60%,#470a11);
+    border:2px solid var(--gold); box-shadow:inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 0 5px rgba(217,164,65,.5), 0 10px 18px rgba(0,0,0,.5);
+    font-family:'Cinzel',serif; }
+  #popTicket .mini-front b{ font-size:19px; letter-spacing:1.5px; }
+  #popTicket .mini-front span{ font-size:9.5px; letter-spacing:2.5px; opacity:.85; }
+  #popTicket .mini-front .tap{ font-family:'Nunito',sans-serif; font-weight:800; font-size:10.5px; letter-spacing:.4px; color:#ffe9ad; margin-top:4px; }
+
+  /* control deck panels */
+  .deck{ width:min(94vw,430px); margin:12px auto 0; background:linear-gradient(180deg,#2b1a0e,#1a0f06);
+    border:1.5px solid rgba(217,164,65,.5); border-radius:16px; padding:16px 16px 14px;
+    box-shadow:0 14px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(244,212,136,.18); }
+  .panel{ display:none; }
+  .panel.on{ display:block; animation:panelIn .35s ease; }
+  @keyframes panelIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+  .invitation{ text-align:center; font-family:'Cinzel',serif; font-size:16.5px; letter-spacing:.6px; color:var(--gold-hi); line-height:1.5; }
+  
+  .deck p.hint{ text-align:center; font-size:14.5px; color:#e8dcc0; margin:4px 0 10px; }
+  .deck p.msg{ text-align:center; font-weight:800; font-size:15.5px; color:#ffd76a; min-height:22px; margin:2px 0 8px; }
+  .deck p.msg.miss{ color:#ff9d8a; }
+
+  .btn{ font-family:'Nunito',sans-serif; font-weight:900; border:none; cursor:pointer; border-radius:999px;
+    min-height:48px; padding:12px 22px; font-size:16.5px; letter-spacing:.4px; transition:transform .08s, filter .15s; }
+  .btn:active{ transform:scale(.97); }
+  .btn:disabled{ opacity:.45; cursor:default; }
+  .btn-gold{ background:linear-gradient(180deg,#ffd76a,#d9a441); color:#3a2405; box-shadow:0 5px 0 #8a6420, 0 10px 18px rgba(0,0,0,.45); display:block; margin:10px auto 4px; }
+  .btn-gold:hover{ filter:brightness(1.06); }
+  .btn-red{ background:radial-gradient(circle at 50% 32%, #ff6a5e, #c21725 62%, #8f0f1a); color:#fff;
+    box-shadow:0 6px 0 #5f0a11, 0 12px 22px rgba(0,0,0,.5); display:block; margin:8px auto 2px; font-size:19px; padding:14px 34px; }
+  .btn-red:hover{ filter:brightness(1.07); }
+  .btn-ghost{ background:rgba(244,212,136,.08); color:var(--gold-hi); border:1.5px solid rgba(217,164,65,.6); }
+  .btn-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+
+  /* wish panel */
+  .wish-panel{ background:linear-gradient(170deg,#f6ead0,#ecd9ae); color:#3a2a12; border-radius:12px; padding:16px;
+    border:1px solid #b98c46; box-shadow:inset 0 0 0 4px rgba(185,140,70,.25); }
+  .wish-panel h2{ font-family:'Cinzel',serif; font-size:21px; text-align:center; color:#6d4c12; letter-spacing:.5px; }
+  .wish-panel textarea{ width:100%; margin-top:10px; border:1.5px solid #b98c46; border-radius:9px; background:#fffaf0;
+    font-family:'Nunito',sans-serif; font-size:16px; padding:10px 12px; color:#3a2a12; resize:vertical; min-height:64px; }
+  .wish-meta{ display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; font-size:12.5px; color:#7a5c22; }
+  .wish-panel .privacy{ text-align:center; font-size:12.5px; color:#7a5c22; margin-top:10px; }
+
+  /* aiming controls */
+  .aim-row{ display:flex; align-items:center; gap:10px; margin:6px 0 2px; }
+  .aim-arrow{ flex:0 0 48px; width:48px; height:48px; border-radius:50%; border:1.5px solid rgba(217,164,65,.65);
+    background:rgba(244,212,136,.1); color:var(--gold-hi); font-size:20px; cursor:pointer; }
+  .aim-arrow:active{ background:rgba(244,212,136,.25); }
+  input[type=range]{ flex:1; accent-color:var(--gold); height:44px; cursor:pointer; }
+  .angle-read{ text-align:center; font-weight:900; color:var(--gold-hi); font-size:15px; min-height:20px; }
+  .angle-read output{ font-variant-numeric:tabular-nums; }
+
+  .status-line{ text-align:center; font-family:'Cinzel',serif; font-size:17px; color:var(--gold-hi); letter-spacing:.5px; min-height:24px; }
+
+  /* dialogs */
+  .scrim{ position:fixed; inset:0; z-index:40; background:rgba(3,4,10,.74); display:none; align-items:center; justify-content:center; padding:18px; }
+  .scrim.on{ display:flex; }
+  .dialog{ width:min(92vw,380px); max-height:88dvh; overflow-y:auto; border-radius:14px; padding:20px 18px;
+    background:linear-gradient(170deg,#f6ead0,#ecd9ae); color:#3a2a12; border:1px solid #b98c46;
+    box-shadow:0 24px 50px rgba(0,0,0,.6), inset 0 0 0 4px rgba(185,140,70,.22); }
+  .dialog h2{ font-family:'Cinzel',serif; text-align:center; color:#6d4c12; font-size:21px; letter-spacing:.6px; }
+  .dialog ol{ margin:14px 6px 6px 22px; font-size:16px; line-height:1.65; font-weight:700; }
+  .dialog .btn{ margin-top:14px; }
+  .dialog .btn-gold{ box-shadow:0 4px 0 #8a6420; }
+
+  /* flippable ticket */
+  .ticket-scene{ perspective:1200px; margin:6px auto 2px; width:min(84vw,330px); }
+  .ticket-card{ position:relative; width:100%; height:224px; transform-style:preserve-3d; transition:transform .8s cubic-bezier(.3,.7,.3,1); cursor:pointer; }
+  .ticket-card.flipped{ transform:rotateY(180deg); }
+  .ticket-side{ position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:10px; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:16px 18px; }
+  .ticket-front{ background:linear-gradient(155deg,#8e1622,#5c0d16 58%,#43090f); color:var(--gold-hi);
+    border:2px solid var(--gold); box-shadow:inset 0 0 0 4px rgba(0,0,0,.3), inset 0 0 0 7px rgba(217,164,65,.45); }
+  .ticket-front .tf-stars{ font-size:15px; letter-spacing:8px; color:var(--gold); }
+  .ticket-front .tf-name{ font-family:'Cinzel',serif; font-weight:900; font-size:33px; letter-spacing:2px; line-height:1.15; margin:6px 0 2px; text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .ticket-front .tf-sub{ font-family:'Cinzel',serif; font-size:12.5px; letter-spacing:4px; opacity:.9; }
+  .ticket-front .tf-tap{ margin-top:12px; font-size:12px; font-weight:800; color:#ffe9ad; letter-spacing:.4px; }
+  .ticket-back{ transform:rotateY(180deg); background:linear-gradient(165deg,#f8efdb,#efdcb2); color:#3a2a12;
+    border:2px solid #b98c46; box-shadow:inset 0 0 0 4px rgba(185,140,70,.25); justify-content:flex-start; padding-top:14px; }
+  .ticket-back .tb-head{ font-family:'Cinzel',serif; font-weight:900; font-size:16.5px; letter-spacing:1.6px; color:#7e1420; }
+  .ticket-back .tb-title{ font-family:'Cinzel',serif; font-weight:700; font-size:19px; color:#6d4c12; margin-top:7px; }
+  .ticket-back .tb-msg{ font-size:15.5px; line-height:1.45; font-weight:700; margin-top:5px; }
+  .ticket-back .tb-action{ font-size:13.5px; font-style:italic; color:#7a5c22; margin-top:7px; }
+  .ticket-back .tb-date{ font-size:12px; color:#8a6d33; margin-top:auto; }
+  .ticket-back .tb-disc{ font-size:11px; color:#97793f; margin-top:2px; }
+
+  footer{ text-align:center; margin-top:16px; padding:0 12px; }
+  footer p{ font-size:12px; color:#8d94ad; line-height:1.6; }
+  footer p.credit{ color:#a98b4f; font-weight:700; }
+
+  @media (max-height:700px){
+    .stage{ width:min(88vw,370px); }
+    .deck{ margin-top:8px; padding:12px 14px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #headG{ animation:none; }
+    .chasing .bulb{ animation:none; fill:#ffca66; }
+    #popTicket{ transition:transform .45s ease; }
+    .ticket-card{ transition:transform .3s ease; }
+    .panel.on{ animation:none; }
+    html{ scroll-behavior:auto; }
+  }
+</style>
+</head>
+<body>
+<div class="bokeh" aria-hidden="true">
+  <i style="left:6%;top:12%;width:26px;height:26px"></i><i style="left:16%;top:5%;width:14px;height:14px"></i>
+  <i style="left:84%;top:9%;width:22px;height:22px"></i><i style="left:92%;top:26%;width:13px;height:13px"></i>
+  <i style="left:3%;top:38%;width:15px;height:15px"></i><i style="left:95%;top:52%;width:18px;height:18px"></i>
+  <i style="left:10%;top:64%;width:12px;height:12px"></i><i style="left:88%;top:76%;width:14px;height:14px"></i>
+</div>
+<div class="boardwalk" aria-hidden="true"></div>
+<div class="haze" aria-hidden="true"></div>
+
+<div class="wrap">
+  <h1 class="sr-only">Zoltar Speaks — A Carnival Wish</h1>
+
+  <div class="topbar">
+    <button class="util-btn" id="soundBtn" type="button" aria-pressed="false">🔇 Sound: off</button>
+    <button class="util-btn" id="howBtn" type="button">How to play</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <svg id="boothSvg" viewBox="0 0 400 620" role="img" aria-label="An antique carnival fortune-teller cabinet. Zoltar waits behind glass above a coin ramp and a fortune ticket slot.">
+      <defs>
+        <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#4a2e17"/><stop offset=".5" stop-color="#33200f"/><stop offset="1" stop-color="#201205"/>
+        </linearGradient>
+        <linearGradient id="woodPanel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2b1a0d"/><stop offset="1" stop-color="#180d04"/>
+        </linearGradient>
+        <radialGradient id="marqueeBg" cx=".5" cy=".38" r=".85">
+          <stop offset="0" stop-color="#8e1622"/><stop offset=".7" stop-color="#5c0d16"/><stop offset="1" stop-color="#43090f"/>
+        </radialGradient>
+        <radialGradient id="interior" cx=".5" cy=".34" r=".95">
+          <stop offset="0" stop-color="#7e1a24"/><stop offset=".55" stop-color="#5c1019"/><stop offset="1" stop-color="#36070d"/>
+        </radialGradient>
+        <linearGradient id="goldTrim" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f4d488"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a6420"/>
+        </linearGradient>
+        <radialGradient id="skin" cx=".46" cy=".36" r=".9">
+          <stop offset="0" stop-color="#c79a68"/><stop offset=".6" stop-color="#a97a52"/><stop offset="1" stop-color="#7d5636"/>
+        </radialGradient>
+        <linearGradient id="robe" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#6d2a4a"/><stop offset=".55" stop-color="#4e1c38"/><stop offset="1" stop-color="#33101f"/>
+        </linearGradient>
+        <linearGradient id="turban" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#6a3f96"/><stop offset=".6" stop-color="#4b2a6e"/><stop offset="1" stop-color="#33204f"/>
+        </linearGradient>
+        <radialGradient id="eyeGlow" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#ff8a76"/><stop offset=".55" stop-color="#f22633"/><stop offset="1" stop-color="#a30f1c"/>
+        </radialGradient>
+        <radialGradient id="coinGold" cx=".36" cy=".3" r=".95">
+          <stop offset="0" stop-color="#ffe9ad"/><stop offset=".55" stop-color="#d9a441"/><stop offset="1" stop-color="#9a742a"/>
+        </radialGradient>
+        <radialGradient id="redBtn" cx=".5" cy=".3" r=".9">
+          <stop offset="0" stop-color="#ff7a6e"/><stop offset=".6" stop-color="#c21725"/><stop offset="1" stop-color="#8f0f1a"/>
+        </radialGradient>
+        <linearGradient id="glassSheen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset=".38" stop-color="#fff" stop-opacity=".03"/>
+          <stop offset=".62" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".05"/>
+        </linearGradient>
+        <clipPath id="winClip"><path d="M78,404 L78,196 Q78,108 200,108 Q322,108 322,196 L322,404 Z"/></clipPath>
+        <path id="winArch" d="M78,404 L78,196 Q78,108 200,108 Q322,108 322,196 L322,404 Z"/>
+        <path id="arcL" d="M95,358 Q90,144 187,126" fill="none"/>
+        <path id="arcR" d="M213,126 Q310,144 305,358" fill="none"/>
+        <filter id="softBlur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+      </defs>
+
+      <!-- cabinet shell -->
+      <rect x="20" y="6" width="360" height="608" rx="18" fill="url(#wood)" stroke="url(#goldTrim)" stroke-width="3"/>
+      <rect x="30" y="16" width="340" height="588" rx="13" fill="none" stroke="#120802" stroke-width="2" opacity=".6"/>
+      <rect x="34" y="424" width="332" height="104" rx="10" fill="url(#woodPanel)" stroke="#6d5326" stroke-width="1.5"/>
+      <rect x="34" y="536" width="332" height="66" rx="10" fill="url(#woodPanel)" stroke="#6d5326" stroke-width="1.5"/>
+
+      <!-- marquee -->
+      <rect x="48" y="24" width="304" height="62" rx="12" fill="url(#marqueeBg)" stroke="url(#goldTrim)" stroke-width="2.5"/>
+      <text x="200" y="66" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="27" letter-spacing="3" fill="#f4d488" style="text-shadow:0 0 12px rgba(255,120,60,.6)">ZOLTAR SPEAKS</text>
+      <g id="bulbRing">
+        <circle class="bulb" cx="52" cy="18" r="4.5"/><circle class="bulb" cx="104" cy="12" r="4.5"/><circle class="bulb" cx="156" cy="10" r="4.5"/>
+        <circle class="bulb" cx="208" cy="10" r="4.5"/><circle class="bulb" cx="260" cy="10" r="4.5"/><circle class="bulb" cx="312" cy="12" r="4.5"/>
+        <circle class="bulb" cx="352" cy="18" r="4.5"/><circle class="bulb" cx="368" cy="60" r="4.5"/><circle class="bulb" cx="368" cy="112" r="4.5"/>
+        <circle class="bulb" cx="368" cy="164" r="4.5"/><circle class="bulb" cx="32" cy="60" r="4.5"/><circle class="bulb" cx="32" cy="112" r="4.5"/>
+        <circle class="bulb" cx="32" cy="164" r="4.5"/><circle class="bulb" cx="368" cy="216" r="4.5"/><circle class="bulb" cx="32" cy="216" r="4.5"/>
+      </g>
+
+      <!-- window interior -->
+      <use href="#winArch" fill="url(#interior)"/>
+      <g clip-path="url(#winClip)">
+        <!-- red arch band with the instructional lettering -->
+        <path d="M95,352 Q88,136 200,120 Q312,136 305,352" fill="none" stroke="#8e1622" stroke-width="30"/>
+        <path d="M95,352 Q88,136 200,120 Q312,136 305,352" fill="none" stroke="#d9a441" stroke-width="1.4" opacity=".55"/>
+
+        <!-- teller torso -->
+        <g id="torsoG">
+          <path d="M104,404 C112,348 142,318 168,306 L232,306 C258,318 288,348 296,404 Z" fill="url(#robe)"/>
+          <path d="M168,306 L200,352 L232,306 L222,300 L200,330 L178,300 Z" fill="#2a0d1c"/>
+          <path d="M178,300 L200,330 L222,300" fill="none" stroke="url(#goldTrim)" stroke-width="3"/>
+          <path d="M146,404 C150,362 158,336 168,318" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
+          <path d="M254,404 C250,362 242,336 232,318" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
+          <!-- ruffled collar -->
+          <path d="M138,318 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q6,-10 12,-2 l0,14 q-62,16 -124,0 Z"
+                fill="#7a2438" stroke="#2e0f18" stroke-width="2"/>
+        </g>
+
+        <!-- teller head (still-ish; jaw is its own layer) -->
+        <g id="headG">
+          <rect x="186" y="272" width="28" height="34" rx="8" fill="#8a6242"/>
+          <ellipse cx="151" cy="224" rx="9" ry="14" fill="url(#skin)"/>
+          <ellipse cx="249" cy="224" rx="9" ry="14" fill="url(#skin)"/>
+          <circle cx="149" cy="250" r="8.5" fill="none" stroke="url(#goldTrim)" stroke-width="3"/>
+          <ellipse cx="200" cy="216" rx="47" ry="57" fill="url(#skin)"/>
+          <!-- sculpted beard along the cheeks -->
+          <path d="M157,232 q-3,34 12,52 l7,-4 q-12,-20 -12,-46 Z" fill="#2e2019"/>
+          <path d="M243,232 q3,34 -12,52 l-7,-4 q12,-20 12,-46 Z" fill="#2e2019"/>
+          <!-- brows + nose shading -->
+          <path d="M164,196 q15,-8 30,-2" fill="none" stroke="#241509" stroke-width="5" stroke-linecap="round"/>
+          <path d="M206,194 q15,-6 30,2" fill="none" stroke="#241509" stroke-width="5" stroke-linecap="round"/>
+          <path d="M200,206 q5,16 -2,24 q6,5 12,1" fill="none" stroke="#7d5636" stroke-width="3" stroke-linecap="round"/>
+          <!-- eyes: dim slits asleep; ruby glow when lit -->
+          <ellipse id="eyeHalo" cx="200" cy="212" rx="44" ry="17" fill="#ff2a33" opacity="0" filter="url(#softBlur)"/>
+          <ellipse cx="179" cy="212" rx="11" ry="6.5" fill="#503418"/>
+          <ellipse cx="221" cy="212" rx="11" ry="6.5" fill="#503418"/>
+          <ellipse id="eyeGlowL" cx="179" cy="212" rx="11.5" ry="7" fill="url(#eyeGlow)"/>
+          <ellipse id="eyeGlowR" cx="221" cy="212" rx="11.5" ry="7" fill="url(#eyeGlow)"/>
+          <circle id="pupilL" cx="179" cy="212" r="2.4" fill="#160402"/>
+          <circle id="pupilR" cx="221" cy="212" r="2.4" fill="#160402"/>
+          <!-- turban -->
+          <path d="M150,196 C142,140 168,116 200,116 C232,116 258,140 250,196 C236,182 220,178 200,178 C180,178 164,182 150,196 Z" fill="url(#turban)"/>
+          <path d="M156,168 C176,152 224,152 244,168" fill="none" stroke="#7d55b8" stroke-width="5" opacity=".7"/>
+          <path d="M160,146 C182,132 218,132 240,146" fill="none" stroke="#5d3690" stroke-width="5" opacity=".8"/>
+          <path d="M150,196 C164,182 180,178 200,178 C220,178 236,182 250,196 L250,186 C234,170 218,166 200,166 C182,166 166,170 150,186 Z" fill="#8e1622"/>
+          <path d="M200,138 l9,12 -9,13 -9,-13 Z" fill="#c02b3c" stroke="url(#goldTrim)" stroke-width="2.5"/>
+          <!-- jaw layer: chin, goatee, and the OPEN MOUTH — the coin's target -->
+          <g id="jawG">
+            <path d="M168,242 L232,242 C230,272 218,292 200,292 C182,292 170,272 168,242 Z" fill="url(#skin)"/>
+            <path d="M188,286 q12,10 24,0 l-3,16 q-9,6 -18,0 Z" fill="#2e2019"/>
+            <ellipse cx="200" cy="252" rx="15.5" ry="8.5" fill="#120806"/>
+            <ellipse cx="200" cy="248.5" rx="15.5" ry="4" fill="#000" opacity=".55"/>
+            <path d="M186,262 q14,6 28,0" fill="none" stroke="#5f3d24" stroke-width="2.4"/>
+          </g>
+        </g>
+
+        <!-- silver filigree flourish, window right (from the film frames) -->
+        <path d="M306,196 q16,10 10,30 q-5,17 -18,20 q14,4 12,20 q-2,15 -16,18 M298,206 q-12,14 -4,30 M302,258 q-12,8 -8,22"
+              fill="none" stroke="#c9ccd4" stroke-width="2.4" opacity=".75" stroke-linecap="round"/>
+
+        <!-- coin ramp (inside the glass, lower left) -->
+        <g id="rampBase">
+          <path d="M118,404 L158,404 L150,382 L126,382 Z" fill="#5c3d10" stroke="url(#goldTrim)" stroke-width="1.6"/>
+          <circle cx="138" cy="388" r="7" fill="url(#coinGold)" stroke="#8a6420" stroke-width="1.5"/>
+        </g>
+        <g id="rampArm">
+          <rect x="133.5" y="342" width="9" height="48" rx="4.5" fill="url(#goldTrim)"/>
+          <path d="M128,344 q10,-8 20,0 l-3,7 q-7,-4 -14,0 Z" fill="#8a6420"/>
+        </g>
+
+        <!-- the animated coin -->
+        <g id="coinG">
+          <circle id="coinBody" cx="0" cy="0" r="11" fill="url(#coinGold)" stroke="#8a6420" stroke-width="1.6"/>
+          <text x="0" y="4.5" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="11" fill="#5c3d10">25</text>
+        </g>
+
+        <rect id="winLight" x="78" y="108" width="244" height="296" fill="#ff9a4d" opacity=".06"/>
+      </g>
+      <use href="#winArch" fill="url(#glassSheen)"/>
+      <use href="#winArch" fill="none" stroke="url(#goldTrim)" stroke-width="5"/>
+      <use href="#winArch" fill="none" stroke="#120802" stroke-width="1.4" opacity=".5" transform="translate(0,3)"/>
+
+      <!-- arch instruction lettering: gold on the red band -->
+      <text font-family="Cinzel, Georgia, serif" font-weight="700" font-size="11.5" letter-spacing="1" fill="#f0d488">
+        <textPath href="#arcL" textLength="200" lengthAdjust="spacingAndGlyphs">AIM RAMP AT ZOLTAR'S MOUTH</textPath>
+      </text>
+      <text font-family="Cinzel, Georgia, serif" font-weight="700" font-size="11.5" letter-spacing="1" fill="#f0d488">
+        <textPath href="#arcR" textLength="200" lengthAdjust="spacingAndGlyphs">PRESS RED BUTTON · RELEASE COIN</textPath>
+      </text>
+
+      <!-- control deck -->
+      <circle id="deckBtnGlow" cx="238" cy="472" r="24" fill="#ff4a3d" filter="url(#softBlur)"/>
+      <circle cx="238" cy="472" r="17" fill="url(#redBtn)" stroke="#5f0a11" stroke-width="2.5"/>
+      <circle cx="238" cy="465" r="6" fill="#fff" opacity=".35"/>
+      <g>
+        <rect x="282" y="440" width="56" height="62" rx="7" fill="#1c1006" stroke="url(#goldTrim)" stroke-width="2"/>
+        <rect x="305" y="450" width="9" height="30" rx="4.5" fill="#000" stroke="#6d5326"/>
+        <text x="310" y="496" text-anchor="middle" font-family="Cinzel, serif" font-size="10.5" fill="#f0d488">25¢</text>
+      </g>
+      <g>
+        <rect x="56" y="458" width="110" height="48" rx="10" fill="#120802" stroke="#6d5326" stroke-width="1.6"/>
+        <text x="111" y="452" text-anchor="middle" font-family="Cinzel, serif" font-size="9.5" letter-spacing="1.6" fill="#c8a558">QUARTER TRAY</text>
+      </g>
+      <g>
+        <rect x="129" y="520" width="142" height="17" rx="4" fill="url(#goldTrim)" opacity=".9"/>
+        <text x="200" y="532" text-anchor="middle" font-family="Cinzel, serif" font-size="8.5" letter-spacing="1" fill="#3a2405">FORTUNES · EST. 1907</text>
+      </g>
+
+      <!-- ticket slot -->
+      <text x="200" y="556" text-anchor="middle" font-family="Cinzel, serif" font-size="10" letter-spacing="3" fill="#c8a558">YOUR FORTUNE</text>
+      <rect x="136" y="562" width="128" height="15" rx="7.5" fill="#000" stroke="url(#goldTrim)" stroke-width="2"/>
+    </svg>
+
+    <button id="trayQuarter" type="button" aria-label="Insert quarter — free play">25¢</button>
+
+    <div class="slot-clip" aria-hidden="false">
+      <button id="popTicket" type="button" aria-label="Your fortune ticket. Tap to read it." tabindex="-1">
+        <span class="mini-front"><span>★ ★ ★</span><b>ZOLTAR</b><b>SPEAKS</b><span>A CARNIVAL WISH</span><span class="tap">Tap the ticket to read it</span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="deck">
+    <!-- IDLE -->
+    <section class="panel on" id="panelIdle" aria-label="Insert a coin">
+      <p class="invitation">Insert a coin. Make a wish.<br>Discover what awaits.</p>
+      <button class="btn btn-gold" id="insertBtn" type="button">Insert quarter — free play</button>
+    </section>
+
+    <!-- WISH ENTRY -->
+    <section class="panel" id="panelWish" aria-label="Make a wish">
+      <div class="wish-panel">
+        <h2 id="wishHeading">What do you wish for?</h2>
+        <textarea id="wishInput" maxlength="140" rows="3" placeholder="I wish I had the courage to try something new." aria-describedby="wishPrivacy wishCount"></textarea>
+        <div class="wish-meta"><span id="wishPrivacy">Your wish stays on this device during this visit.</span><span><span id="wishCount">0</span>/140</span></div>
+        <div class="btn-row">
+          <button class="btn btn-gold" id="sealBtn" type="button" style="margin:0">Seal my wish</button>
+          <button class="btn btn-ghost" id="secretBtn" type="button" style="color:#6d4c12;border-color:#b98c46">Keep my wish secret</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- AIMING -->
+    <section class="panel" id="panelAim" aria-label="Aim the coin">
+      <p class="msg" id="aimMsg" role="status"></p>
+      <p class="hint">Aim toward Zoltar's mouth.</p>
+      <div class="aim-row">
+        <button class="aim-arrow" id="aimLeft" type="button" aria-label="Aim left">◀</button>
+        <input type="range" id="aimSlider" min="-32" max="38" step="1" value="8" aria-label="Coin ramp angle">
+        <button class="aim-arrow" id="aimRight" type="button" aria-label="Aim right">▶</button>
+      </div>
+      <p class="angle-read">Ramp angle: <output id="angleOut" for="aimSlider">8°</output></p>
+      <button class="btn btn-ghost" id="guideBtn" type="button" style="display:none;margin:6px auto 0">Guide my aim</button>
+      <button class="btn btn-red" id="releaseBtn" type="button">Release coin</button>
+    </section>
+
+    <!-- REVEALING -->
+    <section class="panel" id="panelReveal" aria-label="Your wish has been heard">
+      <p class="status-line" id="revealStatus">…</p>
+      <button class="btn btn-ghost" id="skipBtn" type="button" style="display:block;margin:8px auto 0">Skip animation</button>
+    </section>
+
+    <!-- FORTUNE READY -->
+    <section class="panel" id="panelDone" aria-label="Your fortune is ready">
+      <p class="status-line">Your fortune has been printed.</p>
+      <div class="btn-row">
+        <button class="btn btn-gold" id="readBtn" type="button" style="margin:0">Read your fortune</button>
+        <button class="btn btn-ghost" id="anotherBtn" type="button">Make another wish</button>
+      </div>
+    </section>
+  </div>
+
+  <p class="sr-only" role="status" aria-live="polite" id="srStatus"></p>
+
+  <!-- ticket reading dialog -->
+  <div class="scrim" id="ticketScrim">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ticketDlgTitle" style="background:none;border:none;box-shadow:none;padding:6px">
+      <h2 id="ticketDlgTitle" class="sr-only">Your fortune ticket</h2>
+      <div class="ticket-scene">
+        <div class="ticket-card" id="ticketCard" role="button" tabindex="0" aria-label="Fortune ticket. Activate to flip it over.">
+          <div class="ticket-side ticket-front">
+            <div class="tf-stars">★ ★ ★</div>
+            <div class="tf-name">ZOLTAR<br>SPEAKS</div>
+            <div class="tf-sub">A CARNIVAL WISH</div>
+            <div class="tf-tap">Tap the ticket to turn it over</div>
+          </div>
+          <div class="ticket-side ticket-back">
+            <div class="tb-head">★ YOUR WISH IS GRANTED ★</div>
+            <div class="tb-title" id="tbTitle"></div>
+            <p class="tb-msg" id="tbMsg"></p>
+            <p class="tb-action" id="tbAction"></p>
+            <div class="tb-date" id="tbDate"></div>
+            <div class="tb-disc">For fun and reflection — not a prediction.</div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="flipBtn" type="button" style="color:#f4d488">Flip ticket</button>
+        <button class="btn btn-gold" id="keepBtn" type="button" style="margin:0">Keep this fortune</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="anotherBtn2" type="button" style="color:#f4d488">Make another wish</button>
+        <button class="btn btn-ghost" id="closeTicketBtn" type="button" style="color:#f4d488">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- how to play dialog -->
+  <div class="scrim" id="howScrim">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+      <h2 id="howTitle">How to play</h2>
+      <ol>
+        <li>Insert a free virtual quarter.</li>
+        <li>Make a wish — or keep it secret.</li>
+        <li>Aim the coin toward Zoltar's mouth.</li>
+        <li>Release it and collect your fortune.</li>
+      </ol>
+      <button class="btn btn-gold" id="howClose" type="button" style="display:block;margin-left:auto;margin-right:auto">Back to the machine</button>
+    </div>
+  </div>
+
+  <footer>
+    <p>Zoltar Speaks — A Carnival Wish is an unofficial fan tribute. It is not an officially licensed product and is not affiliated with any film studio.</p>
+    <p class="credit">Made by Gary · Powered by Muse — get your own with code ESFXNF</p>
+  </footer>
+</div>
+
+<script id="zoltar-core">
+(function (root) {
+  'use strict';
+
+  /* ============ FORTUNES (local, curated; no API) ============ */
+  var FORTUNES = [
+    { id:'first-step', title:'The First Step', message:'The road you are waiting for may begin beneath the next small step you take.', action:'Give one meaningful task five minutes today.' },
+    { id:'open-door', title:'The Open Door', message:'An unfamiliar door is not always a warning. Sometimes it is an invitation.', action:'Explore one thing you have been curious about.' },
+    { id:'familiar-treasure', title:'A Familiar Treasure', message:'Something ordinary in your life may be extraordinary to someone else.', action:'Thank someone for a kindness you usually overlook.' },
+    { id:'beginner', title:'The Beginner', message:'Those who are willing to look like beginners leave room to become something more.', action:'Try one small thing without needing to be good at it.' },
+    { id:'wish-in-motion', title:'A Wish in Motion', message:'A wish becomes a little less distant when you give it something to stand on.', action:'Write down one practical step toward something you want.' },
+    { id:'listening-ear', title:'The Listening Ear', message:'Some answers arrive only after a question has been heard all the way to the end.', action:'Ask someone a question and listen to the whole answer.' },
+    { id:'small-key', title:'The Small Key', message:'Not every lock needs a grand key. Some open for the smallest one, patiently turned.', action:'Try the simplest solution first today.' },
+    { id:'garden-gate', title:'The Garden Gate', message:'What is tended a little each day rarely needs rescuing all at once.', action:'Spend five minutes caring for something that grows.' },
+    { id:'second-look', title:'The Second Look', message:'The first glance shows you what a thing is. The second shows you what it could be.', action:'Look again at something you pass every day.' },
+    { id:'quiet-courage', title:'The Quiet Courage', message:'Courage is not always loud. Sometimes it is simply staying in the room.', action:'Stay with one hard thing a little longer today.' },
+    { id:'shared-table', title:'The Shared Table', message:'A meal shared in good company feeds more than hunger.', action:'Invite someone to share something simple.' },
+    { id:'unfinished-song', title:'The Unfinished Song', message:'An unfinished thing is not a failed thing. It is a story still being told.', action:'Add one small line, stitch, or step to something you began.' },
+    { id:'kind-word', title:'The Kind Word', message:'A kind word costs little, and it can travel farther than you will ever know.', action:'Say the kind thing you have been meaning to say.' },
+    { id:'map-and-road', title:'The Map and the Road', message:'A map is a promise, but the road is where the journey actually happens.', action:'Take one step that no amount of planning can take for you.' },
+    { id:'borrowed-light', title:'The Borrowed Light', message:'No one shines alone for long. We take turns carrying the light.', action:'Let someone help you with one small thing.' },
+    { id:'patient-tide', title:'The Patient Tide', message:'The tide does not argue with the shore. It simply returns, and returns again.', action:'Return to something worthwhile once more today.' },
+    { id:'hidden-compartment', title:'The Hidden Compartment', message:'Old furniture keeps secret drawers. So do old friendships.', action:'Ask an old friend a question you have never asked.' },
+    { id:'brass-compass', title:'The Brass Compass', message:'A compass does not tell you where to go. It reminds you which way you are facing.', action:'Name one thing that matters most to you right now.' },
+    { id:'lantern-keeper', title:'The Lantern Keeper', message:'Someone once kept a light burning so travelers like you could find the way.', action:'Leave a small kindness where a stranger will find it.' },
+    { id:'first-page', title:'The First Page', message:'Every long book was once a blank page that somebody dared to begin.', action:'Write the first sentence of something.' },
+    { id:'steady-hand', title:'The Steady Hand', message:'The steadiest hands are not the fastest. They are the ones that do not let go.', action:'Finish one small thing completely.' },
+    { id:'open-window', title:'The Open Window', message:'A closed room keeps out the weather, but it keeps out the breeze as well.', action:'Let in one new idea today, even a small one.' },
+    { id:'travelers-rest', title:"The Traveler's Rest", message:'Even the longest road makes room for a bench in the shade.', action:'Pause somewhere pleasant for a few unhurried minutes.' },
+    { id:'the-echo', title:'The Echo', message:'What you send into the world has a way of finding its way back to you.', action:'Offer the tone you hope to receive.' },
+    { id:'two-lanterns', title:'The Two Lanterns', message:'Two lanterns do not make each other dimmer. The path only grows brighter.', action:"Celebrate someone else's good news out loud." },
+    { id:'weather-vane', title:'The Weather Vane', message:'The vane is not blown off course by the wind. It simply shows where the wind is.', action:'Notice what is changing around you without rushing to judge it.' },
+    { id:'pocket-stone', title:'The Pocket Stone', message:'A smooth stone in the pocket reminds the hand that some worries shrink with time.', action:'Carry one good memory with you today.' },
+    { id:'night-watch', title:'The Night Watch', message:'Stars are patient teachers. They have never once hurried, and they are never late.', action:'Spend a moment under the evening sky.' },
+    { id:'carpenters-mark', title:"The Carpenter's Mark", message:'Measure twice, the old carpenters say — but also remember to make the cut.', action:'Decide one thing you have measured long enough.' },
+    { id:'returning-letter', title:'The Returning Letter', message:'Some messages take the long way home and arrive exactly when they are needed.', action:'Send a note to someone you have been thinking of.' },
+    { id:'key-ring', title:'The Brass Key Ring', message:'Every key on the ring once opened something that mattered.', action:'Reuse a skill you have not practiced in a while.' },
+    { id:'storyteller', title:'The Storyteller', message:'The stories we tell about our days become the days we remember.', action:'Tell someone the best small moment of your day.' },
+    { id:'gentle-rain', title:'The Gentle Rain', message:"Rain does not ask the garden's permission. Growth rarely announces itself.", action:'Let one good change happen quietly today.' },
+    { id:'far-shore', title:'The Far Shore', message:'The far shore only looks distant from the dock. From a moving boat, it is already closer.', action:'Start the thing, and let momentum help.' },
+    { id:'clockmaker', title:'The Clockmaker', message:'No clockmaker ever mended a clock by worrying at its hands.', action:'Let one thing take the time it actually takes.' },
+    { id:'warm-hearth', title:'The Warm Hearth', message:'A house is built of wood and stone, but a home is built of welcome.', action:'Make one corner of your space more welcoming.' },
+    { id:'paper-boat', title:'The Paper Boat', message:'A paper boat cannot carry much, but it was never meant to. It was meant to sail.', action:'Do one small thing purely for the joy of it.' },
+    { id:'signpost', title:'The Signpost', message:'A signpost helps most those willing to admit they are choosing a direction.', action:'Choose one direction today, however small.' },
+    { id:'old-photograph', title:'The Old Photograph', message:'The people in old photographs were once standing where you stand now: at the beginning.', action:'Take one photograph worth keeping today.' },
+    { id:'morning-bell', title:'The Morning Bell', message:'The bell does not ring because the day is perfect. It rings because the day is here.', action:'Begin today as it is, not as it might have been.' }
+  ];
+
+  /* ============ SCENE GEOMETRY + BALLISTICS (normalized SVG units) ============ */
+  var SCENE = {
+    mouth: { x: 200, y: 250, rx: 30, ry: 22 },
+    pivot: { x: 138, y: 388 },
+    arm: 46,
+    speed: 470,
+    gravity: 560,
+    angleMin: -32,
+    angleMax: 38,
+    dt: 1 / 120,
+    maxT: 1.9
+  };
+  function launchPoint(angleDeg) {
+    var r = angleDeg * Math.PI / 180;
+    return { x: SCENE.pivot.x + SCENE.arm * Math.sin(r), y: SCENE.pivot.y - SCENE.arm * Math.cos(r) };
+  }
+  function simulate(angleDeg) {
+    var r = angleDeg * Math.PI / 180;
+    var p0 = launchPoint(angleDeg);
+    var vx = SCENE.speed * Math.sin(r), vy = -SCENE.speed * Math.cos(r);
+    var pts = [], x = p0.x, y = p0.y, t = 0, minNorm = 1e9, minIdx = -1;
+    for (var i = 0; i <= Math.round(SCENE.maxT / SCENE.dt); i++) {
+      var dx = (x - SCENE.mouth.x) / SCENE.mouth.rx, dy = (y - SCENE.mouth.y) / SCENE.mouth.ry;
+      var n = Math.sqrt(dx * dx + dy * dy);
+      pts.push({ x: x, y: y, t: t });
+      if (n < minNorm) { minNorm = n; minIdx = i; }
+      vy += SCENE.gravity * SCENE.dt; x += vx * SCENE.dt; y += vy * SCENE.dt; t += SCENE.dt;
+      if (y > 452 && i > 4) break;
+    }
+    return { points: pts, hit: minNorm <= 1, minNorm: minNorm, hitIndex: minIdx, duration: t, angle: angleDeg };
+  }
+  function bestAngle() {
+    var best = 0, bestN = 1e9;
+    for (var a = SCENE.angleMin; a <= SCENE.angleMax; a += 0.25) {
+      var s = simulate(a);
+      if (s.minNorm < bestN) { bestN = s.minNorm; best = a; }
+    }
+    return best;
+  }
+
+  /* ============ STATE MACHINE (explicit reducer) ============ */
+  var TRANSITIONS = {
+    IDLE:          { INSERT: 'COIN_INSERTED', RESET: 'IDLE' },
+    COIN_INSERTED: { COIN_DONE: 'WISH_ENTRY', RESET: 'IDLE' },
+    WISH_ENTRY:    { SEAL: 'AIMING', SECRET: 'AIMING', RESET: 'IDLE' },
+    AIMING:        { RELEASE: 'COIN_RELEASED', GUIDE: 'AIMING', RESET: 'IDLE' },
+    COIN_RELEASED: { HIT: 'REVEALING', MISS: 'MISSED', RESET: 'IDLE' },
+    MISSED:        { ACK: 'AIMING', RESET: 'IDLE' },
+    REVEALING:     { DONE: 'FORTUNE_READY', SKIP: 'FORTUNE_READY', RESET: 'IDLE' },
+    FORTUNE_READY: { ANOTHER: 'IDLE', RESET: 'IDLE' }
+  };
+  function initialState() { return { name: 'IDLE', misses: 0, guided: false, plays: 0, hasTicket: false }; }
+  function reduce(state, event) {
+    var row = TRANSITIONS[state.name];
+    var next = row ? row[event] : undefined;
+    if (!next) return state; /* illegal / duplicate input is ignored */
+    var s = { name: next, misses: state.misses, guided: state.guided, plays: state.plays, hasTicket: state.hasTicket };
+    if (event === 'MISS') s.misses = state.misses + 1;
+    if (event === 'GUIDE') s.guided = true;
+    if (event === 'INSERT' || event === 'ANOTHER' || event === 'RESET') { s.misses = 0; s.guided = false; }
+    if (event === 'ANOTHER' || event === 'RESET') s.hasTicket = false;
+    if (next === 'FORTUNE_READY') { s.hasTicket = true; s.plays = state.plays + 1; }
+    return s;
+  }
+
+  /* ============ FORTUNE DECK (shuffle-bag, no repeats until exhausted) ============ */
+  function shuffled(arr, rng) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function buildDeck(ids, recentIds, rng) {
+    var recent = {};
+    (recentIds || []).forEach(function (id) { recent[id] = true; });
+    var fresh = shuffled(ids.filter(function (id) { return !recent[id]; }), rng);
+    var old = shuffled(ids.filter(function (id) { return recent[id]; }), rng);
+    return { order: fresh.concat(old), idx: 0 };
+  }
+  function drawFromDeck(deck, ids, rng) {
+    if (deck.idx >= deck.order.length) {
+      var rebuilt = buildDeck(ids, [], rng);
+      deck.order = rebuilt.order; deck.idx = 0;
+    }
+    var id = deck.order[deck.idx];
+    deck.idx += 1;
+    return id;
+  }
+  function fortuneById(id) {
+    for (var i = 0; i < FORTUNES.length; i++) if (FORTUNES[i].id === id) return FORTUNES[i];
+    return null;
+  }
+
+  root.ZoltarCore = {
+    FORTUNES: FORTUNES, SCENE: SCENE, TRANSITIONS: TRANSITIONS,
+    launchPoint: launchPoint, simulate: simulate, bestAngle: bestAngle,
+    initialState: initialState, reduce: reduce,
+    shuffled: shuffled, buildDeck: buildDeck, drawFromDeck: drawFromDeck, fortuneById: fortuneById
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.ZoltarCore;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script id="zoltar-ui">
+(function () {
+  'use strict';
+  var Core = window.ZoltarCore;
+  var $ = function (id) { return document.getElementById(id); };
+  var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var svg = $('boothSvg'), stage = $('stage');
+  var panels = { IDLE: $('panelIdle'), WISH_ENTRY: $('panelWish'), AIMING: $('panelAim'), MISSED: $('panelAim'), COIN_RELEASED: $('panelAim'), REVEALING: $('panelReveal'), FORTUNE_READY: $('panelDone'), COIN_INSERTED: $('panelIdle') };
+  var srStatus = $('srStatus');
+
+  /* ---------- safe storage (recent fortune ids only; the wish is NEVER stored) ---------- */
+  var LS_KEY = 'zoltarSpeaks.recent.v1';
+  var storageOK = true;
+  function loadRecent() {
+    try { var v = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : []; }
+    catch (e) { storageOK = false; return []; }
+  }
+  function saveRecent(list) {
+    if (!storageOK) return;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(list.slice(-40))); } catch (e) { storageOK = false; }
+  }
+  var recent = loadRecent();
+  var allIds = Core.FORTUNES.map(function (f) { return f.id; });
+  var deck = Core.buildDeck(allIds, recent, Math.random);
+  var currentFortune = null, fortuneDate = null;
+
+  /* ---------- sound (original WebAudio synth, off until toggled) ---------- */
+  var audio = { ctx: null, master: null, enabled: false, humNodes: null, rollNodes: null };
+  function ensureCtx() {
+    if (!audio.ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      audio.ctx = new AC();
+      audio.master = audio.ctx.createGain(); audio.master.gain.value = 0.5;
+      audio.master.connect(audio.ctx.destination);
+    }
+    if (audio.ctx.state === 'suspended') audio.ctx.resume();
+    return true;
+  }
+  function tone(freq, t0, dur, type, gain, slideTo) {
+    if (!audio.enabled || !audio.ctx) return;
+    var c = audio.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, c.currentTime + t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + t0 + dur);
+    g.gain.setValueAtTime(0.0001, c.currentTime + t0);
+    g.gain.exponentialRampToValueAtTime(gain, c.currentTime + t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + t0 + dur);
+    o.connect(g); g.connect(audio.master); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + dur + 0.05);
+  }
+  function noiseBurst(t0, dur, freq, gain) {
+    if (!audio.enabled || !audio.ctx) return;
+    var c = audio.ctx, len = Math.max(1, Math.floor(c.sampleRate * dur));
+    var buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = c.createBufferSource(); src.buffer = buf;
+    var f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.1;
+    var g = c.createGain(); g.gain.value = gain;
+    src.connect(f); f.connect(g); g.connect(audio.master); src.start(c.currentTime + t0);
+  }
+  var sfx = {
+    clink: function () { tone(2093, 0, 0.09, 'triangle', 0.25); tone(2637, 0.02, 0.12, 'sine', 0.18); noiseBurst(0, 0.05, 5200, 0.12); },
+    click: function () { tone(1240, 0, 0.05, 'square', 0.08); },
+    bounce: function () { tone(340, 0, 0.1, 'triangle', 0.2, 190); noiseBurst(0, 0.05, 2600, 0.1); },
+    paper: function () { for (var i = 0; i < 5; i++) noiseBurst(i * 0.16, 0.1, 1600 + i * 220, 0.07); },
+    chime: function () { tone(659.25, 0, 0.7, 'sine', 0.16); tone(987.77, 0.14, 0.9, 'sine', 0.14); tone(1318.5, 0.3, 1.1, 'sine', 0.08); },
+    humStart: function () {
+      if (!audio.enabled || !audio.ctx || audio.humNodes) return;
+      var c = audio.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 55;
+      var f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 220;
+      g.gain.setValueAtTime(0.0001, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.05, c.currentTime + 0.4);
+      o.connect(f); f.connect(g); g.connect(audio.master); o.start();
+      audio.humNodes = { o: o, g: g };
+    },
+    humStop: function () {
+      if (!audio.humNodes || !audio.ctx) return;
+      var h = audio.humNodes, c = audio.ctx; audio.humNodes = null;
+      try { h.g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.3); h.o.stop(c.currentTime + 0.35); } catch (e) {}
+    }
+  };
+  $('soundBtn').addEventListener('click', function () {
+    audio.enabled = !audio.enabled;
+    this.setAttribute('aria-pressed', String(audio.enabled));
+    this.textContent = audio.enabled ? '🔊 Sound: on' : '🔇 Sound: off';
+    if (audio.enabled) { ensureCtx(); sfx.click(); } else { sfx.humStop(); }
+  });
+
+  /* ---------- state wiring ---------- */
+  var state = Core.initialState();
+  var timers = [], rafId = null;
+  function later(fn, ms) { var id = setTimeout(fn, ms); timers.push(id); return id; }
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; if (rafId) cancelAnimationFrame(rafId); rafId = null; }
+  function announce(text) { srStatus.textContent = text; }
+
+  var slider = $('aimSlider'), angleOut = $('angleOut'), rampArm = $('rampArm'), coinG = $('coinG');
+  function angle() { return parseFloat(slider.value); }
+  function renderAngle() {
+    var a = angle();
+    angleOut.textContent = a + '°';
+    rampArm.setAttribute('transform', 'rotate(' + a + ' 138 388)');
+    var tip = Core.launchPoint(a);
+    coinG.setAttribute('transform', 'translate(' + tip.x + ' ' + tip.y + ')');
+  }
+  slider.addEventListener('input', renderAngle);
+  $('aimLeft').addEventListener('click', function () { slider.value = Math.max(Core.SCENE.angleMin, angle() - 2); renderAngle(); sfx.click(); });
+  $('aimRight').addEventListener('click', function () { slider.value = Math.min(Core.SCENE.angleMax, angle() + 2); renderAngle(); sfx.click(); });
+
+  function showPanel(name) {
+    Object.keys(panels).forEach(function (k) { panels[k].classList.remove('on'); });
+    var p = panels[name]; if (p) p.classList.add('on');
+  }
+  function setAimEnabled(on) {
+    slider.disabled = !on; $('aimLeft').disabled = !on; $('aimRight').disabled = !on;
+    $('releaseBtn').disabled = !on; $('guideBtn').disabled = !on;
+  }
+
+  function dispatch(event) {
+    var prev = state;
+    state = Core.reduce(state, event);
+    if (state === prev && event !== 'GUIDE') return;
+    applyState(prev);
+  }
+  function applyState(prev) {
+    var name = state.name;
+    svg.classList.toggle('booth-lit', name !== 'IDLE');
+    svg.classList.toggle('aiming', name === 'AIMING' || name === 'MISSED');
+    svg.classList.toggle('coin-ready', name === 'AIMING' || name === 'MISSED');
+    if (name === 'IDLE') { showPanel('IDLE'); $('trayQuarter').disabled = false; announce('The fortune machine waits. Insert a quarter to begin.'); }
+    if (name === 'WISH_ENTRY') { showPanel('WISH_ENTRY'); later(function () { $('wishInput').focus(); }, 60); announce('What do you wish for?'); }
+    if (name === 'AIMING') {
+      showPanel('AIMING'); setAimEnabled(true); renderAngle();
+      $('guideBtn').style.display = (state.misses >= 2 && !state.guided) ? 'block' : 'none';
+      announce(state.misses > 0 ? 'Aim again. Adjust the ramp and release the coin.' : 'Aim the coin toward Zoltar\u2019s mouth, then release it.');
+    }
+    if (name === 'COIN_RELEASED') { setAimEnabled(false); $('aimMsg').textContent = ''; }
+    if (name === 'MISSED') {
+      showPanel('MISSED');
+      $('aimMsg').textContent = 'Almost. Adjust your aim and try again.';
+      $('aimMsg').className = 'msg miss';
+      announce('Almost. Adjust your aim and try again.');
+      later(function () { dispatch('ACK'); }, REDUCED ? 250 : 1150);
+    }
+    if (name === 'REVEALING') { showPanel('REVEALING'); }
+    if (name === 'FORTUNE_READY') {
+      showPanel('FORTUNE_READY');
+      $('popTicket').classList.add('fed'); $('popTicket').tabIndex = 0;
+      announce('Your fortune is ready. Tap the ticket to read it.');
+    }
+  }
+
+  /* ---------- insert coin ---------- */
+  var inserting = false;
+  function insertCoin() {
+    if (state.name !== 'IDLE' || inserting) return;
+    inserting = true;
+    dispatch('INSERT');
+    $('trayQuarter').disabled = true;
+    var q = $('trayQuarter');
+    q.style.transition = 'transform .55s ease, opacity .55s ease';
+    q.style.transform = 'translate(160%, -46%) scale(.35) rotate(160deg)'; q.style.opacity = '0';
+    sfx.clink();
+    later(function () {
+      q.style.transition = 'none'; q.style.transform = ''; q.style.opacity = '';
+      inserting = false;
+      dispatch('COIN_DONE');
+    }, REDUCED ? 120 : 600);
+  }
+  $('insertBtn').addEventListener('click', insertCoin);
+  $('trayQuarter').addEventListener('click', insertCoin);
+
+  /* ---------- wish ---------- */
+  $('wishInput').addEventListener('input', function () { $('wishCount').textContent = this.value.length; });
+  function sealWish() { sfx.click(); dispatch('SEAL'); later(function () { slider.focus(); }, 60); }
+  $('sealBtn').addEventListener('click', sealWish);
+  $('secretBtn').addEventListener('click', function () { $('wishInput').value = ''; $('wishCount').textContent = '0'; sfx.click(); dispatch('SECRET'); later(function () { slider.focus(); }, 60); });
+
+  /* ---------- guide ---------- */
+  $('guideBtn').addEventListener('click', function () {
+    if (state.name !== 'AIMING') return;
+    dispatch('GUIDE');
+    svg.classList.add('guiding');
+    var target = Math.round(Core.bestAngle());
+    slider.value = target; renderAngle();
+    $('aimMsg').textContent = 'The ramp has been guided. The release is still yours.';
+    $('aimMsg').className = 'msg';
+    $('guideBtn').style.display = 'none';
+    later(function () { svg.classList.remove('guiding'); }, 950);
+    sfx.click();
+  });
+
+  /* ---------- release: the SAME simulated path drives visuals + verdict ---------- */
+  function setCoin(x, y, scale, opacity) {
+    coinG.setAttribute('transform', 'translate(' + x + ' ' + y + ') scale(' + (scale || 1) + ')');
+    coinG.style.opacity = (opacity == null ? 1 : opacity);
+  }
+  $('releaseBtn').addEventListener('click', function () {
+    if (state.name !== 'AIMING') return;
+    sfx.click();
+    var a = angle();
+    var sim = Core.simulate(a);
+    dispatch('RELEASE');
+    svg.classList.remove('coin-ready');
+    coinG.style.opacity = 1;
+    var pts = sim.points;
+    var flightMs = REDUCED ? 260 : sim.duration * 1000;
+    var start = null;
+    function frame(ts) {
+      if (!start) start = ts;
+      var p = Math.min(1, (ts - start) / flightMs);
+      var idx = p * (pts.length - 1);
+      var i0 = Math.floor(idx), i1 = Math.min(pts.length - 1, i0 + 1), fr = idx - i0;
+      var x = pts[i0].x + (pts[i1].x - pts[i0].x) * fr;
+      var y = pts[i0].y + (pts[i1].y - pts[i0].y) * fr;
+      if (sim.hit && p >= (sim.hitIndex / (pts.length - 1))) {
+        /* coin reaches the mouth: suck it in */
+        var mp = pts[sim.hitIndex];
+        setCoin(mp.x, mp.y, 1, 1);
+        var t0 = performance.now();
+        (function suck(now) {
+          var q = Math.min(1, (now - t0) / 190);
+          setCoin(mp.x + (Core.SCENE.mouth.x - mp.x) * q, mp.y + (Core.SCENE.mouth.y - mp.y) * q, 1 - 0.8 * q, 1 - q);
+          if (q < 1) rafId = requestAnimationFrame(suck);
+          else { coinG.style.opacity = 0; startReveal(); }
+        })(t0);
+        return;
+      }
+      setCoin(x, y, 1, 1);
+      if (p < 1) { rafId = requestAnimationFrame(frame); return; }
+      /* miss: a gentle metallic bounce on the deck, then back to AIMING */
+      sfx.bounce();
+      var last = pts[pts.length - 1], b0 = performance.now();
+      (function bounce(now) {
+        var q = (now - b0) / 520;
+        if (q >= 1) { coinG.style.opacity = 0; dispatch('MISS'); return; }
+        var hop = Math.abs(Math.sin(q * Math.PI * 2)) * 15 * (1 - q);
+        setCoin(last.x + q * 26, 448 - hop, 1, 1 - q * 0.6);
+        rafId = requestAnimationFrame(bounce);
+      })(b0);
+    }
+    rafId = requestAnimationFrame(frame);
+  });
+
+  /* ---------- reveal ---------- */
+  var revealing = false;
+  function pickFortune() {
+    var id = Core.drawFromDeck(deck, allIds, Math.random);
+    recent.push(id); saveRecent(recent);
+    currentFortune = Core.fortuneById(id);
+    fortuneDate = new Date();
+    $('tbTitle').textContent = currentFortune.title;
+    $('tbMsg').textContent = '\u201C' + currentFortune.message + '\u201D';
+    $('tbAction').textContent = currentFortune.action;
+    $('tbDate').textContent = fortuneDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  function startReveal() {
+    if (state.name !== 'COIN_RELEASED') return;
+    dispatch('HIT');
+    revealing = true;
+    pickFortune();
+    var rs = $('revealStatus');
+    rs.textContent = 'Your wish has been heard.';
+    svg.classList.add('chasing', 'eyes-lit', 'jaw-open');
+    sfx.humStart(); sfx.chime();
+    later(function () { svg.classList.add('jaw-chomp'); }, REDUCED ? 60 : 500);
+    later(function () { sfx.paper(); $('popTicket').classList.add('fed'); }, REDUCED ? 150 : 1400);
+    later(function () { finishReveal(); }, REDUCED ? 1100 : 6400);
+  }
+  function finishReveal() {
+    if (!revealing) return;
+    revealing = false;
+    sfx.humStop();
+    svg.classList.remove('chasing', 'jaw-chomp');
+    if (state.name === 'REVEALING') dispatch('DONE');
+  }
+  $('skipBtn').addEventListener('click', function () {
+    if (state.name !== 'REVEALING') return;
+    clearTimers();
+    $('popTicket').classList.add('fed');
+    revealing = false; sfx.humStop();
+    svg.classList.remove('chasing', 'jaw-chomp');
+    dispatch('SKIP');
+    svg.classList.add('eyes-lit', 'jaw-open'); /* SKIP path keeps the lit payoff state */
+  });
+
+  /* ---------- reset / another wish ---------- */
+  function resetMachine(toIdleEvent) {
+    clearTimers(); revealing = false; sfx.humStop();
+    svg.classList.remove('chasing', 'eyes-lit', 'jaw-open', 'jaw-chomp', 'coin-ready', 'aiming');
+    $('popTicket').classList.remove('fed'); $('popTicket').tabIndex = -1;
+    coinG.style.opacity = 0;
+    $('aimMsg').textContent = '';
+    $('wishInput').value = ''; $('wishCount').textContent = '0';
+    dispatch(toIdleEvent || 'RESET');
+    showPanel('IDLE'); $('trayQuarter').disabled = false;
+    announce('The fortune machine waits. Insert a quarter to begin.');
+  }
+  $('anotherBtn').addEventListener('click', function () { resetMachine('ANOTHER'); });
+  $('anotherBtn2').addEventListener('click', function () { closeScrim(ticketScrim, popTicketEl); resetMachine('ANOTHER'); });
+
+  /* ---------- dialogs: focus management + Escape ---------- */
+  var ticketScrim = $('ticketScrim'), howScrim = $('howScrim'), popTicketEl = $('popTicket');
+  var lastTrigger = null;
+  function openScrim(scrim, focusEl, trigger) {
+    lastTrigger = trigger || document.activeElement;
+    scrim.classList.add('on');
+    later(function () { (focusEl || scrim.querySelector('button')).focus(); }, 40);
+  }
+  function closeScrim(scrim, fallbackFocus) {
+    scrim.classList.remove('on');
+    var t = (lastTrigger && document.contains(lastTrigger)) ? lastTrigger : fallbackFocus;
+    if (t && t.focus) t.focus();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (ticketScrim.classList.contains('on')) closeScrim(ticketScrim, popTicketEl);
+      if (howScrim.classList.contains('on')) closeScrim(howScrim, $('howBtn'));
+    }
+    if (e.key === 'Enter' && document.activeElement === $('ticketCard')) flipTicket();
+    if (e.key === ' ' && document.activeElement === $('ticketCard')) { e.preventDefault(); flipTicket(); }
+  });
+  $('howBtn').addEventListener('click', function () { openScrim(howScrim, $('howClose'), this); });
+  $('howClose').addEventListener('click', function () { closeScrim(howScrim, $('howBtn')); });
+
+  /* ---------- ticket: flip, read, keep (PNG) ---------- */
+  var card = $('ticketCard');
+  function flipTicket() { card.classList.toggle('flipped'); sfx.click(); }
+  card.addEventListener('click', flipTicket);
+  $('flipBtn').addEventListener('click', flipTicket);
+  function openTicket(trigger) {
+    if (!state.hasTicket) return;
+    card.classList.remove('flipped');
+    openScrim(ticketScrim, $('closeTicketBtn'), trigger);
+    announce('Your fortune ticket. Flip it to read your fortune.');
+  }
+  popTicketEl.addEventListener('click', function () { openTicket(this); });
+  $('readBtn').addEventListener('click', function () { openTicket(this); });
+  $('closeTicketBtn').addEventListener('click', function () { closeScrim(ticketScrim, popTicketEl); });
+
+  $('keepBtn').addEventListener('click', function () {
+    if (!currentFortune) return;
+    var W = 1000, H = 620, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var c = cv.getContext('2d');
+    var g = c.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#f8efdb'); g.addColorStop(1, '#efdcb2');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.strokeStyle = '#b98c46'; c.lineWidth = 6; c.strokeRect(26, 26, W - 52, H - 52);
+    c.lineWidth = 2; c.strokeRect(44, 44, W - 88, H - 88);
+    c.textAlign = 'center'; c.fillStyle = '#7e1420';
+    c.font = '900 44px Cinzel, Georgia, serif';
+    c.fillText('★ ZOLTAR SPEAKS ★', W / 2, 118);
+    c.fillStyle = '#6d4c12'; c.font = '900 40px Cinzel, Georgia, serif';
+    c.fillText('YOUR WISH IS GRANTED', W / 2, 182);
+    c.font = '700 37px Cinzel, Georgia, serif'; c.fillStyle = '#5c3d10';
+    c.fillText(currentFortune.title, W / 2, 248);
+    c.font = '700 31px Georgia, serif'; c.fillStyle = '#3a2a12';
+    (function wrap(text, y) {
+      var words = text.split(' '), line = '', lines = [];
+      words.forEach(function (w) {
+        if (c.measureText(line + ' ' + w).width > W - 220 && line) { lines.push(line); line = w; } else line = line ? line + ' ' + w : w;
+      });
+      lines.push(line);
+      lines.forEach(function (ln, i) { c.fillText(ln, W / 2, y + i * 42); });
+      return y + lines.length * 42;
+    })('\u201C' + currentFortune.message + '\u201D', 306);
+    c.font = 'italic 26px Georgia, serif'; c.fillStyle = '#7a5c22';
+    c.fillText(currentFortune.action, W / 2, 452);
+    c.font = '22px Georgia, serif'; c.fillStyle = '#8a6d33';
+    c.fillText(fortuneDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), W / 2, 516);
+    c.font = '19px Georgia, serif'; c.fillStyle = '#97793f';
+    c.fillText('For fun and reflection — not a prediction.', W / 2, 552);
+    cv.toBlob(function (blob) {
+      if (!blob) return;
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'zoltar-fortune.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      later(function () { URL.revokeObjectURL(a.href); }, 4000);
+    }, 'image/png');
+  });
+
+  /* ---------- boot ---------- */
+  svg.classList.add('booth-lit');
+  renderAngle();
+  announce('The fortune machine waits. Insert a quarter to begin.');
+  window.addEventListener('pagehide', function () { clearTimers(); sfx.humStop(); });
+})();
+</script>
+</body>
+</html>
