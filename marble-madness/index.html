@@ -15,6 +15,7 @@
   #hudMid { text-align:center; } #hudRight { text-align:right; }
   #hudRace { font-size:17px; font-weight:900; letter-spacing:1px; }
   #hudDeaths { font-size:12px; margin-top:2px; }
+  #joySideBtn { position:fixed; top:calc(env(safe-area-inset-top,0px) + 122px); right:10px; z-index:7; padding:8px 12px; border-radius:999px; border:2px solid rgba(255,255,255,.35); background:rgba(10,12,30,.55); color:#fff; font-size:12px; font-weight:900; letter-spacing:.4px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   #pauseBtn { position:fixed; top:calc(env(safe-area-inset-top,0px) + 74px); right:10px; z-index:7; width:40px; height:40px; border-radius:50%; border:2px solid rgba(255,255,255,.35); background:rgba(10,12,30,.55); color:#fff; font-size:15px; font-weight:900; }
   #ball { position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); transform:translateX(-50%); width:62px; height:62px; border-radius:50%; z-index:6; opacity:.55;
     background:radial-gradient(circle at 34% 30%, #7db8ff 0%, #2f6fe4 34%, #17449e 68%, #0a2560 100%);
@@ -59,6 +60,7 @@
     touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
   }
   #joyWrap.show { display: block; }
+  #joyWrap.rightSide { left: auto; right: calc(18px + env(safe-area-inset-right)); }
   #joyBase {
     position: absolute; inset: 0; border-radius: 50%;
     background: rgba(16,6,34,.42); border: 1.5px solid rgba(255,255,255,.38);
@@ -118,6 +120,7 @@
   <div class="hudBox" id="hudRight"><div class="hudLab">RACE</div><div id="hudRace">1 PRACTICE</div><div class="hudLab" id="hudDeaths"></div></div>
 </div>
 <button id="pauseBtn" class="hidden">❚❚</button>
+<button id="joySideBtn" class="hidden" aria-label="Joystick is on the left — tap to move it to the right">⇄ Stick: Left</button>
 <div id="ballHint" class="hidden">ROLL — YOUR FINGER IS THE TRACKBALL</div>
 <div id="ball" class="hidden"></div>
 <div id="popups"></div>
@@ -513,12 +516,27 @@ if (joyWrap){
   joyWrap.addEventListener('pointerup', e=>{ if (JOY.pid === e.pointerId) joyRelease(); });
   joyWrap.addEventListener('pointercancel', e=>{ if (JOY.pid === e.pointerId) joyRelease(); });
 }
+/* stick side: Gary's lefty/righty option (Oct 28) — a little button moves
+   the stick between the lower corners; default LEFT; the choice persists */
+const joySideBtn = $('joySideBtn');
+let joySide = 'left';
+try { if (localStorage.getItem('mmJoySide') === 'right') joySide = 'right'; } catch(e){}
+function joyApplySide(){ if (!joyWrap) return;
+  joyWrap.classList.toggle('rightSide', joySide === 'right');
+  if (joySideBtn){ joySideBtn.textContent = '\u21c4 Stick: ' + (joySide === 'right' ? 'Right' : 'Left');
+    joySideBtn.setAttribute('aria-label', 'Joystick is on the ' + joySide + ' \u2014 tap to move it to the ' + (joySide === 'right' ? 'left' : 'right')); } }
+if (joySideBtn) joySideBtn.addEventListener('click', ()=>{ joyRelease();
+  joySide = (joySide === 'right') ? 'left' : 'right';
+  try { localStorage.setItem('mmJoySide', joySide); } catch(e){}
+  joyApplySide(); });
+joyApplySide();
 /* visibility: a desktop fixture — fine pointer at any size, or a wide
    viewport — and only while a race is up (setPlayUI drives playUIOn);
    narrow touch screens never see it and keep the trackball solo */
 const joyOK = ()=> window.matchMedia('(pointer:fine)').matches || window.innerWidth >= 1024;
 let playUIOn = false;
 function joySyncUI(){ if (!joyWrap) return; const on = playUIOn && joyOK();
+  if (joySideBtn) joySideBtn.classList.toggle('hidden', !on);
   joyWrap.classList.toggle('show', on); joyWrap.setAttribute('aria-hidden', on ? 'false' : 'true');
   if (!on && JOY.pid !== null) joyRelease(); }
 window.addEventListener('resize', joySyncUI);
