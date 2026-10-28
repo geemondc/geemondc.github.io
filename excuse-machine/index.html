@@ -250,6 +250,51 @@
     .chips { background: rgba(43,10,36,.38); border: 1px solid rgba(255,255,255,.28); border-radius: 18px; padding: 12px 10px; }
     @media (max-height: 720px) { .stage { margin-top: 10px; } }
   </style>
+  <style>
+    /* ===== IMMERSION PASS — the page is a PLACE: we are there, with Gary ===== */
+    /* the foreground expands: painting full-bleed, edge to edge, taller */
+    .stage { margin: 12px -18px 0; border: none; border-radius: 0;
+      border-bottom: 4px solid #c9932f;
+      height: 46vh; height: 46dvh; min-height: 252px; max-height: 400px;
+      box-shadow: 0 16px 34px rgba(60,0,40,.4); }
+    .stage-inner { height: 100%; }
+    .stage-art { height: 100%; object-fit: cover; object-position: 44% 50%; }
+    /* the control deck: the machine's own console, standing in the scene */
+    .deck { position: relative; z-index: 5; margin: -26px -8px 0; padding: 0 12px 15px;
+      background: linear-gradient(180deg, #c24830 0%, #a93324 52%, #8c241c 100%);
+      border: 3px solid #d9a441; border-radius: 18px;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -12px 20px rgba(0,0,0,.28),
+                  0 20px 36px rgba(60,0,40,.5); }
+    .deck::after { content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+      width: 58%; height: 13px; border-radius: 8px;
+      background: linear-gradient(180deg, #12030c, #2b0a24);
+      border: 2px solid #d9a441; box-shadow: 0 4px 8px rgba(0,0,0,.45); }
+    .deck .power-panel { position: static; margin: 0 -12px; padding: 9px 12px 8px;
+      background: linear-gradient(180deg, rgba(24,5,18,.78), rgba(24,5,18,.55));
+      border-bottom: 2px solid rgba(255,212,71,.55); border-radius: 15px 15px 0 0; }
+    .deck .chips { background: transparent; border: none; border-radius: 0; padding: 0; margin-top: 14px; }
+    .deck .chip { border: 2px solid #f3c96b; color: #fff;
+      background: linear-gradient(180deg, #ff8a5c, #e85a36);
+      box-shadow: 0 4px 0 #7a1f14, 0 9px 15px rgba(0,0,0,.25); }
+    .deck .chip:active { transform: translateY(3px); box-shadow: 0 1px 0 #7a1f14, 0 5px 10px rgba(0,0,0,.2); }
+    .deck .chip[aria-pressed="true"] { background: linear-gradient(180deg, #fff6da, #ffd9a0);
+      color: #a02c12; border-color: #fff;
+      box-shadow: 0 4px 0 #7a1f14, 0 0 0 3px rgba(255,212,71,.55), 0 9px 15px rgba(0,0,0,.25); }
+    .deck .dodge-label { margin-top: 15px; color: #ffd9a8; }
+    .deck .dodge-input { width: 100%; background: rgba(24,5,18,.75); border: 2px solid #d9a441;
+      box-shadow: inset 0 3px 9px rgba(0,0,0,.7); }
+    .deck .generate { width: 100%; margin: 16px auto 2px; border: 3px solid #ffd447; }
+    /* the ticket comes out of the machine: tight to the deck's slot */
+    .tier-label { margin-top: 14px; }
+    .excuse-card { margin-top: 6px; }
+    @media (max-height: 720px) {
+      .stage { margin-top: 10px; }
+      .deck .chips { margin-top: 11px; }
+      .deck .dodge-label { margin-top: 12px; }
+      .deck .generate { margin-top: 13px; }
+    }
+    @media (max-height: 700px) { .stage { height: 41vh; height: 41dvh; min-height: 232px; } }
+  </style>
 </head>
 <body>
   <div class="language-toggle" role="group" aria-label="Language / Idioma">
@@ -281,15 +326,18 @@
         </div>
         <div class="stage-glow"></div>
         <div class="stage-fx" id="stageFx"></div>
+      </div>
+      <div class="deck">
         <div class="power-panel">
           <span class="power-label" data-i18n="powerLabel">Power level</span>
           <div class="pips" id="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
           <span class="power-word" id="powerWord"></span>
         </div>
+        <div class="chips" id="chips" role="group" aria-label="Excuse categories"></div>
+        <label class="dodge-label" id="dodgeLabel" for="dodgeInput" data-i18n="dodgeLabel">What are you dodging?</label>
+        <input class="dodge-input" id="dodgeInput" type="text" maxlength="60" autocomplete="off" placeholder="Type it: the gym, a work meeting, my cousin’s party…" />
+        <button class="generate" id="generateBtn" type="button" data-i18n="generate">Generate excuse</button>
       </div>
-      <div class="chips" id="chips" role="group" aria-label="Excuse categories"></div>
-      <label class="dodge-label" id="dodgeLabel" for="dodgeInput" data-i18n="dodgeLabel">What are you dodging?</label>
-      <input class="dodge-input" id="dodgeInput" type="text" maxlength="60" autocomplete="off" placeholder="Type it: the gym, a work meeting, my cousin’s party…" />
       <p class="tier-label" id="tierLabel" aria-live="polite"></p>
       <div class="excuse-card" id="excuseCard" aria-live="polite">
         <p class="ticket-head"><span class="th-label">★ <span data-i18n="ticketHead">Official Excuse</span> ★</span><span class="ticket-stamp" id="ticketStamp"><b id="stampPct">0%</b><span data-i18n="stampWord">Approved</span></span></p>
@@ -301,7 +349,6 @@
         </div>
         <p class="delivery" id="deliveryNote"></p>
       </div>
-      <button class="generate" id="generateBtn" type="button" data-i18n="generate">Generate excuse</button>
       <button class="send" id="sendBtn" type="button" data-i18n="sendIt">📋 Send it</button>
       <button class="back-to-intro" id="backToIntro" type="button" data-i18n="backIntro">← Intro</button>
 
