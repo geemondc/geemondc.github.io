@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#10121a" />
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <meta name="description" content="Roast My Friend — one tap, one legendary roast (or hype). Screenshot it. Send it." />
+  <meta property="og:title" content="Roast My Friend" />
+  <meta property="og:description" content="One tap, one legendary roast (or hype). Screenshot it. Send it." />
+  <title>Roast My Friend</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-deep: #000000;
+      --ink: #fffdf8;
+      --muted: #c8cada;
+      --line: rgba(255,255,255,.14);
+      --panel: rgba(7,8,14,.74);
+      --accent: #ffd447;
+      --danger: #ff4f6d;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg-deep);
+      color: var(--ink);
+      font-family: "Nunito Sans", sans-serif;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    button, a { font: inherit; }
+    input { font: inherit; }
+
+    .language-toggle {
+      position: fixed; z-index: 150;
+      top: calc(14px + env(safe-area-inset-top)); right: 14px;
+      display: flex; gap: 3px; padding: 4px;
+      border: 2px solid rgba(255,255,255,.72); border-radius: 999px;
+      background: rgba(10,8,15,.78);
+      box-shadow: 0 8px 22px rgba(38,20,50,.22);
+      backdrop-filter: blur(8px);
+    }
+    .language-toggle button {
+      min-width: 42px; min-height: 36px; padding: 6px 10px;
+      border: 0; border-radius: 999px; background: transparent;
+      color: rgba(255,255,255,.75); font-size: 13px; font-weight: 900;
+      letter-spacing: .05em; cursor: pointer;
+    }
+    .language-toggle button[aria-pressed="true"] { background: #fff; color: #3d2947; box-shadow: 0 3px 10px rgba(0,0,0,.22); }
+    .language-toggle button:focus-visible { outline: 3px solid #ffd447; outline-offset: 3px; }
+
+    /* ---------- INTRO COVER ---------- */
+    .intro {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column; align-items: center;
+      padding: calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+      overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch; touch-action: pan-y;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255,255,255,.7), transparent 25%),
+        radial-gradient(circle at 88% 20%, rgba(154,236,255,.8), transparent 31%),
+        linear-gradient(155deg, #ffe3ef 0%, #e8dcff 48%, #c9f5ff 100%);
+      color: #33253e;
+      transition: opacity .32s ease, visibility .32s ease;
+    }
+    .intro.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro-card {
+      position: relative; flex: 0 0 auto;
+      width: min(100%, 420px); margin-block: auto;
+      padding: clamp(28px, 7vw, 40px) clamp(22px, 7vw, 38px);
+      border: 3px solid rgba(255,255,255,.76); border-radius: 36px;
+      background: rgba(255,255,255,.57); text-align: center;
+      box-shadow: 0 24px 60px rgba(86,57,112,.18);
+    }
+    .intro-orbit { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--dot-color); box-shadow: 0 0 18px var(--dot-color), 0 0 42px color-mix(in srgb, var(--dot-color) 65%, transparent); animation: introFloat 2.6s ease-in-out infinite alternate; pointer-events: none; }
+    .intro-orbit.one { --dot-color: #ff2bbd; left: 8%; top: 13%; }
+    .intro-orbit.two { --dot-color: #19dcff; right: 8%; top: 18%; animation-delay: -.8s; }
+    .intro-orbit.three { --dot-color: #ff9d18; left: 15%; bottom: 12%; animation-delay: -1.5s; }
+    .intro-orbit.four { --dot-color: #8bff3f; right: 13%; bottom: 10%; animation-delay: -.35s; }
+    .intro-kicker { margin: 0 0 10px; color: #d82b64; font-size: 13px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    .intro h2 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(40px, 10.5vw, 58px); line-height: .96; letter-spacing: -.035em; text-transform: uppercase; text-wrap: balance; }
+    .intro-tagline { margin: 16px 0 0; color: #5d375e; font-size: clamp(19px, 5.2vw, 26px); line-height: 1.12; font-weight: 900; }
+    .intro-scene {
+      width: 100%; margin: 20px auto 4px; padding: 18px 10px 14px;
+      border: 6px solid #fff; border-radius: 25px;
+      background: linear-gradient(160deg, #ffe9c9, #ffd9bf);
+      box-shadow: 0 15px 34px rgba(86,57,112,.22);
+      font-size: clamp(34px, 9vw, 46px); line-height: 1.25;
+    }
+    .intro-scene .row { display: flex; justify-content: center; gap: 14px; }
+    .intro-scene span { display: inline-block; animation: bubbleBounce 1.6s ease-in-out infinite alternate; }
+    .intro-scene span:nth-child(2) { animation-delay: -.5s; }
+    .intro-scene span:nth-child(3) { animation-delay: -1s; }
+    .start-button {
+      width: min(100%, 260px); margin-top: 24px; padding: 16px 24px;
+      border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ff5067, #e7193b); color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 24px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 8px 0 #a20d28, 0 17px 40px rgba(230,35,75,.28);
+    }
+    .start-button:active { transform: translateY(5px); box-shadow: 0 3px 0 #a20d28, 0 10px 26px rgba(230,35,75,.24); }
+    .start-button:focus-visible { outline: 4px solid #fff; outline-offset: 5px; }
+    .intro-credit { margin: 20px 0 0; color: #675b70; font-size: 12px; font-weight: 800; line-height: 1.5; }
+    .intro-credit a { color: #d82b64; font-weight: 900; text-decoration: none; border-bottom: 2px solid currentColor; }
+
+    /* ---------- TOY BODY ---------- */
+    .game {
+      position: fixed; inset: 0; overflow: hidden; isolation: isolate;
+      display: flex; flex-direction: column;
+      padding: calc(60px + env(safe-area-inset-top)) 18px 0;
+      background: radial-gradient(circle at 50% 30%, rgba(255,79,109,.08), transparent 55%), #05060a;
+    }
+    .game::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 8; box-shadow: inset 0 0 100px rgba(0,0,0,.4); }
+    .label { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; text-align: center; }
+    .label::before, .label::after { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+    .game h1 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(27px, 7.5vw, 44px); line-height: .98; letter-spacing: -.03em; text-transform: uppercase; text-align: center; text-wrap: balance; }
+    .tagline { margin: 7px 0 0; color: var(--muted); font-size: clamp(13px, 3.6vw, 16px); font-weight: 800; text-align: center; }
+
+    .controls { position: relative; z-index: 10; width: min(100%, 430px); margin: 12px auto 0; }
+    .name-input {
+      width: 100%; padding: 14px 18px;
+      border: 2px solid var(--line); border-radius: 999px;
+      background: rgba(255,255,255,.07); color: var(--ink);
+      font-size: 18px; font-weight: 900; text-align: center;
+      -webkit-user-select: text; user-select: text;
+      outline: none;
+    }
+    .name-input::placeholder { color: rgba(255,255,255,.45); }
+    .name-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,212,71,.25); }
+    .mode-row { display: flex; gap: 10px; margin-top: 12px; }
+    .mode-btn {
+      flex: 1; padding: 15px 10px;
+      border: 0; border-radius: 999px; color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 20px; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
+    }
+    .mode-btn.roast { background: linear-gradient(180deg, #ff7a45, #e7193b); box-shadow: 0 7px 0 #8e0f2a, 0 14px 32px rgba(231,25,59,.3); }
+    .mode-btn.hype { background: linear-gradient(180deg, #ff5e8a, #d82b64); box-shadow: 0 7px 0 #8e1450, 0 14px 32px rgba(216,43,100,.3); }
+    .mode-btn:active { transform: translateY(5px); }
+    .mode-btn.roast:active { box-shadow: 0 2px 0 #8e0f2a, 0 8px 20px rgba(231,25,59,.26); }
+    .mode-btn.hype:active { box-shadow: 0 2px 0 #8e1450, 0 8px 20px rgba(216,43,100,.26); }
+    .mode-btn:focus-visible, .another:focus-visible, .share:focus-visible, .back-to-intro:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+    .stage { position: relative; z-index: 10; flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(100%, 430px); margin: 0 auto; padding: 10px 0 6px; min-height: 0; }
+    .roast-card {
+      position: relative; width: 100%; min-height: 168px; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 26px 22px 20px;
+      border: 2px solid rgba(255,255,255,.2); border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 22px 60px rgba(0,0,0,.5);
+      backdrop-filter: blur(8px); text-align: center;
+    }
+    .roast-card.roasted { background: linear-gradient(160deg, rgba(60,16,24,.92), rgba(20,8,16,.92)); border-color: rgba(255,122,69,.55); }
+    .roast-card.hyped { background: linear-gradient(160deg, rgba(58,14,40,.92), rgba(18,8,22,.92)); border-color: rgba(255,94,138,.55); }
+    .roast-card.pop { animation: cardPop .38s ease both; }
+    .card-badge {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      padding: 4px 12px; border-radius: 999px;
+      font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase;
+      background: rgba(255,255,255,.12); color: var(--muted);
+      display: none; white-space: nowrap;
+    }
+    .roast-card.roasted .card-badge, .roast-card.hyped .card-badge { display: block; }
+    .roast-card.roasted .card-badge { background: #ff7a45; color: #2a0d00; }
+    .roast-card.hyped .card-badge { background: #ff5e8a; color: #2a0016; }
+    .card-name { margin: 10px 0 0; font-family: "Fredoka", sans-serif; font-size: clamp(24px, 6.5vw, 32px); font-weight: 700; text-transform: uppercase; letter-spacing: .02em; display: none; }
+    .roast-card.roasted .card-name, .roast-card.hyped .card-name { display: block; }
+    .card-line { margin: 10px 0 0; font-size: clamp(18px, 5.2vw, 23px); font-weight: 900; line-height: 1.34; }
+    .card-line.placeholder { color: var(--muted); font-size: 17px; font-weight: 800; line-height: 1.45; }
+    .card-foot { margin: 14px 0 0; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .03em; display: none; }
+    .roast-card.roasted .card-foot, .roast-card.hyped .card-foot { display: block; }
+
+    .action-row { display: flex; gap: 10px; margin-top: 12px; visibility: hidden; opacity: 0; transition: opacity .25s ease; }
+    .action-row.show { visibility: visible; opacity: 1; }
+    .another {
+      padding: 13px 22px; border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ffd447, #f5a623); color: #241a00;
+      font-family: "Fredoka", sans-serif; font-size: 17px; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 6px 0 #9a6a00, 0 12px 26px rgba(245,166,35,.28);
+    }
+    .another:active { transform: translateY(4px); box-shadow: 0 2px 0 #9a6a00, 0 8px 18px rgba(245,166,35,.24); }
+    .share {
+      padding: 13px 20px; border: 2px solid var(--accent); border-radius: 999px;
+      background: transparent; color: var(--accent);
+      font-size: 15px; font-weight: 900; cursor: pointer;
+    }
+    .share:active { transform: scale(.95); }
+    .toast {
+      position: fixed; z-index: 200; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom));
+      transform: translate(-50%, 12px); padding: 10px 20px;
+      border-radius: 999px; background: #fff; color: #241a2e;
+      font-size: 14px; font-weight: 900; opacity: 0; pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      box-shadow: 0 12px 30px rgba(0,0,0,.4);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .back-to-intro {
+      display: block; margin: 12px auto 0; padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+      background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 800; letter-spacing: .04em; cursor: pointer;
+    }
+    .back-to-intro:hover { color: var(--ink); border-color: rgba(255,255,255,.45); }
+
+    .bottom {
+      position: relative; z-index: 30; margin-top: auto;
+      padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
+      color: var(--muted); font-size: 11px; font-weight: 800;
+    }
+    .bottom-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .bottom-row span { max-width: 230px; line-height: 1.3; }
+    .bottom-row a { color: var(--ink); text-decoration: none; white-space: nowrap; padding: 6px 0; border-bottom: 2px solid var(--accent); }
+    .bottom-row a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .referral { margin: 6px 0 0; text-align: center; color: var(--accent); font-size: 11.5px; font-weight: 900; letter-spacing: .02em; }
+
+    @keyframes introFloat { from { transform: translateY(-7px) scale(.88); } to { transform: translateY(8px) scale(1.12); } }
+    @keyframes bubbleBounce { from { transform: translateY(-3px) rotate(-3deg); } to { transform: translateY(4px) rotate(3deg); } }
+    @keyframes cardPop { from { opacity: 0; transform: scale(.9) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @media (max-height: 700px) {
+      .game { padding-top: calc(56px + env(safe-area-inset-top)); }
+      .controls { margin-top: 12px; }
+      .roast-card { min-height: 150px; padding: 20px 18px 16px; }
+      .intro-scene { margin-top: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="language-toggle" role="group" aria-label="Language / Idioma">
+    <button id="langEn" type="button" aria-pressed="true">EN</button>
+    <button id="langEs" type="button" aria-pressed="false">ES</button>
+  </div>
+
+  <section class="intro" id="intro" aria-labelledby="introTitle">
+    <span class="intro-orbit one" aria-hidden="true"></span>
+    <span class="intro-orbit two" aria-hidden="true"></span>
+    <span class="intro-orbit three" aria-hidden="true"></span>
+    <span class="intro-orbit four" aria-hidden="true"></span>
+    <div class="intro-card">
+      <p class="intro-kicker" data-i18n="kicker">With love. Mostly.</p>
+      <h2 id="introTitle">Roast My Friend</h2>
+      <p class="intro-tagline" data-i18n="tagline">One tap. One legendary line. Screenshot it. Send it.</p>
+      <div class="intro-scene" aria-hidden="true">
+        <div class="row"><span>🔥</span><span>😂</span><span>❤️</span></div>
+        <div class="row"><span>🎤</span><span>🏆</span><span>📸</span></div>
+      </div>
+      <button class="start-button" id="startButton" type="button" data-i18n="start">Enter</button>
+      <p class="intro-credit"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> <strong>ESFXNF</strong><br><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a></p>
+    </div>
+  </section>
+
+  <main class="game" id="game" aria-label="Roast My Friend" aria-hidden="true">
+    <p class="label">Roast My Friend</p>
+    <h1 data-i18n="toyTitle">Who's the target?</h1>
+    <p class="tagline" data-i18n="toyTagline">Type a name. Pick your weapon: fire or love.</p>
+
+    <div class="controls">
+      <input class="name-input" id="nameInput" type="text" maxlength="24" autocomplete="off" autocapitalize="words" enterkeyhint="go" placeholder="Mike" aria-label="Friend's name" />
+      <div class="mode-row">
+        <button class="mode-btn roast" id="roastBtn" type="button" data-i18n="roastBtn">🔥 Roast</button>
+        <button class="mode-btn hype" id="hypeBtn" type="button" data-i18n="hypeBtn">❤️ Hype</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="roast-card" id="roastCard" aria-live="polite">
+        <span class="card-badge" id="cardBadge">🔥 Official Roast</span>
+        <p class="card-name" id="cardName"></p>
+        <p class="card-line placeholder" id="cardLine" data-i18n="placeholder">The stage is empty. Somebody's about to have a day.</p>
+        <p class="card-foot" data-i18n="cardFoot">Roast My Friend · Made by Gary · Muse</p>
+      </div>
+      <div class="action-row" id="actionRow">
+        <button class="another" id="anotherBtn" type="button" data-i18n="another">🎲 Another one</button>
+        <button class="share" id="shareBtn" type="button" data-i18n="shareIt">📤 Share</button>
+      </div>
+      <button class="back-to-intro" id="backToIntro" type="button" data-i18n="backIntro">← Intro</button>
+    </div>
+
+    <footer class="bottom">
+      <div class="bottom-row">
+        <span data-i18n="bottomInstruction">Playful only. Friends roast friends.</span>
+        <a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a>
+      </div>
+      <p class="referral"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> ESFXNF</p>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var intro = document.getElementById('intro');
+      var startButton = document.getElementById('startButton');
+      var game = document.getElementById('game');
+      var nameInput = document.getElementById('nameInput');
+      var roastBtn = document.getElementById('roastBtn');
+      var hypeBtn = document.getElementById('hypeBtn');
+      var roastCard = document.getElementById('roastCard');
+      var cardBadge = document.getElementById('cardBadge');
+      var cardName = document.getElementById('cardName');
+      var cardLine = document.getElementById('cardLine');
+      var actionRow = document.getElementById('actionRow');
+      var anotherBtn = document.getElementById('anotherBtn');
+      var shareBtn = document.getElementById('shareBtn');
+      var backToIntro = document.getElementById('backToIntro');
+      var toast = document.getElementById('toast');
+      var langEn = document.getElementById('langEn');
+      var langEs = document.getElementById('langEs');
+      var currentLang = 'en';
+      var currentMode = null;
+      var currentIndex = -1;
+      var currentName = '';
+      var lastIndex = { roast: -1, hype: -1 };
+      var toastTimer = null;
+
+      var copy = {
+        en: {
+          kicker: 'With love. Mostly.',
+          tagline: "One tap. One legendary line. Screenshot it. Send it.",
+          start: 'Enter',
+          credit: 'Made by Gary · Powered by Muse — get your own with code',
+          toyTitle: "Who's the target?",
+          toyTagline: 'Type a name. Pick your weapon: fire or love.',
+          roastBtn: '🔥 Roast',
+          hypeBtn: '❤️ Hype',
+          placeholder: "The stage is empty. Somebody's about to have a day.",
+          cardFoot: 'Roast My Friend · Made by Gary · Muse',
+          another: '🎲 Another one',
+          shareIt: '📤 Share',
+          backIntro: '← Intro',
+          bottomInstruction: 'Playful only. Friends roast friends.',
+          badgeRoast: '🔥 Official Roast',
+          badgeHype: '❤️ Certified Hype',
+          namePlaceholder: 'Mike',
+          nameAria: "Friend's name",
+          copied: 'Copied — go make their day.',
+          theVerdict: 'THE VERDICT'
+        },
+        es: {
+          kicker: 'Con cariño. Casi siempre.',
+          tagline: 'Un toque. Una frase legendaria. Captúrala. Envíala.',
+          start: 'Entrar',
+          credit: 'Hecho por Gary · Con la magia de Muse — consigue el tuyo con el código',
+          toyTitle: '¿Quién es el objetivo?',
+          toyTagline: 'Escribe un nombre. Elige tu arma: fuego o cariño.',
+          roastBtn: '🔥 Burlarse',
+          hypeBtn: '❤️ Elogiar',
+          placeholder: 'El escenario está vacío. Alguien está a punto de tener un día interesante.',
+          cardFoot: 'Roast My Friend · Hecho por Gary · Muse',
+          another: '🎲 Otro más',
+          shareIt: '📤 Compartir',
+          backIntro: '← Inicio',
+          bottomInstruction: 'Solo en broma. Los amigos se burlan con cariño.',
+          badgeRoast: '🔥 Burla oficial',
+          badgeHype: '❤️ Elogio certificado',
+          namePlaceholder: 'Mike',
+          nameAria: 'Nombre del amigo',
+          copied: 'Copiado: ve y alegra su día.',
+          theVerdict: 'EL VEREDICTO'
+        }
+      };
+
+      var ROASTS = {
+        en: [
+          "{name} visits the gym parking lot more than the gym. At this point the car is in better shape.",
+          "{name}'s golf swing should be illegal in at least nine states.",
+          "{name} talks about his high school stats like the scouts are still watching. The scouts retired, {name}.",
+          "{name} has never lost an argument. He's lost friends, money, and bets — but never an argument.",
+          "{name} grills like it's a talent show and serves chicken like it's a rumor.",
+          "{name}'s fantasy team is just a weekly apology tour.",
+          "{name} knows every stat in sports and still can't find his keys.",
+          "{name} peaks at the buffet. Nobody trains like {name} trains for the buffet.",
+          "{name} says 'one more episode' the way casinos say 'one more hand.'",
+          "{name} has a boat guy, a ticket guy, and a guy for everything — except a guy who tells him no.",
+          "{name} dresses like the weekend owes him money.",
+          "{name}'s poker face has subtitles."
+        ],
+        es: [
+          "{name} visita el estacionamiento del gimnasio más que el gimnasio. A estas alturas, el carro está en mejor forma.",
+          "El swing de golf de {name} debería ser ilegal en por lo menos nueve estados.",
+          "{name} habla de sus marcas de la preparatoria como si los cazatalentos todavía estuvieran mirando. Los cazatalentos ya se jubilaron, {name}.",
+          "{name} nunca ha perdido una discusión. Ha perdido amigos, dinero y apuestas, pero una discusión, jamás.",
+          "{name} asa a la parrilla como si fuera un concurso de talentos y sirve el pollo como si fuera un rumor.",
+          "El equipo de fantasía de {name} es solo una gira semanal de disculpas.",
+          "{name} se sabe todas las estadísticas del deporte y todavía no encuentra sus llaves.",
+          "{name} alcanza su máximo nivel en el bufé. Nadie entrena como {name} entrena para el bufé.",
+          "{name} dice «un episodio más» como los casinos dicen «una mano más».",
+          "{name} tiene un contacto para botes, otro para boletos y otro para todo, menos uno que le diga que no.",
+          "{name} se viste como si el fin de semana le debiera dinero.",
+          "La cara de póker de {name} tiene subtítulos."
+        ]
+      };
+
+      var HYPES = {
+        en: [
+          "{name} is the friend who shows up. Rain, traffic, bad mood — {name} shows up.",
+          "If loyalty was a stock, you'd buy {name} and never sell.",
+          "{name} remembers your coffee order AND your childhood trauma. Elite friend.",
+          "{name} would give you the shirt off his back and then roast your outfit. Balance.",
+          "Every group chat needs a {name}. Ours got lucky.",
+          "{name} is proof the good ones aren't extinct.",
+          "{name} has main-character energy and sidekick loyalty. Rare combo.",
+          "{name}: undefeated in being there when it counts.",
+          "If {name} says he's got you, cancel your worries. He's got you.",
+          "{name} makes average days feel like stories you'll tell for years.",
+          "{name} is the human version of a five-star review.",
+          "{name} is the friend your mom asks about by name."
+        ],
+        es: [
+          "{name} es el amigo que siempre aparece. Lluvia, tráfico, mal humor: {name} aparece.",
+          "Si la lealtad fuera una acción, comprarías a {name} y nunca la venderías.",
+          "{name} recuerda tu orden de café Y tu trauma de la infancia. Amigo de élite.",
+          "{name} te daría la camisa que trae puesta y luego se burlaría de tu ropa. Equilibrio.",
+          "Todo chat grupal necesita un {name}. El nuestro tuvo suerte.",
+          "{name} es la prueba de que los buenos no se han extinguido.",
+          "{name} tiene energía de protagonista y lealtad de mejor amigo. Combinación rara.",
+          "{name}: invicto en estar ahí cuando más importa.",
+          "Si {name} dice que te respalda, cancela tus preocupaciones. Te respalda.",
+          "{name} convierte días normales en historias que contarás por años.",
+          "{name} es la versión humana de una reseña de cinco estrellas.",
+          "{name} es el amigo por el que tu mamá pregunta por su nombre."
+        ]
+      };
+
+      function t(key) { return copy[currentLang][key]; }
+      function buzz(pattern) { if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } }
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+      }
+      function getName() {
+        var n = (nameInput.value || '').trim();
+        return n ? n : 'Mike';
+      }
+      function fill(line, name) { return line.split('{name}').join(name); }
+
+      function produce(mode) {
+        currentMode = mode;
+        currentName = getName();
+        var bank = (mode === 'roast' ? ROASTS : HYPES)[currentLang];
+        var idx = Math.floor(Math.random() * bank.length);
+        var guard = 0;
+        while (bank.length > 1 && idx === lastIndex[mode] && guard < 8) {
+          idx = Math.floor(Math.random() * bank.length);
+          guard += 1;
+        }
+        lastIndex[mode] = idx;
+        currentIndex = idx;
+        render();
+        buzz(mode === 'roast' ? [25, 40, 25] : [15, 30, 15, 30, 15]);
+      }
+
+      function render() {
+        if (!currentMode) return;
+        var bank = (currentMode === 'roast' ? ROASTS : HYPES)[currentLang];
+        roastCard.classList.toggle('roasted', currentMode === 'roast');
+        roastCard.classList.toggle('hyped', currentMode === 'hype');
+        cardBadge.textContent = currentMode === 'roast' ? t('badgeRoast') : t('badgeHype');
+        cardName.textContent = currentName;
+        cardLine.textContent = fill(bank[currentIndex], currentName);
+        cardLine.classList.remove('placeholder');
+        actionRow.classList.add('show');
+        roastCard.classList.remove('pop');
+        void roastCard.offsetWidth;
+        roastCard.classList.add('pop');
+      }
+
+      function shareText() {
+        var bank = (currentMode === 'roast' ? ROASTS : HYPES)[currentLang];
+        return currentName.toUpperCase() + ' — ' + fill(bank[currentIndex], currentName);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        return Promise.resolve();
+      }
+
+      function shareIt() {
+        if (!currentMode) return;
+        buzz(15);
+        var text = shareText();
+        if (navigator.share) {
+          navigator.share({ title: 'Roast My Friend', text: text }).catch(function () {});
+        } else {
+          copyText(text).then(function () { showToast(t('copied')); });
+        }
+      }
+
+      function applyLanguage(lang) {
+        currentLang = lang === 'es' ? 'es' : 'en';
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+          if (el.id === 'cardLine' && currentMode) return;
+          el.textContent = t(el.dataset.i18n);
+        });
+        langEn.setAttribute('aria-pressed', String(currentLang === 'en'));
+        langEs.setAttribute('aria-pressed', String(currentLang === 'es'));
+        nameInput.placeholder = t('namePlaceholder');
+        nameInput.setAttribute('aria-label', t('nameAria'));
+        game.setAttribute('aria-label', currentLang === 'es' ? 'Burlas entre amigos' : 'Roast My Friend');
+        if (currentMode) {
+          currentName = getName();
+          render();
+        }
+      }
+
+      langEn.addEventListener('click', function () { applyLanguage('en'); });
+      langEs.addEventListener('click', function () { applyLanguage('es'); });
+      startButton.addEventListener('click', function () {
+        buzz(20);
+        intro.classList.add('hidden');
+        game.setAttribute('aria-hidden', 'false');
+        setTimeout(function () { nameInput.focus({ preventScroll: true }); }, 350);
+      });
+      backToIntro.addEventListener('click', function () {
+        intro.classList.remove('hidden');
+        game.setAttribute('aria-hidden', 'true');
+      });
+      roastBtn.addEventListener('click', function () { produce('roast'); });
+      hypeBtn.addEventListener('click', function () { produce('hype'); });
+      anotherBtn.addEventListener('click', function () { if (currentMode) produce(currentMode); });
+      shareBtn.addEventListener('click', shareIt);
+      nameInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); produce('roast'); } });
+      nameInput.addEventListener('input', function () {
+        if (currentMode) {
+          currentName = getName();
+          cardName.textContent = currentName;
+          var bank = (currentMode === 'roast' ? ROASTS : HYPES)[currentLang];
+          cardLine.textContent = fill(bank[currentIndex], currentName);
+        }
+      });
+    }());
+  </script>
+</body>
+</html>
