@@ -45,6 +45,49 @@
   #initRow { display:none; margin-top:16px; gap:8px; align-items:center; justify-content:center; }
   .initCh { font-size:34px; font-weight:900; width:42px; text-align:center; color:#ffd94d; border-bottom:3px solid #ffd94d; }
 
+
+  /* ---------- the JOYSTICK — Sky Drifter's stick, ported whole (Gary,
+     Oct 28: "marble madness on desktop needs the skydryft joystick").
+     Same machined base with its faint cross, same tilting stem, same
+     glossy ball top, lower-left at Sky Drifter's own offsets. It is a
+     desktop fixture: shown while a race is up on a fine-pointer or wide
+     display (see joySyncUI); phones keep the finger-trackball alone. --- */
+  #joyWrap {
+    display: none; position: fixed; z-index: 9;
+    left: calc(18px + env(safe-area-inset-left)); bottom: calc(20px + env(safe-area-inset-bottom));
+    width: 128px; height: 128px;
+    touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  #joyWrap.show { display: block; }
+  #joyBase {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: rgba(16,6,34,.42); border: 1.5px solid rgba(255,255,255,.38);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 8px 22px rgba(5,0,20,.40), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  #joyBase::before, #joyBase::after { content: ""; position: absolute; background: rgba(255,255,255,.15); border-radius: 2px; }
+  #joyBase::before { left: 50%; top: 10px; bottom: 10px; width: 2px; transform: translateX(-50%); }
+  #joyBase::after { top: 50%; left: 10px; right: 10px; height: 2px; transform: translateY(-50%); }
+  #joyKnob {
+    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%;
+    transform: translate(-50%,-50%);
+    background: rgba(16,6,34,.66); border: 1.5px solid rgba(255,255,255,.55);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 6px 16px rgba(5,0,20,.5), inset 0 1px 0 rgba(255,255,255,.3);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.85); font-size: 19px; line-height: 1; pointer-events: none;
+  }
+  #joyWrap.held #joyKnob { background: linear-gradient(135deg, #ffb03a, #ff4f7b); border-color: rgba(255,255,255,.7); color: #fff; }
+  @media (max-width: 600px) { #joyWrap { width: 118px; height: 118px; } #joyKnob { width: 52px; height: 52px; } }
+  /* the stick must LOOK like a stick — machined base, tilting shaft, glossy ball top (Sky Drifter, Oct 26) */
+  #joyBase { background: radial-gradient(circle at 50% 42%, rgba(24,12,48,.72), rgba(10,4,26,.55) 62%, rgba(10,4,26,.40)); border: 2px solid rgba(255,255,255,.38); box-shadow: 0 10px 26px rgba(3,0,16,.5), inset 0 2px 0 rgba(255,255,255,.22), inset 0 -10px 22px rgba(0,0,0,.45); }
+  #joyKnob { background: radial-gradient(circle at 34% 28%, #ffe3b0, #ff8a4a 34%, #ef2f5f 68%, #9c1032); border: 2px solid rgba(255,255,255,.6); color: rgba(255,255,255,.6); box-shadow: 0 12px 20px rgba(3,0,16,.55), inset 0 -7px 12px rgba(60,0,20,.45), inset 0 5px 8px rgba(255,255,255,.55); z-index: 2; }
+  #joyWrap.held #joyKnob { background: radial-gradient(circle at 34% 28%, #fff0cd, #ffa257 34%, #ff3d6e 68%, #b01238); color: #fff; }
+  #joyStem { position: absolute; left: 50%; bottom: 50%; width: 15px; height: 40px; margin-left: -7.5px; transform-origin: 50% 100%; background: linear-gradient(90deg, #262a33, #aeb6c2 45%, #23262d); border-radius: 7px 7px 3px 3px; opacity: 0; box-shadow: 0 3px 6px rgba(0,0,0,.45); pointer-events: none; }
+  .jt { position: absolute; font-size: 10px; color: rgba(255,255,255,.55); pointer-events: none; line-height: 1; z-index: 1; }
+  .jt.u { left: 50%; top: 7px; transform: translateX(-50%); } .jt.d { left: 50%; bottom: 7px; transform: translateX(-50%); }
+  .jt.l { left: 8px; top: 50%; transform: translateY(-50%); } .jt.r { right: 8px; top: 50%; transform: translateY(-50%); }
+
   /* ---- standard cover (Mesh pattern) ---- */
   #coverScr { z-index:30; background:#04060b; overflow:hidden; padding:0; justify-content:center; }
   #coverScr .stageBlur { position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(34px) brightness(.45); transform:scale(1.15); }
@@ -78,6 +121,7 @@
 <div id="ballHint" class="hidden">ROLL — YOUR FINGER IS THE TRACKBALL</div>
 <div id="ball" class="hidden"></div>
 <div id="popups"></div>
+<div id="joyWrap" aria-hidden="true"><div id="joyBase"><span class="jt u">▲</span><span class="jt d">▼</span><span class="jt l">◀</span><span class="jt r">▶</span></div><div id="joyStem"></div><div id="joyKnob">✥</div></div>
 
 
 <div class="screen" id="coverScr">
@@ -442,6 +486,43 @@ function ptrUp(){ pDown = false; pLast = null; }
 cv.addEventListener('pointerdown', ptrDown); window.addEventListener('pointermove', ptrMove); window.addEventListener('pointerup', ptrUp); window.addEventListener('pointercancel', ptrUp);
 window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()] = true; if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault(); });
 window.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+/* ================= THE JOYSTICK — Sky Drifter's stick, ported whole =================
+   The same shaped targets the held finger writes: 36px of knob travel,
+   a 0.06 dead zone, the 1.35-power response curve. Push and hold — the
+   command holds; let go and the knob springs home. It feeds stepPhysics
+   through the trackball's own transform (see the input block there). */
+const JOY = { pid:null, rx:0, ry:0, tx:0, ty:0 };
+const joyWrap = $('joyWrap'), joyKnob = $('joyKnob');
+const JOY_TRAVEL = 36;   /* px of knob travel from center to a full command */
+const jClamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+function shapeStick(v){ const a = Math.abs(v); if (a <= 0.06) return 0; const s = jClamp((a-0.06)/0.94, 0, 1); return Math.sign(v)*Math.pow(s, 1.35); }
+function joySetKnob(dx, dy){ if (joyKnob) joyKnob.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
+  const st = document.getElementById('joyStem'); if (st){ const d = Math.hypot(dx, dy); if (d < 5){ st.style.opacity = '0'; } else { st.style.opacity = '1'; st.style.transform = 'rotate(' + (Math.atan2(dx, -dy)*180/Math.PI) + 'deg) scaleY(' + (d/40) + ')'; } } }
+function joyRelease(){ JOY.pid = null; JOY.rx = 0; JOY.ry = 0; JOY.tx = 0; JOY.ty = 0;
+  if (joyWrap) joyWrap.classList.remove('held'); joySetKnob(0, 0); }
+function joyPoint(e){ const r = joyWrap.getBoundingClientRect(); const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  let dx = e.clientX - cx, dy = e.clientY - cy; const d = Math.hypot(dx, dy);
+  if (d > JOY_TRAVEL){ dx *= JOY_TRAVEL/d; dy *= JOY_TRAVEL/d; }
+  JOY.rx = dx/JOY_TRAVEL; JOY.ry = dy/JOY_TRAVEL;
+  JOY.tx = shapeStick(jClamp(JOY.rx, -1, 1)); JOY.ty = shapeStick(jClamp(-JOY.ry, -1, 1));   /* screen-up is roll-up: push up, roll away */
+  joySetKnob(Math.round(dx), Math.round(dy)); }
+if (joyWrap){
+  joyWrap.addEventListener('pointerdown', e=>{ JOY.pid = e.pointerId; try{ joyWrap.setPointerCapture(e.pointerId); }catch(err){}
+    joyWrap.classList.add('held'); joyPoint(e); e.preventDefault(); e.stopPropagation(); }, { passive:false });
+  joyWrap.addEventListener('pointermove', e=>{ if (JOY.pid === e.pointerId) joyPoint(e); });
+  joyWrap.addEventListener('pointerup', e=>{ if (JOY.pid === e.pointerId) joyRelease(); });
+  joyWrap.addEventListener('pointercancel', e=>{ if (JOY.pid === e.pointerId) joyRelease(); });
+}
+/* visibility: a desktop fixture — fine pointer at any size, or a wide
+   viewport — and only while a race is up (setPlayUI drives playUIOn);
+   narrow touch screens never see it and keep the trackball solo */
+const joyOK = ()=> window.matchMedia('(pointer:fine)').matches || window.innerWidth >= 1024;
+let playUIOn = false;
+function joySyncUI(){ if (!joyWrap) return; const on = playUIOn && joyOK();
+  joyWrap.classList.toggle('show', on); joyWrap.setAttribute('aria-hidden', on ? 'false' : 'true');
+  if (!on && JOY.pid !== null) joyRelease(); }
+window.addEventListener('resize', joySyncUI);
+
 
 /* ================= PHYSICS ================= */
 function gradAt(C,x,y){
@@ -458,6 +539,13 @@ function stepPhysics(dt, t){
   else {
     const a = spin.x/(TW/2), b = spin.y/(TH/2);            // screen roll (px/sec) -> iso axes
     ax += (a + b) * 0.5; ay += (b - a) * 0.5;
+    /* the JOYSTICK feeds this same transform: its shaped vector becomes the
+       a/b a trackball roll produces (a = spin.x/(TW/2), b = spin.y/(TH/2))
+       at the full scale the keyboard commands use — through this mix,
+       ArrowRight is exactly a=42, b=0 and ArrowUp exactly a=0, b=-42 — so a
+       full stick tilt equals a full held key, and partial tilt is
+       proportionally gentler. Analog, never 8-way. */
+    if (JOY.tx || JOY.ty){ const ja = JOY.tx*42, jb = -JOY.ty*42; ax += (ja + jb) * 0.5; ay += (jb - ja) * 0.5; }
     const K = 21;
     if (keys['arrowup']||keys['w']){ ax -= K; ay -= K; }
     if (keys['arrowdown']||keys['s']){ ax += K; ay += K; }
@@ -570,7 +658,7 @@ const HS_DEF = [['CR',14500],['UFO',14000],['GJL',13500],['SKP',13000],['PCT',12
 function loadHS(){ try{ const h = JSON.parse(localStorage.getItem('mm_hs')); if (Array.isArray(h) && h.length) return h; }catch(e){} return HS_DEF.map(([n,s])=>({n,s})); }
 function saveHS(h){ try{ localStorage.setItem('mm_hs', JSON.stringify(h)); }catch(e){} }
 function renderHS(){ const h = loadHS(); $('hsTable').innerHTML = '<div class="hd">★ TROUBLEMAKERS ★</div>' + h.slice(0,5).map((e,i)=> `${i+1}. ${e.n} &nbsp;${e.s.toLocaleString()}`).join('<br>'); }
-function setPlayUI(on){ $('hud').classList.toggle('hidden', !on); $('ball').classList.toggle('hidden', !on); $('ballHint').classList.toggle('hidden', !on); $('pauseBtn').classList.toggle('hidden', !on); }
+function setPlayUI(on){ $('hud').classList.toggle('hidden', !on); $('ball').classList.toggle('hidden', !on); $('ballHint').classList.toggle('hidden', !on); $('pauseBtn').classList.toggle('hidden', !on); playUIOn = on; joySyncUI(); }
 function startGame(){
   G.score = 0; G.deaths = 0; G.race = 0; G.time = 75;
   $('titleScr').classList.add('hidden'); $('msgScr').classList.add('hidden');
