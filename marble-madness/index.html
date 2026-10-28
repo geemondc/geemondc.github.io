@@ -221,10 +221,11 @@ function newCourse(name, w, len, zoneNames){
 }
 function T(z, o){ return Object.assign({z, sx:0, sy:0, t:'', zn:0, id:''}, o||{}); }
 function fill(C, x, y, w, d, z, o){ for (let j=y;j<y+d;j++) for (let i=x;i<x+w;i++){ if (C.grid[j] && i>=0 && i<C.w) C.grid[j][i] = T(z, o); } }
+function fillW(C, x, y, w, d, z, o){ fill(C, x, y, w, d, z, Object.assign({wall:1}, o||{})); }   /* a raised BLOCK: solid at any step size - the marble bounces off, never climbs or rolls over it (Gary, Oct 28) */
 function ramp(C, x, y, w, d, z, sx, sy, o){ fill(C, x, y, w, d, z, Object.assign({sx, sy}, o||{})); }
 function clearR(C, x, y, w, d){ for (let j=y;j<y+d;j++) for (let i=x;i<x+w;i++){ if (C.grid[j]) C.grid[j][i] = null; } }
 function setT(C, x, y, t, id){ const tl = C.grid[y] && C.grid[y][x]; if (tl){ tl.t = t; if (id) tl.id = id; } }
-function pyramid(C, x, y, s, z){ fill(C, x, y, s, s, z); if (s>=3) fill(C, x+1, y+1, s-2, s-2, z+0.9); }
+function pyramid(C, x, y, s, z){ fill(C, x, y, s, s, z, {wall:1}); if (s>=3) fill(C, x+1, y+1, s-2, s-2, z+0.9, {wall:1}); }
 function wave(C, x, y, w, d, base, amp, zn){ for (let j=0;j<d;j++) for (let i=0;i<w;i++){ if (C.grid[y+j]) C.grid[y+j][x+i] = T(base + Math.sin(j*0.85)*amp + Math.cos(i*0.5)*amp*0.3, {zn}); } }
 function hsAt(C, x, y){
   const tx = Math.floor(x), ty = Math.floor(y);
@@ -234,6 +235,44 @@ function hsAt(C, x, y){
   return tl.z + tl.sx*(x-tx) + tl.sy*(y-ty);
 }
 function vanishHidden(tl){ const ph = (performance.now()/1000*0.55 + (parseInt((tl.id||'v0').slice(1))||0)*0.35) % 1; return ph >= 0.62; }
+
+/* ============ GUARD RAILS (Gary, Oct 28: "more protective edges") ============
+   Flood-fill the void that connects to the course border (the true outside);
+   every outside-void cell touching real floor becomes a rail standing 0.9
+   above the highest floor it guards. Enclosed pockets - wells, pits - are
+   NOT outside, so the designed hazards stay deadly. Two stretches of
+   designed air are excluded by hand: the Practice jump gap and the Aerial
+   catapult flight paths. Rails collide through the normal heightfield:
+   floor -> rail is a 0.9 step, over the step limit, so the marble bounces
+   off / is contained, and can never cross one. */
+function tileMaxH(tl){ return tl.z + Math.max(0, tl.sx) + Math.max(0, tl.sy); }
+const RAIL_EXCL = { PRACTICE: [[0,78,28,5]], AERIAL: [[5,64,19,8],[5,78,19,10]] };
+function buildRails(C){
+  const isFloor = (x,y)=> x>=0 && y>=0 && x<C.w && y<C.len && !!C.grid[y][x];
+  const outside = new Set(), q = [];
+  const push = (x,y)=>{ if (x<0 || y<0 || x>=C.w || y>=C.len) return; const k = x+','+y; if (outside.has(k) || isFloor(x,y)) return; outside.add(k); q.push([x,y]); };
+  for (let x=0;x<C.w;x++){ push(x,0); push(x,C.len-1); }
+  for (let y=0;y<C.len;y++){ push(0,y); push(C.w-1,y); }
+  while (q.length){ const c = q.pop(); push(c[0]+1,c[1]); push(c[0]-1,c[1]); push(c[0],c[1]+1); push(c[0],c[1]-1); }
+  const excl = RAIL_EXCL[C.name] || [];
+  const inExcl = (x,y)=> excl.some(r=> x>=r[0] && x<r[0]+r[2] && y>=r[1] && y<r[1]+r[3]);
+  const placements = [];
+  for (const k of outside){
+    const parts = k.split(','), x = +parts[0], y = +parts[1];
+    if (inExcl(x,y)) continue;
+    let best = null;
+    for (const d of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const fx = x+d[0], fy = y+d[1];
+      if (!isFloor(fx,fy)) continue;
+      const tl = C.grid[fy][fx];
+      if (tl.t === 'vanish') continue;
+      const h = tileMaxH(tl);
+      if (!best || h > best.h) best = { h: h, zn: tl.zn };
+    }
+    if (best) placements.push([x, y, best]);
+  }
+  for (const p of placements) C.grid[p[1]][p[0]] = T(p[2].h + 0.9, { t:'rail', zn: p[2].zn });
+}
 
 const COURSES = [];
 /* ===== RACE 1 — PRACTICE EXTREME (plateau + basin/well, then a 5-shelf snake, jump, walled zigzag) ===== */
@@ -248,14 +287,14 @@ const COURSES = [];
   fill(C, 13,16,1,1, 1.6);                                   // well island
   clearR(C, 6,17,3,2);                                       // second pit
   fill(C, 5,21,18,4, 0.8);                                   // run-out
-  fill(C, 2,25,24,7, 0.8); fill(C, 11,27,6,3, 2.4);          // snake shelf 1 + wall
+  fill(C, 2,25,24,7, 0.8); fillW(C, 11,27,6,3, 2.4);          // snake shelf 1 + wall
   ramp(C, 20,32,5,4, 0.8, 0,-0.25);                          // hairpin R
-  fill(C, 2,36,24,7, -0.2); fill(C, 10,38,6,3, 1.4);         // shelf 2 + wall
+  fill(C, 2,36,24,7, -0.2); fillW(C, 10,38,6,3, 1.4);         // shelf 2 + wall
   ramp(C, 3,43,5,4, -0.2, 0,-0.25);                          // hairpin L
   fill(C, 2,47,24,7, -1.2);                                   // shelf 3
   pyramid(C, 3,48,3, -0.2); pyramid(C, 22,49,3, -0.2);
   ramp(C, 20,54,5,4, -1.2, 0,-0.25);                         // hairpin R
-  fill(C, 2,58,24,7, -2.2); fill(C, 12,60,6,3, -0.6);        // shelf 4 + wall
+  fill(C, 2,58,24,7, -2.2); fillW(C, 12,60,6,3, -0.6);        // shelf 4 + wall
   ramp(C, 3,65,5,4, -2.2, 0,-0.25);                          // hairpin L
   fill(C, 2,69,24,7, -3.2);                                  // shelf 5
   ramp(C, 11,76,6,3, -3.2, 0, 0.55);                         // jump lip
@@ -276,13 +315,13 @@ const COURSES = [];
 {
   const C = newCourse('BEGINNER', 28, 100, ['redyel','blue']);
   fill(C, 3,0,22,6, 4.0, {zn:0});                            // wide start
-  fill(C, 2,1,3,4, 6.2, {zn:0}); fill(C, 23,1,3,4, 6.2, {zn:0}); // pillars
+  fillW(C, 2,1,3,4, 6.2, {zn:0}); fillW(C, 23,1,3,4, 6.2, {zn:0}); // pillars
   ramp(C, 5,6,18,5, 4.0, 0,-0.44, {zn:0});                   // the hill
-  fill(C, 2,11,24,7, 1.8, {zn:0}); fill(C, 11,13,6,3, 3.4, {zn:0}); // shelf 1 + wall
+  fill(C, 2,11,24,7, 1.8, {zn:0}); fillW(C, 11,13,6,3, 3.4, {zn:0}); // shelf 1 + wall
   ramp(C, 20,18,5,4, 1.8, 0,-0.2, {zn:0});                   // hairpin R
   fill(C, 2,22,24,7, 1.0, {zn:0});                           // shelf 2 — STEELIE BOWL
   ramp(C, 3,29,5,4, 1.0, 0,-0.2, {zn:0});                    // hairpin L
-  fill(C, 2,33,24,7, 0.2, {zn:0}); fill(C, 12,33,3,5, 2.2, {zn:0}); // shelf 3 — THE FORK (wall splits it; south lane y38-39 stays OPEN = the crossing)
+  fill(C, 2,33,24,7, 0.2, {zn:0}); fillW(C, 12,33,3,5, 2.2, {zn:0}); // shelf 3 — THE FORK (wall splits it; south lane y38-39 stays OPEN = the crossing)
   ramp(C, 20,40,5,4, 0.2, 0,-0.2, {zn:1});                   // hairpin R
   fill(C, 2,44,24,7, -0.6, {zn:1});                          // shelf 4 — MUNCHER FLAT
   ramp(C, 3,51,5,4, -0.6, 0,-0.15, {zn:1});                  // hairpin L
@@ -296,7 +335,7 @@ const COURSES = [];
   ramp(C, 19,67,6,5, -1.8, 0, 0.35, {zn:1});
   ramp(C, 3,73,5,4, -1.8, 0,-0.15, {zn:1});                  // hairpin L
   fill(C, 2,77,24,7, -2.4, {zn:1});                          // shelf 7 — double walls
-  fill(C, 8,79,5,3, -0.8, {zn:1}); fill(C, 16,81,5,3, -0.8, {zn:1});
+  fillW(C, 8,79,5,3, -0.8, {zn:1}); fillW(C, 16,81,5,3, -0.8, {zn:1});
   setT(C, 5,82, 'vent', 'ventB');
   ramp(C, 20,84,5,4, -2.4, 0, 0, {zn:1});                    // flat walk to the glass
   fill(C, 14,88,12,6, -2.4, {t:'glass', zn:1});              // glass (vent B exit too)
@@ -315,7 +354,7 @@ const COURSES = [];
   ramp(C, 11,3,6,4, 5.0, 0,-0.6);
   fill(C, 2,7,24,17, 2.2);                                   // FIELD 1 — wells + walls
   clearR(C, 5,10,4,3); clearR(C, 15,9,4,3); clearR(C, 9,15,4,3); clearR(C, 19,17,4,3);
-  fill(C, 8,11,1,6, 3.8); fill(C, 13,14,5,1, 3.8); fill(C, 6,19,5,1, 3.8); fill(C, 18,12,1,6, 3.8);
+  fillW(C, 8,11,1,6, 3.8); fillW(C, 13,14,5,1, 3.8); fillW(C, 6,19,5,1, 3.8); fillW(C, 18,12,1,6, 3.8);
   ramp(C, 11,24,6,4, 2.2, 0,-0.3);                           // down to field 2
   fill(C, 2,28,24,15, 1.0);                                  // FIELD 2 — hopper court
   clearR(C, 6,31,3,3); clearR(C, 20,33,3,3);
@@ -325,7 +364,7 @@ const COURSES = [];
   ramp(C, 11,51,6,4, 1.0, 0,-0.25);
   fill(C, 2,55,24,17, 0.0);                                  // FIELD 3 — the deep maze
   clearR(C, 10,58,4,3); clearR(C, 17,63,4,3); clearR(C, 5,66,4,3);
-  fill(C, 7,61,6,1, 1.6); fill(C, 14,57,1,6, 1.6); fill(C, 12,68,6,1, 1.6);
+  fillW(C, 7,61,6,1, 1.6); fillW(C, 14,57,1,6, 1.6); fillW(C, 12,68,6,1, 1.6);
   fill(C, 16,58,8,4, 0.0, {t:'lights'});
   fill(C, 12,72,4,8, 0.0);                                   // skinny bridge
   fill(C, 3,80,22,10, 0.0, {zn:1});                          // ACID LAKE deck
@@ -357,6 +396,7 @@ const COURSES = [];
   fill(C, 10,76,8,4, 0.6, {zn:1}); setT(C, 13,78, 'catapult','cat2');
   fill(C, 8,86,12,5, 0.6, {zn:1});                           // launch landing 2 — gauntlet
   fill(C, 12,91,4,10, 1.2, {zn:1});                          // S-catwalk
+  for (let x=12;x<16;x++){ const tl=C.grid[91][x]; if (tl) tl.z = 0.9; }   // entry step: landing 0.6 -> 0.9 -> catwalk 1.2, each hop inside the 0.55 climb limit (the flat 0.6 -> 1.2 entry was unclimbable)
   fill(C, 12,101,12,4, 1.2, {zn:1});
   fill(C, 20,105,7,6, 1.2, {zn:1});                          // goal terrace
   fill(C, 21,106,5,4, 1.2, {t:'goal', zn:1});
@@ -396,12 +436,12 @@ const COURSES = [];
   fill(C, 11,0,6,4, 5.0); setT(C, 13,3, 'vent', 'ventU');    // plank + vent out
   fill(C, 10,7,8,4, 0.6);                                    // vent-out pad
   fill(C, 2,11,24,7, 0.6);                                   // shelf 1 — blocks
-  [[6,13],[20,14]].forEach(([bx,by])=>{ const tl=C.grid[by][bx]; if (tl) tl.z = 1.9; });
+  [[6,13],[20,14]].forEach(([bx,by])=>{ const tl=C.grid[by][bx]; if (tl){ tl.z = 1.9; tl.wall = 1; } });
   ramp(C, 20,18,5,4, 0.6, 0,-0.2);                           // hairpin R
   fill(C, 2,22,24,7, -0.2); fill(C, 8,24,12,4, -0.2, {t:'lights'}); // shelf 2 — lights
   ramp(C, 3,29,5,4, -0.2, 0,-0.2);                           // hairpin L
   fill(C, 2,33,24,7, -1.0);                                   // shelf 3 — block field
-  [[5,35],[11,37],[17,35],[22,38],[8,39]].forEach(([bx,by])=>{ const tl=C.grid[by][bx]; if (tl) tl.z = 0.3; });
+  [[5,35],[11,37],[17,35],[22,38],[8,39]].forEach(([bx,by])=>{ const tl=C.grid[by][bx]; if (tl){ tl.z = 0.3; tl.wall = 1; } });
   ramp(C, 20,40,5,4, -1.0, 0,-0.2);                          // hairpin R
   fill(C, 2,44,24,7, -1.8);                                  // shelf 4 — STEELIE PIT
   ramp(C, 3,51,5,4, -1.8, 0,-0.2);                           // hairpin L
@@ -442,6 +482,7 @@ const ROADS = {
   ULTIMATE: [[13.5,1.5],[14,8.5],[14,14],[22,20],[14,25],[5,31],[14,36],[22,42],[14,47],[5,53],[14,58],[22,64],[14,69],[5,75],[14,80],[22,86],[14,91],[14,97.5]]
 };
 function segDist(px,py, ax,ay, bx,by){ const dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy||1; let t=((px-ax)*dx+(py-ay)*dy)/L2; t=Math.max(0,Math.min(1,t)); const ex=ax+t*dx-px, ey=ay+t*dy-py; return Math.hypot(ex,ey); }
+for (const C of COURSES) buildRails(C);
 for (const C of COURSES){
   const pts = ROADS[C.name]; C.roadSet = new Set();
   if (pts){ for (let ty=0; ty<C.len; ty++) for (let tx=0; tx<C.w; tx++){ const tl=C.grid[ty][tx]; if (!tl || tl.t!=='') continue;
@@ -548,6 +589,31 @@ function gradAt(C,x,y){
   if (hC===null) return {gx:0, gy:0};
   return { gx: ((hR===null?hC:hR)-(hL===null?hC:hL))/(2*e), gy: ((hD===null?hC:hD)-(hU===null?hC:hU))/(2*e) };
 }
+/* ============ WALL COLLISION (Gary, Oct 28) ============
+   The old model tested ONE destination point per frame and zeroed the
+   velocity of any axis that hit a tall step: no bounce, and any approach
+   whose sampled step was <= 0.55 (the wavy field's crests into the
+   pyramid skirts, corner staircases) simply rolled up and over the
+   blockers. Now movement is SUBSTEPPED (<= ~0.06 tiles per substep, so
+   no speed can tunnel or corner-cut), wall contact is tested at the
+   marble's leading edge, marked blocks are solid at ANY step size, and
+   a barred axis REFLECTS: hit a higher wall and you bounce off it. */
+const STEP_MAX = 0.55;   /* tallest unmarked terrain step the marble may roll up (ramps are slopes, not steps; the 0.5 causeway still climbs) */
+const REST = 0.5;        /* bounce: half the impact speed comes back - lively, with modest energy loss */
+const BALL_R = 0.30;     /* marble radius in tiles */
+let lastBonk = 0;
+function bonk(v){ if (Math.abs(v) > 1.6 && performance.now() - lastBonk > 110){ lastBonk = performance.now(); sfx.bounce(); } }
+function sideHit(C, px, py){
+  const hs = hsAt(C, px, py); if (hs === null || hs <= M.z + 0.02) return false;
+  const tl = tileAt(C, px, py);
+  return !!(tl && (tl.wall || tl.t === 'rail'));
+}
+function barredAt(C, px, py, surfHere){
+  const hs = hsAt(C, px, py); if (hs === null) return false;   /* void never bars: the marble may roll off and fall */
+  const tl = tileAt(C, px, py);
+  if (tl && tl.wall && hs - surfHere > 0.05) return true;      /* a raised block: impenetrable at any step */
+  return hs - surfHere > STEP_MAX;
+}
 function stepPhysics(dt, t){
   const C = COURSES[G.race];
   if (M.dead){ G.broomT -= dt; if (G.broomT <= 0) respawn(); return; }
@@ -584,17 +650,29 @@ function stepPhysics(dt, t){
       const tl = tileAt(C, M.x, M.y);
       const fr = (tl && tl.t==='ice') ? 0.35 : 1.15;
       const damp = Math.exp(-dt*fr); M.vx *= damp; M.vy *= damp;
-      /* integrate with step/wall blocking */
-      let nx = M.x + M.vx*dt, ny = M.y + M.vy*dt;
-      const hsN = hsAt(C, nx, ny);
-      if (hsN !== null && hsHere !== null && hsN - hsHere > 0.55){
-        if (hsAt(C, nx, M.y) !== null && hsAt(C, nx, M.y) - hsHere <= 0.55){ ny = M.y; M.vy = 0; }
-        else if (hsAt(C, M.x, ny) !== null && hsAt(C, M.x, ny) - hsHere <= 0.55){ nx = M.x; M.vx = 0; }
-        else { nx = M.x; ny = M.y; M.vx *= -0.25; M.vy *= -0.25; sfx.bounce(); }
+      /* integrate - substepped, axis by axis; a barred axis BOUNCES */
+      const startX = M.x, startY = M.y;
+      const frameDist = Math.hypot(M.vx, M.vy) * dt;
+      const nSub = Math.max(1, Math.min(16, Math.ceil(frameDist / 0.06)));
+      const sdt = dt / nSub;
+      for (let s = 0; s < nSub; s++){
+        const hsS = hsAt(C, M.x, M.y);
+        if (hsS === null) break;                 /* rolled off an edge mid-frame - the fall begins below */
+        if (M.vx !== 0){
+          const txp = M.x + M.vx * sdt;
+          if (barredAt(C, txp + Math.sign(M.vx) * BALL_R, M.y, hsS)){ bonk(M.vx); M.vx = -M.vx * REST; }
+          else M.x = txp;
+        }
+        const hsS2 = hsAt(C, M.x, M.y);
+        if (hsS2 === null) break;
+        if (M.vy !== 0){
+          const typ = M.y + M.vy * sdt;
+          if (barredAt(C, M.x, typ + Math.sign(M.vy) * BALL_R, hsS2)){ bonk(M.vy); M.vy = -M.vy * REST; }
+          else M.y = typ;
+        }
       }
-      const moved = Math.hypot(nx-M.x, ny-M.y);
+      const moved = Math.hypot(M.x - startX, M.y - startY);
       G.dist += moved; G.score += moved*10;
-      M.x = nx; M.y = ny;
       const hs2 = hsAt(C, M.x, M.y);
       if (hs2 === null){ M.grounded = false; M.vz = 0; G.fallFrom = M.z; G.airT = 0; }
       else M.z = hs2;
@@ -602,7 +680,26 @@ function stepPhysics(dt, t){
   }
   if (!M.grounded){
     M.vz -= 26*dt; G.airT += dt;
-    M.x += M.vx*dt; M.y += M.vy*dt; M.z += M.vz*dt;
+    /* horizontal flight is substepped too. A marked WALL or RAIL whose top
+       is ABOVE the marble is a side hit (bounce) - never a landing: the
+       marble can no longer drop alongside a blocker and pop out on top of
+       it. Ordinary floor platforms keep the classic landing (the jump and
+       the catapults are tuned for it: they arrive at the far platform a
+       shade under its top plane and settle on it). */
+    const adist = Math.hypot(M.vx, M.vy) * dt;
+    const anSub = Math.max(1, Math.min(16, Math.ceil(adist / 0.06)));
+    const asdt = dt / anSub;
+    for (let s = 0; s < anSub; s++){
+      if (M.vx !== 0){
+        const txp = M.x + M.vx * asdt;
+        if (sideHit(C, txp, M.y)){ bonk(M.vx); M.vx = -M.vx * REST; } else M.x = txp;
+      }
+      if (M.vy !== 0){
+        const typ = M.y + M.vy * asdt;
+        if (sideHit(C, M.x, typ)){ bonk(M.vy); M.vy = -M.vy * REST; } else M.y = typ;
+      }
+    }
+    M.z += M.vz*dt;
     const hs = hsAt(C, M.x, M.y);
     if (hs !== null && M.z <= hs){
       const drop = G.fallFrom - hs;
@@ -784,6 +881,7 @@ function drawTile(C, tx, ty, t, ZZ){
   /* top — checkerboard */
   let top = ((tx+ty)%2===0) ? zn.fA : zn.fB;
   if (C.roadSet && C.roadSet.has(tx+','+ty)) top = ((tx+ty)%2===0) ? '#ffd94d' : '#f0b429';   // the yellow brick road
+  if (tl.t === 'rail') top = ((tx+ty)%2===0) ? zn.wR : zn.wL;   // guard rails wear the wall-panel colors - protection you can SEE
   if (tl.t === 'goal') top = ((tx+ty)%2===0) ? '#e8ecf2' : '#22242c';
   if (tl.t === 'bridge') top = '#ffb52e';
   if (tl.t === 'glass') top = 'rgba(190,230,255,0.55)';
@@ -903,7 +1001,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 renderHS();
-window.__mm = { G, M, COURSES, startRace, startGame, hsAt };
+window.__mm = { G, M, COURSES, startRace, startGame, hsAt, stepPhysics };
 requestAnimationFrame(frame);
 </script>
 </body>
