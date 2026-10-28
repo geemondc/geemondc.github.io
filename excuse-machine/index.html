@@ -166,6 +166,22 @@
       .excuse-text { font-size: 21px; }
     }
 
+    .dodge-label { display: block; margin: 16px auto 0; text-align: center; color: #fff; font-size: 13px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.3); }
+    .dodge-input {
+      display: block; width: min(100%, 340px); margin: 8px auto 0; padding: 12px 16px;
+      border: 2px solid rgba(255,255,255,.65); border-radius: 999px;
+      background: rgba(43,10,36,.55); color: #fff;
+      font-size: 15.5px; font-weight: 800; text-align: center;
+      -webkit-user-select: text; user-select: text;
+    }
+    .dodge-input::placeholder { color: rgba(255,255,255,.62); font-weight: 700; }
+    .dodge-input:focus-visible { outline: 3px solid #ffd447; outline-offset: 3px; }
+    .tier-label { margin: 12px 0 0; min-height: 20px; text-align: center; color: #ffd447; font-size: 14.5px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; text-shadow: 0 1px 6px rgba(0,0,0,.35); opacity: 0; transition: opacity .25s ease; }
+    .tier-label.show { opacity: 1; }
+    .legendary-badge { display: none; margin: 0 auto 12px; padding: 7px 16px; border-radius: 999px; background: linear-gradient(90deg, #ffb300, #ffd447, #ffb300); color: #5b3600; font-size: 14px; font-weight: 900; letter-spacing: .06em; box-shadow: 0 6px 18px rgba(255,180,0,.45); }
+    .legendary-badge.show { display: inline-block; }
+    .excuse-card.legendary { border: 2px solid #ffd447; box-shadow: 0 0 0 4px rgba(255,212,71,.3), 0 20px 44px rgba(60,0,40,.4); }
+
     .confetti-layer { position: fixed; inset: 0; z-index: 300; overflow: hidden; pointer-events: none; }
     .confetti-bit { position: absolute; top: -9vh; line-height: 1; animation: confettiFall 1.9s ease-in forwards; }
     @keyframes confettiFall { to { transform: translate(var(--dx, 0px), 112vh) rotate(var(--rot, 120deg)); } }
@@ -196,7 +212,11 @@
       <h1 data-i18n="toyTitle">Need an excuse?</h1>
       <p class="tagline" data-i18n="toyTagline">Pick a category. Tap the button. Say it like you mean it.</p>
       <div class="chips" id="chips" role="group" aria-label="Excuse categories"></div>
+      <label class="dodge-label" id="dodgeLabel" for="dodgeInput" data-i18n="dodgeLabel">What are you dodging?</label>
+      <input class="dodge-input" id="dodgeInput" type="text" maxlength="60" autocomplete="off" placeholder="Type it: the gym, a work meeting, my cousin’s party…" />
+      <p class="tier-label" id="tierLabel" aria-live="polite"></p>
       <div class="excuse-card" id="excuseCard" aria-live="polite">
+        <div class="legendary-badge" id="legendaryBadge"></div>
         <p class="excuse-placeholder" id="excuseText" data-i18n="placeholder">Your excuse is warming up…</p>
         <div class="meter-wrap" id="meterWrap">
           <div class="meter-label"><span data-i18n="plausibility">Plausibility</span><b id="meterPct">0%</b></div>
@@ -250,9 +270,11 @@
       var CATS = [
         { id: 'gym', emoji: '🏋️' },
         { id: 'work', emoji: '💼' },
+        { id: 'date', emoji: '❤️' },
         { id: 'family', emoji: '👪' },
-        { id: 'goingout', emoji: '⛳' },
-        { id: 'groupchat', emoji: '💬' },
+        { id: 'school', emoji: '📚' },
+        { id: 'party', emoji: '🎉' },
+        { id: 'chores', emoji: '🧹' },
         { id: 'anything', emoji: '🛋️' }
       ];
 
@@ -263,7 +285,7 @@
           start: 'Enter',
           credit: 'Made by Gary · Powered by Muse — get your own with code',
           toyTitle: 'Need an excuse?',
-          toyTagline: 'Pick a category. Tap the button. Say it like you mean it.',
+          toyTagline: 'Pick one, or type what you are dodging. Then tap the button.',
           placeholder: 'Your excuse is warming up…',
           plausibility: 'Plausibility',
           generate: 'Generate excuse',
@@ -271,7 +293,14 @@
           backIntro: '← Intro',
           bottomInstruction: 'One tap. One excuse. No follow-up questions.',
           copied: 'Copied — now go be innocent.',
-          catGym: 'Gym', catWork: 'Work', catFamily: 'Family', catGoingout: 'Going Out', catGroupchat: 'Group Chat', catAnything: 'Anything'
+          dodgeLabel: 'What are you dodging?',
+          dodgePh: 'Type it: the gym, a work meeting, my cousin\u2019s party…',
+          tier1: 'Keeping it believable…',
+          tier2: 'Getting silly…',
+          tier3: 'Full nonsense mode',
+          tierLeg: '👑 LEGENDARY TERRITORY 👑',
+          legBadge: '👑 LEGENDARY EXCUSE 👑',
+          catGym: 'Gym', catWork: 'Work', catDate: 'Date', catFamily: 'Family', catSchool: 'School', catParty: 'Party', catChores: 'Chores', catAnything: 'Anything'
         },
         es: {
           kicker: 'Cero culpa. Pura seguridad.',
@@ -279,7 +308,7 @@
           start: 'Entrar',
           credit: 'Hecho por Gary · Con la magia de Muse — consigue el tuyo con el código',
           toyTitle: '¿Necesitas una excusa?',
-          toyTagline: 'Elige una categoría. Toca el botón. Dilo con seguridad.',
+          toyTagline: 'Elige una, o escribe lo que estás esquivando. Luego toca el botón.',
           placeholder: 'Tu excusa se está calentando…',
           plausibility: 'Credibilidad',
           generate: 'Generar excusa',
@@ -287,7 +316,14 @@
           backIntro: '← Inicio',
           bottomInstruction: 'Un toque. Una excusa. Sin preguntas.',
           copied: 'Copiado: ahora ve y finge inocencia.',
-          catGym: 'Gimnasio', catWork: 'Trabajo', catFamily: 'Familia', catGoingout: 'Salir', catGroupchat: 'Chat del grupo', catAnything: 'Lo que sea'
+          dodgeLabel: '¿Qué estás esquivando?',
+          dodgePh: 'Escríbelo: el gimnasio, una reunión, la fiesta de mi primo…',
+          tier1: 'Manteniéndolo creíble…',
+          tier2: 'Poniéndose tonto…',
+          tier3: 'Modo disparate total',
+          tierLeg: '👑 TERRITORIO LEGENDARIO 👑',
+          legBadge: '👑 EXCUSA LEGENDARIA 👑',
+          catGym: 'Gimnasio', catWork: 'Trabajo', catDate: 'Cita', catFamily: 'Familia', catSchool: 'Escuela', catParty: 'Fiesta', catChores: 'Quehaceres', catAnything: 'Lo que sea'
         }
       };
 
@@ -310,116 +346,744 @@
         ]
       };
 
-      var BANKS = {
-        gym: {
-          en: [
-            "My chiropractor said rest is a workout. His name is Dr. Gee. He's very expensive and never wrong.",
-            "I pulled a muscle reaching for the remote. The doctor said 6 to 8 weeks. No exceptions. Mostly naps.",
-            "I did go to the gym. I drove there, sat in the parking lot, and mentally did every exercise. My brain is exhausted.",
-            "My gym bag is still in the car from last time. At this point it's not equipment, it's an artifact.",
-            "I'm carb-loading for a marathon I'm watching on TV this weekend. Preparation is everything.",
-            "My watch says I closed my rings. My watch has never lied to me. I don't know why it would start now."
+      var DELIVERY_T2 = {
+        en: [
+          'Delivery note: say it with a straight face. The face is doing all the work now.',
+          'Delivery note: add one (1) dramatic sigh in the middle. Just one.',
+          'Delivery note: if they laugh, laugh WITH them, then repeat it seriously.',
+          'Delivery note: end with \u201canyway…\u201d and wander off.'
+        ],
+        es: [
+          'Nota de actuación: dilo con cara seria. La cara está haciendo todo el trabajo.',
+          'Nota de actuación: agrega un (1) suspiro dramático en el medio. Solo uno.',
+          'Nota de actuación: si se ríen, ríete CON ellos y luego repítelo en serio.',
+          'Nota de actuación: termina con «en fin…» y aléjate caminando.'
+        ]
+      };
+
+      var DELIVERY_T3 = {
+        en: [
+          'Delivery note: maintain eye contact for a full three seconds longer than normal.',
+          'Delivery note: whisper it. Whispering makes anything sound classified.',
+          'Delivery note: nod slowly the whole time. Never break the nod.',
+          'Delivery note: deliver it, then immediately ask what day it is. Throw them off the scent.'
+        ],
+        es: [
+          'Nota de actuación: mantén el contacto visual tres segundos más de lo normal.',
+          'Nota de actuación: susúrralo. Susurrar hace que todo suene clasificado.',
+          'Nota de actuación: asiente lentamente todo el tiempo. Nunca rompas el asentimiento.',
+          'Nota de actuación: dilo y enseguida pregunta qué día es. Despístalos.'
+        ]
+      };
+
+      var DELIVERY_LEG = {
+        en: [
+          'Delivery note: bow slightly after saying it. You have earned it.',
+          'Delivery note: say it once, then never speak of it again. Legends don\u2019t explain.',
+          'Delivery note: sunglasses on. Walk out in slow motion (mentally).'
+        ],
+        es: [
+          'Nota de actuación: haz una pequeña reverencia al terminar. Te lo ganaste.',
+          'Nota de actuación: dilo una vez y nunca más hables del tema. Las leyendas no se explican.',
+          'Nota de actuación: gafas de sol puestas. Sal en cámara lenta (mentalmente).'
+        ]
+      };
+
+      /* ---------- THE BRAIN: keyword detection (EN + ES, accent-insensitive) ---------- */
+      var KEYWORDS = [
+        ['chores', ['errand', 'mandado', 'recado', 'laundry', 'lavanderia', 'lavar', 'dishes', 'platos', 'clean', 'limpi', 'mow', 'cesped', 'jardin', 'yard work', 'grocery', 'supermercado', 'mercado', 'vacuum', 'aspir', 'trash', 'basura', 'chore', 'quehacer', 'housework', 'tidy']],
+        ['gym', ['gym', 'gimnasio', 'workout', 'work out', 'ejercicio', 'entren', 'yoga', 'pilates', 'spinning', 'crossfit', 'cardio', 'pesas', 'weights', 'zumba', 'nadar', 'natacion', 'swim', 'run', 'correr', 'jog', 'treadmill', 'caminadora', 'sentadilla', 'squat']],
+        ['work', ['work', 'trabajo', 'meeting', 'reunion', 'boss', 'jefe', 'office', 'oficina', 'job', 'empleo', 'shift', 'turno', 'presentation', 'presentacion', 'deadline', 'coworker', 'companero de trabajo', 'conference call', 'llamada de trabajo']],
+        ['school', ['school', 'escuela', 'class', 'clase', 'homework', 'tarea', 'exam', 'examen', 'estudi', 'study', 'profesor', 'professor', 'teacher', 'maestro', 'universidad', 'university', 'college', 'lecture', 'quiz']],
+        ['family', ['famil', 'mom', 'mama', 'mother', 'madre', 'dad', 'papa', 'father', 'padre', 'aunt', 'tia', 'uncle', 'tio', 'cousin', 'primo', 'prima', 'grandma', 'abuela', 'grandpa', 'abuelo', 'suegr', 'in-law', 'in law', 'brother', 'hermano', 'sister', 'hermana', 'sobrino', 'sobrina']],
+        ['date', ['date', 'cita', 'girlfriend', 'boyfriend', 'novia', 'novio', 'pareja', 'tinder', 'bumble', 'hinge', 'romant', 'aniversario', 'anniversary', 'crush']],
+        ['party', ['party', 'fiesta', 'cumpleanos', 'birthday', 'celebr', 'drinks', 'tragos', 'bar', 'club', 'wedding', 'boda', 'bbq', 'parrillada', 'asado', 'karaoke', 'hangout', 'salir', 'going out', 'get-together', 'get together', 'reunion de amigos']]
+      ];
+
+      function normText(s) {
+        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
+
+      function detectCategory(text) {
+        var n = ' ' + normText(text) + ' ';
+        for (var i = 0; i < KEYWORDS.length; i++) {
+          var kws = KEYWORDS[i][1];
+          for (var j = 0; j < kws.length; j++) {
+            var kw = normText(kws[j]);
+            if (kw.indexOf(' ') >= 0) { if (n.indexOf(kw) >= 0) return KEYWORDS[i][0]; }
+            else if (new RegExp('\\b' + kw).test(n)) return KEYWORDS[i][0];
+          }
+        }
+        return 'anything';
+      }
+
+      function cleanAct(s) {
+        return (s || '').replace(/[<>{}"\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      }
+
+      /* ---------- COMBINATORIAL ENGINE ----------
+         TEMPLATES[cat][lang] = { act, openers[12], middles[[tier,text]...], endings[[tier,text]...], legM[], legE[] }
+         SHARED pieces merge into every category. EN/ES arrays are index-aligned so a
+         language switch re-renders the exact same joke. */
+      var SHARED = {
+        en: {
+          middles: [
+            [1, 'Something came up. (Nothing came up. The horizon is clear and so is my calendar.)'],
+            [1, 'My horoscope specifically warned me about today. It used my name and everything.'],
+            [2, 'My couch and I are working through some things, and today is our breakthrough day.'],
+            [2, 'I already spent my one (1) productive hour today. It was beautiful. It is gone now.'],
+            [3, 'My goldfish is teaching me to meditate and today we finally reach the silent chapter.'],
+            [3, 'I have entered a committed relationship with my blanket. It is getting serious. There is talk of a future.']
           ],
-          es: [
-            "Mi quiropráctico dijo que descansar también es entrenar. Se llama Dr. Gee. Es carísimo y nunca se equivoca.",
-            "Me lastimé un músculo alcanzando el control remoto. El doctor dijo de 6 a 8 semanas. Sin excepciones. Puras siestas.",
-            "Sí fui al gimnasio. Manejé hasta allá, me senté en el estacionamiento e hice cada ejercicio mentalmente. Mi cerebro está agotado.",
-            "Mi maleta del gimnasio sigue en el carro desde la vez pasada. A estas alturas ya no es equipo, es una reliquia.",
-            "Estoy cargando carbohidratos para un maratón que voy a ver por televisión este fin de semana. La preparación lo es todo.",
-            "Mi reloj dice que cerré mis anillos. Mi reloj nunca me ha mentido. No veo por qué empezaría ahora."
-          ]
+          endings: [
+            [1, 'Rain check — a real one, with actual rain-checking involved.'],
+            [1, 'Next time, though. Put me down as a strong maybe.'],
+            [2, 'Tell everyone I said hi. From very, very far away.'],
+            [2, 'My absence is my gift to the group dynamic.'],
+            [3, 'If anyone asks, I was never born.'],
+            [3, 'Historians will understand.']
+          ],
+          legM: ['A wizard appeared in my kitchen and told me that leaving the house today would split the timeline in two.'],
+          legE: ['Entire villages will sing of this excuse.']
         },
-        work: {
-          en: [
-            "I'm stuck in a meeting with myself. It's running long. I'm asking a lot of tough questions.",
-            "My laptop updated and now it's asking me questions I don't know the answers to. We're in couples counseling.",
-            "I read the email. I'm now observing a respectful 48-hour period of emotional processing before responding.",
-            "Traffic was unbelievable. I work from home, but emotionally, I was in traffic.",
-            "I'm on a deadline. The deadline is me deciding when to start.",
-            "My out-of-office is on. Not the email one. Me. I am out of the office of life until Monday."
+        es: {
+          middles: [
+            [1, 'Surgió algo. (No surgió nada. El horizonte está despejado y mi agenda también.)'],
+            [1, 'Mi horóscopo me advirtió específicamente sobre hoy. Hasta usó mi nombre y todo.'],
+            [2, 'Mi sofá y yo estamos resolviendo unas cosas, y hoy es nuestro día de avance.'],
+            [2, 'Ya gasté mi única (1) hora productiva de hoy. Fue hermosa. Ya no existe.'],
+            [3, 'Mi pez dorado me está enseñando a meditar y hoy por fin llegamos al capítulo silencioso.'],
+            [3, 'Entré en una relación seria con mi cobija. Se está poniendo serio. Ya se habla de futuro.']
           ],
-          es: [
-            "Estoy atrapado en una reunión conmigo mismo. Se está alargando. Me estoy haciendo preguntas muy difíciles.",
-            "Mi laptop se actualizó y ahora me hace preguntas que no sé responder. Estamos en terapia de pareja.",
-            "Sí leí el correo. Ahora estoy en un respetuoso período de 48 horas de procesamiento emocional antes de responder.",
-            "El tráfico estaba imposible. Trabajo desde casa, pero emocionalmente, estaba en el tráfico.",
-            "Tengo una fecha límite. La fecha límite es yo decidiendo cuándo empezar.",
-            "Mi «fuera de oficina» está activado. No el del correo. Yo. Estoy fuera de la oficina de la vida hasta el lunes."
-          ]
-        },
-        family: {
-          en: [
-            "Can't make it. My couch and I are in the middle of a very serious long-term relationship milestone.",
-            "I would love to, but my dog has separation anxiety and honestly so do I.",
-            "I'm fasting. Not for health. I just saw the menu and I'm protesting it spiritually.",
-            "My car made a noise. The noise sounded expensive. I'm in mourning.",
-            "I double-booked myself with doing absolutely nothing, and I gave my word.",
-            "Aunt Linda's casserole and I have unresolved history. I need more time."
+          endings: [
+            [1, 'Lo dejamos para otro día — uno de verdad, con revisión de lluvia incluida.'],
+            [1, 'Para la próxima sí. Apúntame como un quizás fuerte.'],
+            [2, 'Salúdame a todos. Desde muy, muy lejos.'],
+            [2, 'Mi ausencia es mi regalo para la dinámica del grupo.'],
+            [3, 'Si alguien pregunta, nunca nací.'],
+            [3, 'Los historiadores lo entenderán.']
           ],
-          es: [
-            "No puedo ir. Mi sofá y yo estamos en un momento muy serio de nuestra relación a largo plazo.",
-            "Me encantaría, pero mi perro tiene ansiedad por separación y, la verdad, yo también.",
-            "Estoy en ayuno. No por salud. Es que vi el menú y estoy protestando espiritualmente.",
-            "Mi carro hizo un ruido. El ruido sonaba caro. Estoy de luto.",
-            "Me comprometí doblemente con no hacer absolutamente nada, y di mi palabra.",
-            "La cazuela de la tía Linda y yo tenemos historia sin resolver. Necesito más tiempo."
-          ]
-        },
-        goingout: {
-          en: [
-            "I'm in for the next one. Tonight I'm defending my undefeated title in the sitting-on-my-couch championship.",
-            "My wallet and I had a talk. We're taking some time apart from spending.",
-            "I peaked socially in 2019 and I've been protecting the legacy ever since.",
-            "The game is on at my house too, and my couch doesn't charge fourteen dollars for a beer.",
-            "I'm not saying no. I'm saying my bed said no, and out of respect for the chain of command...",
-            "I already told another group chat I was busy. If I show up, there will be a full investigation."
-          ],
-          es: [
-            "Para la próxima sí voy. Esta noche defiendo mi título invicto en el campeonato de quedarme en el sofá.",
-            "Mi billetera y yo tuvimos una conversación. Vamos a darnos un tiempo lejos del gasto.",
-            "Llegué a mi cima social en 2019 y desde entonces estoy protegiendo el legado.",
-            "El partido también pasa en mi casa, y mi sofá no cobra catorce dólares por una cerveza.",
-            "No estoy diciendo que no. Estoy diciendo que mi cama dijo que no, y por respeto a la cadena de mando…",
-            "Ya le dije a otro chat grupal que estaba ocupado. Si aparezco, habrá una investigación completa."
-          ]
-        },
-        groupchat: {
-          en: [
-            "Sorry, just seeing this now. (Sent 0.4 seconds after the plan was made.)",
-            "I'm a maybe. A strong maybe. The strongest maybe in group chat history.",
-            "Let me check with my calendar. (The calendar is empty. The calendar is always empty.)",
-            "I love this plan for you guys. Truly. From my house. Where I will be.",
-            "Count me in spiritually. My spirit will be there. My body has other arrangements.",
-            "I reacted with a thumbs up, which in group chat law is a binding signature. I have since retained a lawyer."
-          ],
-          es: [
-            "Perdón, apenas lo estoy viendo. (Enviado 0.4 segundos después de que se hizo el plan.)",
-            "Soy un «quizás». Un quizás fuerte. El quizás más fuerte en la historia de los chats grupales.",
-            "Déjame revisar mi agenda. (La agenda está vacía. La agenda siempre está vacía.)",
-            "Me encanta este plan para ustedes. De verdad. Desde mi casa. Donde voy a estar.",
-            "Cuenten conmigo espiritualmente. Mi espíritu estará ahí. Mi cuerpo tiene otros planes.",
-            "Reaccioné con un pulgar arriba, que en la ley del chat grupal es una firma vinculante. Ya contraté un abogado."
-          ]
-        },
-        anything: {
-          en: [
-            "Something came up. (Nothing came up. Nothing is coming up. The horizon is clear.)",
-            "I'm doing a social media cleanse, a people cleanse, and a pants cleanse. I cannot leave the house.",
-            "My horoscope said avoid unnecessary journeys. This journey has been classified: unnecessary.",
-            "I have a delivery coming sometime between 8 AM and never. I must guard the door.",
-            "I'm saving my energy for an emergency. This is not it, but the emergency doesn't know that.",
-            "Doctor's orders. I can't reveal the doctor. Or the orders. Or whether there's a doctor."
-          ],
-          es: [
-            "Surgió algo. (No surgió nada. Nada va a surgir. El horizonte está despejado.)",
-            "Estoy en una limpieza de redes sociales, una limpieza de gente y una limpieza de pantalones. No puedo salir de casa.",
-            "Mi horóscopo dijo que evitara viajes innecesarios. Este viaje ha sido clasificado: innecesario.",
-            "Estoy esperando una entrega que llega entre las 8 a. m. y nunca. Debo vigilar la puerta.",
-            "Estoy guardando mi energía para una emergencia. Esto no es la emergencia, pero la emergencia no lo sabe.",
-            "Órdenes del doctor. No puedo revelar al doctor. Ni las órdenes. Ni si existe un doctor."
-          ]
+          legM: ['Un mago apareció en mi cocina y me dijo que salir de casa hoy partiría la línea del tiempo en dos.'],
+          legE: ['Pueblos enteros cantarán sobre esta excusa.']
         }
       };
+
+      var TEMPLATES = {
+        gym: {
+          en: { act: 'the gym',
+            openers: [
+              'Can\u2019t make it to {a} today —', 'About {a} today\u2026', 'I was TOTALLY going to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official update on {a}:',
+              'Do not be mad about {a}, but\u2026', '{a} and I need to talk about our relationship, because\u2026',
+              'I checked the forecast for {a} and\u2026', 'Regarding {a}: hard pass today, because\u2026',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a} today:'
+            ],
+            middles: [
+              [1, 'I have to catch up on my Netflix. It is basically my second job at this point.'],
+              [1, 'I have work to do. Very important work. The kind with snacks.'],
+              [1, 'my chiropractor said rest is a workout. His name is Dr. Gee. He is very expensive and never wrong.'],
+              [2, 'there is a Netflix-and-chill emergency at my house and I am the first responder.'],
+              [2, 'I have a vibe-coding session with Muse later and I need to rest my clicking finger.'],
+              [2, 'trading is taking up all my time. The market needs me. The market is needy.'],
+              [3, 'my sneakers looked at me this morning and whispered, \u201cnot today, champ.\u201d I respect their wisdom.'],
+              [3, 'I did go, spiritually. My spirit did all the reps. My spirit is now extremely sore.']
+            ],
+            endings: [
+              [1, 'Tomorrow, though. Tomorrow I am a new person. Probably.'],
+              [1, 'My water bottle understands. It is also staying home.'],
+              [2, 'The treadmill will survive. It is very emotionally stable.'],
+              [2, 'Tell the dumbbells I think of them often.'],
+              [3, 'Somewhere, a protein shake is being made in my honor.'],
+              [3, 'My gym shoes have formed a support group and honestly, good for them.']
+            ],
+            legM: ['the gym called and personally released me. The manager cried a little. It was beautiful.'],
+            legE: ['A statue of me NOT going will be placed by the entrance.']
+          },
+          es: { act: 'el gimnasio',
+            openers: [
+              'Hoy no puedo ir a {a} —', 'Sobre {a} hoy\u2026', 'Yo SÍ iba a ir a {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial sobre {a}:',
+              'No te enojes por {a}, pero\u2026', '{a} y yo tenemos que hablar de nuestra relación, porque\u2026',
+              'Revisé el pronóstico de {a} y\u2026', 'Respecto a {a}: hoy paso, porque\u2026',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'tengo que ponerme al día con mi Netflix. Básicamente es mi segundo trabajo.'],
+              [1, 'tengo trabajo que hacer. Trabajo muy importante. De ese que lleva botanas.'],
+              [1, 'mi quiropráctico dijo que descansar también es entrenar. Se llama Dr. Gee. Es carísimo y nunca se equivoca.'],
+              [2, 'hay una emergencia de Netflix y sofá en mi casa y yo soy el primer respondiente.'],
+              [2, 'tengo una sesión de programación con Muse más tarde y necesito descansar mi dedo de hacer clic.'],
+              [2, 'el trading me está quitando todo el tiempo. El mercado me necesita. El mercado es muy necesitado.'],
+              [3, 'mis tenis me miraron esta mañana y susurraron: «hoy no, campeón». Respeto su sabiduría.'],
+              [3, 'sí fui, espiritualmente. Mi espíritu hizo todas las repeticiones. Mi espíritu ahora está muy adolorido.']
+            ],
+            endings: [
+              [1, 'Mañana sí. Mañana soy una persona nueva. Probablemente.'],
+              [1, 'Mi botella de agua lo entiende. Ella también se queda en casa.'],
+              [2, 'La caminadora sobrevivirá. Es muy estable emocionalmente.'],
+              [2, 'Dile a las mancuernas que pienso en ellas seguido.'],
+              [3, 'En algún lugar, se está preparando un batido de proteína en mi honor.'],
+              [3, 'Mis tenis formaron un grupo de apoyo y, la verdad, bien por ellos.']
+            ],
+            legM: ['el gimnasio llamó y me liberó personalmente. El gerente lloró un poquito. Fue hermoso.'],
+            legE: ['Colocarán una estatua de mí NO yendo junto a la entrada.']
+          }
+        },
+        work: {
+          en: { act: 'work',
+            openers: [
+              'Can\u2019t make it to {a} today —', 'About {a} today\u2026', 'I was TOTALLY going to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official HR update:',
+              'Do not loop in HR yet, but\u2026', 'Regarding {a}: hard pass today, because\u2026',
+              'I checked my calendar about {a} and\u2026', 'My out-of-office is about to say this for me:',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a} today:'
+            ],
+            middles: [
+              [1, 'I am stuck in a meeting with myself. It is running long. I am asking a lot of tough questions.'],
+              [1, 'my laptop updated and now it is asking me questions I cannot answer. We are in couples counseling.'],
+              [1, 'I read the email. I am now observing a respectful 48-hour period of emotional processing before responding.'],
+              [2, 'traffic was unbelievable. I work from home, but emotionally I was in traffic.'],
+              [2, 'I am on a deadline. The deadline is me deciding when to start.'],
+              [2, 'my out-of-office is on. Not the email one. Me. I am out of the office of life until Monday.'],
+              [3, 'my desk chair filed for custody of me and the court date conflicts.'],
+              [3, 'I achieved inbox zero by simply becoming someone with no inbox. New identity, who dis.']
+            ],
+            endings: [
+              [1, 'I will circle back. The circle is large. Very large.'],
+              [1, 'Please accept this excuse in lieu of my presence.'],
+              [2, 'Tell the spreadsheet I will visit its grave.'],
+              [2, 'My stapler witnessed everything and will say nothing.'],
+              [3, 'Somewhere, a meeting is ending early because I am not in it. You are welcome.'],
+              [3, 'The printer jammed itself in solidarity.']
+            ],
+            legM: ['the CEO personally called to say, and I quote, \u201ctake the day, legend.\u201d There is a plaque now.'],
+            legE: ['This excuse has been forwarded to the entire company as a template.']
+          },
+          es: { act: 'el trabajo',
+            openers: [
+              'Hoy no puedo ir a {a} —', 'Sobre {a} hoy\u2026', 'Yo SÍ iba a ir a {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial de Recursos Humanos:',
+              'Todavía no avisen a Recursos Humanos, pero\u2026', 'Respecto a {a}: hoy paso, porque\u2026',
+              'Revisé mi agenda sobre {a} y\u2026', 'Mi «fuera de oficina» está a punto de decir esto por mí:',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'estoy atrapado en una reunión conmigo mismo. Se está alargando. Me estoy haciendo preguntas muy difíciles.'],
+              [1, 'mi laptop se actualizó y ahora me hace preguntas que no sé responder. Estamos en terapia de pareja.'],
+              [1, 'sí leí el correo. Ahora estoy en un respetuoso período de 48 horas de procesamiento emocional antes de responder.'],
+              [2, 'el tráfico estaba imposible. Trabajo desde casa, pero emocionalmente estaba en el tráfico.'],
+              [2, 'tengo una fecha límite. La fecha límite es yo decidiendo cuándo empezar.'],
+              [2, 'mi «fuera de oficina» está activado. No el del correo. Yo. Estoy fuera de la oficina de la vida hasta el lunes.'],
+              [3, 'mi silla de escritorio pidió mi custodia y la fecha del juicio se cruza.'],
+              [3, 'logré bandeja de entrada cero convirtiéndome en alguien sin bandeja de entrada. Nueva identidad, ¿quién es?']
+            ],
+            endings: [
+              [1, 'Lo retomamos luego. El círculo es grande. Muy grande.'],
+              [1, 'Acepten esta excusa en lugar de mi presencia.'],
+              [2, 'Dile a la hoja de cálculo que visitaré su tumba.'],
+              [2, 'Mi engrapadora lo presenció todo y no dirá nada.'],
+              [3, 'En algún lugar, una reunión está terminando temprano porque no estoy en ella. De nada.'],
+              [3, 'La impresora se atascó en solidaridad.']
+            ],
+            legM: ['el CEO llamó personalmente para decir, y cito: «tómate el día, leyenda». Ahora hay una placa.'],
+            legE: ['Esta excusa se reenvió a toda la empresa como plantilla.']
+          }
+        },
+        date: {
+          en: { act: 'our date',
+            openers: [
+              'Can\u2019t make it to {a} tonight —', 'About {a} tonight\u2026', 'I was TOTALLY looking forward to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official romance update:',
+              'Do not take this the wrong way about {a}, but\u2026', 'Regarding {a}: rain check, because\u2026',
+              'I checked my heart about {a} and\u2026', 'My couch just made a very strong counteroffer to {a}:',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I postpone {a}:'
+            ],
+            middles: [
+              [1, 'my dog has separation anxiety and honestly so do I. We are a package deal of staying home.'],
+              [1, 'I double-booked myself with doing absolutely nothing, and I gave my word. A promise is a promise.'],
+              [1, 'I peaked socially in 2019 and I have been protecting the legacy ever since.'],
+              [2, 'my bed said no, and out of respect for the chain of command, I must obey.'],
+              [2, 'I already told another group chat I was busy. If I show up, there will be a full investigation.'],
+              [2, 'I am in for the next one. Tonight I am defending my undefeated title in the couch championship.'],
+              [3, 'my houseplant is going through a breakup and I am the entire support system.'],
+              [3, 'the moon is in a weird phase and my astrologer said, and I quote, \u201cabsolutely not tonight.\u201d']
+            ],
+            endings: [
+              [1, 'Next time I will bring snacks AND punctuality. Growth.'],
+              [1, 'This is a rain check, not a no. There is a difference. I checked.'],
+              [2, 'Tell the restaurant my usual table can have the night off.'],
+              [2, 'My charisma needs recharging and the cable is very short.'],
+              [3, 'Romance historians will call this \u201cthe mysterious pause.\u201d'],
+              [3, 'Cupid has been notified and is weirdly supportive.']
+            ],
+            legM: ['a slow-motion montage of us played in my head and the director yelled \u201csave it for the sequel.\u201d'],
+            legE: ['This rain check will be framed. FRAMED.']
+          },
+          es: { act: 'nuestra cita',
+            openers: [
+              'Hoy no puedo ir a {a} —', 'Sobre {a} esta noche\u2026', 'Yo SÍ tenía muchas ganas de {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial del romance:',
+              'No lo tomes a mal respecto a {a}, pero\u2026', 'Respecto a {a}: lo posponemos, porque\u2026',
+              'Consulté a mi corazón sobre {a} y\u2026', 'Mi sofá acaba de hacer una contraoferta muy fuerte a {a}:',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, pospongo {a}:'
+            ],
+            middles: [
+              [1, 'mi perro tiene ansiedad por separación y, la verdad, yo también. Somos un paquete de quedarnos en casa.'],
+              [1, 'me comprometí doblemente con no hacer absolutamente nada, y di mi palabra. Una promesa es una promesa.'],
+              [1, 'llegué a mi cima social en 2019 y desde entonces estoy protegiendo el legado.'],
+              [2, 'mi cama dijo que no, y por respeto a la cadena de mando, debo obedecer.'],
+              [2, 'ya le dije a otro chat grupal que estaba ocupado. Si aparezco, habrá una investigación completa.'],
+              [2, 'para la próxima sí voy. Esta noche defiendo mi título invicto en el campeonato del sofá.'],
+              [3, 'mi planta está pasando por una ruptura y yo soy todo su sistema de apoyo.'],
+              [3, 'la luna está en una fase rara y mi astróloga dijo, y cito: «esta noche, para nada».']
+            ],
+            endings: [
+              [1, 'La próxima llevo botanas Y puntualidad. Crecimiento.'],
+              [1, 'Esto es un «lo posponemos», no un «no». Hay diferencia. Ya lo verifiqué.'],
+              [2, 'Dile al restaurante que mi mesa de siempre puede tomarse la noche libre.'],
+              [2, 'Mi carisma necesita recargarse y el cable es muy corto.'],
+              [3, 'Los historiadores del romance llamarán a esto «la pausa misteriosa».'],
+              [3, 'Cupido ya fue notificado y, curiosamente, me apoya.']
+            ],
+            legM: ['un montaje en cámara lenta de nosotros pasó por mi mente y el director gritó: «guárdalo para la secuela».'],
+            legE: ['Esta posposición será enmarcada. ENMARCADA.']
+          }
+        },
+        family: {
+          en: { act: 'the family dinner',
+            openers: [
+              'Can\u2019t make it to {a} —', 'About {a}\u2026', 'I was TOTALLY coming to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official family update:',
+              'Do not tell Mom yet, but\u2026', 'Regarding {a}: hard pass this time, because\u2026',
+              'I checked the family group chat about {a} and\u2026', 'Tell everyone at {a} I tried, because\u2026',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a}:'
+            ],
+            middles: [
+              [1, 'my couch and I are in the middle of a very serious long-term relationship milestone.'],
+              [1, 'I am fasting. Not for health. I just saw the menu and I am protesting it spiritually.'],
+              [1, 'my car made a noise. The noise sounded expensive. I am in mourning.'],
+              [2, 'Aunt Linda\u2019s casserole and I have unresolved history. I need more time.'],
+              [2, 'I love this plan for you guys. Truly. From my house. Where I will be.'],
+              [2, 'count me in spiritually. My spirit will be there. My body has other arrangements.'],
+              [3, 'I have been cast as \u201cthe relative who mysteriously could not make it\u201d and I take the role seriously.'],
+              [3, 'my leftovers from last time achieved sentience and advised me, legally, to stay away.']
+            ],
+            endings: [
+              [1, 'Save me a plate. A big one. This is important.'],
+              [1, 'Family is forever. So is this nap, apparently.'],
+              [2, 'Take lots of photos so I can react with thumbs-ups later.'],
+              [2, 'I will bring dessert next time as a peace offering. Store-bought, but heartfelt.'],
+              [3, 'Somewhere, a folding chair remains folded in my honor.'],
+              [3, 'The family group chat will speak of this day in hushed tones.']
+            ],
+            legM: ['the ancestors appeared in a dream and voted. It was unanimous. I stay home, they send their love.'],
+            legE: ['A chair will be left empty at the table, draped in honor.']
+          },
+          es: { act: 'la cena familiar',
+            openers: [
+              'No puedo ir a {a} —', 'Sobre {a}\u2026', 'Yo SÍ iba a {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial de la familia:',
+              'Todavía no le digan a mamá, pero\u2026', 'Respecto a {a}: esta vez paso, porque\u2026',
+              'Revisé el chat familiar sobre {a} y\u2026', 'Díganles a todos en {a} que lo intenté, porque\u2026',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'mi sofá y yo estamos en un momento muy serio de nuestra relación a largo plazo.'],
+              [1, 'estoy en ayuno. No por salud. Es que vi el menú y estoy protestando espiritualmente.'],
+              [1, 'mi carro hizo un ruido. El ruido sonaba caro. Estoy de luto.'],
+              [2, 'la cazuela de la tía Linda y yo tenemos historia sin resolver. Necesito más tiempo.'],
+              [2, 'me encanta este plan para ustedes. De verdad. Desde mi casa. Donde voy a estar.'],
+              [2, 'cuenten conmigo espiritualmente. Mi espíritu estará ahí. Mi cuerpo tiene otros planes.'],
+              [3, 'me eligieron para el papel de «el pariente que misteriosamente no pudo ir» y me tomo el papel en serio.'],
+              [3, 'mis sobras de la vez pasada cobraron conciencia y me aconsejaron, legalmente, que me alejara.']
+            ],
+            endings: [
+              [1, 'Guárdenme un plato. Uno grande. Esto es importante.'],
+              [1, 'La familia es para siempre. Y esta siesta, al parecer, también.'],
+              [2, 'Tomen muchas fotos para que luego pueda reaccionar con pulgares arriba.'],
+              [2, 'La próxima llevo el postre como ofrenda de paz. De tienda, pero con sentimiento.'],
+              [3, 'En algún lugar, una silla plegable permanece plegada en mi honor.'],
+              [3, 'El chat familiar hablará de este día en voz baja.']
+            ],
+            legM: ['los ancestros aparecieron en un sueño y votaron. Fue unánime. Me quedo en casa; ellos mandan su amor.'],
+            legE: ['Una silla quedará vacía en la mesa, cubierta en honor.']
+          }
+        },
+        school: {
+          en: { act: 'class',
+            openers: [
+              'Can\u2019t make it to {a} today —', 'About {a} today\u2026', 'I was TOTALLY going to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official academic update:',
+              'Do not tell the teacher yet, but\u2026', 'Regarding {a}: hard pass today, because\u2026',
+              'I checked my homework about {a} and\u2026', 'My backpack just made an announcement:',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a} today:'
+            ],
+            middles: [
+              [1, 'I studied so hard last night that my brain filed a noise complaint against itself.'],
+              [1, 'my homework is done, but it is at home achieving its dreams without me. We grew apart.'],
+              [1, 'I am observing a respectful 48-hour processing period before learning anything new.'],
+              [2, 'my notebook and I had a fight. It wrote some things. I read them. We need space.'],
+              [2, 'I peaked academically during a pop quiz in third grade and I protect the legacy.'],
+              [2, 'the school bus of life drove right past my stop. I waved. It waved back. Rude.'],
+              [3, 'my pencil unionized and today is the strike. I stand with the pencils.'],
+              [3, 'I learned too much yesterday and must let it settle, like a fine soup of knowledge.']
+            ],
+            endings: [
+              [1, 'I will take very good notes next time. From someone. Somewhere.'],
+              [1, 'Education is a journey. Today is a rest stop.'],
+              [2, 'Tell the whiteboard I think of it often.'],
+              [2, 'My seat will keep itself warm with memories.'],
+              [3, 'Somewhere, a bell rings for a student who is simply not there. Poetry.'],
+              [3, 'The textbooks are holding a candlelight vigil.']
+            ],
+            legM: ['the principal called a snow day for exactly one student. It is sunny. I am the student.'],
+            legE: ['This absence note will be studied by future generations.']
+          },
+          es: { act: 'la clase',
+            openers: [
+              'Hoy no puedo ir a {a} —', 'Sobre {a} hoy\u2026', 'Yo SÍ iba a ir a {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial académico:',
+              'Todavía no le digan al maestro, pero\u2026', 'Respecto a {a}: hoy paso, porque\u2026',
+              'Revisé mi tarea sobre {a} y\u2026', 'Mi mochila acaba de hacer un anuncio:',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'estudié tan duro anoche que mi cerebro presentó una queja de ruido contra sí mismo.'],
+              [1, 'mi tarea está hecha, pero está en casa logrando sus sueños sin mí. Nos distanciamos.'],
+              [1, 'estoy en un respetuoso período de procesamiento de 48 horas antes de aprender algo nuevo.'],
+              [2, 'mi cuaderno y yo peleamos. Escribió unas cosas. Las leí. Necesitamos espacio.'],
+              [2, 'llegué a mi cima académica en un examen sorpresa en tercer grado y protejo el legado.'],
+              [2, 'el autobús escolar de la vida pasó de largo por mi parada. Saludé. Me saludó de vuelta. Qué grosero.'],
+              [3, 'mi lápiz formó un sindicato y hoy es la huelga. Estoy con los lápices.'],
+              [3, 'aprendí demasiado ayer y debo dejar que se asiente, como una buena sopa de conocimiento.']
+            ],
+            endings: [
+              [1, 'La próxima tomaré muy buenos apuntes. De alguien. De algún lugar.'],
+              [1, 'La educación es un viaje. Hoy es una parada de descanso.'],
+              [2, 'Dile al pizarrón que pienso en él seguido.'],
+              [2, 'Mi asiento se mantendrá calientito con recuerdos.'],
+              [3, 'En algún lugar, suena una campana para un alumno que simplemente no está. Poesía.'],
+              [3, 'Los libros de texto están haciendo una vigilia con velas.']
+            ],
+            legM: ['el director decretó día de nieve para exactamente un alumno. Hace sol. El alumno soy yo.'],
+            legE: ['Esta nota de ausencia será estudiada por futuras generaciones.']
+          }
+        },
+        party: {
+          en: { act: 'the party',
+            openers: [
+              'Can\u2019t make it to {a} —', 'About {a}\u2026', 'I was TOTALLY coming to {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official party update:',
+              'Do not start the group chat investigation yet, but\u2026', 'Regarding {a}: hard pass tonight, because\u2026',
+              'I checked my party shoes about {a} and\u2026', 'Save me some cake, because\u2026',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a}:'
+            ],
+            middles: [
+              [1, 'sorry, just seeing this now. (Sent 0.4 seconds after the plan was made.)'],
+              [1, 'I am a maybe. A strong maybe. The strongest maybe in party history.'],
+              [1, 'let me check with my calendar. (The calendar is empty. The calendar is always empty.)'],
+              [2, 'I reacted with a thumbs up, which in group chat law is a binding signature. I have since retained a lawyer.'],
+              [2, 'my wallet and I had a talk. We are taking some time apart from spending.'],
+              [2, 'the game is on at my house too, and my couch does not charge fourteen dollars for a beer.'],
+              [3, 'I have been pre-booked by a very exclusive event. It is me, in a blanket, watching the party through the stories.'],
+              [3, 'my dance moves are under a court order to rest. The 90s were a lot.']
+            ],
+            endings: [
+              [1, 'Have one for me. A small one. Hydration is important.'],
+              [1, 'Next party, I am there early. Fashionably early. Suspiciously early.'],
+              [2, 'Send photos so I can like them from the couch like a supportive ghost.'],
+              [2, 'My spirit will arrive fashionably late, as agreed.'],
+              [3, 'Somewhere, a balloon floats upward in my honor.'],
+              [3, 'The aux cord will feel a great disturbance, as if one banger cried out and was silenced.']
+            ],
+            legM: ['the DJ received a vision of my absence and pre-emptively played a tribute set.'],
+            legE: ['This no-show will be taught in party schools.']
+          },
+          es: { act: 'la fiesta',
+            openers: [
+              'No puedo ir a {a} —', 'Sobre {a}\u2026', 'Yo SÍ iba a {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} va a tener que esperar —', 'Tengo un aviso oficial de la fiesta:',
+              'Todavía no inicien la investigación del chat grupal, pero\u2026', 'Respecto a {a}: esta noche paso, porque\u2026',
+              'Revisé mis zapatos de fiesta sobre {a} y\u2026', 'Guárdenme pastel, porque\u2026',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'perdón, apenas lo estoy viendo. (Enviado 0.4 segundos después de que se hizo el plan.)'],
+              [1, 'soy un «quizás». Un quizás fuerte. El quizás más fuerte en la historia de las fiestas.'],
+              [1, 'déjame revisar mi agenda. (La agenda está vacía. La agenda siempre está vacía.)'],
+              [2, 'reaccioné con un pulgar arriba, que en la ley del chat grupal es una firma vinculante. Ya contraté un abogado.'],
+              [2, 'mi billetera y yo tuvimos una conversación. Vamos a darnos un tiempo lejos del gasto.'],
+              [2, 'el partido también pasa en mi casa, y mi sofá no cobra catorce dólares por una cerveza.'],
+              [3, 'ya tengo un compromiso con un evento muy exclusivo. Soy yo, en una cobija, viendo la fiesta por las historias.'],
+              [3, 'mis pasos de baile tienen una orden judicial de descansar. Los 90 fueron mucho.']
+            ],
+            endings: [
+              [1, 'Tómense una por mí. Una pequeña. La hidratación es importante.'],
+              [1, 'En la próxima fiesta llego temprano. Elegantemente temprano. Sospechosamente temprano.'],
+              [2, 'Manden fotos para darles «me gusta» desde el sofá como un fantasma solidario.'],
+              [2, 'Mi espíritu llegará elegantemente tarde, como acordamos.'],
+              [3, 'En algún lugar, un globo flota hacia arriba en mi honor.'],
+              [3, 'El cable auxiliar sentirá una gran perturbación, como si un temazo gritara y fuera silenciado.']
+            ],
+            legM: ['el DJ recibió una visión de mi ausencia y por adelantado tocó un set de tributo.'],
+            legE: ['Esta ausencia se enseñará en las escuelas de fiesta.']
+          }
+        },
+        chores: {
+          en: { act: 'the chores',
+            openers: [
+              'Can\u2019t do {a} today —', 'About {a} today\u2026', 'I was TOTALLY going to do {a}, but\u2026',
+              'Bad news about {a}:', 'So, {a} is going to have to wait —', 'I have an official household update:',
+              'The house and I have discussed {a}, and\u2026', 'Regarding {a}: hard pass today, because\u2026',
+              'I looked directly at {a} and\u2026', 'In my defense regarding {a}:',
+              'I owe {a} an apology and also a rain check —', 'It is with a heavy heart that I postpone {a}:'
+            ],
+            middles: [
+              [1, 'I have a delivery coming sometime between 8 AM and never. I must guard the door.'],
+              [1, 'I am doing a social media cleanse, a people cleanse, and a pants cleanse. The pants are related. Do not ask.'],
+              [1, 'I am saving my energy for an emergency. This is not it, but the emergency does not know that.'],
+              [2, 'the laundry chair has achieved a population density that qualifies it as a small village. I am its mayor now. Duties call.'],
+              [2, 'the dishes and I are in a standoff. Negotiations are ongoing. I am losing, but gracefully.'],
+              [2, 'I started organizing one drawer and have simply accepted my new life inside the drawer.'],
+              [3, 'the vacuum looked at the rug, looked at me, and we both agreed to pretend this never happened.'],
+              [3, 'the lawn has declared independence. I recognize its sovereignty. We have a trade deal now.']
+            ],
+            endings: [
+              [1, 'Tomorrow the chores and I will have a very mature conversation.'],
+              [1, 'The broom understands. The broom always understands.'],
+              [2, 'Somewhere, a dust bunny celebrates quietly.'],
+              [2, 'Tell the mop its shift has been extended indefinitely.'],
+              [3, 'Cleanliness will find me when I am ready. Not today. Today I am soup.'],
+              [3, 'The chores have formed a union and, honestly, their demands are reasonable.']
+            ],
+            legM: ['a professional organizer saw my house, nodded once, and retired on the spot in my honor.'],
+            legE: ['This postponement will be featured in home magazines.']
+          },
+          es: { act: 'los quehaceres',
+            openers: [
+              'Hoy no puedo hacer {a} —', 'Sobre {a} hoy\u2026', 'Yo SÍ iba a hacer {a}, pero\u2026',
+              'Malas noticias sobre {a}:', 'Bueno, {a} van a tener que esperar —', 'Tengo un aviso oficial del hogar:',
+              'La casa y yo ya hablamos de {a}, y\u2026', 'Respecto a {a}: hoy paso, porque\u2026',
+              'Miré directamente a {a} y\u2026', 'En mi defensa respecto a {a}:',
+              'Le debo a {a} una disculpa y también una posposición —', 'Con el corazón pesado, pospongo {a}:'
+            ],
+            middles: [
+              [1, 'estoy esperando una entrega que llega entre las 8 a. m. y nunca. Debo vigilar la puerta.'],
+              [1, 'estoy en una limpieza de redes sociales, una limpieza de gente y una limpieza de pantalones. Los pantalones están relacionados. No preguntes.'],
+              [1, 'estoy guardando mi energía para una emergencia. Esto no es la emergencia, pero la emergencia no lo sabe.'],
+              [2, 'la silla de la ropa alcanzó una densidad de población que la califica como un pueblito. Ahora soy su alcalde. El deber me llama.'],
+              [2, 'los platos y yo estamos en un enfrentamiento. Las negociaciones continúan. Estoy perdiendo, pero con gracia.'],
+              [2, 'empecé a organizar un cajón y simplemente acepté mi nueva vida dentro del cajón.'],
+              [3, 'la aspiradora miró la alfombra, me miró a mí, y ambos acordamos fingir que esto nunca pasó.'],
+              [3, 'el césped declaró su independencia. Reconozco su soberanía. Ahora tenemos un tratado comercial.']
+            ],
+            endings: [
+              [1, 'Mañana los quehaceres y yo tendremos una conversación muy madura.'],
+              [1, 'La escoba lo entiende. La escoba siempre lo entiende.'],
+              [2, 'En algún lugar, una pelusa celebra en silencio.'],
+              [2, 'Dile al trapeador que su turno se extendió indefinidamente.'],
+              [3, 'La limpieza me encontrará cuando esté listo. Hoy no. Hoy soy sopa.'],
+              [3, 'Los quehaceres formaron un sindicato y, la verdad, sus demandas son razonables.']
+            ],
+            legM: ['una organizadora profesional vio mi casa, asintió una vez y se jubiló en el acto en mi honor.'],
+            legE: ['Esta posposición saldrá en revistas del hogar.']
+          }
+        },
+        anything: {
+          en: { act: 'the plan',
+            openers: [
+              'So, about {a}\u2026', 'I have an update on {a}:', 'I was TOTALLY in for {a}, but\u2026',
+              'Bad news about {a}:', '{a} is going to have to wait —', 'Official statement regarding {a}:',
+              'Do not be mad about {a}, but\u2026', 'I ran the numbers on {a} and\u2026',
+              'I checked with my team about {a}. The team is me. And\u2026', 'Concerning {a}:',
+              'I owe {a} an apology and also an absence —', 'It is with a heavy heart that I skip {a}:'
+            ],
+            middles: [
+              [1, 'doctor\u2019s orders. I cannot reveal the doctor. Or the orders. Or whether there is a doctor.'],
+              [1, 'something came up. (Nothing came up. Nothing is coming up. The horizon is clear.)'],
+              [1, 'my energy has been scheduled for a very important appointment with the couch.'],
+              [2, 'I am observing a respectful period of doing absolutely nothing, and I gave my word.'],
+              [2, 'my calendar and I have agreed to disagree about today.'],
+              [2, 'I would love to, but my dog has separation anxiety and honestly so do I.'],
+              [3, 'the vibes filed a formal objection and the vibes have seniority.'],
+              [3, 'I have been temporarily reassigned to a top-secret mission of snacks and silence.']
+            ],
+            endings: [
+              [1, 'Rain check. A serious, professional rain check.'],
+              [1, 'Next time. Put me down as a strong maybe.'],
+              [2, 'Tell everyone I said hi. From home. Where I will be.'],
+              [2, 'My absence is my gift to the occasion.'],
+              [3, 'If anyone asks, I was never born.'],
+              [3, 'The couch will deliver my official statement later.']
+            ],
+            legM: ['the universe sent a calendar invite titled \u201cDO NOT\u201d and I accepted out of respect.'],
+            legE: ['This excuse will be cited in future excuse textbooks.']
+          },
+          es: { act: 'el plan',
+            openers: [
+              'Bueno, sobre {a}\u2026', 'Tengo una novedad sobre {a}:', 'Yo SÍ estaba totalmente puesto para {a}, pero\u2026',
+              'Malas noticias sobre {a}:', '{a} va a tener que esperar —', 'Comunicado oficial respecto a {a}:',
+              'No te enojes por {a}, pero\u2026', 'Hice los cálculos sobre {a} y\u2026',
+              'Consulté con mi equipo sobre {a}. El equipo soy yo. Y\u2026', 'En cuanto a {a}:',
+              'Le debo a {a} una disculpa y también una ausencia —', 'Con el corazón pesado, hoy salto {a}:'
+            ],
+            middles: [
+              [1, 'órdenes del doctor. No puedo revelar al doctor. Ni las órdenes. Ni si existe un doctor.'],
+              [1, 'surgió algo. (No surgió nada. Nada va a surgir. El horizonte está despejado.)'],
+              [1, 'mi energía tiene programada una cita muy importante con el sofá.'],
+              [2, 'estoy en un respetuoso período de no hacer absolutamente nada, y di mi palabra.'],
+              [2, 'mi agenda y yo acordamos no estar de acuerdo sobre hoy.'],
+              [2, 'me encantaría, pero mi perro tiene ansiedad por separación y, la verdad, yo también.'],
+              [3, 'las vibras presentaron una objeción formal y las vibras tienen antigüedad.'],
+              [3, 'fui reasignado temporalmente a una misión secreta de botanas y silencio.']
+            ],
+            endings: [
+              [1, 'Lo dejamos para otro día. Uno serio y profesional.'],
+              [1, 'Para la próxima. Apúntame como un quizás fuerte.'],
+              [2, 'Salúdame a todos. Desde casa. Donde voy a estar.'],
+              [2, 'Mi ausencia es mi regalo para la ocasión.'],
+              [3, 'Si alguien pregunta, nunca nací.'],
+              [3, 'El sofá dará mi comunicado oficial más tarde.']
+            ],
+            legM: ['el universo envió una invitación de calendario titulada «NO LO HAGAS» y la acepté por respeto.'],
+            legE: ['Esta excusa será citada en futuros libros de texto de excusas.']
+          }
+        }
+      };
+
+      /* ---------- ENGINE STATE ---------- */
+      var dodgeInput = document.getElementById('dodgeInput');
+      var tierLabel = document.getElementById('tierLabel');
+      var legendaryBadge = document.getElementById('legendaryBadge');
+      var pressCount = 0;
+      var dealtKeys = {};
+      var currentCombo = null; /* {cat, act, oi, mi, ei, leg, tier} */
+      var lastComboRef = null;
+
+      function mergedPool(cat, lang) {
+        var tp = TEMPLATES[cat][lang];
+        var sh = SHARED[lang];
+        return {
+          act: tp.act,
+          openers: tp.openers,
+          middles: tp.middles.concat(sh.middles),
+          endings: tp.endings.concat(sh.endings),
+          legM: tp.legM.concat(sh.legM),
+          legE: tp.legE.concat(sh.legE)
+        };
+      }
+
+      function tierForPress(n) {
+        var cyc = (n - 1) % 10;
+        if (cyc === 9) return 4; /* LEGENDARY every 10th press */
+        if (cyc < 3) return 1;
+        if (cyc < 6) return 2;
+        return 3;
+      }
+
+      function plausForTier(tier) {
+        if (tier === 1) return 70 + Math.floor(Math.random() * 26);  /* 70–95 */
+        if (tier === 2) return 40 + Math.floor(Math.random() * 30);  /* 40–69 */
+        if (tier === 3) return 5 + Math.floor(Math.random() * 35);   /* 5–39 */
+        return 1 + Math.floor(Math.random() * 4);                    /* 1–4 */
+      }
+
+      function deliveryForTier(tier) {
+        var pool = tier === 4 ? DELIVERY_LEG[currentLang] : tier === 3 ? DELIVERY_T3[currentLang] : tier === 2 ? DELIVERY_T2[currentLang] : DELIVERY[currentLang];
+        return pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      function fillAct(text, act) { return text.split('{a}').join(act); }
+
+      function polishText(text, lang) {
+        if (!text) return text;
+        text = text.charAt(0).toUpperCase() + text.slice(1);
+        if (lang === 'es') {
+          text = text.replace(/\bde el\b/g, 'del').replace(/\ba el\b/g, 'al')
+                     .replace(/\bDe el\b/g, 'Del').replace(/\bA el\b/g, 'Al');
+        }
+        return text;
+      }
+
+      function buildCombo(cat, act, tier, lang) {
+        var pool = mergedPool(cat, lang);
+        var oi = Math.floor(Math.random() * pool.openers.length);
+        var mi, ei, leg = false, guard = 0, key;
+        if (tier === 4) {
+          leg = true;
+          mi = Math.floor(Math.random() * pool.legM.length);
+          ei = Math.floor(Math.random() * pool.legE.length);
+        } else {
+          var mCand = [], eCand = [];
+          pool.middles.forEach(function (m, i) { if (m[0] === tier) mCand.push(i); });
+          pool.endings.forEach(function (e, i) { if (e[0] === tier) eCand.push(i); });
+          if (!mCand.length) pool.middles.forEach(function (m, i) { if (m[0] <= tier) mCand.push(i); });
+          if (!eCand.length) pool.endings.forEach(function (e, i) { if (e[0] <= tier) eCand.push(i); });
+          mi = mCand[Math.floor(Math.random() * mCand.length)];
+          ei = eCand[Math.floor(Math.random() * eCand.length)];
+        }
+        key = cat + '|' + (leg ? 'L' : tier) + '|' + oi + '|' + mi + '|' + ei;
+        while (dealtKeys[key] && guard < 14) {
+          oi = Math.floor(Math.random() * pool.openers.length);
+          if (leg) {
+            mi = Math.floor(Math.random() * pool.legM.length);
+            ei = Math.floor(Math.random() * pool.legE.length);
+          } else {
+            var mc = [], ec = [];
+            pool.middles.forEach(function (m, i) { if (m[0] === tier) mc.push(i); });
+            pool.endings.forEach(function (e, i) { if (e[0] === tier) ec.push(i); });
+            if (mc.length) mi = mc[Math.floor(Math.random() * mc.length)];
+            if (ec.length) ei = ec[Math.floor(Math.random() * ec.length)];
+          }
+          key = cat + '|' + (leg ? 'L' : tier) + '|' + oi + '|' + mi + '|' + ei;
+          guard += 1;
+        }
+        if (lastComboRef && !leg && lastComboRef.cat === cat && lastComboRef.mi === mi) {
+          var alt = [];
+          pool.middles.forEach(function (m, i) { if (m[0] === tier && i !== mi) alt.push(i); });
+          if (alt.length) { mi = alt[Math.floor(Math.random() * alt.length)]; key = cat + '|' + tier + '|' + oi + '|' + mi + '|' + ei; }
+        }
+        dealtKeys[key] = true;
+        lastComboRef = { cat: cat, mi: mi };
+        var opener, middle, ending;
+        if (leg) {
+          opener = fillAct(pool.openers[oi], act);
+          middle = fillAct(pool.legM[mi], act);
+          ending = fillAct(pool.legE[ei], act);
+        } else {
+          opener = fillAct(pool.openers[oi], act);
+          middle = fillAct(pool.middles[mi][1], act);
+          ending = fillAct(pool.endings[ei][1], act);
+        }
+        return { cat: cat, act: act, tier: tier, leg: leg, oi: oi, mi: mi, ei: ei,
+                 text: polishText(opener + ' ' + middle + ' ' + ending, lang) };
+      }
+
+      function renderComboText(combo, lang) {
+        var pool = mergedPool(combo.cat, lang);
+        var opener = fillAct(pool.openers[combo.oi], combo.act);
+        var middle = combo.leg ? fillAct(pool.legM[combo.mi], combo.act) : fillAct(pool.middles[combo.mi][1], combo.act);
+        var ending = combo.leg ? fillAct(pool.legE[combo.ei], combo.act) : fillAct(pool.endings[combo.ei][1], combo.act);
+        return polishText(opener + ' ' + middle + ' ' + ending, lang);
+      }
+
+      function resetLadder() {
+        pressCount = 0;
+        dealtKeys = {};
+      }
+
+      function currentActivity() {
+        var typed = cleanAct(dodgeInput ? dodgeInput.value : '');
+        if (typed) {
+          var cat = detectCategory(typed);
+          if (typed.indexOf(' ') < 0 && cat !== 'anything') {
+            return { cat: cat, act: TEMPLATES[cat][currentLang].act };
+          }
+          return { cat: cat, act: typed };
+        }
+        var pool = TEMPLATES[currentCat][currentLang];
+        return { cat: currentCat, act: pool.act };
+      }
 
       function t(key) { return copy[currentLang][key]; }
       function buzz(pattern) { if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } }
@@ -441,22 +1105,13 @@
           b.textContent = cat.emoji + ' ' + t('cat' + cat.id.charAt(0).toUpperCase() + cat.id.slice(1));
           b.addEventListener('click', function () {
             currentCat = cat.id;
+            if (dodgeInput) dodgeInput.value = '';
+            resetLadder();
             buzz(12);
             chipsEl.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.cat === currentCat)); });
           });
           chipsEl.appendChild(b);
         });
-      }
-
-      function pick(bank) {
-        var idx = Math.floor(Math.random() * bank.length);
-        var guard = 0;
-        while (bank.length > 1 && idx === lastIndex[currentCat + currentLang] && guard < 8) {
-          idx = Math.floor(Math.random() * bank.length);
-          guard += 1;
-        }
-        lastIndex[currentCat + currentLang] = idx;
-        return idx;
       }
 
       function renderResult() {
@@ -467,6 +1122,18 @@
         deliveryNote.textContent = currentDelivery;
         deliveryNote.classList.add('show');
         sendBtn.classList.add('show');
+        if (currentCombo) {
+          tierLabel.textContent = currentCombo.tier === 4 ? t('tierLeg') : t('tier' + currentCombo.tier);
+          tierLabel.classList.add('show');
+          if (currentCombo.leg) {
+            legendaryBadge.textContent = t('legBadge');
+            legendaryBadge.classList.add('show');
+            excuseCard.classList.add('legendary');
+          } else {
+            legendaryBadge.classList.remove('show');
+            excuseCard.classList.remove('legendary');
+          }
+        }
         meterFill.style.width = '0%';
         meterPct.textContent = '0%';
         requestAnimationFrame(function () {
@@ -485,16 +1152,17 @@
       }
 
       function generate() {
-        var bank = BANKS[currentCat][currentLang];
-        var idx = pick(bank);
-        currentExcuse = bank[idx];
-        currentPlaus = 37 + Math.floor(Math.random() * 63);
-        var notes = DELIVERY[currentLang];
-        currentDelivery = notes[Math.floor(Math.random() * notes.length)];
+        var a = currentActivity();
+        pressCount += 1;
+        var tier = tierForPress(pressCount);
+        currentCombo = buildCombo(a.cat, a.act, tier, currentLang);
+        currentExcuse = currentCombo.text;
+        currentPlaus = plausForTier(tier);
+        currentDelivery = deliveryForTier(tier);
         excuseCard.classList.remove('pop');
         void excuseCard.offsetWidth;
         excuseCard.classList.add('pop');
-        buzz([18, 40, 18]);
+        buzz(tier === 4 ? [30, 60, 30, 60, 30] : [18, 40, 18]);
         renderResult();
         confettiBurst();
       }
@@ -530,16 +1198,11 @@
         langEn.setAttribute('aria-pressed', String(currentLang === 'en'));
         langEs.setAttribute('aria-pressed', String(currentLang === 'es'));
         game.setAttribute('aria-label', currentLang === 'es' ? 'La máquina de excusas' : 'The Excuse Machine');
+        if (dodgeInput) dodgeInput.placeholder = t('dodgePh');
         buildChips();
-        if (currentExcuse) {
-          var bank = BANKS[currentCat][currentLang];
-          var idx = lastIndex[currentCat + (currentLang === 'es' ? 'en' : 'es')];
-          if (typeof idx === 'number' && bank[idx]) {
-            lastIndex[currentCat + currentLang] = idx;
-            currentExcuse = bank[idx];
-          }
-          var notes = DELIVERY[currentLang];
-          currentDelivery = notes[Math.floor(Math.random() * notes.length)];
+        if (currentCombo) {
+          currentExcuse = renderComboText(currentCombo, currentLang);
+          currentDelivery = deliveryForTier(currentCombo.tier);
           renderResult();
         }
       }
@@ -556,6 +1219,7 @@
         game.classList.remove('on'); game.setAttribute('aria-hidden', 'true'); window.scrollTo(0, 0);
       });
       generateBtn.addEventListener('click', generate);
+      if (dodgeInput) { dodgeInput.addEventListener('input', function () { resetLadder(); }); dodgeInput.placeholder = t('dodgePh'); }
       sendBtn.addEventListener('click', sendIt);
       buildChips();
     }());
