@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#10121a" />
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <meta name="description" content="The Dinner Wheel — end the 'where are we eating' fight in one spin." />
+  <meta property="og:title" content="The Dinner Wheel" />
+  <meta property="og:description" content="End the 'where are we eating' fight in one spin." />
+  <title>The Dinner Wheel</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-deep: #000000;
+      --ink: #fffdf8;
+      --muted: #c8cada;
+      --line: rgba(255,255,255,.14);
+      --panel: rgba(7,8,14,.74);
+      --accent: #ffd447;
+      --danger: #ff4f6d;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg-deep);
+      color: var(--ink);
+      font-family: "Nunito Sans", sans-serif;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    button, a { font: inherit; }
+
+    .language-toggle {
+      position: fixed; z-index: 150;
+      top: calc(14px + env(safe-area-inset-top)); right: 14px;
+      display: flex; gap: 3px; padding: 4px;
+      border: 2px solid rgba(255,255,255,.72); border-radius: 999px;
+      background: rgba(10,8,15,.78);
+      box-shadow: 0 8px 22px rgba(38,20,50,.22);
+      backdrop-filter: blur(8px);
+    }
+    .language-toggle button {
+      min-width: 42px; min-height: 36px; padding: 6px 10px;
+      border: 0; border-radius: 999px; background: transparent;
+      color: rgba(255,255,255,.75); font-size: 13px; font-weight: 900;
+      letter-spacing: .05em; cursor: pointer;
+    }
+    .language-toggle button[aria-pressed="true"] { background: #fff; color: #3d2947; box-shadow: 0 3px 10px rgba(0,0,0,.22); }
+    .language-toggle button:focus-visible { outline: 3px solid #ffd447; outline-offset: 3px; }
+
+    /* ---------- INTRO COVER ---------- */
+    .intro {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column; align-items: center;
+      padding: calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+      overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch; touch-action: pan-y;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255,255,255,.7), transparent 25%),
+        radial-gradient(circle at 88% 20%, rgba(154,236,255,.8), transparent 31%),
+        linear-gradient(155deg, #ffe3ef 0%, #e8dcff 48%, #c9f5ff 100%);
+      color: #33253e;
+      transition: opacity .32s ease, visibility .32s ease;
+    }
+    .intro.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro-card {
+      position: relative; flex: 0 0 auto;
+      width: min(100%, 420px); margin-block: auto;
+      padding: clamp(28px, 7vw, 40px) clamp(22px, 7vw, 38px);
+      border: 3px solid rgba(255,255,255,.76); border-radius: 36px;
+      background: rgba(255,255,255,.57); text-align: center;
+      box-shadow: 0 24px 60px rgba(86,57,112,.18);
+    }
+    .intro-orbit { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--dot-color); box-shadow: 0 0 18px var(--dot-color), 0 0 42px color-mix(in srgb, var(--dot-color) 65%, transparent); animation: introFloat 2.6s ease-in-out infinite alternate; pointer-events: none; }
+    .intro-orbit.one { --dot-color: #ff2bbd; left: 8%; top: 13%; }
+    .intro-orbit.two { --dot-color: #19dcff; right: 8%; top: 18%; animation-delay: -.8s; }
+    .intro-orbit.three { --dot-color: #ff9d18; left: 15%; bottom: 12%; animation-delay: -1.5s; }
+    .intro-orbit.four { --dot-color: #8bff3f; right: 13%; bottom: 10%; animation-delay: -.35s; }
+    .intro-kicker { margin: 0 0 10px; color: #d82b64; font-size: 13px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    .intro h2 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(40px, 10.5vw, 58px); line-height: .96; letter-spacing: -.035em; text-transform: uppercase; text-wrap: balance; }
+    .intro-tagline { margin: 16px 0 0; color: #5d375e; font-size: clamp(19px, 5.2vw, 26px); line-height: 1.12; font-weight: 900; }
+    .intro-scene {
+      width: 100%; margin: 20px auto 4px; padding: 18px 10px 14px;
+      border: 6px solid #fff; border-radius: 25px;
+      background: linear-gradient(160deg, #ffe9c9, #ffd9bf);
+      box-shadow: 0 15px 34px rgba(86,57,112,.22);
+      font-size: clamp(34px, 9vw, 46px); line-height: 1.25;
+    }
+    .intro-scene .row { display: flex; justify-content: center; gap: 14px; }
+    .intro-scene span { display: inline-block; animation: bubbleBounce 1.6s ease-in-out infinite alternate; }
+    .intro-scene span:nth-child(2) { animation-delay: -.5s; }
+    .intro-scene span:nth-child(3) { animation-delay: -1s; }
+    .start-button {
+      width: min(100%, 260px); margin-top: 24px; padding: 16px 24px;
+      border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ff5067, #e7193b); color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 24px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 8px 0 #a20d28, 0 17px 40px rgba(230,35,75,.28);
+    }
+    .start-button:active { transform: translateY(5px); box-shadow: 0 3px 0 #a20d28, 0 10px 26px rgba(230,35,75,.24); }
+    .start-button:focus-visible { outline: 4px solid #fff; outline-offset: 5px; }
+    .intro-credit { margin: 20px 0 0; color: #675b70; font-size: 12px; font-weight: 800; line-height: 1.5; }
+    .intro-credit a { color: #d82b64; font-weight: 900; text-decoration: none; border-bottom: 2px solid currentColor; }
+
+    /* ---------- TOY BODY ---------- */
+    .game {
+      position: fixed; inset: 0; overflow: hidden; isolation: isolate;
+      display: flex; flex-direction: column;
+      padding: calc(64px + env(safe-area-inset-top)) 18px 0;
+      background: radial-gradient(circle at 50% 34%, rgba(255,157,24,.09), transparent 55%), #05060a;
+    }
+    .game::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 8; box-shadow: inset 0 0 100px rgba(0,0,0,.4); }
+    .label { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; text-align: center; }
+    .label::before, .label::after { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+    .game h1 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(27px, 7.5vw, 44px); line-height: .98; letter-spacing: -.03em; text-transform: uppercase; text-align: center; text-wrap: balance; }
+    .tagline { margin: 7px 0 0; color: var(--muted); font-size: clamp(13px, 3.6vw, 16px); font-weight: 800; text-align: center; }
+
+    .stage { position: relative; z-index: 10; flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(100%, 430px); margin: 0 auto; padding: 8px 0 4px; min-height: 0; }
+
+    .wheel-wrap { position: relative; width: min(76vw, 320px); aspect-ratio: 1 / 1; margin-top: 6px; }
+    .pointer {
+      position: absolute; z-index: 6; left: 50%; top: -10px;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 15px solid transparent; border-right: 15px solid transparent;
+      border-top: 26px solid var(--accent);
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.5));
+    }
+    .wheel {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 6px solid rgba(255,255,255,.85);
+      box-shadow: 0 18px 44px rgba(0,0,0,.55), inset 0 0 0 3px rgba(0,0,0,.18);
+      will-change: transform;
+    }
+    .seg-label {
+      position: absolute; left: 50%; top: 50%; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+      width: 74px; height: 34px; margin-left: -37px; margin-top: -17px;
+      text-align: center; pointer-events: none;
+      color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.55);
+    }
+    .seg-label .seg-emoji { font-size: 19px; line-height: 1; }
+    .seg-label .seg-name { font-size: 10.5px; font-weight: 900; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+    .hub {
+      position: absolute; z-index: 5; left: 50%; top: 50%;
+      width: 64px; height: 64px; transform: translate(-50%, -50%);
+      display: grid; place-items: center;
+      border: 4px solid #fff; border-radius: 50%;
+      background: radial-gradient(circle at 38% 30%, #ff7785, #e7193b 62%, #a20d28);
+      font-size: 26px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.45);
+    }
+
+    .spin-btn {
+      width: min(100%, 300px); margin-top: 20px; padding: 17px 20px;
+      border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ff5067, #e7193b); color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 23px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 8px 0 #a20d28, 0 17px 40px rgba(230,35,75,.3);
+    }
+    .spin-btn:active { transform: translateY(5px); box-shadow: 0 3px 0 #a20d28, 0 10px 26px rgba(230,35,75,.26); }
+    .spin-btn:disabled { opacity: .55; cursor: default; transform: none; }
+    .spin-btn:focus-visible, .coward:focus-visible, .back-to-intro:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+    .result {
+      width: 100%; margin-top: 16px; padding: 14px 18px 12px;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 24px;
+      background: var(--panel); text-align: center;
+      visibility: hidden; opacity: 0; transform: translateY(8px);
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    .result.show { visibility: visible; opacity: 1; transform: translateY(0); }
+    .result-winner { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(26px, 7vw, 36px); font-weight: 700; text-transform: uppercase; letter-spacing: .01em; }
+    .result-verdict { margin: 6px 0 0; color: var(--muted); font-size: 14.5px; font-weight: 800; line-height: 1.4; }
+    .coward {
+      margin-top: 8px; padding: 6px 10px;
+      border: 0; background: transparent; color: var(--accent);
+      font-size: 13px; font-weight: 900; text-decoration: underline;
+      text-underline-offset: 3px; cursor: pointer;
+    }
+    .back-to-intro {
+      display: block; margin: 10px auto 0; padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+      background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 800; letter-spacing: .04em; cursor: pointer;
+    }
+    .back-to-intro:hover { color: var(--ink); border-color: rgba(255,255,255,.45); }
+
+    .bottom {
+      position: relative; z-index: 30; margin-top: auto;
+      padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
+      color: var(--muted); font-size: 11px; font-weight: 800;
+    }
+    .bottom-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .bottom-row span { max-width: 230px; line-height: 1.3; }
+    .bottom-row a { color: var(--ink); text-decoration: none; white-space: nowrap; padding: 6px 0; border-bottom: 2px solid var(--accent); }
+    .bottom-row a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .referral { margin: 6px 0 0; text-align: center; color: var(--accent); font-size: 11.5px; font-weight: 900; letter-spacing: .02em; }
+
+    @keyframes introFloat { from { transform: translateY(-7px) scale(.88); } to { transform: translateY(8px) scale(1.12); } }
+    @keyframes bubbleBounce { from { transform: translateY(-3px) rotate(-3deg); } to { transform: translateY(4px) rotate(3deg); } }
+    @media (max-height: 820px) {
+      .wheel-wrap { width: min(64vw, 272px); }
+      .result { padding: 10px 16px 8px; }
+    }
+    @media (max-height: 700px) {
+      .game { padding-top: calc(56px + env(safe-area-inset-top)); }
+      .wheel-wrap { width: min(62vw, 250px); }
+      .spin-btn { margin-top: 14px; padding: 14px 18px; font-size: 20px; }
+      .result { margin-top: 10px; }
+      .intro-scene { margin-top: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="language-toggle" role="group" aria-label="Language / Idioma">
+    <button id="langEn" type="button" aria-pressed="true">EN</button>
+    <button id="langEs" type="button" aria-pressed="false">ES</button>
+  </div>
+
+  <section class="intro" id="intro" aria-labelledby="introTitle">
+    <span class="intro-orbit one" aria-hidden="true"></span>
+    <span class="intro-orbit two" aria-hidden="true"></span>
+    <span class="intro-orbit three" aria-hidden="true"></span>
+    <span class="intro-orbit four" aria-hidden="true"></span>
+    <div class="intro-card">
+      <p class="intro-kicker" data-i18n="kicker">"I don't care, you pick" — solved.</p>
+      <h2 id="introTitle">The Dinner Wheel</h2>
+      <p class="intro-tagline" data-i18n="tagline">One spin ends the dinner debate.</p>
+      <div class="intro-scene" aria-hidden="true">
+        <div class="row"><span>🍕</span><span>🍣</span><span>🌮</span></div>
+        <div class="row"><span>🎡</span><span>🍔</span><span>🦞</span></div>
+      </div>
+      <button class="start-button" id="startButton" type="button" data-i18n="start">Enter</button>
+      <p class="intro-credit"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> <strong>ESFXNF</strong><br><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a></p>
+    </div>
+  </section>
+
+  <main class="game" id="game" aria-label="The Dinner Wheel" aria-hidden="true">
+    <p class="label">The Dinner Wheel</p>
+    <h1 data-i18n="toyTitle">What's for dinner?</h1>
+    <p class="tagline" data-i18n="toyTagline">The wheel decides. The wheel does not take appeals.</p>
+
+    <div class="stage">
+      <div class="wheel-wrap">
+        <div class="pointer" aria-hidden="true"></div>
+        <div class="wheel" id="wheel" aria-hidden="true"></div>
+        <div class="hub" aria-hidden="true">🍽️</div>
+      </div>
+      <button class="spin-btn" id="spinBtn" type="button" data-i18n="spin">🎡 Spin the wheel</button>
+      <div class="result" id="resultBox" aria-live="polite">
+        <p class="result-winner" id="resultWinner"></p>
+        <p class="result-verdict" id="resultVerdict"></p>
+        <button class="coward" id="cowardBtn" type="button" data-i18n="coward">Spin again (coward)</button>
+      </div>
+      <button class="back-to-intro" id="backToIntro" type="button" data-i18n="backIntro">← Intro</button>
+    </div>
+
+    <footer class="bottom">
+      <div class="bottom-row">
+        <span data-i18n="bottomInstruction">One spin. One dinner. No appeals.</span>
+        <a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a>
+      </div>
+      <p class="referral"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> ESFXNF</p>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      var intro = document.getElementById('intro');
+      var startButton = document.getElementById('startButton');
+      var game = document.getElementById('game');
+      var wheel = document.getElementById('wheel');
+      var spinBtn = document.getElementById('spinBtn');
+      var resultBox = document.getElementById('resultBox');
+      var resultWinner = document.getElementById('resultWinner');
+      var resultVerdict = document.getElementById('resultVerdict');
+      var cowardBtn = document.getElementById('cowardBtn');
+      var backToIntro = document.getElementById('backToIntro');
+      var langEn = document.getElementById('langEn');
+      var langEs = document.getElementById('langEs');
+      var currentLang = 'en';
+      var rotation = 0;
+      var spinning = false;
+      var winnerIndex = -1;
+      var verdictIndex = -1;
+      var audioCtx = null;
+      var lastTickSeg = -1;
+      var spinRaf = null;
+
+      var SEG_COLORS = ['#e63946', '#f4842b', '#f2c531', '#59b33f', '#2ba8a0', '#2b7fd4', '#6c4fd8', '#c93b8f', '#8a5a2b', '#3f6fb5'];
+
+      var SEGMENTS = [
+        { emoji: '🍕', en: 'Pizza', es: 'Pizza', fullEn: 'Pizza', fullEs: 'Pizza' },
+        { emoji: '🍣', en: 'Sushi', es: 'Sushi', fullEn: 'Sushi', fullEs: 'Sushi' },
+        { emoji: '🌮', en: 'Tacos', es: 'Tacos', fullEn: 'Tacos', fullEs: 'Tacos' },
+        { emoji: '🍔', en: 'Burgers', es: 'Burger', fullEn: 'Burgers', fullEs: 'Hamburguesas' },
+        { emoji: '🍝', en: 'Italian', es: 'Italiana', fullEn: 'Italian', fullEs: 'Italiana' },
+        { emoji: '🍜', en: 'Thai', es: 'Thai', fullEn: 'Thai', fullEs: 'Tailandesa' },
+        { emoji: '🍗', en: 'Wings', es: 'Alitas', fullEn: 'Wings', fullEs: 'Alitas' },
+        { emoji: '🥩', en: 'Steakhouse', es: 'Carnes', fullEn: 'Steakhouse', fullEs: 'Asador' },
+        { emoji: '🍖', en: 'BBQ', es: 'BBQ', fullEn: 'BBQ', fullEs: 'BBQ' },
+        { emoji: '🦞', en: 'Seafood', es: 'Mariscos', fullEn: 'Seafood', fullEs: 'Mariscos' }
+      ];
+
+      var VERDICTS = {
+        en: [
+          "The wheel has spoken. The wheel does not take appeals.",
+          "Decision made in four seconds. You've been 'deciding' since Tuesday.",
+          "No vetoes. Vetoes are how couples end up eating cereal.",
+          "Screenshot this — history will want to know who suggested 'I don't care, you pick.'",
+          "Democracy failed you for years. The wheel took one spin."
+        ],
+        es: [
+          "La ruleta ha hablado. La ruleta no acepta apelaciones.",
+          "Decisión tomada en cuatro segundos. Tú llevas «decidiendo» desde el martes.",
+          "Sin vetos. Los vetos son la razón por la que las parejas terminan comiendo cereal.",
+          "Captura esto: la historia querrá saber quién dijo «me da igual, elige tú».",
+          "La democracia te falló durante años. La ruleta solo necesitó una vuelta."
+        ]
+      };
+
+      var copy = {
+        en: {
+          kicker: '"I don\'t care, you pick" — solved.',
+          tagline: 'One spin ends the dinner debate.',
+          start: 'Enter',
+          credit: 'Made by Gary · Powered by Muse — get your own with code',
+          toyTitle: "What's for dinner?",
+          toyTagline: 'The wheel decides. The wheel does not take appeals.',
+          spin: '🎡 Spin the wheel',
+          spinning: 'Spinning…',
+          coward: 'Spin again (coward)',
+          backIntro: '← Intro',
+          bottomInstruction: 'One spin. One dinner. No appeals.'
+        },
+        es: {
+          kicker: '«Me da igual, elige tú»: resuelto.',
+          tagline: 'Una vuelta termina el debate de la cena.',
+          start: 'Entrar',
+          credit: 'Hecho por Gary · Con la magia de Muse — consigue el tuyo con el código',
+          toyTitle: '¿Qué cenamos hoy?',
+          toyTagline: 'La ruleta decide. La ruleta no acepta apelaciones.',
+          spin: '🎡 Girar la ruleta',
+          spinning: 'Girando…',
+          coward: 'Girar otra vez (cobarde)',
+          backIntro: '← Inicio',
+          bottomInstruction: 'Una vuelta. Una cena. Sin apelaciones.'
+        }
+      };
+
+      function t(key) { return copy[currentLang][key]; }
+      function buzz(pattern) { if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } }
+
+      function buildWheel() {
+        var stops = [];
+        for (var i = 0; i < SEGMENTS.length; i++) {
+          stops.push(SEG_COLORS[i] + ' ' + (i * 36) + 'deg ' + ((i + 1) * 36) + 'deg');
+        }
+        wheel.style.background = 'conic-gradient(from -90deg, ' + stops.join(', ') + ')';
+        wheel.querySelectorAll('.seg-label').forEach(function (el) { el.remove(); });
+        var radius = wheel.clientWidth * 0.345;
+        SEGMENTS.forEach(function (seg, i) {
+          var label = document.createElement('div');
+          label.className = 'seg-label';
+          var angle = i * 36 + 18;
+          label.style.transform = 'rotate(' + angle + 'deg) translateY(' + (-radius) + 'px)';
+          label.style.transformOrigin = 'center center';
+          var em = document.createElement('span');
+          em.className = 'seg-emoji';
+          em.textContent = seg.emoji;
+          var nm = document.createElement('span');
+          nm.className = 'seg-name';
+          nm.textContent = seg[currentLang];
+          label.appendChild(em);
+          label.appendChild(nm);
+          wheel.appendChild(label);
+        });
+      }
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }
+
+      function tick() {
+        if (!audioCtx) return;
+        var now = audioCtx.currentTime;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1250, now);
+        gain.gain.setValueAtTime(.028, now);
+        gain.gain.exponentialRampToValueAtTime(.0001, now + .03);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + .035);
+      }
+
+      function currentAngle() {
+        var st = window.getComputedStyle(wheel);
+        var m = new DOMMatrixReadOnly(st.transform);
+        var ang = Math.atan2(m.b, m.a) * 180 / Math.PI;
+        return (ang % 360 + 360) % 360;
+      }
+
+      function watchTicks() {
+        if (!spinning) return;
+        var ang = currentAngle();
+        var seg = Math.floor((((360 - ang) % 360) + 360) % 360 / 36);
+        if (seg !== lastTickSeg) { lastTickSeg = seg; tick(); }
+        spinRaf = requestAnimationFrame(watchTicks);
+      }
+
+      function spin() {
+        if (spinning) return;
+        ensureAudio();
+        spinning = true;
+        lastTickSeg = -1;
+        spinBtn.disabled = true;
+        spinBtn.textContent = t('spinning');
+        resultBox.classList.remove('show');
+        buzz(20);
+
+        winnerIndex = Math.floor(Math.random() * SEGMENTS.length);
+        var desiredPointer = winnerIndex * 36 + 18;
+        var targetMod = ((360 - desiredPointer) % 360 + 360) % 360;
+        var currentMod = ((rotation % 360) + 360) % 360;
+        var delta = ((targetMod - currentMod) + 360) % 360;
+        rotation = rotation + 360 * 6 + delta;
+        var duration = 4400;
+        wheel.style.transition = 'transform ' + duration + 'ms cubic-bezier(.1,.75,.08,1)';
+        wheel.style.transform = 'rotate(' + rotation + 'deg)';
+        spinRaf = requestAnimationFrame(watchTicks);
+
+        setTimeout(function () {
+          spinning = false;
+          if (spinRaf) cancelAnimationFrame(spinRaf);
+          spinBtn.disabled = false;
+          spinBtn.textContent = t('spin');
+          verdictIndex = Math.floor(Math.random() * VERDICTS[currentLang].length);
+          showResult();
+          buzz([30, 60, 30, 60, 60]);
+        }, duration + 60);
+      }
+
+      function showResult() {
+        if (winnerIndex < 0) return;
+        var seg = SEGMENTS[winnerIndex];
+        resultWinner.textContent = seg.emoji + ' ' + seg[currentLang === 'es' ? 'fullEs' : 'fullEn'];
+        resultVerdict.textContent = VERDICTS[currentLang][verdictIndex < 0 ? 0 : verdictIndex];
+        resultBox.classList.add('show');
+      }
+
+      function applyLanguage(lang) {
+        currentLang = lang === 'es' ? 'es' : 'en';
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll('[data-i18n]').forEach(function (el) {
+          if (el.id === 'spinBtn' && spinning) { el.textContent = t('spinning'); return; }
+          el.textContent = t(el.dataset.i18n);
+        });
+        langEn.setAttribute('aria-pressed', String(currentLang === 'en'));
+        langEs.setAttribute('aria-pressed', String(currentLang === 'es'));
+        game.setAttribute('aria-label', currentLang === 'es' ? 'La ruleta de la cena' : 'The Dinner Wheel');
+        buildWheel();
+        wheel.style.transition = 'none';
+        wheel.style.transform = 'rotate(' + rotation + 'deg)';
+        if (winnerIndex >= 0 && !spinning) showResult();
+      }
+
+      langEn.addEventListener('click', function () { applyLanguage('en'); });
+      langEs.addEventListener('click', function () { applyLanguage('es'); });
+      startButton.addEventListener('click', function () {
+        buzz(20);
+        intro.classList.add('hidden');
+        game.setAttribute('aria-hidden', 'false');
+        buildWheel();
+      });
+      backToIntro.addEventListener('click', function () {
+        intro.classList.remove('hidden');
+        game.setAttribute('aria-hidden', 'true');
+      });
+      spinBtn.addEventListener('click', spin);
+      cowardBtn.addEventListener('click', spin);
+      window.addEventListener('resize', function () { if (!spinning) buildWheel(); });
+      buildWheel();
+    }());
+  </script>
+</body>
+</html>
