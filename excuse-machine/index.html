@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#10121a" />
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <meta name="description" content="The Excuse Machine — a perfect excuse for anything, in one tap." />
+  <meta property="og:title" content="The Excuse Machine" />
+  <meta property="og:description" content="A perfect excuse for anything, in one tap." />
+  <title>The Excuse Machine</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg-deep: #000000;
+      --ink: #fffdf8;
+      --muted: #c8cada;
+      --line: rgba(255,255,255,.14);
+      --panel: rgba(7,8,14,.74);
+      --accent: #ffd447;
+      --danger: #ff4f6d;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg-deep);
+      color: var(--ink);
+      font-family: "Nunito Sans", sans-serif;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    button, a { font: inherit; }
+
+    .language-toggle {
+      position: fixed; z-index: 150;
+      top: calc(14px + env(safe-area-inset-top)); right: 14px;
+      display: flex; gap: 3px; padding: 4px;
+      border: 2px solid rgba(255,255,255,.72); border-radius: 999px;
+      background: rgba(10,8,15,.78);
+      box-shadow: 0 8px 22px rgba(38,20,50,.22);
+      backdrop-filter: blur(8px);
+    }
+    .language-toggle button {
+      min-width: 42px; min-height: 36px; padding: 6px 10px;
+      border: 0; border-radius: 999px; background: transparent;
+      color: rgba(255,255,255,.75); font-size: 13px; font-weight: 900;
+      letter-spacing: .05em; cursor: pointer;
+    }
+    .language-toggle button[aria-pressed="true"] { background: #fff; color: #3d2947; box-shadow: 0 3px 10px rgba(0,0,0,.22); }
+    .language-toggle button:focus-visible { outline: 3px solid #ffd447; outline-offset: 3px; }
+
+    /* ---------- INTRO COVER ---------- */
+    .intro {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column; align-items: center;
+      padding: calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+      overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch; touch-action: pan-y;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(255,255,255,.7), transparent 25%),
+        radial-gradient(circle at 88% 20%, rgba(154,236,255,.8), transparent 31%),
+        linear-gradient(155deg, #ffe3ef 0%, #e8dcff 48%, #c9f5ff 100%);
+      color: #33253e;
+      transition: opacity .32s ease, visibility .32s ease;
+    }
+    .intro.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro-card {
+      position: relative; flex: 0 0 auto;
+      width: min(100%, 420px); margin-block: auto;
+      padding: clamp(28px, 7vw, 40px) clamp(22px, 7vw, 38px);
+      border: 3px solid rgba(255,255,255,.76); border-radius: 36px;
+      background: rgba(255,255,255,.57); text-align: center;
+      box-shadow: 0 24px 60px rgba(86,57,112,.18);
+    }
+    .intro-orbit { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--dot-color); box-shadow: 0 0 18px var(--dot-color), 0 0 42px color-mix(in srgb, var(--dot-color) 65%, transparent); animation: introFloat 2.6s ease-in-out infinite alternate; pointer-events: none; }
+    .intro-orbit.one { --dot-color: #ff2bbd; left: 8%; top: 13%; }
+    .intro-orbit.two { --dot-color: #19dcff; right: 8%; top: 18%; animation-delay: -.8s; }
+    .intro-orbit.three { --dot-color: #ff9d18; left: 15%; bottom: 12%; animation-delay: -1.5s; }
+    .intro-orbit.four { --dot-color: #8bff3f; right: 13%; bottom: 10%; animation-delay: -.35s; }
+    .intro-kicker { margin: 0 0 10px; color: #d82b64; font-size: 13px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    .intro h2 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(40px, 10.5vw, 58px); line-height: .96; letter-spacing: -.035em; text-transform: uppercase; text-wrap: balance; }
+    .intro-tagline { margin: 16px 0 0; color: #5d375e; font-size: clamp(19px, 5.2vw, 26px); line-height: 1.12; font-weight: 900; }
+    .intro-scene {
+      width: 100%; margin: 20px auto 4px; padding: 18px 10px 14px;
+      border: 6px solid #fff; border-radius: 25px;
+      background: linear-gradient(160deg, #ffe9c9, #ffd9bf);
+      box-shadow: 0 15px 34px rgba(86,57,112,.22);
+      font-size: clamp(34px, 9vw, 46px); line-height: 1.25;
+    }
+    .intro-scene .row { display: flex; justify-content: center; gap: 14px; }
+    .intro-scene span { display: inline-block; animation: bubbleBounce 1.6s ease-in-out infinite alternate; }
+    .intro-scene span:nth-child(2) { animation-delay: -.5s; }
+    .intro-scene span:nth-child(3) { animation-delay: -1s; }
+    .start-button {
+      width: min(100%, 260px); margin-top: 24px; padding: 16px 24px;
+      border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ff5067, #e7193b); color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 24px; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 8px 0 #a20d28, 0 17px 40px rgba(230,35,75,.28);
+    }
+    .start-button:active { transform: translateY(5px); box-shadow: 0 3px 0 #a20d28, 0 10px 26px rgba(230,35,75,.24); }
+    .start-button:focus-visible { outline: 4px solid #fff; outline-offset: 5px; }
+    .intro-credit { margin: 20px 0 0; color: #675b70; font-size: 12px; font-weight: 800; line-height: 1.5; }
+    .intro-credit a { color: #d82b64; font-weight: 900; text-decoration: none; border-bottom: 2px solid currentColor; }
+
+    /* ---------- TOY BODY ---------- */
+    .game {
+      position: fixed; inset: 0; overflow: hidden; isolation: isolate;
+      display: flex; flex-direction: column;
+      padding: calc(64px + env(safe-area-inset-top)) 18px 0;
+      background: radial-gradient(circle at 50% 30%, rgba(255,212,71,.07), transparent 55%), #05060a;
+    }
+    .game::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 8; box-shadow: inset 0 0 100px rgba(0,0,0,.4); }
+    .label { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; color: var(--accent); font-size: 12px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; text-align: center; }
+    .label::before, .label::after { content: ""; width: 18px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+    .game h1 { margin: 0; font-family: "Fredoka", sans-serif; font-size: clamp(27px, 7.5vw, 44px); line-height: .98; letter-spacing: -.03em; text-transform: uppercase; text-align: center; text-wrap: balance; }
+    .tagline { margin: 7px 0 0; color: var(--muted); font-size: clamp(13px, 3.6vw, 16px); font-weight: 800; text-align: center; }
+
+    .chips { position: relative; z-index: 10; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 18px auto 0; max-width: 430px; }
+    .chip {
+      padding: 9px 14px; border: 2px solid var(--line); border-radius: 999px;
+      background: rgba(255,255,255,.05); color: var(--ink);
+      font-size: 14px; font-weight: 900; cursor: pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .chip:active { transform: scale(.94); }
+    .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #241a00; box-shadow: 0 6px 18px rgba(255,212,71,.3); }
+    .chip:focus-visible, .generate:focus-visible, .send:focus-visible, .back-to-intro:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+    .stage { position: relative; z-index: 10; flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(100%, 430px); margin: 0 auto; padding: 10px 0 6px; min-height: 0; }
+    .excuse-card {
+      width: 100%; min-height: 168px;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 22px 22px 18px;
+      border: 1px solid rgba(255,255,255,.18); border-radius: 28px;
+      background: var(--panel);
+      box-shadow: 0 22px 60px rgba(0,0,0,.5);
+      backdrop-filter: blur(8px); text-align: center;
+    }
+    .excuse-card.pop { animation: cardPop .38s ease both; }
+    .excuse-placeholder { margin: 0; color: var(--muted); font-size: 17px; font-weight: 800; line-height: 1.45; }
+    .excuse-text { margin: 0; font-size: clamp(19px, 5.4vw, 24px); font-weight: 900; line-height: 1.32; }
+    .meter-wrap { margin-top: 16px; display: none; }
+    .meter-wrap.show { display: block; }
+    .meter-label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .meter-label b { color: var(--accent); font-size: 14px; }
+    .meter { margin-top: 6px; height: 12px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .meter-fill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #ff9d18, var(--accent), #8bff3f); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+    .delivery { margin: 12px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 700; font-style: italic; line-height: 1.4; display: none; }
+    .delivery.show { display: block; }
+
+    .generate {
+      width: min(100%, 300px); margin-top: 16px; padding: 17px 20px;
+      border: 0; border-radius: 999px;
+      background: linear-gradient(180deg, #ff5067, #e7193b); color: #fff;
+      font-family: "Fredoka", sans-serif; font-size: 22px; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 8px 0 #a20d28, 0 17px 40px rgba(230,35,75,.3);
+    }
+    .generate:active { transform: translateY(5px); box-shadow: 0 3px 0 #a20d28, 0 10px 26px rgba(230,35,75,.26); }
+    .send {
+      margin-top: 14px; padding: 11px 22px;
+      border: 2px solid var(--accent); border-radius: 999px;
+      background: transparent; color: var(--accent);
+      font-size: 15px; font-weight: 900; cursor: pointer;
+      visibility: hidden; opacity: 0; transition: opacity .25s ease;
+    }
+    .send.show { visibility: visible; opacity: 1; }
+    .send:active { transform: scale(.95); }
+    .toast {
+      position: fixed; z-index: 200; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom));
+      transform: translate(-50%, 12px); padding: 10px 20px;
+      border-radius: 999px; background: #fff; color: #241a2e;
+      font-size: 14px; font-weight: 900; opacity: 0; pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
+      box-shadow: 0 12px 30px rgba(0,0,0,.4);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .back-to-intro {
+      display: block; margin: 12px auto 0; padding: 6px 14px;
+      border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+      background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 800; letter-spacing: .04em; cursor: pointer;
+    }
+    .back-to-intro:hover { color: var(--ink); border-color: rgba(255,255,255,.45); }
+
+    .bottom {
+      position: relative; z-index: 30; margin-top: auto;
+      padding: 10px 2px calc(10px + env(safe-area-inset-bottom));
+      color: var(--muted); font-size: 11px; font-weight: 800;
+    }
+    .bottom-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    .bottom-row span { max-width: 230px; line-height: 1.3; }
+    .bottom-row a { color: var(--ink); text-decoration: none; white-space: nowrap; padding: 6px 0; border-bottom: 2px solid var(--accent); }
+    .bottom-row a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+    .referral { margin: 6px 0 0; text-align: center; color: var(--accent); font-size: 11.5px; font-weight: 900; letter-spacing: .02em; }
+
+    @keyframes introFloat { from { transform: translateY(-7px) scale(.88); } to { transform: translateY(8px) scale(1.12); } }
+    @keyframes bubbleBounce { from { transform: translateY(-3px) rotate(-3deg); } to { transform: translateY(4px) rotate(3deg); } }
+    @keyframes cardPop { from { opacity: 0; transform: scale(.9) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @media (max-height: 700px) {
+      .game { padding-top: calc(56px + env(safe-area-inset-top)); }
+      .chips { margin-top: 12px; }
+      .excuse-card { min-height: 140px; padding: 16px 18px 14px; }
+      .generate { margin-top: 12px; padding: 14px 18px; font-size: 20px; }
+      .intro-scene { margin-top: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="language-toggle" role="group" aria-label="Language / Idioma">
+    <button id="langEn" type="button" aria-pressed="true">EN</button>
+    <button id="langEs" type="button" aria-pressed="false">ES</button>
+  </div>
+
+  <section class="intro" id="intro" aria-labelledby="introTitle">
+    <span class="intro-orbit one" aria-hidden="true"></span>
+    <span class="intro-orbit two" aria-hidden="true"></span>
+    <span class="intro-orbit three" aria-hidden="true"></span>
+    <span class="intro-orbit four" aria-hidden="true"></span>
+    <div class="intro-card">
+      <p class="intro-kicker" data-i18n="kicker">Zero guilt. All confidence.</p>
+      <h2 id="introTitle">The Excuse Machine</h2>
+      <p class="intro-tagline" data-i18n="tagline">A perfect excuse for anything.</p>
+      <div class="intro-scene" aria-hidden="true">
+        <div class="row"><span>🏋️</span><span>💼</span><span>⛳</span></div>
+        <div class="row"><span>🛋️</span><span>🤫</span><span>💬</span></div>
+      </div>
+      <button class="start-button" id="startButton" type="button" data-i18n="start">Enter</button>
+      <p class="intro-credit"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> <strong>ESFXNF</strong><br><a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a></p>
+    </div>
+  </section>
+
+  <main class="game" id="game" aria-label="The Excuse Machine" aria-hidden="true">
+    <p class="label">The Excuse Machine</p>
+    <h1 data-i18n="toyTitle">Need an excuse?</h1>
+    <p class="tagline" data-i18n="toyTagline">Pick a category. Tap the button. Say it like you mean it.</p>
+
+    <div class="chips" id="chips" role="group" aria-label="Excuse categories"></div>
+
+    <div class="stage">
+      <div class="excuse-card" id="excuseCard" aria-live="polite">
+        <p class="excuse-placeholder" id="excuseText" data-i18n="placeholder">Your excuse is warming up…</p>
+        <div class="meter-wrap" id="meterWrap">
+          <div class="meter-label"><span data-i18n="plausibility">Plausibility</span><b id="meterPct">0%</b></div>
+          <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+        </div>
+        <p class="delivery" id="deliveryNote"></p>
+      </div>
+      <button class="generate" id="generateBtn" type="button" data-i18n="generate">Generate excuse</button>
+      <button class="send" id="sendBtn" type="button" data-i18n="sendIt">📋 Send it</button>
+      <button class="back-to-intro" id="backToIntro" type="button" data-i18n="backIntro">← Intro</button>
+    </div>
+
+    <footer class="bottom">
+      <div class="bottom-row">
+        <span data-i18n="bottomInstruction">One tap. One excuse. No follow-up questions.</span>
+        <a href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener noreferrer">Future Ready ↗</a>
+      </div>
+      <p class="referral"><span data-i18n="credit">Made by Gary · Powered by Muse — get your own with code</span> ESFXNF</p>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      var intro = document.getElementById('intro');
+      var startButton = document.getElementById('startButton');
+      var game = document.getElementById('game');
+      var chipsEl = document.getElementById('chips');
+      var excuseCard = document.getElementById('excuseCard');
+      var excuseText = document.getElementById('excuseText');
+      var meterWrap = document.getElementById('meterWrap');
+      var meterFill = document.getElementById('meterFill');
+      var meterPct = document.getElementById('meterPct');
+      var deliveryNote = document.getElementById('deliveryNote');
+      var generateBtn = document.getElementById('generateBtn');
+      var sendBtn = document.getElementById('sendBtn');
+      var backToIntro = document.getElementById('backToIntro');
+      var toast = document.getElementById('toast');
+      var langEn = document.getElementById('langEn');
+      var langEs = document.getElementById('langEs');
+      var currentLang = 'en';
+      var currentCat = 'anything';
+      var currentExcuse = null;
+      var currentPlaus = 0;
+      var currentDelivery = null;
+      var lastIndex = {};
+      var toastTimer = null;
+
+      var CATS = [
+        { id: 'gym', emoji: '🏋️' },
+        { id: 'work', emoji: '💼' },
+        { id: 'family', emoji: '👪' },
+        { id: 'goingout', emoji: '⛳' },
+        { id: 'groupchat', emoji: '💬' },
+        { id: 'anything', emoji: '🛋️' }
+      ];
+
+      var copy = {
+        en: {
+          kicker: 'Zero guilt. All confidence.',
+          tagline: 'A perfect excuse for anything.',
+          start: 'Enter',
+          credit: 'Made by Gary · Powered by Muse — get your own with code',
+          toyTitle: 'Need an excuse?',
+          toyTagline: 'Pick a category. Tap the button. Say it like you mean it.',
+          placeholder: 'Your excuse is warming up…',
+          plausibility: 'Plausibility',
+          generate: 'Generate excuse',
+          sendIt: '📋 Send it',
+          backIntro: '← Intro',
+          bottomInstruction: 'One tap. One excuse. No follow-up questions.',
+          copied: 'Copied — now go be innocent.',
+          catGym: 'Gym', catWork: 'Work', catFamily: 'Family', catGoingout: 'Going Out', catGroupchat: 'Group Chat', catAnything: 'Anything'
+        },
+        es: {
+          kicker: 'Cero culpa. Pura seguridad.',
+          tagline: 'Una excusa perfecta para lo que sea.',
+          start: 'Entrar',
+          credit: 'Hecho por Gary · Con la magia de Muse — consigue el tuyo con el código',
+          toyTitle: '¿Necesitas una excusa?',
+          toyTagline: 'Elige una categoría. Toca el botón. Dilo con seguridad.',
+          placeholder: 'Tu excusa se está calentando…',
+          plausibility: 'Credibilidad',
+          generate: 'Generar excusa',
+          sendIt: '📋 Enviarla',
+          backIntro: '← Inicio',
+          bottomInstruction: 'Un toque. Una excusa. Sin preguntas.',
+          copied: 'Copiado: ahora ve y finge inocencia.',
+          catGym: 'Gimnasio', catWork: 'Trabajo', catFamily: 'Familia', catGoingout: 'Salir', catGroupchat: 'Chat del grupo', catAnything: 'Lo que sea'
+        }
+      };
+
+      var DELIVERY = {
+        en: [
+          'Delivery note: say it slowly. Eye contact. No smiling.',
+          'Delivery note: completely flat tone. Walk away before questions.',
+          'Delivery note: text it, then put the phone face-down.',
+          'Delivery note: commit fully. Hesitation kills it.',
+          'Delivery note: say it like you rehearsed it. Because now you have.',
+          'Delivery note: finish with a sip of water. Confidence is hydration.'
+        ],
+        es: [
+          'Nota de actuación: dilo despacio. Mirada firme. Sin sonreír.',
+          'Nota de actuación: tono totalmente serio. Aléjate antes de las preguntas.',
+          'Nota de actuación: envíalo por mensaje y deja el teléfono boca abajo.',
+          'Nota de actuación: con total seguridad. La duda lo arruina.',
+          'Nota de actuación: dilo como si lo hubieras ensayado. Porque ya lo ensayaste.',
+          'Nota de actuación: termina con un trago de agua. La confianza también es hidratación.'
+        ]
+      };
+
+      var BANKS = {
+        gym: {
+          en: [
+            "My chiropractor said rest is a workout. His name is Dr. Gee. He's very expensive and never wrong.",
+            "I pulled a muscle reaching for the remote. The doctor said 6 to 8 weeks. No exceptions. Mostly naps.",
+            "I did go to the gym. I drove there, sat in the parking lot, and mentally did every exercise. My brain is exhausted.",
+            "My gym bag is still in the car from last time. At this point it's not equipment, it's an artifact.",
+            "I'm carb-loading for a marathon I'm watching on TV this weekend. Preparation is everything.",
+            "My watch says I closed my rings. My watch has never lied to me. I don't know why it would start now."
+          ],
+          es: [
+            "Mi quiropráctico dijo que descansar también es entrenar. Se llama Dr. Gee. Es carísimo y nunca se equivoca.",
+            "Me lastimé un músculo alcanzando el control remoto. El doctor dijo de 6 a 8 semanas. Sin excepciones. Puras siestas.",
+            "Sí fui al gimnasio. Manejé hasta allá, me senté en el estacionamiento e hice cada ejercicio mentalmente. Mi cerebro está agotado.",
+            "Mi maleta del gimnasio sigue en el carro desde la vez pasada. A estas alturas ya no es equipo, es una reliquia.",
+            "Estoy cargando carbohidratos para un maratón que voy a ver por televisión este fin de semana. La preparación lo es todo.",
+            "Mi reloj dice que cerré mis anillos. Mi reloj nunca me ha mentido. No veo por qué empezaría ahora."
+          ]
+        },
+        work: {
+          en: [
+            "I'm stuck in a meeting with myself. It's running long. I'm asking a lot of tough questions.",
+            "My laptop updated and now it's asking me questions I don't know the answers to. We're in couples counseling.",
+            "I read the email. I'm now observing a respectful 48-hour period of emotional processing before responding.",
+            "Traffic was unbelievable. I work from home, but emotionally, I was in traffic.",
+            "I'm on a deadline. The deadline is me deciding when to start.",
+            "My out-of-office is on. Not the email one. Me. I am out of the office of life until Monday."
+          ],
+          es: [
+            "Estoy atrapado en una reunión conmigo mismo. Se está alargando. Me estoy haciendo preguntas muy difíciles.",
+            "Mi laptop se actualizó y ahora me hace preguntas que no sé responder. Estamos en terapia de pareja.",
+            "Sí leí el correo. Ahora estoy en un respetuoso período de 48 horas de procesamiento emocional antes de responder.",
+            "El tráfico estaba imposible. Trabajo desde casa, pero emocionalmente, estaba en el tráfico.",
+            "Tengo una fecha límite. La fecha límite es yo decidiendo cuándo empezar.",
+            "Mi «fuera de oficina» está activado. No el del correo. Yo. Estoy fuera de la oficina de la vida hasta el lunes."
+          ]
+        },
+        family: {
+          en: [
+            "Can't make it. My couch and I are in the middle of a very serious long-term relationship milestone.",
+            "I would love to, but my dog has separation anxiety and honestly so do I.",
+            "I'm fasting. Not for health. I just saw the menu and I'm protesting it spiritually.",
+            "My car made a noise. The noise sounded expensive. I'm in mourning.",
+            "I double-booked myself with doing absolutely nothing, and I gave my word.",
+            "Aunt Linda's casserole and I have unresolved history. I need more time."
+          ],
+          es: [
+            "No puedo ir. Mi sofá y yo estamos en un momento muy serio de nuestra relación a largo plazo.",
+            "Me encantaría, pero mi perro tiene ansiedad por separación y, la verdad, yo también.",
+            "Estoy en ayuno. No por salud. Es que vi el menú y estoy protestando espiritualmente.",
+            "Mi carro hizo un ruido. El ruido sonaba caro. Estoy de luto.",
+            "Me comprometí doblemente con no hacer absolutamente nada, y di mi palabra.",
+            "La cazuela de la tía Linda y yo tenemos historia sin resolver. Necesito más tiempo."
+          ]
+        },
+        goingout: {
+          en: [
+            "I'm in for the next one. Tonight I'm defending my undefeated title in the sitting-on-my-couch championship.",
+            "My wallet and I had a talk. We're taking some time apart from spending.",
+            "I peaked socially in 2019 and I've been protecting the legacy ever since.",
+            "The game is on at my house too, and my couch doesn't charge fourteen dollars for a beer.",
+            "I'm not saying no. I'm saying my bed said no, and out of respect for the chain of command...",
+            "I already told another group chat I was busy. If I show up, there will be a full investigation."
+          ],
+          es: [
+            "Para la próxima sí voy. Esta noche defiendo mi título invicto en el campeonato de quedarme en el sofá.",
+            "Mi billetera y yo tuvimos una conversación. Vamos a darnos un tiempo lejos del gasto.",
+            "Llegué a mi cima social en 2019 y desde entonces estoy protegiendo el legado.",
+            "El partido también pasa en mi casa, y mi sofá no cobra catorce dólares por una cerveza.",
+            "No estoy diciendo que no. Estoy diciendo que mi cama dijo que no, y por respeto a la cadena de mando…",
+            "Ya le dije a otro chat grupal que estaba ocupado. Si aparezco, habrá una investigación completa."
+          ]
+        },
+        groupchat: {
+          en: [
+            "Sorry, just seeing this now. (Sent 0.4 seconds after the plan was made.)",
+            "I'm a maybe. A strong maybe. The strongest maybe in group chat history.",
+            "Let me check with my calendar. (The calendar is empty. The calendar is always empty.)",
+            "I love this plan for you guys. Truly. From my house. Where I will be.",
+            "Count me in spiritually. My spirit will be there. My body has other arrangements.",
+            "I reacted with a thumbs up, which in group chat law is a binding signature. I have since retained a lawyer."
+          ],
+          es: [
+            "Perdón, apenas lo estoy viendo. (Enviado 0.4 segundos después de que se hizo el plan.)",
+            "Soy un «quizás». Un quizás fuerte. El quizás más fuerte en la historia de los chats grupales.",
+            "Déjame revisar mi agenda. (La agenda está vacía. La agenda siempre está vacía.)",
+            "Me encanta este plan para ustedes. De verdad. Desde mi casa. Donde voy a estar.",
+            "Cuenten conmigo espiritualmente. Mi espíritu estará ahí. Mi cuerpo tiene otros planes.",
+            "Reaccioné con un pulgar arriba, que en la ley del chat grupal es una firma vinculante. Ya contraté un abogado."
+          ]
+        },
+        anything: {
+          en: [
+            "Something came up. (Nothing came up. Nothing is coming up. The horizon is clear.)",
+            "I'm doing a social media cleanse, a people cleanse, and a pants cleanse. I cannot leave the house.",
+            "My horoscope said avoid unnecessary journeys. This journey has been classified: unnecessary.",
+            "I have a delivery coming sometime between 8 AM and never. I must guard the door.",
+            "I'm saving my energy for an emergency. This is not it, but the emergency doesn't know that.",
+            "Doctor's orders. I can't reveal the doctor. Or the orders. Or whether there's a doctor."
+          ],
+          es: [
+            "Surgió algo. (No surgió nada. Nada va a surgir. El horizonte está despejado.)",
+            "Estoy en una limpieza de redes sociales, una limpieza de gente y una limpieza de pantalones. No puedo salir de casa.",
+            "Mi horóscopo dijo que evitara viajes innecesarios. Este viaje ha sido clasificado: innecesario.",
+            "Estoy esperando una entrega que llega entre las 8 a. m. y nunca. Debo vigilar la puerta.",
+            "Estoy guardando mi energía para una emergencia. Esto no es la emergencia, pero la emergencia no lo sabe.",
+            "Órdenes del doctor. No puedo revelar al doctor. Ni las órdenes. Ni si existe un doctor."
+          ]
+        }
+      };
+
+      function t(key) { return copy[currentLang][key]; }
+      function buzz(pattern) { if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) {} } }
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+      }
+
+      function buildChips() {
+        chipsEl.innerHTML = '';
+        CATS.forEach(function (cat) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'chip';
+          b.dataset.cat = cat.id;
+          b.setAttribute('aria-pressed', String(cat.id === currentCat));
+          b.textContent = cat.emoji + ' ' + t('cat' + cat.id.charAt(0).toUpperCase() + cat.id.slice(1));
+          b.addEventListener('click', function () {
+            currentCat = cat.id;
+            buzz(12);
+            chipsEl.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.cat === currentCat)); });
+          });
+          chipsEl.appendChild(b);
+        });
+      }
+
+      function pick(bank) {
+        var idx = Math.floor(Math.random() * bank.length);
+        var guard = 0;
+        while (bank.length > 1 && idx === lastIndex[currentCat + currentLang] && guard < 8) {
+          idx = Math.floor(Math.random() * bank.length);
+          guard += 1;
+        }
+        lastIndex[currentCat + currentLang] = idx;
+        return idx;
+      }
+
+      function renderResult() {
+        if (!currentExcuse) return;
+        excuseText.textContent = currentExcuse;
+        excuseText.className = 'excuse-text';
+        meterWrap.classList.add('show');
+        deliveryNote.textContent = currentDelivery;
+        deliveryNote.classList.add('show');
+        sendBtn.classList.add('show');
+        meterFill.style.width = '0%';
+        meterPct.textContent = '0%';
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            meterFill.style.width = currentPlaus + '%';
+            var start = null;
+            function step(ts) {
+              if (!start) start = ts;
+              var p = Math.min((ts - start) / 800, 1);
+              meterPct.textContent = Math.round(currentPlaus * p) + '%';
+              if (p < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+          });
+        });
+      }
+
+      function generate() {
+        var bank = BANKS[currentCat][currentLang];
+        var idx = pick(bank);
+        currentExcuse = bank[idx];
+        currentPlaus = 37 + Math.floor(Math.random() * 63);
+        var notes = DELIVERY[currentLang];
+        currentDelivery = notes[Math.floor(Math.random() * notes.length)];
+        excuseCard.classList.remove('pop');
+        void excuseCard.offsetWidth;
+        excuseCard.classList.add('pop');
+        buzz([18, 40, 18]);
+        renderResult();
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        return Promise.resolve();
+      }
+
+      function sendIt() {
+        if (!currentExcuse) return;
+        buzz(15);
+        if (navigator.share) {
+          navigator.share({ text: currentExcuse }).catch(function () {});
+        } else {
+          copyText(currentExcuse).then(function () { showToast(t('copied')); });
+        }
+      }
+
+      function applyLanguage(lang) {
+        currentLang = lang === 'es' ? 'es' : 'en';
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
+        langEn.setAttribute('aria-pressed', String(currentLang === 'en'));
+        langEs.setAttribute('aria-pressed', String(currentLang === 'es'));
+        game.setAttribute('aria-label', currentLang === 'es' ? 'La máquina de excusas' : 'The Excuse Machine');
+        buildChips();
+        if (currentExcuse) {
+          var bank = BANKS[currentCat][currentLang];
+          var idx = lastIndex[currentCat + (currentLang === 'es' ? 'en' : 'es')];
+          if (typeof idx === 'number' && bank[idx]) {
+            lastIndex[currentCat + currentLang] = idx;
+            currentExcuse = bank[idx];
+          }
+          var notes = DELIVERY[currentLang];
+          currentDelivery = notes[Math.floor(Math.random() * notes.length)];
+          renderResult();
+        }
+      }
+
+      langEn.addEventListener('click', function () { applyLanguage('en'); });
+      langEs.addEventListener('click', function () { applyLanguage('es'); });
+      startButton.addEventListener('click', function () {
+        buzz(20);
+        intro.classList.add('hidden');
+        game.setAttribute('aria-hidden', 'false');
+      });
+      backToIntro.addEventListener('click', function () {
+        intro.classList.remove('hidden');
+        game.setAttribute('aria-hidden', 'true');
+      });
+      generateBtn.addEventListener('click', generate);
+      sendBtn.addEventListener('click', sendIt);
+      buildChips();
+    }());
+  </script>
+</body>
+</html>
