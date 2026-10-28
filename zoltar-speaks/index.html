@@ -54,23 +54,35 @@
   .chasing .bulb:nth-of-type(2n){ animation-delay:.18s; } .chasing .bulb:nth-of-type(3n){ animation-delay:.36s; }
   .chasing .bulb:nth-of-type(4n){ animation-delay:.54s; }
   @keyframes bulbChase{ 0%,100%{ fill:#ffca66; } 50%{ fill:#7a5518; } }
-  #headG{ transform-origin:200px 292px; animation:idleSway 9s ease-in-out infinite alternate; }
+  #headG{ transform-origin:200px 300px; animation:idleSway 9s ease-in-out infinite alternate; }
   @keyframes idleSway{ from{ transform:rotate(-.55deg); } to{ transform:rotate(.55deg); } }
   #jawG{ transition:transform .45s cubic-bezier(.6,-0.2,.3,1.4); }
+  .mouth-open #jawG{ transform:translateY(4px); }
   .jaw-open #jawG{ transform:translateY(7px); }
-  .jaw-chomp #jawG{ animation:chomp 1.15s ease-in-out 2; }
-  @keyframes chomp{ 0%,100%{ transform:translateY(2px);} 45%{ transform:translateY(8px);} }
-  #eyeGlowL,#eyeGlowR,#pupilL,#pupilR,#eyeHalo{ opacity:0; transition:opacity .8s ease; }
+  .jaw-chomp #jawG{ animation:chomp .55s ease-in-out 4; }
+  @keyframes chomp{ 0%,100%{ transform:translateY(2px);} 45%{ transform:translateY(9px);} }
+  #eyeGlowL,#eyeGlowR,#pupilL,#pupilR,#eyeHalo{ opacity:0; transition:opacity .55s ease; }
   .eyes-lit #eyeGlowL,.eyes-lit #eyeGlowR,.eyes-lit #pupilL,.eyes-lit #pupilR{ opacity:1; }
-  .eyes-lit #eyeHalo{ opacity:.45; }
+  .eyes-lit #eyeHalo{ opacity:.6; }
   #winLight{ opacity:.06; transition:opacity 1.1s ease; }
   .eyes-lit #winLight{ opacity:.22; }
   #deckBtnGlow{ opacity:0; transition:opacity .4s; }
   .aiming #deckBtnGlow{ opacity:.85; }
-  #rampArm{ transition:transform .18s ease; }
-  .guiding #rampArm{ transition:transform .9s cubic-bezier(.4,0,.2,1); }
   #coinG{ opacity:0; }
   .coin-ready #coinG{ opacity:1; }
+  /* mouth states: closed at idle; the big open mouth is the coin target */
+  #mouthOpenG{ opacity:0; transition:opacity .25s ease; }
+  .mouth-open #mouthOpenG{ opacity:1; }
+  #mouthClosed{ transition:opacity .25s ease; }
+  .mouth-open #mouthClosed{ opacity:0; }
+  #mouthGlow{ opacity:0; transition:opacity .25s ease; }
+  .on-target #mouthGlow{ opacity:.95; }
+  /* arch lettering glows on the hit, like the film machine waking up */
+  .arch-word{ transition:fill .35s ease, filter .35s ease; }
+  .arch-lit .arch-word{ fill:#ffe9ad; filter:drop-shadow(0 0 6px rgba(255,120,50,.95)) drop-shadow(0 0 16px rgba(255,60,30,.55)); }
+  #slotPulse{ opacity:0; }
+  #shooterG{ transition:transform .12s ease; }
+  #slideG{ transition:transform .12s ease; }
 
   /* quarter tray button (overlaid on the cabinet) */
   #trayQuarter{ position:absolute; left:19.5%; top:72.6%; width:16%; aspect-ratio:1; border-radius:50%;
@@ -139,11 +151,48 @@
   .angle-read{ text-align:center; font-weight:900; color:var(--gold-hi); font-size:15px; min-height:20px; }
   .angle-read output{ font-variant-numeric:tabular-nums; }
 
+  /* persistent step instructions (Nest standard: one glance, no manual) */
+  .steps{ border-bottom:1px solid rgba(217,164,65,.25); padding-bottom:10px; margin-bottom:12px; }
+  .step-chips{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .step-dot{ width:26px; height:26px; border-radius:50%; border:1.5px solid rgba(217,164,65,.5); color:#c8a558;
+    font-weight:900; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .25s; }
+  .step-dot.cur{ background:linear-gradient(180deg,#ffd76a,#d9a441); color:#3a2405; border-color:#ffd76a; box-shadow:0 0 10px rgba(255,200,90,.55); }
+  .step-dot.done{ background:rgba(217,164,65,.3); color:#ffd76a; }
+  .step-link{ width:22px; height:2px; background:rgba(217,164,65,.3); }
+  .step-text{ text-align:center; font-weight:800; font-size:15px; color:#ffd76a; margin-top:8px; min-height:21px; }
+
+  /* brass aim knobs (the film machine's wheels) */
+  .knob-row{ display:flex; align-items:center; justify-content:center; gap:13px; margin:8px 0 2px; }
+  .knob{ width:74px; height:74px; border-radius:50%; position:relative; cursor:grab; touch-action:none; flex:0 0 auto;
+    background:radial-gradient(circle at 35% 30%, #ffe9ad, #d9a441 45%, #8a6420 80%, #5c3d10);
+    border:2.5px solid #5c3d10;
+    box-shadow:0 6px 14px rgba(0,0,0,.5), inset 0 -6px 10px rgba(0,0,0,.35), inset 0 4px 6px rgba(255,255,255,.35); }
+  .knob:active{ cursor:grabbing; }
+  .knob:focus-visible{ outline:3px solid #ffd76a; outline-offset:3px; }
+  .knob.off{ opacity:.45; pointer-events:none; }
+  .knob .spokes{ position:absolute; inset:6px; border-radius:50%;
+    background:conic-gradient(from 0deg, rgba(92,61,16,.55) 0 14deg, transparent 14deg 60deg, rgba(92,61,16,.55) 60deg 74deg, transparent 74deg 120deg, rgba(92,61,16,.55) 120deg 134deg, transparent 134deg 180deg, rgba(92,61,16,.55) 180deg 194deg, transparent 194deg 240deg, rgba(92,61,16,.55) 240deg 254deg, transparent 254deg 300deg, rgba(92,61,16,.55) 300deg 314deg, transparent 314deg 360deg); }
+  .knob .pip{ position:absolute; left:50%; top:5px; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
+    background:#7e1420; border:1.5px solid #3a2405; z-index:2; }
+  .knob .hub{ position:absolute; left:50%; top:50%; width:22px; height:22px; transform:translate(-50%,-50%); border-radius:50%;
+    background:radial-gradient(circle at 38% 32%, #fff2c8, #d9a441 60%, #8a6420); border:2px solid #5c3d10; }
+  #onTargetTag{ display:none; width:fit-content; margin:6px auto 0; padding:5px 14px; border-radius:999px;
+    border:1.5px solid var(--gold); background:rgba(255,215,106,.13); color:#ffd76a; font-weight:900; font-size:13.5px; text-align:center; }
+  .btn-big{ font-size:18.5px; padding:15px 30px; }
+
+  /* "Coin in!" caption by the slot */
+  #coinInTag{ position:absolute; left:77.5%; top:69.5%; transform:translate(-50%,-135%); z-index:6; pointer-events:none;
+    background:#2b1a0e; border:1.5px solid var(--gold); color:#ffd76a; font-weight:900; font-size:12.5px;
+    padding:4px 12px; border-radius:999px; opacity:0; transition:opacity .25s; white-space:nowrap; }
+  #coinInTag.on{ opacity:1; }
+
   .status-line{ text-align:center; font-family:'Cinzel',serif; font-size:17px; color:var(--gold-hi); letter-spacing:.5px; min-height:24px; }
 
   /* dialogs */
   .scrim{ position:fixed; inset:0; z-index:40; background:rgba(3,4,10,.74); display:none; align-items:center; justify-content:center; padding:18px; }
   .scrim.on{ display:flex; }
+  /* the ticket reading view sits on a properly opaque scrim — no ghost buttons behind it */
+  #ticketScrim{ background:rgba(2,3,8,.95); }
   .dialog{ width:min(92vw,380px); max-height:88dvh; overflow-y:auto; border-radius:14px; padding:20px 18px;
     background:linear-gradient(170deg,#f6ead0,#ecd9ae); color:#3a2a12; border:1px solid #b98c46;
     box-shadow:0 24px 50px rgba(0,0,0,.6), inset 0 0 0 4px rgba(185,140,70,.22); }
@@ -228,16 +277,16 @@
           <stop offset="0" stop-color="#f4d488"/><stop offset=".5" stop-color="#d9a441"/><stop offset="1" stop-color="#8a6420"/>
         </linearGradient>
         <radialGradient id="skin" cx=".46" cy=".36" r=".9">
-          <stop offset="0" stop-color="#c79a68"/><stop offset=".6" stop-color="#a97a52"/><stop offset="1" stop-color="#7d5636"/>
+          <stop offset="0" stop-color="#8a5a30"/><stop offset=".6" stop-color="#6b421f"/><stop offset="1" stop-color="#452a12"/>
         </radialGradient>
         <linearGradient id="robe" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#6d2a4a"/><stop offset=".55" stop-color="#4e1c38"/><stop offset="1" stop-color="#33101f"/>
+          <stop offset="0" stop-color="#7e2230"/><stop offset=".55" stop-color="#57121e"/><stop offset="1" stop-color="#38080f"/>
         </linearGradient>
         <linearGradient id="turban" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#6a3f96"/><stop offset=".6" stop-color="#4b2a6e"/><stop offset="1" stop-color="#33204f"/>
+          <stop offset="0" stop-color="#5a3390"/><stop offset=".6" stop-color="#402266"/><stop offset="1" stop-color="#2a1547"/>
         </linearGradient>
         <radialGradient id="eyeGlow" cx=".5" cy=".5" r=".5">
-          <stop offset="0" stop-color="#ff8a76"/><stop offset=".55" stop-color="#f22633"/><stop offset="1" stop-color="#a30f1c"/>
+          <stop offset="0" stop-color="#ff6a55"/><stop offset=".55" stop-color="#f22633"/><stop offset="1" stop-color="#d40f1e"/>
         </radialGradient>
         <radialGradient id="coinGold" cx=".36" cy=".3" r=".95">
           <stop offset="0" stop-color="#ffe9ad"/><stop offset=".55" stop-color="#d9a441"/><stop offset="1" stop-color="#9a742a"/>
@@ -280,74 +329,109 @@
         <path d="M95,352 Q88,136 200,120 Q312,136 305,352" fill="none" stroke="#8e1622" stroke-width="30"/>
         <path d="M95,352 Q88,136 200,120 Q312,136 305,352" fill="none" stroke="#d9a441" stroke-width="1.4" opacity=".55"/>
 
-        <!-- teller torso -->
+        <!-- teller torso: deep red garment + the ornate ruffled lace collar -->
         <g id="torsoG">
-          <path d="M104,404 C112,348 142,318 168,306 L232,306 C258,318 288,348 296,404 Z" fill="url(#robe)"/>
-          <path d="M168,306 L200,352 L232,306 L222,300 L200,330 L178,300 Z" fill="#2a0d1c"/>
-          <path d="M178,300 L200,330 L222,300" fill="none" stroke="url(#goldTrim)" stroke-width="3"/>
-          <path d="M146,404 C150,362 158,336 168,318" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
-          <path d="M254,404 C250,362 242,336 232,318" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
-          <!-- ruffled collar -->
-          <path d="M138,318 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q8,-13 16,0 q6,-10 12,-2 l0,14 q-62,16 -124,0 Z"
-                fill="#7a2438" stroke="#2e0f18" stroke-width="2"/>
-        </g>
-
-        <!-- teller head (still-ish; jaw is its own layer) -->
-        <g id="headG">
-          <rect x="186" y="272" width="28" height="34" rx="8" fill="#8a6242"/>
-          <ellipse cx="151" cy="224" rx="9" ry="14" fill="url(#skin)"/>
-          <ellipse cx="249" cy="224" rx="9" ry="14" fill="url(#skin)"/>
-          <circle cx="149" cy="250" r="8.5" fill="none" stroke="url(#goldTrim)" stroke-width="3"/>
-          <ellipse cx="200" cy="216" rx="47" ry="57" fill="url(#skin)"/>
-          <!-- sculpted beard along the cheeks -->
-          <path d="M157,232 q-3,34 12,52 l7,-4 q-12,-20 -12,-46 Z" fill="#2e2019"/>
-          <path d="M243,232 q3,34 -12,52 l-7,-4 q12,-20 12,-46 Z" fill="#2e2019"/>
-          <!-- brows + nose shading -->
-          <path d="M164,196 q15,-8 30,-2" fill="none" stroke="#241509" stroke-width="5" stroke-linecap="round"/>
-          <path d="M206,194 q15,-6 30,2" fill="none" stroke="#241509" stroke-width="5" stroke-linecap="round"/>
-          <path d="M200,206 q5,16 -2,24 q6,5 12,1" fill="none" stroke="#7d5636" stroke-width="3" stroke-linecap="round"/>
-          <!-- eyes: dim slits asleep; ruby glow when lit -->
-          <ellipse id="eyeHalo" cx="200" cy="212" rx="44" ry="17" fill="#ff2a33" opacity="0" filter="url(#softBlur)"/>
-          <ellipse cx="179" cy="212" rx="11" ry="6.5" fill="#503418"/>
-          <ellipse cx="221" cy="212" rx="11" ry="6.5" fill="#503418"/>
-          <ellipse id="eyeGlowL" cx="179" cy="212" rx="11.5" ry="7" fill="url(#eyeGlow)"/>
-          <ellipse id="eyeGlowR" cx="221" cy="212" rx="11.5" ry="7" fill="url(#eyeGlow)"/>
-          <circle id="pupilL" cx="179" cy="212" r="2.4" fill="#160402"/>
-          <circle id="pupilR" cx="221" cy="212" r="2.4" fill="#160402"/>
-          <!-- turban -->
-          <path d="M150,196 C142,140 168,116 200,116 C232,116 258,140 250,196 C236,182 220,178 200,178 C180,178 164,182 150,196 Z" fill="url(#turban)"/>
-          <path d="M156,168 C176,152 224,152 244,168" fill="none" stroke="#7d55b8" stroke-width="5" opacity=".7"/>
-          <path d="M160,146 C182,132 218,132 240,146" fill="none" stroke="#5d3690" stroke-width="5" opacity=".8"/>
-          <path d="M150,196 C164,182 180,178 200,178 C220,178 236,182 250,196 L250,186 C234,170 218,166 200,166 C182,166 166,170 150,186 Z" fill="#8e1622"/>
-          <path d="M200,138 l9,12 -9,13 -9,-13 Z" fill="#c02b3c" stroke="url(#goldTrim)" stroke-width="2.5"/>
-          <!-- jaw layer: chin, goatee, and the OPEN MOUTH — the coin's target -->
-          <g id="jawG">
-            <path d="M168,242 L232,242 C230,272 218,292 200,292 C182,292 170,272 168,242 Z" fill="url(#skin)"/>
-            <path d="M188,286 q12,10 24,0 l-3,16 q-9,6 -18,0 Z" fill="#2e2019"/>
-            <ellipse cx="200" cy="252" rx="15.5" ry="8.5" fill="#120806"/>
-            <ellipse cx="200" cy="248.5" rx="15.5" ry="4" fill="#000" opacity=".55"/>
-            <path d="M186,262 q14,6 28,0" fill="none" stroke="#5f3d24" stroke-width="2.4"/>
+          <path d="M94,404 C98,350 126,326 162,316 L238,316 C274,326 302,350 306,404 Z" fill="url(#robe)"/>
+          <path d="M176,316 L200,352 L224,316 L214,310 L200,334 L186,310 Z" fill="#2a0d1c"/>
+          <path d="M186,310 L200,334 L214,310" fill="none" stroke="url(#goldTrim)" stroke-width="3"/>
+          <path d="M146,404 C150,362 158,338 168,322" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
+          <path d="M254,404 C250,362 242,338 232,322" fill="none" stroke="#d9a441" stroke-width="2.4" opacity=".65"/>
+          <!-- ruffled lace collar: three scalloped rows, dark lace with gold tips, like the film ruff -->
+          <path d="M116,338 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 q10.5,-15 21,0 L284,352 Q200,366 116,352 Z"
+                fill="#241019" stroke="#12060c" stroke-width="1.5"/>
+          <path d="M126,356 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 q10,-13 20,0 L286,368 Q200,380 126,368 Z"
+                fill="#1c0b13" stroke="#12060c" stroke-width="1.5"/>
+          <path d="M138,372 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 q9,-11 18,0 L282,382 Q200,392 138,382 Z"
+                fill="#241019" stroke="#12060c" stroke-width="1.5"/>
+          <g fill="#d9a441">
+            <circle cx="127" cy="330" r="1.7"/><circle cx="148" cy="330" r="1.7"/><circle cx="169" cy="330" r="1.7"/><circle cx="190" cy="330" r="1.7"/>
+            <circle cx="211" cy="330" r="1.7"/><circle cx="232" cy="330" r="1.7"/><circle cx="253" cy="330" r="1.7"/><circle cx="274" cy="330" r="1.7"/>
+            <circle cx="136" cy="349" r="1.5"/><circle cx="156" cy="349" r="1.5"/><circle cx="176" cy="349" r="1.5"/><circle cx="196" cy="349" r="1.5"/>
+            <circle cx="216" cy="349" r="1.5"/><circle cx="236" cy="349" r="1.5"/><circle cx="256" cy="349" r="1.5"/><circle cx="276" cy="349" r="1.5"/>
           </g>
         </g>
 
-        <!-- silver filigree flourish, window right (from the film frames) -->
-        <path d="M306,196 q16,10 10,30 q-5,17 -18,20 q14,4 12,20 q-2,15 -16,18 M298,206 q-12,14 -4,30 M302,258 q-12,8 -8,22"
-              fill="none" stroke="#c9ccd4" stroke-width="2.4" opacity=".75" stroke-linecap="round"/>
+        <!-- teller head, copied from the film frames: big bronze sculpted face,
+             deep purple turban with red wrap folds, stern textured brows,
+             mustache + goatee framing the mouth, long rectangular chin beard.
+             Still-ish; the jaw is its own layer. -->
+        <g id="headG">
+          <rect x="183" y="284" width="34" height="48" rx="9" fill="#5f3a1e"/>
+          <ellipse cx="137" cy="244" rx="10" ry="17" fill="#7a4e2a"/>
+          <ellipse cx="263" cy="244" rx="10" ry="17" fill="#7a4e2a"/>
+          <!-- the BIG gold hoop earring (film: left ear) -->
+          <circle cx="137" cy="260" r="3" fill="url(#goldTrim)"/>
+          <circle cx="137" cy="275" r="13.5" fill="none" stroke="url(#goldTrim)" stroke-width="4.5"/>
+          <ellipse cx="200" cy="228" rx="58" ry="84" fill="url(#skin)"/>
+          <!-- sculpt shading: shadowed cheeks, lit cheekbones -->
+          <ellipse cx="150" cy="254" rx="10" ry="34" fill="#2e1a0a" opacity=".36" filter="url(#softBlur)"/>
+          <ellipse cx="250" cy="254" rx="10" ry="34" fill="#2e1a0a" opacity=".36" filter="url(#softBlur)"/>
+          <ellipse cx="167" cy="246" rx="12" ry="6" fill="#d9b078" opacity=".22" filter="url(#softBlur)"/>
+          <ellipse cx="233" cy="246" rx="12" ry="6" fill="#d9b078" opacity=".22" filter="url(#softBlur)"/>
 
-        <!-- coin ramp (inside the glass, lower left) -->
-        <g id="rampBase">
-          <path d="M118,404 L158,404 L150,382 L126,382 Z" fill="#5c3d10" stroke="url(#goldTrim)" stroke-width="1.6"/>
-          <circle cx="138" cy="388" r="7" fill="url(#coinGold)" stroke="#8a6420" stroke-width="1.5"/>
-        </g>
-        <g id="rampArm">
-          <rect x="133.5" y="342" width="9" height="48" rx="4.5" fill="url(#goldTrim)"/>
-          <path d="M128,344 q10,-8 20,0 l-3,7 q-7,-4 -14,0 Z" fill="#8a6420"/>
-        </g>
+          <!-- jaw layer: chin, beard frame, mouth states, and the long
+               RECTANGULAR chin beard that hangs below the lower lip -->
+          <g id="jawG">
+            <path d="M160,262 L240,262 C238,296 222,320 200,320 C178,320 162,296 160,262 Z" fill="#7a4e2a"/>
+            <path d="M165,270 L175,270 L173,308 L163,302 Z" fill="#241610"/>
+            <path d="M235,270 L225,270 L227,308 L237,302 Z" fill="#241610"/>
+            <g id="mouthOpenG">
+              <ellipse id="mouthGlow" cx="200" cy="295" rx="27" ry="17" fill="#ffca66" filter="url(#softBlur)"/>
+              <path d="M175,280 L225,280 Q232,280 232,293 Q232,307 224,310 L176,310 Q168,307 168,293 Q168,280 175,280 Z" fill="#0a0505"/>
+              <path d="M168,293 Q168,280 175,280 L225,280 Q232,280 232,293 Q200,285 168,293 Z" fill="#000" opacity=".6"/>
+            </g>
+            <g id="mouthClosed">
+              <path d="M183,293 Q200,289 217,293" fill="none" stroke="#1d0f06" stroke-width="3.5" stroke-linecap="round"/>
+              <path d="M188,300 Q200,303 212,300" fill="none" stroke="#5f3d24" stroke-width="2" opacity=".7"/>
+            </g>
+            <path d="M179,310 L221,310 L219,350 Q200,358 181,350 Z" fill="#241610"/>
+            <path d="M188,316 Q186,332 188,346 M200,318 Q200,334 200,350 M212,316 Q214,332 212,346" fill="none" stroke="#453322" stroke-width="2"/>
+          </g>
 
-        <!-- the animated coin -->
-        <g id="coinG">
-          <circle id="coinBody" cx="0" cy="0" r="11" fill="url(#coinGold)" stroke="#8a6420" stroke-width="1.6"/>
-          <text x="0" y="4.5" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="11" fill="#5c3d10">25</text>
+          <!-- textured mustache (stays put when the jaw drops) -->
+          <path d="M172,280 Q200,268 228,280 Q223,290 210,288 Q200,284 190,288 Q177,290 172,280 Z" fill="#2a1a12"/>
+          <path d="M182,279 Q192,274 198,277 M218,279 Q208,274 202,277" fill="none" stroke="#453322" stroke-width="1.6"/>
+
+          <!-- strong straight nose -->
+          <path d="M200,218 L193,254 Q191,264 199,267 L201,267 Q209,264 207,254 Z" fill="#000" opacity=".14"/>
+          <path d="M200,220 L196,252" fill="none" stroke="#5f3d24" stroke-width="2.5" opacity=".8"/>
+          <path d="M188,266 Q200,261 212,266" fill="none" stroke="#4a2c15" stroke-width="2.5"/>
+          <ellipse cx="193" cy="263" rx="3.4" ry="2.2" fill="#241305"/>
+          <ellipse cx="207" cy="263" rx="3.4" ry="2.2" fill="#241305"/>
+
+          <!-- eyes: dark and sunken at idle; SOLID RED OVALS when lit -->
+          <ellipse id="eyeHalo" cx="200" cy="222" rx="52" ry="19" fill="#ff2a33" opacity="0" filter="url(#softBlur)"/>
+          <ellipse cx="173" cy="222" rx="16.5" ry="9.5" fill="#170b06"/>
+          <ellipse cx="227" cy="222" rx="16.5" ry="9.5" fill="#170b06"/>
+          <ellipse cx="173" cy="222" rx="9" ry="5" fill="#571a12" opacity=".85"/>
+          <ellipse cx="227" cy="222" rx="9" ry="5" fill="#571a12" opacity=".85"/>
+          <ellipse id="eyeGlowL" cx="173" cy="222" rx="15.5" ry="8.5" fill="url(#eyeGlow)"/>
+          <ellipse id="eyeGlowR" cx="227" cy="222" rx="15.5" ry="8.5" fill="url(#eyeGlow)"/>
+          <circle id="pupilL" cx="173" cy="222" r="2.2" fill="#2a0202"/>
+          <circle id="pupilR" cx="227" cy="222" r="2.2" fill="#2a0202"/>
+
+          <!-- THICK textured gray-brown brows, heavy and stern -->
+          <path d="M148,198 Q172,186 199,202 L197,213 Q171,200 152,210 Z" fill="#4a3826"/>
+          <path d="M252,198 Q228,186 201,202 L203,213 Q229,200 248,210 Z" fill="#4a3826"/>
+          <path d="M156,200 Q174,193 192,203 M158,206 Q174,199 190,208 M168,194 Q182,190 194,198" fill="none" stroke="#6b543a" stroke-width="1.8"/>
+          <path d="M244,200 Q226,193 208,203 M242,206 Q226,199 210,208 M232,194 Q218,190 206,198" fill="none" stroke="#6b543a" stroke-width="1.8"/>
+          <path d="M196,198 L195,210 M204,198 L205,210" stroke="#2e1c0e" stroke-width="2.4" stroke-linecap="round"/>
+
+          <!-- turban: deep purple folds + RED wrap bands, crowding the arch top -->
+          <path d="M131,198 C116,118 150,102 200,102 C250,102 284,118 269,198 C253,171 231,160 200,160 C169,160 147,171 131,198 Z" fill="url(#turban)"/>
+          <path d="M138,158 Q200,132 262,158" fill="none" stroke="#2a1547" stroke-width="7" opacity=".55"/>
+          <path d="M142,132 Q200,108 258,132" fill="none" stroke="#2a1547" stroke-width="7" opacity=".55"/>
+          <path d="M146,146 Q200,122 254,146" fill="none" stroke="#7a4fb5" stroke-width="3" opacity=".5"/>
+          <path d="M140,152 Q200,126 260,152" fill="none" stroke="#a31621" stroke-width="8" opacity=".45"/>
+          <path d="M134,176 Q200,148 266,176" fill="none" stroke="#a31621" stroke-width="10" opacity=".9"/>
+          <path d="M131,198 C147,171 169,160 200,160 C231,160 253,171 269,198 L269,184 C252,158 230,148 200,148 C170,148 148,158 131,184 Z" fill="#8e1622"/>
+          <!-- small jeweled crown piece on the front band -->
+          <path d="M186,158 L190,144 L197,152 L200,142 L203,152 L210,144 L214,158 Z" fill="url(#goldTrim)" stroke="#8a6420" stroke-width="1.5"/>
+          <circle cx="200" cy="153" r="3.5" fill="#c02b3c" stroke="#d9a441" stroke-width="1"/>
+          <circle cx="190" cy="154" r="2" fill="#2a6db0"/>
+          <circle cx="210" cy="154" r="2" fill="#2a6db0"/>
+          <!-- dark hair wisps sticking up behind the shooter mount -->
+          <path d="M193,106 Q188,90 182,84 M201,104 Q202,86 206,78 M209,106 Q214,92 220,86" fill="none" stroke="#17100b" stroke-width="3" stroke-linecap="round"/>
         </g>
 
         <rect id="winLight" x="78" y="108" width="244" height="296" fill="#ff9a4d" opacity=".06"/>
@@ -356,30 +440,58 @@
       <use href="#winArch" fill="none" stroke="url(#goldTrim)" stroke-width="5"/>
       <use href="#winArch" fill="none" stroke="#120802" stroke-width="1.4" opacity=".5" transform="translate(0,3)"/>
 
-      <!-- arch instruction lettering: gold on the red band -->
-      <text font-family="Cinzel, Georgia, serif" font-weight="700" font-size="11.5" letter-spacing="1" fill="#f0d488">
-        <textPath href="#arcL" textLength="200" lengthAdjust="spacingAndGlyphs">AIM RAMP AT ZOLTAR'S MOUTH</textPath>
+      <!-- silver filigree flourish on the cabinet, right of the window (from the film
+           frames) — kept clear of the arch words so they stay readable -->
+      <path d="M338,214 q18,8 14,26 q-3,16 -18,20 q15,3 13,18 q-2,14 -15,17 M340,224 q-11,12 -5,26 M342,268 q-11,7 -8,19"
+            fill="none" stroke="#c9ccd4" stroke-width="2.4" opacity=".8" stroke-linecap="round"/>
+
+      <!-- arch instruction lettering: gold on the red band; glows on the hit -->
+      <text class="arch-word" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="14.5" letter-spacing="1" fill="#f0d488">
+        <textPath href="#arcL" textLength="236" lengthAdjust="spacingAndGlyphs">AIM RAMP AT ZOLTAR'S MOUTH</textPath>
       </text>
-      <text font-family="Cinzel, Georgia, serif" font-weight="700" font-size="11.5" letter-spacing="1" fill="#f0d488">
-        <textPath href="#arcR" textLength="200" lengthAdjust="spacingAndGlyphs">PRESS RED BUTTON · RELEASE COIN</textPath>
+      <text class="arch-word" font-family="Cinzel, Georgia, serif" font-weight="700" font-size="14.5" letter-spacing="1" fill="#f0d488">
+        <textPath href="#arcR" textLength="236" lengthAdjust="spacingAndGlyphs">PRESS RED BUTTON · RELEASE COIN</textPath>
       </text>
+
+      <!-- coin slide: hangs in front of the glass — dips down, comes back up into his mouth.
+           Its path is drawn by the same slide math that flies the coin (set at boot). -->
+      <g id="slideG">
+        <path id="slideTrack" d="" fill="none" stroke="url(#goldTrim)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="slideGroove" d="" fill="none" stroke="#5c3d10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+      </g>
+      <!-- top-front shooter: fixed mount on the arch, barrel pivots on it -->
+      <rect x="189" y="92" width="22" height="18" rx="4" fill="#5c3d10" stroke="url(#goldTrim)" stroke-width="1.6"/>
+      <g id="shooterG">
+        <path d="M194,110 L206,110 L209,142 Q200,148 191,142 Z" fill="url(#goldTrim)" stroke="#8a6420" stroke-width="1.4"/>
+        <rect x="190" y="140" width="20" height="7" rx="3" fill="#8a6420"/>
+        <circle cx="200" cy="118" r="11" fill="url(#coinGold)" stroke="#8a6420" stroke-width="2"/>
+        <circle cx="200" cy="118" r="3.6" fill="#3a2405"/>
+      </g>
+
+      <!-- the animated coin -->
+      <g id="coinG">
+        <circle id="coinBody" cx="0" cy="0" r="11" fill="url(#coinGold)" stroke="#8a6420" stroke-width="1.6"/>
+        <text x="0" y="4.5" text-anchor="middle" font-family="Cinzel, Georgia, serif" font-weight="900" font-size="11" fill="#5c3d10">25</text>
+      </g>
 
       <!-- control deck -->
       <circle id="deckBtnGlow" cx="238" cy="472" r="24" fill="#ff4a3d" filter="url(#softBlur)"/>
       <circle cx="238" cy="472" r="17" fill="url(#redBtn)" stroke="#5f0a11" stroke-width="2.5"/>
       <circle cx="238" cy="465" r="6" fill="#fff" opacity=".35"/>
+      <rect id="slotPulse" x="279" y="437" width="62" height="68" rx="8" fill="rgba(255,215,106,.12)" stroke="#ffd76a" stroke-width="3"/>
       <g>
         <rect x="282" y="440" width="56" height="62" rx="7" fill="#1c1006" stroke="url(#goldTrim)" stroke-width="2"/>
         <rect x="305" y="450" width="9" height="30" rx="4.5" fill="#000" stroke="#6d5326"/>
         <text x="310" y="496" text-anchor="middle" font-family="Cinzel, serif" font-size="10.5" fill="#f0d488">25¢</text>
       </g>
+      <text x="238" y="516" text-anchor="middle" font-family="Cinzel, serif" font-size="9.5" letter-spacing="1.4" fill="#f0d488">RELEASE COIN</text>
       <g>
         <rect x="56" y="458" width="110" height="48" rx="10" fill="#120802" stroke="#6d5326" stroke-width="1.6"/>
-        <text x="111" y="452" text-anchor="middle" font-family="Cinzel, serif" font-size="9.5" letter-spacing="1.6" fill="#c8a558">QUARTER TRAY</text>
+        <text x="111" y="452" text-anchor="middle" font-family="Cinzel, serif" font-size="9.5" letter-spacing="1.6" fill="#c8a558">TAP TO INSERT</text>
       </g>
       <g>
-        <rect x="129" y="520" width="142" height="17" rx="4" fill="url(#goldTrim)" opacity=".9"/>
-        <text x="200" y="532" text-anchor="middle" font-family="Cinzel, serif" font-size="8.5" letter-spacing="1" fill="#3a2405">FORTUNES · EST. 1907</text>
+        <rect x="118" y="520" width="164" height="17" rx="4" fill="url(#goldTrim)" opacity=".9"/>
+        <text x="200" y="532" text-anchor="middle" font-family="Cinzel, serif" font-size="8.5" letter-spacing=".5" fill="#3a2405">ZOLTAR SAYS · MAKE YOUR WISH</text>
       </g>
 
       <!-- ticket slot -->
@@ -388,6 +500,7 @@
     </svg>
 
     <button id="trayQuarter" type="button" aria-label="Insert quarter — free play">25¢</button>
+    <div id="coinInTag" aria-hidden="true">Coin in!</div>
 
     <div class="slot-clip" aria-hidden="false">
       <button id="popTicket" type="button" aria-label="Your fortune ticket. Tap to read it." tabindex="-1">
@@ -397,6 +510,17 @@
   </div>
 
   <div class="deck">
+    <!-- persistent step instructions -->
+    <div class="steps">
+      <div class="step-chips" aria-hidden="true">
+        <span class="step-dot cur" id="dot1">1</span><span class="step-link"></span>
+        <span class="step-dot" id="dot2">2</span><span class="step-link"></span>
+        <span class="step-dot" id="dot3">3</span><span class="step-link"></span>
+        <span class="step-dot" id="dot4">4</span>
+      </div>
+      <p class="step-text" id="stepText">1 · Tap the quarter — it drops into the slot</p>
+    </div>
+
     <!-- IDLE -->
     <section class="panel on" id="panelIdle" aria-label="Insert a coin">
       <p class="invitation">Insert a coin. Make a wish.<br>Discover what awaits.</p>
@@ -416,17 +540,23 @@
       </div>
     </section>
 
-    <!-- AIMING -->
+    <!-- AIMING: the two brass knobs swing the top-front shooter -->
     <section class="panel" id="panelAim" aria-label="Aim the coin">
       <p class="msg" id="aimMsg" role="status"></p>
-      <p class="hint">Aim toward Zoltar's mouth.</p>
-      <div class="aim-row">
+      <p class="hint">Drag the brass knobs — a little turn shifts the slide.</p>
+      <div class="knob-row">
         <button class="aim-arrow" id="aimLeft" type="button" aria-label="Aim left">◀</button>
-        <input type="range" id="aimSlider" min="-32" max="38" step="1" value="8" aria-label="Coin ramp angle">
+        <div class="knob" id="knobL" role="slider" tabindex="0" aria-label="Aim knobs. Drag, or use the arrow keys." aria-valuemin="-16" aria-valuemax="20" aria-valuenow="8" aria-valuetext="8 degrees">
+          <span class="spokes"></span><span class="pip"></span><span class="hub"></span>
+        </div>
+        <div class="knob" id="knobR" role="slider" tabindex="0" aria-label="Aim knobs. Drag, or use the arrow keys." aria-valuemin="-16" aria-valuemax="20" aria-valuenow="8" aria-valuetext="8 degrees">
+          <span class="spokes"></span><span class="pip"></span><span class="hub"></span>
+        </div>
         <button class="aim-arrow" id="aimRight" type="button" aria-label="Aim right">▶</button>
       </div>
-      <p class="angle-read">Ramp angle: <output id="angleOut" for="aimSlider">8°</output></p>
-      <button class="btn btn-ghost" id="guideBtn" type="button" style="display:none;margin:6px auto 0">Guide my aim</button>
+      <input type="range" id="aimSlider" class="sr-only" min="-16" max="20" step="0.5" value="8" tabindex="-1" aria-hidden="true">
+      <p class="angle-read">Shooter: <output id="angleOut" for="aimSlider">8°</output></p>
+      <p id="onTargetTag">★ ON TARGET — the sweet spot · cleanest drop</p>
       <button class="btn btn-red" id="releaseBtn" type="button">Release coin</button>
     </section>
 
@@ -440,8 +570,8 @@
     <section class="panel" id="panelDone" aria-label="Your fortune is ready">
       <p class="status-line">Your fortune has been printed.</p>
       <div class="btn-row">
-        <button class="btn btn-gold" id="readBtn" type="button" style="margin:0">Read your fortune</button>
-        <button class="btn btn-ghost" id="anotherBtn" type="button">Make another wish</button>
+        <button class="btn btn-gold btn-big" id="readBtn" type="button" style="margin:0">Read your fortune</button>
+        <button class="btn btn-gold btn-big" id="anotherBtn" type="button" style="margin:0">Play again</button>
       </div>
     </section>
   </div>
@@ -475,7 +605,7 @@
         <button class="btn btn-gold" id="keepBtn" type="button" style="margin:0">Keep this fortune</button>
       </div>
       <div class="btn-row">
-        <button class="btn btn-ghost" id="anotherBtn2" type="button" style="color:#f4d488">Make another wish</button>
+        <button class="btn btn-ghost" id="anotherBtn2" type="button" style="color:#f4d488">Play again</button>
         <button class="btn btn-ghost" id="closeTicketBtn" type="button" style="color:#f4d488">Close</button>
       </div>
     </div>
@@ -488,8 +618,8 @@
       <ol>
         <li>Insert a free virtual quarter.</li>
         <li>Make a wish — or keep it secret.</li>
-        <li>Aim the coin toward Zoltar's mouth.</li>
-        <li>Release it and collect your fortune.</li>
+        <li>Turn the brass knobs to line up the slide with his mouth.</li>
+        <li>Press the red button to release the coin, and collect your fortune.</li>
       </ol>
       <button class="btn btn-gold" id="howClose" type="button" style="display:block;margin-left:auto;margin-right:auto">Back to the machine</button>
     </div>
@@ -549,66 +679,85 @@
     { id:'morning-bell', title:'The Morning Bell', message:'The bell does not ring because the day is perfect. It rings because the day is here.', action:'Begin today as it is, not as it might have been.' }
   ];
 
-  /* ============ SCENE GEOMETRY + BALLISTICS (normalized SVG units) ============ */
+  /* ============ SCENE GEOMETRY + THE COIN SLIDE (normalized SVG units) ============
+     The shooter hangs at the top front of the window and pivots on its mount.
+     The coin rides a visible slide: it dips down, comes back up, and lands in
+     his mouth — EVERY release lands. The aim angle only chooses the landing
+     STYLE: dead-center = a clean drop-in; off-center = the coin rides the
+     slide, wobbles at the lip, kisses the chin, teeters — then tips in.
+     One deterministic path drives both the visuals and the landing. */
   var SCENE = {
-    mouth: { x: 200, y: 250, rx: 30, ry: 22 },
-    pivot: { x: 138, y: 388 },
-    arm: 46,
-    speed: 470,
-    gravity: 560,
-    angleMin: -32,
-    angleMax: 38,
-    dt: 1 / 120,
-    maxT: 1.9
+    mouth: { x: 200, y: 292, rx: 30, ry: 22 },
+    pivot: { x: 200, y: 118 },
+    tipLen: 30,
+    angleMin: -16,
+    angleMax: 20,
+    sweet: 2,
+    sweetBand: 3
   };
-  function launchPoint(angleDeg) {
+  function shooterTip(angleDeg) {
     var r = angleDeg * Math.PI / 180;
-    return { x: SCENE.pivot.x + SCENE.arm * Math.sin(r), y: SCENE.pivot.y - SCENE.arm * Math.cos(r) };
+    return { x: SCENE.pivot.x + SCENE.tipLen * Math.sin(r), y: SCENE.pivot.y + SCENE.tipLen * Math.cos(r) };
+  }
+  function launchPoint(angleDeg) { return shooterTip(angleDeg); }
+  function cubic(p0, p1, p2, p3, t) {
+    var u = 1 - t;
+    return {
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y
+    };
+  }
+  function slidePoints(angleDeg) {
+    var tip = shooterTip(angleDeg);
+    var sway = (angleDeg - SCENE.sweet) * 1.15;
+    /* an open swooping chute: down and out to the left, dip under the chin,
+       then rise back up into the mouth from the other side */
+    var dip = { x: 172 + sway, y: 324 };
+    var a1 = { x: tip.x - 14, y: tip.y + 66 };
+    var a2 = { x: 152, y: 258 };
+    var b1 = { x: 188 + sway * 0.6, y: 332 };
+    var b2 = { x: 207, y: 300 };
+    var end = { x: SCENE.mouth.x, y: SCENE.mouth.y - 2 };
+    var pts = [], i, t;
+    for (i = 0; i < 55; i++) { t = i / 55; pts.push(cubic(tip, a1, a2, dip, t)); }
+    for (i = 0; i < 35; i++) { t = i / 35; pts.push(cubic(dip, b1, b2, end, t)); }
+    pts.push(end);
+    var lipIndex = pts.length - 1, bestD = 1e18;
+    for (i = Math.floor(pts.length * 0.6); i < pts.length; i++) {
+      var dx = pts[i].x - SCENE.mouth.x, dy = pts[i].y - (SCENE.mouth.y - 6), d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; lipIndex = i; }
+    }
+    return { points: pts, lipIndex: lipIndex, tip: tip };
   }
   function simulate(angleDeg) {
-    var r = angleDeg * Math.PI / 180;
-    var p0 = launchPoint(angleDeg);
-    var vx = SCENE.speed * Math.sin(r), vy = -SCENE.speed * Math.cos(r);
-    var pts = [], x = p0.x, y = p0.y, t = 0, minNorm = 1e9, minIdx = -1;
-    for (var i = 0; i <= Math.round(SCENE.maxT / SCENE.dt); i++) {
-      var dx = (x - SCENE.mouth.x) / SCENE.mouth.rx, dy = (y - SCENE.mouth.y) / SCENE.mouth.ry;
-      var n = Math.sqrt(dx * dx + dy * dy);
-      pts.push({ x: x, y: y, t: t });
-      if (n < minNorm) { minNorm = n; minIdx = i; }
-      vy += SCENE.gravity * SCENE.dt; x += vx * SCENE.dt; y += vy * SCENE.dt; t += SCENE.dt;
-      if (y > 452 && i > 4) break;
-    }
-    return { points: pts, hit: minNorm <= 1, minNorm: minNorm, hitIndex: minIdx, duration: t, angle: angleDeg };
+    var s = slidePoints(angleDeg);
+    var offset = Math.abs(angleDeg - SCENE.sweet);
+    var style = offset <= SCENE.sweetBand ? 'clean' : 'teeter';
+    return {
+      points: s.points, lipIndex: s.lipIndex, tip: s.tip,
+      style: style, offset: offset,
+      teeterMs: style === 'teeter' ? Math.min(950, Math.round(420 + offset * 26)) : 0,
+      landed: true, hit: true, angle: angleDeg
+    };
   }
-  function bestAngle() {
-    var best = 0, bestN = 1e9;
-    for (var a = SCENE.angleMin; a <= SCENE.angleMax; a += 0.25) {
-      var s = simulate(a);
-      if (s.minNorm < bestN) { bestN = s.minNorm; best = a; }
-    }
-    return best;
-  }
+  function bestAngle() { return SCENE.sweet; }
 
   /* ============ STATE MACHINE (explicit reducer) ============ */
   var TRANSITIONS = {
     IDLE:          { INSERT: 'COIN_INSERTED', RESET: 'IDLE' },
     COIN_INSERTED: { COIN_DONE: 'WISH_ENTRY', RESET: 'IDLE' },
     WISH_ENTRY:    { SEAL: 'AIMING', SECRET: 'AIMING', RESET: 'IDLE' },
-    AIMING:        { RELEASE: 'COIN_RELEASED', GUIDE: 'AIMING', RESET: 'IDLE' },
-    COIN_RELEASED: { HIT: 'REVEALING', MISS: 'MISSED', RESET: 'IDLE' },
-    MISSED:        { ACK: 'AIMING', RESET: 'IDLE' },
+    AIMING:        { RELEASE: 'COIN_RELEASED', RESET: 'IDLE' },
+    COIN_RELEASED: { LAND: 'REVEALING', RESET: 'IDLE' },
     REVEALING:     { DONE: 'FORTUNE_READY', SKIP: 'FORTUNE_READY', RESET: 'IDLE' },
     FORTUNE_READY: { ANOTHER: 'IDLE', RESET: 'IDLE' }
   };
-  function initialState() { return { name: 'IDLE', misses: 0, guided: false, plays: 0, hasTicket: false }; }
+  function initialState() { return { name: 'IDLE', plays: 0, hasTicket: false }; }
   function reduce(state, event) {
     var row = TRANSITIONS[state.name];
     var next = row ? row[event] : undefined;
     if (!next) return state; /* illegal / duplicate input is ignored */
-    var s = { name: next, misses: state.misses, guided: state.guided, plays: state.plays, hasTicket: state.hasTicket };
-    if (event === 'MISS') s.misses = state.misses + 1;
-    if (event === 'GUIDE') s.guided = true;
-    if (event === 'INSERT' || event === 'ANOTHER' || event === 'RESET') { s.misses = 0; s.guided = false; }
+    var s = { name: next, plays: state.plays, hasTicket: state.hasTicket };
     if (event === 'ANOTHER' || event === 'RESET') s.hasTicket = false;
     if (next === 'FORTUNE_READY') { s.hasTicket = true; s.plays = state.plays + 1; }
     return s;
@@ -646,7 +795,7 @@
 
   root.ZoltarCore = {
     FORTUNES: FORTUNES, SCENE: SCENE, TRANSITIONS: TRANSITIONS,
-    launchPoint: launchPoint, simulate: simulate, bestAngle: bestAngle,
+    launchPoint: launchPoint, shooterTip: shooterTip, slidePoints: slidePoints, simulate: simulate, bestAngle: bestAngle,
     initialState: initialState, reduce: reduce,
     shuffled: shuffled, buildDeck: buildDeck, drawFromDeck: drawFromDeck, fortuneById: fortuneById
   };
@@ -662,7 +811,7 @@
   var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var svg = $('boothSvg'), stage = $('stage');
-  var panels = { IDLE: $('panelIdle'), WISH_ENTRY: $('panelWish'), AIMING: $('panelAim'), MISSED: $('panelAim'), COIN_RELEASED: $('panelAim'), REVEALING: $('panelReveal'), FORTUNE_READY: $('panelDone'), COIN_INSERTED: $('panelIdle') };
+  var panels = { IDLE: $('panelIdle'), WISH_ENTRY: $('panelWish'), AIMING: $('panelAim'), COIN_RELEASED: $('panelAim'), REVEALING: $('panelReveal'), FORTUNE_READY: $('panelDone'), COIN_INSERTED: $('panelIdle') };
   var srStatus = $('srStatus');
 
   /* ---------- safe storage (recent fortune ids only; the wish is NEVER stored) ---------- */
@@ -750,18 +899,84 @@
   function clearTimers() { timers.forEach(clearTimeout); timers = []; if (rafId) cancelAnimationFrame(rafId); rafId = null; }
   function announce(text) { srStatus.textContent = text; }
 
-  var slider = $('aimSlider'), angleOut = $('angleOut'), rampArm = $('rampArm'), coinG = $('coinG');
+  var slider = $('aimSlider'), angleOut = $('angleOut'), coinG = $('coinG');
+  var shooterG = $('shooterG'), slideG = $('slideG');
+  var knobs = [$('knobL'), $('knobR')];
+  var flying = false;
   function angle() { return parseFloat(slider.value); }
+  function setAngle(v, silent) {
+    var c = Math.max(Core.SCENE.angleMin, Math.min(Core.SCENE.angleMax, v));
+    c = Math.round(c * 2) / 2;
+    if (parseFloat(slider.value) !== c) { slider.value = c; if (!silent) sfx.click(); }
+    renderAngle();
+  }
   function renderAngle() {
     var a = angle();
     angleOut.textContent = a + '°';
-    rampArm.setAttribute('transform', 'rotate(' + a + ' 138 388)');
-    var tip = Core.launchPoint(a);
-    coinG.setAttribute('transform', 'translate(' + tip.x + ' ' + tip.y + ')');
+    shooterG.setAttribute('transform', 'rotate(' + a + ' 200 118)');
+    slideG.setAttribute('transform', 'rotate(' + (a * 0.35) + ' 200 118)');
+    knobs.forEach(function (k) {
+      k.style.transform = 'rotate(' + (a * 7) + 'deg)';
+      k.setAttribute('aria-valuenow', a);
+      k.setAttribute('aria-valuetext', a + ' degrees');
+    });
+    if (!flying && (state.name === 'AIMING')) {
+      var tip = Core.shooterTip(a);
+      coinG.setAttribute('transform', 'translate(' + tip.x + ' ' + tip.y + ')');
+    }
+    var sweet = Core.simulate(a).style === 'clean';
+    var aiming = state.name === 'AIMING';
+    svg.classList.toggle('on-target', sweet && aiming);
+    $('onTargetTag').style.display = (sweet && aiming) ? 'block' : 'none';
   }
   slider.addEventListener('input', renderAngle);
-  $('aimLeft').addEventListener('click', function () { slider.value = Math.max(Core.SCENE.angleMin, angle() - 2); renderAngle(); sfx.click(); });
-  $('aimRight').addEventListener('click', function () { slider.value = Math.min(Core.SCENE.angleMax, angle() + 2); renderAngle(); sfx.click(); });
+  $('aimLeft').addEventListener('click', function () { setAngle(angle() - 1); });
+  $('aimRight').addEventListener('click', function () { setAngle(angle() + 1); });
+  /* the knobs: drag horizontally and BOTH wheels turn together, swinging the shooter */
+  knobs.forEach(function (knob) {
+    var drag = null;
+    knob.addEventListener('pointerdown', function (e) {
+      if (state.name !== 'AIMING') return;
+      drag = { x: e.clientX, a: angle() };
+      try { knob.setPointerCapture(e.pointerId); } catch (err) { /* synthetic/no-pointer environments */ }
+      e.preventDefault();
+    });
+    knob.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      setAngle(drag.a + (e.clientX - drag.x) * 0.12, true);
+    });
+    knob.addEventListener('pointerup', function () { drag = null; });
+    knob.addEventListener('pointercancel', function () { drag = null; });
+    knob.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); setAngle(angle() + 0.5); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); setAngle(angle() - 0.5); }
+      else if (e.key === 'Home') { e.preventDefault(); setAngle(Core.SCENE.angleMin); }
+      else if (e.key === 'End') { e.preventDefault(); setAngle(Core.SCENE.angleMax); }
+    });
+    knob.addEventListener('wheel', function (e) {
+      if (state.name !== 'AIMING') return;
+      e.preventDefault();
+      setAngle(angle() + (e.deltaY > 0 ? -0.5 : 0.5));
+    }, { passive: false });
+  });
+
+  /* ---------- persistent step instructions ---------- */
+  var STEP_TEXT = {
+    1: '1 \u00B7 Tap the quarter \u2014 it drops into the slot',
+    2: '2 \u00B7 Make a wish \u2014 or keep it secret',
+    3: '3 \u00B7 Turn the knobs a little \u2014 line up the slide with his mouth',
+    4: '4 \u00B7 Press the RED BUTTON to release the coin'
+  };
+  var STEP_FOR = { IDLE: 1, COIN_INSERTED: 1, WISH_ENTRY: 2, AIMING: 3, COIN_RELEASED: 4, REVEALING: 4, FORTUNE_READY: 4 };
+  function updateSteps() {
+    var step = STEP_FOR[state.name] || 1;
+    $('stepText').textContent = STEP_TEXT[step];
+    [1, 2, 3, 4].forEach(function (n) {
+      var d = $('dot' + n);
+      d.classList.toggle('cur', n === step);
+      d.classList.toggle('done', n < step);
+    });
+  }
 
   function showPanel(name) {
     Object.keys(panels).forEach(function (k) { panels[k].classList.remove('on'); });
@@ -769,35 +984,30 @@
   }
   function setAimEnabled(on) {
     slider.disabled = !on; $('aimLeft').disabled = !on; $('aimRight').disabled = !on;
-    $('releaseBtn').disabled = !on; $('guideBtn').disabled = !on;
+    $('releaseBtn').disabled = !on;
+    knobs.forEach(function (k) { k.classList.toggle('off', !on); k.tabIndex = on ? 0 : -1; });
   }
 
   function dispatch(event) {
     var prev = state;
     state = Core.reduce(state, event);
-    if (state === prev && event !== 'GUIDE') return;
+    if (state === prev) return;
     applyState(prev);
   }
   function applyState(prev) {
     var name = state.name;
+    updateSteps();
     svg.classList.toggle('booth-lit', name !== 'IDLE');
-    svg.classList.toggle('aiming', name === 'AIMING' || name === 'MISSED');
-    svg.classList.toggle('coin-ready', name === 'AIMING' || name === 'MISSED');
+    svg.classList.toggle('aiming', name === 'AIMING');
+    svg.classList.toggle('coin-ready', name === 'AIMING');
+    svg.classList.toggle('mouth-open', name === 'AIMING' || name === 'COIN_RELEASED' || name === 'REVEALING' || name === 'FORTUNE_READY');
     if (name === 'IDLE') { showPanel('IDLE'); $('trayQuarter').disabled = false; announce('The fortune machine waits. Insert a quarter to begin.'); }
     if (name === 'WISH_ENTRY') { showPanel('WISH_ENTRY'); later(function () { $('wishInput').focus(); }, 60); announce('What do you wish for?'); }
     if (name === 'AIMING') {
       showPanel('AIMING'); setAimEnabled(true); renderAngle();
-      $('guideBtn').style.display = (state.misses >= 2 && !state.guided) ? 'block' : 'none';
-      announce(state.misses > 0 ? 'Aim again. Adjust the ramp and release the coin.' : 'Aim the coin toward Zoltar\u2019s mouth, then release it.');
+      announce('Turn the knobs a little \u2014 line up the slide with his mouth. Then press the red button.');
     }
-    if (name === 'COIN_RELEASED') { setAimEnabled(false); $('aimMsg').textContent = ''; }
-    if (name === 'MISSED') {
-      showPanel('MISSED');
-      $('aimMsg').textContent = 'Almost. Adjust your aim and try again.';
-      $('aimMsg').className = 'msg miss';
-      announce('Almost. Adjust your aim and try again.');
-      later(function () { dispatch('ACK'); }, REDUCED ? 250 : 1150);
-    }
+    if (name === 'COIN_RELEASED') { setAimEnabled(false); $('aimMsg').textContent = ''; svg.classList.remove('on-target'); $('onTargetTag').style.display = 'none'; }
     if (name === 'REVEALING') { showPanel('REVEALING'); }
     if (name === 'FORTUNE_READY') {
       showPanel('FORTUNE_READY');
@@ -815,8 +1025,18 @@
     $('trayQuarter').disabled = true;
     var q = $('trayQuarter');
     q.style.transition = 'transform .55s ease, opacity .55s ease';
-    q.style.transform = 'translate(160%, -46%) scale(.35) rotate(160deg)'; q.style.opacity = '0';
+    /* the quarter flies RIGHT and lands in the coin slot on the right of the deck */
+    q.style.transform = 'translate(310%, -18%) scale(.32) rotate(200deg)'; q.style.opacity = '0';
     sfx.clink();
+    later(function () {
+      /* it lands: pulse the slot once and say so, plainly */
+      var pulse = $('slotPulse');
+      if (pulse.animate) pulse.animate([{ opacity: 0 }, { opacity: 1, offset: .25 }, { opacity: 0 }], { duration: REDUCED ? 350 : 950, easing: 'ease-out' });
+      var tag = $('coinInTag');
+      tag.classList.add('on');
+      announce('Coin in! Now make a wish.');
+      later(function () { tag.classList.remove('on'); }, REDUCED ? 700 : 1500);
+    }, REDUCED ? 90 : 470);
     later(function () {
       q.style.transition = 'none'; q.style.transform = ''; q.style.opacity = '';
       inserting = false;
@@ -828,72 +1048,58 @@
 
   /* ---------- wish ---------- */
   $('wishInput').addEventListener('input', function () { $('wishCount').textContent = this.value.length; });
-  function sealWish() { sfx.click(); dispatch('SEAL'); later(function () { slider.focus(); }, 60); }
+  function sealWish() { sfx.click(); dispatch('SEAL'); later(function () { $('knobL').focus(); }, 60); }
   $('sealBtn').addEventListener('click', sealWish);
-  $('secretBtn').addEventListener('click', function () { $('wishInput').value = ''; $('wishCount').textContent = '0'; sfx.click(); dispatch('SECRET'); later(function () { slider.focus(); }, 60); });
+  $('secretBtn').addEventListener('click', function () { $('wishInput').value = ''; $('wishCount').textContent = '0'; sfx.click(); dispatch('SECRET'); later(function () { $('knobL').focus(); }, 60); });
 
-  /* ---------- guide ---------- */
-  $('guideBtn').addEventListener('click', function () {
-    if (state.name !== 'AIMING') return;
-    dispatch('GUIDE');
-    svg.classList.add('guiding');
-    var target = Math.round(Core.bestAngle());
-    slider.value = target; renderAngle();
-    $('aimMsg').textContent = 'The ramp has been guided. The release is still yours.';
-    $('aimMsg').className = 'msg';
-    $('guideBtn').style.display = 'none';
-    later(function () { svg.classList.remove('guiding'); }, 950);
-    sfx.click();
-  });
-
-  /* ---------- release: the SAME simulated path drives visuals + verdict ---------- */
+  /* ---------- release: the coin rides the slide and ALWAYS lands ----------
+     The same simulated slide path drives the visuals and the landing.
+     Clean aim: a smooth drop-in. Off-center: the coin wobbles at the lip,
+     kisses the chin, teeters a beat — then tips in. Suspense, never failure. */
   function setCoin(x, y, scale, opacity) {
     coinG.setAttribute('transform', 'translate(' + x + ' ' + y + ') scale(' + (scale || 1) + ')');
     coinG.style.opacity = (opacity == null ? 1 : opacity);
   }
+  function suckIn(from, done) {
+    var t0 = performance.now(), dur = REDUCED ? 90 : 200;
+    (function suck(now) {
+      var q = Math.min(1, (now - t0) / dur);
+      setCoin(from.x + (Core.SCENE.mouth.x - from.x) * q, from.y + (Core.SCENE.mouth.y - from.y) * q, 1 - 0.8 * q, 1 - q);
+      if (q < 1) rafId = requestAnimationFrame(suck);
+      else { coinG.style.opacity = 0; flying = false; done(); }
+    })(t0);
+  }
   $('releaseBtn').addEventListener('click', function () {
-    if (state.name !== 'AIMING') return;
+    if (state.name !== 'AIMING' || flying) return;
     sfx.click();
-    var a = angle();
-    var sim = Core.simulate(a);
+    var sim = Core.simulate(angle());
     dispatch('RELEASE');
+    flying = true;
     svg.classList.remove('coin-ready');
     coinG.style.opacity = 1;
-    var pts = sim.points;
-    var flightMs = REDUCED ? 260 : sim.duration * 1000;
+    var pts = sim.points, lip = pts[sim.lipIndex], lastPt = pts[pts.length - 1];
+    var rideMs = REDUCED ? 300 : (sim.style === 'clean' ? 1000 : 1150);
+    var rideEnd = sim.style === 'clean' ? pts.length - 1 : sim.lipIndex;
     var start = null;
     function frame(ts) {
       if (!start) start = ts;
-      var p = Math.min(1, (ts - start) / flightMs);
-      var idx = p * (pts.length - 1);
-      var i0 = Math.floor(idx), i1 = Math.min(pts.length - 1, i0 + 1), fr = idx - i0;
-      var x = pts[i0].x + (pts[i1].x - pts[i0].x) * fr;
-      var y = pts[i0].y + (pts[i1].y - pts[i0].y) * fr;
-      if (sim.hit && p >= (sim.hitIndex / (pts.length - 1))) {
-        /* coin reaches the mouth: suck it in */
-        var mp = pts[sim.hitIndex];
-        setCoin(mp.x, mp.y, 1, 1);
-        var t0 = performance.now();
-        (function suck(now) {
-          var q = Math.min(1, (now - t0) / 190);
-          setCoin(mp.x + (Core.SCENE.mouth.x - mp.x) * q, mp.y + (Core.SCENE.mouth.y - mp.y) * q, 1 - 0.8 * q, 1 - q);
-          if (q < 1) rafId = requestAnimationFrame(suck);
-          else { coinG.style.opacity = 0; startReveal(); }
-        })(t0);
-        return;
-      }
-      setCoin(x, y, 1, 1);
+      var p = Math.min(1, (ts - start) / rideMs);
+      var idx = p * rideEnd;
+      var i0 = Math.floor(idx), i1 = Math.min(rideEnd, i0 + 1), fr = idx - i0;
+      setCoin(pts[i0].x + (pts[i1].x - pts[i0].x) * fr, pts[i0].y + (pts[i1].y - pts[i0].y) * fr, 1, 1);
       if (p < 1) { rafId = requestAnimationFrame(frame); return; }
-      /* miss: a gentle metallic bounce on the deck, then back to AIMING */
+      if (sim.style === 'clean') { suckIn(lastPt, startReveal); return; }
+      /* teeter: wobble at the lip, dip and kiss the chin, hold your breath… then in */
       sfx.bounce();
-      var last = pts[pts.length - 1], b0 = performance.now();
-      (function bounce(now) {
-        var q = (now - b0) / 520;
-        if (q >= 1) { coinG.style.opacity = 0; dispatch('MISS'); return; }
-        var hop = Math.abs(Math.sin(q * Math.PI * 2)) * 15 * (1 - q);
-        setCoin(last.x + q * 26, 448 - hop, 1, 1 - q * 0.6);
-        rafId = requestAnimationFrame(bounce);
-      })(b0);
+      var w0 = performance.now(), wobMs = REDUCED ? 220 : sim.teeterMs;
+      (function wobble(now) {
+        var q = Math.min(1, (now - w0) / wobMs);
+        var swayX = Math.sin(q * Math.PI * 5) * 3.2 * (1 - q * 0.55);
+        var kissY = Math.sin(Math.min(1, q * 1.6) * Math.PI) * 9;
+        setCoin(lip.x + swayX, lip.y + kissY, 1, 1);
+        if (q < 1) { rafId = requestAnimationFrame(wobble); return; }
+        suckIn(lip, startReveal);
+      })(w0);
     }
     rafId = requestAnimationFrame(frame);
   });
@@ -912,16 +1118,19 @@
   }
   function startReveal() {
     if (state.name !== 'COIN_RELEASED') return;
-    dispatch('HIT');
+    dispatch('LAND');
     revealing = true;
     pickFortune();
     var rs = $('revealStatus');
     rs.textContent = 'Your wish has been heard.';
-    svg.classList.add('chasing', 'eyes-lit', 'jaw-open');
+    /* the performance, all together like the film: his eyes light solid red,
+       the arch words behind him glow, and his jaw works the coin in —
+       a beat of that… and only then the ticket. The surprise is the point. */
+    svg.classList.add('chasing', 'eyes-lit', 'arch-lit', 'jaw-open');
     sfx.humStart(); sfx.chime();
-    later(function () { svg.classList.add('jaw-chomp'); }, REDUCED ? 60 : 500);
-    later(function () { sfx.paper(); $('popTicket').classList.add('fed'); }, REDUCED ? 150 : 1400);
-    later(function () { finishReveal(); }, REDUCED ? 1100 : 6400);
+    later(function () { svg.classList.add('jaw-chomp'); }, REDUCED ? 60 : 350);
+    later(function () { sfx.paper(); $('popTicket').classList.add('fed'); }, REDUCED ? 200 : 2350);
+    later(function () { finishReveal(); }, REDUCED ? 1500 : 5600);
   }
   function finishReveal() {
     if (!revealing) return;
@@ -937,13 +1146,14 @@
     revealing = false; sfx.humStop();
     svg.classList.remove('chasing', 'jaw-chomp');
     dispatch('SKIP');
-    svg.classList.add('eyes-lit', 'jaw-open'); /* SKIP path keeps the lit payoff state */
+    svg.classList.add('eyes-lit', 'arch-lit', 'jaw-open'); /* SKIP path keeps the lit payoff state */
   });
 
   /* ---------- reset / another wish ---------- */
   function resetMachine(toIdleEvent) {
-    clearTimers(); revealing = false; sfx.humStop();
-    svg.classList.remove('chasing', 'eyes-lit', 'jaw-open', 'jaw-chomp', 'coin-ready', 'aiming');
+    clearTimers(); revealing = false; flying = false; sfx.humStop();
+    svg.classList.remove('chasing', 'eyes-lit', 'arch-lit', 'jaw-open', 'jaw-chomp', 'coin-ready', 'aiming', 'mouth-open', 'on-target');
+    $('onTargetTag').style.display = 'none';
     $('popTicket').classList.remove('fed'); $('popTicket').tabIndex = -1;
     coinG.style.opacity = 0;
     $('aimMsg').textContent = '';
@@ -1037,7 +1247,14 @@
   });
 
   /* ---------- boot ---------- */
+  (function drawSlideTrack() {
+    var pts = Core.slidePoints(Core.SCENE.sweet).points;
+    var d = 'M' + pts.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' L');
+    $('slideTrack').setAttribute('d', d);
+    $('slideGroove').setAttribute('d', d);
+  })();
   svg.classList.add('booth-lit');
+  updateSteps();
   renderAngle();
   announce('The fortune machine waits. Insert a quarter to begin.');
   window.addEventListener('pagehide', function () { clearTimers(); sfx.humStop(); });
