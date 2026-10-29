@@ -439,7 +439,8 @@
 
   <footer>
     Built for Gary Spanier · A <a href="https://future-ready-own-your-day-mission-briefing.lovable.app/" target="_blank" rel="noopener">Future Ready</a> machine ·
-    Akimbo is created by Seth Godin; episodes stream from the official Akimbo podcast feed.
+    Akimbo is created by Seth Godin; episodes stream from the official Akimbo podcast feed.<br>
+    🚗 Driving note: if a call or Siri pauses an episode, this player tries to pick it back up when you return — a web player can't restart from every interruption the way the Podcasts app can, but your place is always kept, and one tap on ▶ resumes.
   </footer>
 </main>
 
@@ -811,6 +812,113 @@ renderAll();
 renderPost();
 fillBlogWin();
 liveBlog();
+
+/* ---------- #371: lock-screen controls + interruption resume ----------
+   Gary listens while driving. Apple Podcasts ducks/stops when he talks and
+   auto-resumes; a web player cannot fully match that (iOS pauses web audio
+   for calls/Siri with no event and no way to force a restart). This block
+   ships the closest web fix, conservatively:
+   - Media Session metadata + handlers, so lock-screen / car controls work.
+   - If playback was live and the page went away (screen lock, app switch,
+     system interruption) WITHOUT Gary deliberately pausing, returning to
+     the page resumes from the exact same spot — currentTime is never reset.
+   - A deliberate pause (player button or lock-screen pause) is NEVER
+     overridden, nothing ever autoplays on load, and resume only fires
+     within an hour of the interruption. */
+(function(){
+  var userPauseIntent = false;  // Gary himself paused — hands off, forever
+  var everPlayed = false;       // audio has actually played at least once
+  var interruptedAt = 0;        // when a non-deliberate pause/hide happened
+  var RESUME_WINDOW = 60 * 60 * 1000;
+
+  function tryPlay(){ var pr = au.play(); if (pr && pr.catch) pr.catch(function(){}); }
+
+  /* Deliberate-pause detection: capture-phase, so it reads au.paused BEFORE
+     the player's own click handler toggles it. Playing at click time means
+     this click is Gary pausing on purpose. */
+  document.addEventListener('click', function(ev){
+    if (ev.target && ev.target.closest && ev.target.closest('#playBtn')){
+      userPauseIntent = !au.paused && !au.ended;
+    }
+  }, true);
+
+  au.addEventListener('play', function(){
+    everPlayed = true;
+    userPauseIntent = false;
+    interruptedAt = 0;
+    syncMS();
+  });
+  au.addEventListener('pause', function(){
+    /* A pause Gary didn't ask for (call, Siri, another app grabbing audio)
+       stamps the interruption so coming back can resume. His own pauses
+       set userPauseIntent first and leave the stamp alone. */
+    if (!userPauseIntent) interruptedAt = Date.now();
+    syncMSState();
+  });
+  au.addEventListener('loadedmetadata', syncMS);
+
+  /* ---------- Media Session ---------- */
+  function artSrc(){
+    var img = document.querySelector('.oval img') || ($('disc') && $('disc').querySelector('img'));
+    return img ? img.getAttribute('src') : '';
+  }
+  function syncMS(){
+    if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    if (cur < 0 || !ALL_EPS[cur] || !au.src) return;
+    var e = ALL_EPS[cur], art = artSrc(), arts = [];
+    if (art) arts.push({ src: art, type: art.indexOf('data:image/jpeg') === 0 ? 'image/jpeg' : 'image/webp' });
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: e.t,
+        artist: 'Seth Godin',
+        album: e.guest ? (e.show || 'Guest spot') : 'Akimbo',
+        artwork: arts
+      });
+    } catch (err){}
+    syncMSState();
+  }
+  function syncMSState(){
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.playbackState = au.paused ? 'paused' : 'playing'; } catch (err){}
+  }
+  if ('mediaSession' in navigator){
+    try {
+      navigator.mediaSession.setActionHandler('play', function(){ userPauseIntent = false; tryPlay(); });
+      navigator.mediaSession.setActionHandler('pause', function(){ userPauseIntent = true; au.pause(); });
+      navigator.mediaSession.setActionHandler('previoustrack', function(){ step(-1); });
+      navigator.mediaSession.setActionHandler('nexttrack', function(){ step(1); });
+      navigator.mediaSession.setActionHandler('seekbackward', function(ev){
+        var d = (ev && ev.seekOffset) || 15;
+        au.currentTime = Math.max(0, au.currentTime - d);
+      });
+      navigator.mediaSession.setActionHandler('seekforward', function(ev){
+        var d = (ev && ev.seekOffset) || 15;
+        au.currentTime = (isFinite(au.duration) && au.duration > 0)
+          ? Math.min(au.duration - 1, au.currentTime + d) : au.currentTime + d;
+      });
+      navigator.mediaSession.setActionHandler('seekto', function(ev){
+        if (ev && typeof ev.seekTime === 'number' && isFinite(au.duration) && au.duration > 0) au.currentTime = ev.seekTime;
+      });
+    } catch (err){}
+  }
+
+  /* ---------- interruption resume ---------- */
+  function maybeResume(){
+    if (document.hidden) return;
+    if (!everPlayed || userPauseIntent) return;   // never start what Gary stopped (or never started)
+    if (cur < 0 || !au.src || au.ended || !au.paused) return;
+    if (interruptedAt && (Date.now() - interruptedAt) > RESUME_WINDOW) return;
+    tryPlay();  // position is untouched — playback continues where it stopped
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden){
+      if (!au.paused && everPlayed && !userPauseIntent) interruptedAt = Date.now();
+    } else {
+      maybeResume();
+    }
+  });
+  window.addEventListener('focus', maybeResume);
+})();
 </script>
 </body>
 </html>
