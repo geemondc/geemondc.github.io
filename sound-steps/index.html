@@ -2346,6 +2346,18 @@
 .ss-pz-zoom{position:absolute;z-index:4;right:14px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;gap:10px}
 .ss-pz-zoom .ss-pz-btn{position:static}
 @media (max-width:560px){.ss-pz-caption{bottom:96px;font-size:17px}.ss-pz-prev{left:8px}.ss-pz-next{right:8px}}
+/* POPFIX (Oct 29): full-height arrow tap strips — a real finger rarely hits the
+   60px circle dead-center, so each side of the viewer is one big flip zone.
+   Strips sit above the photo; the X, zoom and arrow buttons sit above the
+   strips so their own taps still land on them. Hidden in single-photo mode. */
+.ss-pz-strip{position:absolute;top:0;bottom:0;width:28%;min-width:110px;z-index:5;background:transparent;touch-action:none;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.ss-pz-strip-prev{left:0}
+.ss-pz-strip-next{right:0}
+.ss-pz-prev,.ss-pz-next{z-index:6}
+.ss-pz-counter{z-index:6}
+.ss-pz-close{z-index:7}
+.ss-pz-zoom{z-index:7}
+.ss-photozoom.ss-pz-single .ss-pz-strip{display:none}
 </style>
 <script id="ss-photozoom-script">
 (function(){
@@ -2456,6 +2468,8 @@
     viewer.setAttribute('aria-label', 'Photo viewer');
     viewer.innerHTML =
       '<div class="ss-pz-stage" id="ssPzStage"><img class="ss-pz-img" id="ssPzImg" alt="" draggable="false"></div>' +
+      '<div class="ss-pz-strip ss-pz-strip-prev" id="ssPzStripPrev" aria-hidden="true"></div>' +
+      '<div class="ss-pz-strip ss-pz-strip-next" id="ssPzStripNext" aria-hidden="true"></div>' +
       '<div class="ss-pz-counter" id="ssPzCounter" aria-live="polite"></div>' +
       '<div class="ss-pz-caption" id="ssPzCaption"></div>' +
       '<button class="ss-pz-btn ss-pz-close" id="ssPzClose" type="button" aria-label="Close photo viewer">\u00d7</button>' +
@@ -2473,6 +2487,8 @@
     var nextBtn = viewer.querySelector('#ssPzNext');
     var zoomOutBtn = viewer.querySelector('#ssPzOut');
     var zoomInBtn = viewer.querySelector('#ssPzIn');
+    var stripPrev = viewer.querySelector('#ssPzStripPrev');
+    var stripNext = viewer.querySelector('#ssPzStripNext');
 
     var isOpen = false;
     var current = 0;
@@ -2618,14 +2634,44 @@
     nextBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); step(1); });
     zoomInBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); zoomBy(1.45); });
     zoomOutBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); zoomBy(1 / 1.45); });
+    stripPrev.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); step(-1); });
+    stripNext.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); step(1); });
+
+    /* POPFIX 2 — coordinate routing (Oct 29, found in driven QA): a tap's
+       click can be RETARGETED by the browser to the viewer root when the
+       synthesized mousedown/mouseup disagree about which element was hit
+       (button vs the strip beneath it) — the finger landed squarely on the
+       arrow, yet the click arrived at the root and the flip was lost.
+       So the viewer routes real taps by COORDINATES in a capture-phase
+       listener: the tap point decides, never the (possibly retargeted)
+       target. Claimed clicks are stopPropagation()'d, so the buttons' own
+       handlers only ever serve keyboard / synthetic clicks (0,0). */
+    function inRect(e, el){
+      if(!el) return false;
+      var r = el.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    }
+    viewer.addEventListener('click', function(e){
+      if(!isOpen) return;
+      if(!e.clientX && !e.clientY) return;
+      if(inRect(e, closeBtn)){ e.preventDefault(); e.stopPropagation(); closePhoto(); return; }
+      if(inRect(e, zoomInBtn)){ e.preventDefault(); e.stopPropagation(); zoomBy(1.45); return; }
+      if(inRect(e, zoomOutBtn)){ e.preventDefault(); e.stopPropagation(); zoomBy(1 / 1.45); return; }
+      if(viewList.length > 1){
+        if(inRect(e, stripPrev)){ e.preventDefault(); e.stopPropagation(); step(-1); return; }
+        if(inRect(e, stripNext)){ e.preventDefault(); e.stopPropagation(); step(1); return; }
+      }
+    }, true);
 
     var suppressBackdropClickUntil = 0;
-    viewer.addEventListener('click', function(e){
-      if(e.target === viewer || e.target === stage){
-        if(Date.now() < suppressBackdropClickUntil) return;
-        closePhoto();
-      }
-    });
+    /* POPFIX (Oct 29): the X is the ONLY way out. The old click-to-close
+       handler on the backdrop/stage is removed on purpose: the stage covers
+       the whole screen, so any tap that missed the 60px arrow circles —
+       normal for a real finger — landed on the stage and closed the viewer
+       mid-flip ("it pops out"). Tapping the photo, the scrim, or anywhere
+       else in the viewer now does nothing at all; only the X button (or
+       Escape on desktop) closes. suppressBackdropClickUntil is still set by
+       the drag handler below but no longer gates any close path. */
 
     document.addEventListener('keydown', function(e){
       if(!isOpen) return;
