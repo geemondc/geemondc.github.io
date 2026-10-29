@@ -2,6 +2,13 @@
 <html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Future Ready Catalog — Everything Gary &amp; Muse Built</title>
+<meta name="description" content="The Future Ready Catalog is a free scrapbook of every game, app, and page Gary and Muse have built, listed newest first.">
+<meta property="og:title" content="The Future Ready Catalog — Everything Gary &amp; Muse Built">
+<meta property="og:description" content="The Future Ready Catalog is a free scrapbook of every game, app, and page Gary and Muse have built, listed newest first.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://geemondc.github.io/the-catalog/">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://geemondc.github.io/the-catalog/">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 <style>
   body{font-family:Georgia,'Times New Roman',serif;color:#111;background:#fff;max-width:820px;margin:0 auto;padding:28px 22px 60px;line-height:1.45}
@@ -89,6 +96,8 @@
 @media (max-width:480px){ .brow .bimg{flex-basis:40%} .brow .bnm{font-size:15px} .sb-viewbtn{font-size:16px;padding:11px 18px} }
 .dhead{grid-column:1/-1;font-size:15px;font-weight:700;color:#111;border-bottom:2px solid #111;padding:14px 2px 4px;margin-top:4px;font-family:Georgia,serif}
 .dhead-l{font-size:16px;font-weight:700;color:#111;border-bottom:2px solid #111;padding:16px 2px 4px;margin-top:6px;font-family:Georgia,serif}
+.bhead{grid-column:1/-1;font-size:21px;font-weight:700;color:#111;border-bottom:3px solid #111;padding:20px 2px 6px;margin-top:16px;font-family:Georgia,serif;letter-spacing:.01em}
+.bhead-l{font-size:22px;font-weight:700;color:#111;border-bottom:3px solid #111;padding:22px 2px 6px;margin-top:18px;font-family:Georgia,serif;letter-spacing:.01em}
 .tile .dtl{font-size:11px;color:#777;text-align:center;margin-top:1px}
 .tile img.contain{object-fit:contain}
 .brow .bdate{font-size:12px;color:#888;font-weight:400;white-space:nowrap}
@@ -110,19 +119,27 @@ function dparse(e){ var dt=e.dt||''; var y,m,d,p;
   if(/^\d{4}-\d{2}$/.test(dt)){ p=dt.split('-'); y=+p[0]; m=+p[1];
     return {rank:(y*10000+m*100+1)*10-5, key:'m'+dt, label:MONTHS[m-1]+' '+y, short:MONTHS[m-1].slice(0,3)+' '+y}; }
   return {rank:-1, key:'earlier', label:'Earlier builds', short:'Earlier'}; }
-DATA.forEach(function(d,i){ d.oi=i; d._dp=dparse(d); });
+DATA.forEach(function(d,i){ d.oi=i; d._dp=dparse(d); d._band=bandOf(d); });
 function byDate(a,b){ if(b._dp.rank!==a._dp.rank) return b._dp.rank-a._dp.rank;
   if((b.sq||0)!==(a.sq||0)) return (b.sq||0)-(a.sq||0); return a.oi-b.oi; }
+function bandOf(d){ var h=''; if (d.u){ try { h=new URL(d.u).hostname.toLowerCase(); } catch(e){ h=''; } }
+  if (h==='geemondc.github.io') return 0;
+  if (h==='lovable.app'||/\.lovable\.app$/.test(h)) return 1;
+  return 2; }
+var BAND_LABEL=['Built with Muse','Built with Lovable','More Projects'];
+function byBandDate(a,b){ if (a._band!==b._band) return a._band-b._band; return byDate(a,b); }
+function normHay(s){ return (s||'').toLowerCase().replace(/['\u2019\u2018`]/g,'').replace(/[^a-z0-9]+/g,' '); }
 var TAG_LIST = ['Sports','Vector Games','Arcade Reborn','Toys & Wish Machines','Trading Tools','Movies & Cinema','Health'];
 var state = {view:'grid', sect:'all', tag:'all', dens:8, page:0, photos:true, q:''};
 try { var sv = sessionStorage.getItem('sb-state'); if (sv) state = Object.assign(state, JSON.parse(sv)); } catch(e){}
 if (state.view !== 'list') state.view = 'grid';
 function save(){ try { sessionStorage.setItem('sb-state', JSON.stringify(state)); } catch(e){} }
-function filtered(){ var q=(state.q||'').trim().toLowerCase(); return DATA.filter(function(d){
+function filtered(){ var toks=normHay(state.q).split(/\s+/).filter(function(w){ return !!w; }); return DATA.filter(function(d){
   if (!(state.sect==='all'||d.s===state.sect)) return false;
   if (!(state.tag==='all'||d.t.indexOf(state.tag)>=0)) return false;
-  if (q){ var hay=(d.n+' '+(SECT_LABEL[d.s]||'')+' '+d.t.join(' ')).toLowerCase(); if (hay.indexOf(q)<0) return false; }
-  return true; }).sort(byDate); }
+  if (toks.length){ var hay=normHay(d.n+' '+(SECT_LABEL[d.s]||'')+' '+d.t.join(' ')+' '+(d.d||'')+' '+(d.u||''));
+    for (var k=0;k<toks.length;k++){ if (hay.indexOf(toks[k])<0) return false; } }
+  return true; }).sort(byBandDate); }
 function colsFor(d){ var w = window.innerWidth; if (w>=900) return {1:1,2:2,4:4,8:4,12:4,16:4}[d]; return {1:1,2:2,4:2,8:3,12:3,16:4}[d]; }
 function renderChips(){
   var sc = document.getElementById('sectChips'); sc.innerHTML='';
@@ -149,8 +166,12 @@ function renderGrid(items){
   var g = document.getElementById('sbGrid');
   g.style.gridTemplateColumns = 'repeat(' + colsFor(state.dens) + ', 1fr)';
   g.innerHTML = '';
-  var lastKey = null;
+  var lastKey = null, lastBand = null;
   slice.forEach(function(d){
+    if (d._band !== lastBand){
+      var bh = document.createElement('div'); bh.className='bhead'; bh.textContent = BAND_LABEL[d._band];
+      g.appendChild(bh); lastBand = d._band; lastKey = null;
+    }
     if (d._dp.key !== lastKey){
       var hd = document.createElement('div'); hd.className='dhead'; hd.textContent = d._dp.label;
       g.appendChild(hd); lastKey = d._dp.key;
@@ -176,8 +197,12 @@ function renderList(items){
   var L = document.getElementById('sbList');
   L.innerHTML = '';
   if (items.length === 0){ L.innerHTML = '<div style="padding:14px 2px;color:#444">No projects match</div>'; return; }
-  var lastKey = null;
+  var lastKey = null, lastBand = null;
   items.forEach(function(d){
+    if (d._band !== lastBand){
+      var bh = document.createElement('div'); bh.className='bhead-l'; bh.textContent = BAND_LABEL[d._band];
+      L.appendChild(bh); lastBand = d._band; lastKey = null;
+    }
     if (d._dp.key !== lastKey){
       var hd = document.createElement('div'); hd.className='dhead-l'; hd.textContent = d._dp.label;
       L.appendChild(hd); lastKey = d._dp.key;
