@@ -887,6 +887,36 @@
   html[lang] #cover .coverhead .langtoggle button.on{background:#276F6A;border-color:#276F6A;}
 }
 </style>
+
+<style id="ss-viewerfix-tune">
+/* ===== VIEWER FIX + HERO/PAIR TUNE (Oct 29, Gary live at Sunscape):
+   The flip-through viewer was collecting only the 3 cover photos, so the
+   Sunscape 8 were unreachable and the pair photos dead-ended the set.
+   Now: tapping the Sunscape hero opens the viewer on the 8 Sunscape
+   photos (gallery order, wrap-around); tapping a Gary+Mom pair photo
+   opens just that photo — no arrows, no counter. Browser double-tap
+   zoom can no longer fire inside the viewer (touch-action:none) and
+   the script's double-tap / wheel zoom is removed: zoom is pinch and
+   the + / - buttons only, resetting to fit on every flip.
+   Cover tune (gated to >=750px height so the #369 short-window regime
+   is untouched): the hero takes more room on phone and iPad; the pair
+   drops ~10% — equal boxes, same cream mats, gold frames, positions. */
+.ss-photozoom{touch-action:none}
+.ss-pz-btn{touch-action:none}
+.ss-photozoom.ss-pz-single .ss-pz-prev,
+.ss-photozoom.ss-pz-single .ss-pz-next,
+.ss-photozoom.ss-pz-single .ss-pz-counter{display:none}
+@media (max-width:699px) and (min-height:750px){
+  html[lang] #cover .panel .photoframe.hero{width:95%;}
+}
+@media (min-width:700px) and (max-width:899px) and (min-height:750px){
+  html[lang] #cover .panel{grid-template-rows:minmax(0,1.45fr) auto auto auto auto auto minmax(0,1fr) auto auto auto;}
+}
+@media (min-width:1100px) and (min-height:750px){
+  html[lang] #cover .panel .photoframe.portrait{width:90%;justify-self:center;}
+  html[lang] #cover .panel .tuningwrap{width:90%;justify-self:center;}
+}
+</style>
 </head>
 <body>
 <!-- ============ INTRO COVER ============ -->
@@ -2486,18 +2516,31 @@
       if(scale > 1.01) resetZoom();
       else setScale(2);
     }
+    var viewList = [];
+    function sunscapeEntries(){
+      var thumbs = document.querySelectorAll('#galGrid .gal-thumb img');
+      var list = [];
+      for(var i = 0; i < thumbs.length; i++){
+        list.push({
+          src: thumbs[i].src,
+          alt: 'Sunscape Boca Raton — photo ' + (i + 1),
+          cap: text('Sunscape Boca Raton — photo ' + (i + 1), 'Sunscape Boca Raton — foto ' + (i + 1))
+        });
+      }
+      return list;
+    }
     function showPhoto(index){
-      current = (index + photos.length) % photos.length;
-      var img = photos[current];
+      if(!viewList.length) return;
+      current = ((index % viewList.length) + viewList.length) % viewList.length;
+      var entry = viewList[current];
       resetZoom();
-      viewerImg.src = img.currentSrc || img.src;
-      viewerImg.alt = img.getAttribute('alt') || '';
-      var cap = captionFor(img);
-      captionEl.textContent = cap;
-      captionEl.style.display = cap ? '' : 'none';
-      counterEl.textContent = (current + 1) + ' / ' + photos.length;
-      prevBtn.disabled = photos.length < 2;
-      nextBtn.disabled = photos.length < 2;
+      viewerImg.src = entry.src;
+      viewerImg.alt = entry.alt || '';
+      captionEl.textContent = entry.cap || '';
+      captionEl.style.display = entry.cap ? '' : 'none';
+      counterEl.textContent = (current + 1) + ' / ' + viewList.length;
+      prevBtn.disabled = viewList.length < 2;
+      nextBtn.disabled = viewList.length < 2;
       refreshViewerLabels();
       window.requestAnimationFrame(function(){ clampPan(); applyTransform(); });
     }
@@ -2535,20 +2578,32 @@
       window.scrollTo(0, savedScrollY);
     }
     function openPhoto(index, trigger){
-      var img = photos[index];
+      var img = trigger || photos[index];
       if(!img || !isAvailable(img)) return;
-      lastTrigger = trigger || img;
+      lastTrigger = img;
+      var start = 0;
+      if(img.closest && img.closest('.photoframe.hero')){
+        viewList = sunscapeEntries();
+        if(!viewList.length) return;
+        start = -1;
+        for(var i = 0; i < viewList.length; i++){ if(viewList[i].src === img.src){ start = i; break; } }
+        if(start < 0) start = viewList.length - 1;
+      } else {
+        viewList = [{src: img.currentSrc || img.src, alt: img.getAttribute('alt') || '', cap: captionFor(img)}];
+      }
+      viewer.classList.toggle('ss-pz-single', viewList.length < 2);
       if(!isOpen){
         lockScroll();
         viewer.hidden = false;
         isOpen = true;
       }
-      showPhoto(index);
+      showPhoto(start);
       window.setTimeout(function(){ closeBtn.focus({preventScroll:true}); }, 0);
     }
     function closePhoto(){
       if(!isOpen) return;
       viewer.hidden = true;
+      viewer.classList.remove('ss-pz-single');
       isOpen = false;
       resetZoom();
       unlockScroll();
@@ -2556,13 +2611,13 @@
       var target = lastTrigger && isAvailable(lastTrigger) ? lastTrigger : photos[current];
       if(target && isAvailable(target)) target.focus({preventScroll:true});
     }
-    function step(delta){ showPhoto(current + delta); }
+    function step(delta){ if(viewList.length > 1) showPhoto(current + delta); }
 
-    closeBtn.addEventListener('click', function(e){ e.stopPropagation(); closePhoto(); });
-    prevBtn.addEventListener('click', function(e){ e.stopPropagation(); step(-1); });
-    nextBtn.addEventListener('click', function(e){ e.stopPropagation(); step(1); });
-    zoomInBtn.addEventListener('click', function(e){ e.stopPropagation(); zoomBy(1.45); });
-    zoomOutBtn.addEventListener('click', function(e){ e.stopPropagation(); zoomBy(1 / 1.45); });
+    closeBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); closePhoto(); });
+    prevBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); step(-1); });
+    nextBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); step(1); });
+    zoomInBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); zoomBy(1.45); });
+    zoomOutBtn.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); zoomBy(1 / 1.45); });
 
     var suppressBackdropClickUntil = 0;
     viewer.addEventListener('click', function(e){
@@ -2592,7 +2647,6 @@
     var pointers = new Map();
     var drag = null;
     var pinch = null;
-    var lastTapAt = 0;
     function pointerPoint(e){ return {x:e.clientX, y:e.clientY}; }
     function twoPointerGeometry(){
       var pts = Array.from(pointers.values());
@@ -2643,11 +2697,6 @@
           if(wasDragMoved) suppressBackdropClickUntil = Date.now() + 250;
           drag = null;
           stage.classList.remove('ss-pz-dragging');
-          if(e.type === 'pointerup' && e.pointerType === 'touch' && !wasDragMoved && e.target === viewerImg){
-            var now = Date.now();
-            if(now - lastTapAt < 320){ toggleZoom(); lastTapAt = 0; }
-            else lastTapAt = now;
-          }
         } else if(pointers.size === 1){
           var remaining = Array.from(pointers.values())[0];
           drag = {x:remaining.x, y:remaining.y, tx:tx, ty:ty, moved:false};
@@ -2688,17 +2737,6 @@
       });
     }
 
-    stage.addEventListener('dblclick', function(e){
-      if(!isOpen) return;
-      e.preventDefault();
-      toggleZoom();
-    });
-    stage.addEventListener('wheel', function(e){
-      if(!isOpen) return;
-      e.preventDefault();
-      var factor = Math.exp(-e.deltaY * 0.0016);
-      setScale(scale * factor);
-    }, {passive:false});
     document.addEventListener('gesturestart', function(e){ if(isOpen) e.preventDefault(); });
     window.addEventListener('resize', function(){ if(isOpen) applyTransform(); });
     viewerImg.addEventListener('load', function(){ if(isOpen) applyTransform(); });
@@ -2708,7 +2746,7 @@
       open: openPhoto,
       close: closePhoto,
       step: step,
-      getState: function(){ return {open:isOpen, current:current, scale:scale, tx:tx, ty:ty, count:photos.length}; }
+      getState: function(){ return {open:isOpen, current:current, scale:scale, tx:tx, ty:ty, count:viewList.length || photos.length}; }
     };
   });
 })();
