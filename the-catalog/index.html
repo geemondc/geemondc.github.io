@@ -39,6 +39,7 @@
         <button id="sbSearchClear" type="button" aria-label="Clear search" style="display:none">&#10005;</button>
       </div>
     </div>
+    <div class="sb-row" id="bandChips"></div>
     <div class="sb-row" id="sectChips"></div>
     <div class="sb-row" id="tagChips"></div>
     <div class="sb-row" id="photosRow">
@@ -130,11 +131,13 @@ var BAND_LABEL=['Built with Muse','Built with Lovable','More Projects'];
 function byBandDate(a,b){ if (a._band!==b._band) return a._band-b._band; return byDate(a,b); }
 function normHay(s){ return (s||'').toLowerCase().replace(/['\u2019\u2018`]/g,'').replace(/[^a-z0-9]+/g,' '); }
 var TAG_LIST = ['Sports','Vector Games','Arcade Reborn','Toys & Wish Machines','Trading Tools','Movies & Cinema','Health'];
-var state = {view:'grid', sect:'all', tag:'all', dens:8, page:0, photos:true, q:''};
+var state = {view:'grid', band:'muse', sect:'all', tag:'all', dens:8, page:0, photos:true, q:''};
 try { var sv = sessionStorage.getItem('sb-state'); if (sv) state = Object.assign(state, JSON.parse(sv)); } catch(e){}
 if (state.view !== 'list') state.view = 'grid';
 function save(){ try { sessionStorage.setItem('sb-state', JSON.stringify(state)); } catch(e){} }
 function filtered(){ var toks=normHay(state.q).split(/\s+/).filter(function(w){ return !!w; }); return DATA.filter(function(d){
+  if (state.band==='muse' && d._band!==0) return false;
+  if (state.band==='lovable' && d._band!==1) return false;
   if (!(state.sect==='all'||d.s===state.sect)) return false;
   if (!(state.tag==='all'||d.t.indexOf(state.tag)>=0)) return false;
   if (toks.length){ var hay=normHay(d.n+' '+(SECT_LABEL[d.s]||'')+' '+d.t.join(' ')+' '+(d.d||'')+' '+(d.u||''));
@@ -142,6 +145,12 @@ function filtered(){ var toks=normHay(state.q).split(/\s+/).filter(function(w){ 
   return true; }).sort(byBandDate); }
 function colsFor(d){ var w = window.innerWidth; if (w>=900) return {1:1,2:2,4:4,8:4,12:4,16:4}[d]; return {1:1,2:2,4:2,8:3,12:3,16:4}[d]; }
 function renderChips(){
+  var bc = document.getElementById('bandChips'); bc.innerHTML='';
+  var bandCounts = [0,0,0]; DATA.forEach(function(d){ bandCounts[d._band]++; });
+  [['muse',BAND_LABEL[0],bandCounts[0]],['lovable',BAND_LABEL[1],bandCounts[1]],['both','Both',DATA.length]].forEach(function(pr){
+    var b=document.createElement('button'); b.className='sb-chip'+(state.band===pr[0]?' on':''); b.textContent=pr[1]+' ('+pr[2]+')';
+    b.onclick=function(){ state.band=pr[0]; state.page=0; save(); render(); }; bc.appendChild(b);
+  });
   var sc = document.getElementById('sectChips'); sc.innerHTML='';
   [['all','All Sections']].concat(Object.keys(SECT_LABEL).map(function(k){return [k,SECT_LABEL[k]];})).forEach(function(pr){
     var b=document.createElement('button'); b.className='sb-chip'+(state.sect===pr[0]?' on':''); b.textContent=pr[1];
