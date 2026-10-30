@@ -164,6 +164,65 @@ h2.sec .chev{color:var(--sub2);font-weight:700}
 .fx-night .neon-band{position:absolute;left:0;right:0;top:0;height:15%;background:linear-gradient(180deg,rgba(0,229,255,.5),rgba(140,60,255,.28) 55%,rgba(0,229,255,0));filter:blur(7px);mix-blend-mode:screen}
 [data-theme="dark"] .fx-day{opacity:0}
 [data-theme="dark"] .fx-night{opacity:1}
+/* NEON RIPPLE — a slow shimmer that travels the crown-molding band at NIGHT, riding on top
+   of the static bloom above. Lives inside .fx-night, so it inherits the day/night fade. */
+.fx-night .neon-sweep{position:absolute;top:0;height:15%;width:42%;left:0;mix-blend-mode:screen;filter:blur(6px);
+  background:linear-gradient(100deg,rgba(0,229,255,0),rgba(170,240,255,.40) 45%,rgba(255,130,225,.34) 60%,rgba(0,229,255,0));
+  opacity:0;transform:translateX(-70%);animation:fxSweep 24s linear infinite}
+@keyframes fxSweep{0%,16%{transform:translateX(-70%);opacity:0}20%{opacity:.85}38%{opacity:.85}44%,100%{transform:translateX(245%);opacity:0}}
+/* LIVING FX STAGE — animation overlays ON the untouched cover photo (never a redraw, never
+   a re-crop). The stage is sized and centered with the same cover math as #introImg
+   (3168x1344 = 2.35714), so children placed in % are IMAGE fractions and track the photo
+   at every viewport; any zone the crop pushes off-frame simply falls off-screen.
+   Measured on the master: guitar fx .025-.110 / fy .04-.47 - TV fx .82-.98 / fy .20-.54 -
+   left-window sky band fy ~.28. NIGHT (dark theme) = the show; DAY = quiet (stage faded). */
+.fx-stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:max(100%,235.714vh);height:max(100%,42.424vw);pointer-events:none;opacity:0;transition:opacity 1.6s ease}
+[data-theme="dark"] .fx-stage{opacity:1}
+.fx-stage>div{position:absolute;pointer-events:none}
+/* 1) GUITAR LIGHT SHOW — a soft halo breathing around the guitar hotel; its color cycles
+   magenta -> cyan -> gold by cross-fading three glow layers (opacity only). */
+.fx-glow{left:.4%;top:1%;width:13.5%;height:52%;mix-blend-mode:screen;filter:blur(6px);
+  animation:fxBreathe 12s ease-in-out infinite alternate}
+.fx-glow i{position:absolute;inset:0;border-radius:50%}
+.fx-glow .g1{background:radial-gradient(50% 50% at 42% 52%,rgba(255,62,165,.55),rgba(255,62,165,0) 70%);animation:fxHue1 24s linear infinite}
+.fx-glow .g2{background:radial-gradient(50% 50% at 42% 52%,rgba(34,211,238,.50),rgba(34,211,238,0) 70%);animation:fxHue2 24s linear infinite}
+.fx-glow .g3{background:radial-gradient(50% 50% at 42% 52%,rgba(255,196,77,.50),rgba(255,196,77,0) 70%);animation:fxHue3 24s linear infinite}
+@keyframes fxBreathe{from{transform:scale(1)}to{transform:scale(1.05)}}
+@keyframes fxHue1{0%,22%{opacity:.75}37%,88%{opacity:.05}100%{opacity:.75}}
+@keyframes fxHue2{0%,22%{opacity:.05}37%,55%{opacity:.75}70%,100%{opacity:.05}}
+@keyframes fxHue3{0%,55%{opacity:.05}70%,85%{opacity:.75}97%,100%{opacity:.05}}
+/* The signature beat: once per 24s loop a HEART traces itself over the guitar body,
+   holds glowing ~2s, then fades. */
+.fx-heart{left:2.3%;top:20.5%;width:6.6%;height:18.5%}
+.fx-heart svg{width:100%;height:100%;overflow:visible;display:block}
+.fx-heart path{fill:#ff5c8a;fill-opacity:0;stroke:#ff6b9d;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:100;stroke-dashoffset:100;opacity:0;filter:drop-shadow(0 0 6px rgba(255,92,138,.85));
+  animation:fxHeart 24s linear infinite}
+@keyframes fxHeart{0%,54%{stroke-dashoffset:100;opacity:0;fill-opacity:0}
+  56%{opacity:1}68%{stroke-dashoffset:0;opacity:1;fill-opacity:0}
+  72%{fill-opacity:.16}76%{stroke-dashoffset:0;opacity:1;fill-opacity:.16}
+  84%,100%{stroke-dashoffset:0;opacity:0;fill-opacity:0}}
+/* 2) TV GLOW — a very subtle living flicker over the TV screen (far right wall). */
+.fx-tv{left:81.6%;top:19.5%;width:16.8%;height:35.5%;mix-blend-mode:screen;
+  background:radial-gradient(115% 100% at 50% 45%,rgba(185,255,205,.16),rgba(120,220,255,.06) 55%,rgba(120,220,255,0) 78%);
+  animation:fxTv 7s linear infinite}
+@keyframes fxTv{0%{opacity:.35}8%{opacity:.55}11%{opacity:.30}26%{opacity:.60}41%{opacity:.38}57%{opacity:.62}72%{opacity:.33}86%{opacity:.52}100%{opacity:.35}}
+/* 3) SPOONBILL — one small pink silhouette glides across the left-window sky band early in
+   the loop (image fx .125 -> .30 at fy ~.28: over the sunset glass, far above every face). */
+.fx-bird{left:12.5%;top:28%;width:4.2%;opacity:0;animation:fxBird 24s linear infinite}
+.fx-bird svg{width:100%;height:auto;display:block}
+@keyframes fxBird{0%,8%{transform:translate(0,0);opacity:0}11%{opacity:.95}
+  24%{opacity:.95}27%,100%{transform:translate(417%,-60%);opacity:0}}
+/* Phone portrait: the cover crop centers on the friends and the guitar / TV zones are
+   off-frame — hide those effects outright rather than risk a wrong landing.
+   The neon ripple (viewport band) and the melt stay. */
+@media (max-width:760px){.fx-glow,.fx-heart,.fx-tv{display:none}}
+/* Reduced motion: no living effects at all. */
+@media (prefers-reduced-motion:reduce){.fx-stage{opacity:0!important}
+  .fx-stage *,.fx-night .neon-sweep{animation:none!important}.fx-night .neon-sweep{opacity:0}}
+/* Pause the loops while the intro is dismissed. */
+#intro.off .fx-stage *,#intro.off .neon-sweep{animation-play-state:paused}
 .intro-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,0,15,.42) 0%,rgba(5,0,15,0) 26%,rgba(5,0,15,0) 50%,rgba(5,0,15,.58) 100%)}
 .intro-head{position:relative;display:flex;align-items:center;gap:9px;padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
 .intro-head .sp{flex:1}
@@ -521,7 +580,15 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
   <img id="introImg" alt="">
   <div class="intro-shade"></div>
   <div class="intro-fx fx-day"></div>
-  <div class="intro-fx fx-night"><div class="neon-band"></div></div>
+  <div class="intro-fx fx-night"><div class="neon-band"></div><div class="neon-sweep"></div></div>
+  <!-- LIVING FX — overlays only, on the untouched photo: guitar light show + heart,
+       TV glow, one spoonbill crossing. Placed in image fractions via .fx-stage. -->
+  <div class="fx-stage" aria-hidden="true">
+    <div class="fx-glow"><i class="g1"></i><i class="g2"></i><i class="g3"></i></div>
+    <div class="fx-tv"></div>
+    <div class="fx-heart"><svg viewBox="0 0 100 92" preserveAspectRatio="none"><path pathLength="100" d="M50 86 C18 62 5 43 5 27 C5 12 15 4 27 4 C38 4 46 10 50 21 C54 10 62 4 73 4 C85 4 95 12 95 27 C95 43 82 62 50 86 Z"/></svg></div>
+    <div class="fx-bird"><svg viewBox="0 0 120 44"><g fill="#ffa4c0"><path d="M36 19.5 C39 5 47 .5 56 2 C50.5 7.5 46.8 13 45.8 19.5 Z"/><path d="M12 25.5 C24 19.5 40 16.8 54 17.2 C62 10.5 70 8.2 78 9.8 L107 12.8 L108.5 15.8 L79 15.2 C82 19.8 80.2 24.2 74 26.8 C56 33.2 28 33 14 28.8 Z"/><path d="M24 30 L8 37.5 L10.2 40 L27 33.5 Z M32 31 L18 40.5 L20.2 42.7 L35.5 34.5 Z"/></g></svg></div>
+  </div>
   <header class="intro-head">
     <a class="fr-mark on-dark" href="https://future-ready-own-your-day-mission-briefing.lovable.app" target="_blank" rel="noopener">FUTURE READY ↗</a>
     <div class="sp"></div>
