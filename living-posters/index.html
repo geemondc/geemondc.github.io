@@ -168,6 +168,9 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
     cyan:    makeSprite('96,208,255',  '190,240,255'),
     magenta: makeSprite('232,84,255',  '255,190,255'),
     smoke:   makeSprite('168,180,198', '196,206,220'),
+    smokeD:  makeSprite('228,234,242', '250,247,238'),
+    smokeS:  makeSprite('255,158,120', '255,198,150'),
+    smokeN:  makeSprite('104,138,216', '156,186,244'),
     shade:   makeSprite('10,12,20',    '6,7,14')
   };
   /* film-grain tiles (nostalgia): cycled fast at whisper alpha */
@@ -322,13 +325,23 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
   }
   /* rolling smoke: big soft banks drifting sideways, swelling and thinning */
   function smokeWaves(R, w, t, blobs, strength){
+    /* state-tinted and doubled (Oct 30 magnitude pass): sunlit white by
+       day, pink-orange at sunset, blue neon-rimmed at night — two depth
+       layers, and it TRAVELS: visible drift inside the first seconds */
+    var ssw = stateW(t, STATE_PERIOD);
+    var sprs = [SPR.smokeD, SPR.smokeS, SPR.smokeN];
     ctx.globalCompositeOperation = 'source-over';
-    for (var m = 0; m < blobs.length; m++){
-      var sm = blobs[m];
-      var bx = sm.x + 0.05 * Math.sin(t * 0.09 + sm.ph) + (sm.drift || 0) * Math.sin(t * 0.05 + sm.ph * 2);
-      var by = sm.y + 0.018 * Math.sin(t * 0.13 + sm.ph * 1.7);
-      var a = sm.a * strength * (0.72 + 0.28 * Math.sin(t * 0.21 + sm.ph)) * w;
-      glow(SPR.smoke, R.ox + bx * R.rw, R.oy + by * R.rh, sm.r * R.rw * (1 + 0.08 * Math.sin(t * 0.1 + sm.ph)), a);
+    for (var pass = 0; pass < 2; pass++){
+      for (var m = 0; m < blobs.length; m++){
+        var sm = blobs[m];
+        var ph2 = sm.ph + pass * 2.13;
+        var bx = sm.x + (0.085 + pass * 0.03) * Math.sin(t * 0.16 + ph2) + (sm.drift || 0) * 1.7 * Math.sin(t * 0.09 + ph2 * 2);
+        var by = sm.y + 0.026 * Math.sin(t * 0.20 + ph2 * 1.7) - pass * 0.012;
+        var a = sm.a * strength * 1.8 * (pass ? 0.55 : 1) * (0.72 + 0.28 * Math.sin(t * 0.30 + ph2)) * w;
+        var rr = sm.r * R.rw * (1 + pass * 0.22) * (1 + 0.08 * Math.sin(t * 0.16 + ph2));
+        for (var si2 = 0; si2 < 3; si2++)
+          if (ssw[si2] > 0.03) glow(sprs[si2], R.ox + bx * R.rw, R.oy + by * R.rh, rr, a * ssw[si2]);
+      }
     }
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -347,7 +360,7 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
      A true 3-state cycle: weights crossfade A -> B -> C -> A over
      `period` seconds, so stills ~10 s apart land in different states
      instead of watching one state breathe. */
-  var STATE_PERIOD = 30;
+  var STATE_PERIOD = 20;
   function stateW(t, period){
     var p = (((t % period) + period) % period) / period;
     var ws = [0, 0, 0], sum = 0;
@@ -830,9 +843,11 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
       ctx.globalCompositeOperation = 'screen';
       /* the arc on the drive's own light: PALE in day (0.10), coming
          on at sunset (0.40, warmed), BLAZING at night (0.85) */
-      ctx.globalAlpha = Math.min(1, (0.10 * sw[0] + 0.40 * sw[1] + 0.85 * sw[2]) * w);
-      ctx.filter = 'hue-rotate(' + (-16 * sw[1] + 8 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.30 * sw[2]).toFixed(2) + ')';
+      var dA = Math.min(1, (0.04 * sw[0] + 0.45 * sw[1] + 1.00 * sw[2]) * w);
+      ctx.globalAlpha = dA;
+      ctx.filter = 'hue-rotate(' + (-8 * sw[0] - 26 * sw[1] + 20 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.02 + 0.30 * sw[1] + 0.55 * sw[2]).toFixed(2) + ')';
       ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
+      if (sw[2] > 0.05){ ctx.globalAlpha = dA * 0.42 * sw[2]; ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh); }
       ctx.filter = 'none';
       ctx.restore();
       ctx.globalAlpha = 1;
@@ -842,7 +857,7 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
     wash(R, 0.55, 0.30, 0.62, 'rgba(255,150,80,A)', 0.13 * sw[1] * w);
     wash(R, 0.86, 0.82, 0.36, 'rgba(255,170,90,A)', 0.07 * sw[1] * w);
     /* steam off the wet street — far bank: thin in day, thick at sunset */
-    var steam = 0.50 * sw[0] + 1.30 * sw[1] + 0.90 * sw[2];
+    var steam = 0.65 * sw[0] + 1.75 * sw[1] + 1.25 * sw[2];
     smokeWaves(R, w, t, [
       {x:0.70,y:0.47,r:0.105,a:0.13,ph:0.6,drift:0.30},
       {x:0.88,y:0.45,r:0.090,a:0.11,ph:2.4,drift:0.25},
@@ -914,10 +929,10 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
        every light on this page */
     var sw4 = stateW(t, STATE_PERIOD);
     oPlateEl.style.filter = gradeFor(F4_GRADE, t, STATE_PERIOD);
-    oGlowEl.style.filter = 'hue-rotate(' + rot.toFixed(1) + 'deg) saturate(1.15)';
-    oGlowEl.style.opacity = ((0.88 + 0.08 * Math.sin(t * TAU / 6)) * (0.30 * sw4[0] + 0.62 * sw4[1] + 1.0 * sw4[2])).toFixed(3);
+    oGlowEl.style.filter = 'hue-rotate(' + rot.toFixed(1) + 'deg) saturate(1.35) brightness(1.18)';
+    oGlowEl.style.opacity = ((0.88 + 0.08 * Math.sin(t * TAU / 6)) * (0.55 * sw4[0] + 0.75 * sw4[1] + 1.0 * sw4[2])).toFixed(3);
     oasisEl.style.transform = 'scale(' + (1 + 0.012 * (0.5 + 0.5 * Math.sin(t * TAU / 26))).toFixed(4) + ')';
-    wash(R, 0.585, 0.90, 0.44, 'hsla(' + hue.toFixed(0) + ',95%,60%,A)', 0.10 * w);
+    wash(R, 0.585, 0.90, 0.44, 'hsla(' + hue.toFixed(0) + ',95%,60%,A)', 0.14 * w);
     ctx.globalCompositeOperation = 'screen';
     for (var p2 = 0; p2 < 70; p2++){
       var sd = p2 * 17.31;
@@ -925,7 +940,7 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
       var rise = (t * (0.05 + rnd(sd + 2) * 0.05) + rnd(sd + 5)) % 1;
       var yy = 0.94 - rise * 0.52;
       var xx = bx + 0.03 * Math.sin(t * 0.8 + sd);
-      var aa = Math.sin(rise * Math.PI) * 0.55 * w;
+      var aa = Math.sin(rise * Math.PI) * 0.65 * w;
       ctx.fillStyle = 'hsla(' + hue.toFixed(0) + ',95%,70%,' + aa.toFixed(3) + ')';
       ctx.beginPath();
       ctx.arc(R.ox + xx * R.rw, R.oy + yy * R.rh, 0.8 + rnd(sd + 9) * 1.6, 0, TAU);
@@ -965,6 +980,8 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
     }
     /* (accent cull, Oct 30: the travelling holo-shards are gone —
        the room's screens and light bars are its life now) */
+    /* a whisper of haze only — an interior gets atmosphere, not weather */
+    smokeWaves(R, w, t, [{x:0.32,y:0.88,r:0.30,a:0.030,ph:1.1},{x:0.72,y:0.92,r:0.26,a:0.026,ph:4.0}], 1);
   }
 
   function sceneTrailer(R, w, t){
@@ -1054,16 +1071,16 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
      inside sceneFormingCanvas (GRADES[4] stays null: els[4] is hidden
      under the Oasis container). */
   var GRADES = [
-    [[1.10,1.18,-4,0.03],[1.34,1.00,-2,0.39],[1.24,0.87,10,0]],
-    [[1.10,1.19,-4,0.03],[1.34,1.00,-2,0.37],[1.24,0.86,10,0]],
-    [[1.08,1.17,-3,0.02],[1.32,1.00,-4,0.35],[1.26,0.87,12,0]],
-    [[1.10,1.17,-4,0.05],[1.36,1.00,-2,0.40],[1.26,0.87,8,0.02]],
+    [[1.06,1.45,-3,0],[1.31,1.18,-2,0.39],[1.18,0.74,10,0]],
+    [[1.06,1.45,-3,0],[1.31,1.18,-2,0.37],[1.18,0.74,10,0]],
+    [[1.04,1.45,-3,0],[1.29,1.18,-4,0.35],[1.20,0.74,12,0]],
+    [[1.06,1.45,-3,0],[1.33,1.18,-2,0.40],[1.20,0.74,8,0.02]],
     null,
-    [[1.06,1.14,-6,0],[1.26,1.00,26,0.24],[1.20,0.88,-18,0]],
-    [[1.09,1.16,-4,0.06],[1.32,0.99,-2,0.39],[1.20,0.91,10,0.02]],
-    [[1.10,1.18,-4,0.03],[1.34,1.00,-2,0.37],[1.25,0.87,10,0]]
+    [[1.02,1.45,-3,0],[1.23,1.18,26,0.32],[1.14,0.74,-18,0]],
+    [[1.05,1.50,-3,0],[1.29,1.18,-2,0.39],[1.14,0.68,10,0.02]],
+    [[1.06,1.45,-3,0],[1.31,1.18,-2,0.37],[1.19,0.74,10,0]]
   ];
-  var F4_GRADE = [[1.08,1.17,-4,0.02],[1.26,1.02,-2,0.30],[1.20,0.90,8,0]];
+  var F4_GRADE = [[1.04,1.45,-3,0],[1.23,1.18,-2,0.32],[1.14,0.74,8,0]];
 
   /* ================= the ARC layer =================
      One mechanism for every frame, laid under the scene's own
@@ -1191,29 +1208,30 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
     if (sw[0] > 0.02){
       /* DAY: the sky lightens toward pale daylight, sun high —
          the fill is feathered into the skyline on every side */
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(168,205,255,' + (0.22 * skyA * sw[0] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(210,228,255,0)']], 'screen');
-      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.30 * sw[0] * w);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(140,185,248,' + Math.min(1, 0.88 * skyA * sw[0] * w).toFixed(3) + ')'],
+                                   [0.55, 'rgba(172,206,250,' + Math.min(1, 0.82 * skyA * sw[0] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,206,160,' + Math.min(1, 0.78 * skyA * sw[0] * w).toFixed(3) + ')']], 'screen');
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.36 * sw[0] * w);
     }
     if (sw[1] > 0.02){
       /* SUNSET: amber-pink band, the sun low on its side */
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(120,70,140,' + (0.10 * skyA * sw[1] * w).toFixed(3) + ')'],
-                                   [0.65, 'rgba(255,130,90,' + (0.16 * skyA * sw[1] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(255,180,110,' + (0.20 * skyA * sw[1] * w).toFixed(3) + ')']], 'source-over');
-      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.34 * sw[1] * w);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(96,52,140,' + Math.min(1, 0.55 * skyA * sw[1] * w).toFixed(3) + ')'],
+                                   [0.65, 'rgba(255,110,70,' + Math.min(1, 0.72 * skyA * sw[1] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,178,105,' + Math.min(1, 0.85 * skyA * sw[1] * w).toFixed(3) + ')']], 'source-over');
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.42 * sw[1] * w);
     }
     if (sw[2] > 0.02){
       /* NIGHT: deep blue settles over the sky, stars come out —
          the veil is feathered like the day fill, no edge anywhere */
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(6,10,38,' + (0.26 * skyA * sw[2] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(6,10,38,' + (0.03 * skyA * sw[2] * w).toFixed(3) + ')']], 'source-over');
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(4,7,30,' + Math.min(1, 0.88 * skyA * sw[2] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(12,18,54,' + Math.min(1, 0.55 * skyA * sw[2] * w).toFixed(3) + ')']], 'source-over');
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (var st = 0; st < 52; st++){
         var sx = sky[0] + rnd(seed + st * 3.71) * (sky[2] - sky[0]);
         var sy = sky[1] + rnd(seed + st * 9.13) * (sky[3] - sky[1]);
         var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(seed + st * 5.3) * 1.6) + st * 2.7), 2);
-        glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
+        glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.85 * tw * sw[2] * w);
       }
       ctx.restore();
     }
@@ -1232,14 +1250,39 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
         ctx.save();
         ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
         ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = Math.min(1, cfg.glow * (0.10 * sw[0] + 0.40 * sw[1] + 0.85 * sw[2]) * w);
-        ctx.filter = 'hue-rotate(' + (-14 * sw[1] + 6 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.30 * sw[2]).toFixed(2) + ')';
-        ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
+        /* MAGNITUDE PASS (Oct 30): lights near-OFF by day (0.04), full
+           blaze + bloom at night (1.00); the glow's hue TRAVELS with the
+           state — pale neutral day, amber-rose sunset, magenta/cyan-rich
+           night. The glow plane drifts a breath against the steam plane
+           (far-plane parallax); the plate itself never moves, so faces
+           stay locked in the mid-plane. */
+        var gA = Math.min(1, cfg.glow * (0.04 * sw[0] + 0.45 * sw[1] + 1.00 * sw[2]) * w);
+        ctx.globalAlpha = gA;
+        ctx.filter = 'hue-rotate(' + (-6 * sw[0] - 26 * sw[1] + 20 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.02 + 0.30 * sw[1] + 0.55 * sw[2]).toFixed(2) + ')';
+        var gdx = 2.2 * Math.sin(t * 0.11) * (R.rw / 1280);
+        ctx.drawImage(gl, R.ox + gdx, R.oy, R.rw, R.rh);
+        if (sw[2] > 0.05){ ctx.globalAlpha = gA * 0.42 * sw[2]; ctx.drawImage(gl, R.ox + gdx, R.oy, R.rw, R.rh); }
         ctx.filter = 'none';
         ctx.restore();
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
       }
+    }
+    /* exposure-led separation: daylight lifts the whole frame cool and
+       flat; night multiplies the environment down into deep blue while
+       the lights keep their blaze — faces are re-lit by the face floor
+       afterwards, never darkened by it */
+    if (sw[0] > 0.02){
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = 'rgba(186,214,255,' + (0.17 * sw[0] * w).toFixed(3) + ')';
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (sw[2] > 0.02){
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(86,102,158,' + (0.50 * sw[2] * w).toFixed(3) + ')';
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+      ctx.globalCompositeOperation = 'source-over';
     }
     skyArc(R, w, t, cfg, k * 37.7 + 11.3);
     if (sw[2] > 0.02){
@@ -1247,7 +1290,7 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
       var vg = ctx.createRadialGradient(R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.42,
                                         R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.78);
       vg.addColorStop(0, 'rgba(4,6,20,0)');
-      vg.addColorStop(1, 'rgba(4,6,20,' + (0.26 * sw[2] * w).toFixed(3) + ')');
+      vg.addColorStop(1, 'rgba(4,6,20,' + (0.32 * sw[2] * w).toFixed(3) + ')');
       ctx.fillStyle = vg;
       ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
     }
@@ -1269,7 +1312,7 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
   }
 
   /* ================= melt engine ================= */
-  var meltT = 0, fxT = 0, held = false, hidden = false;
+  var meltT = 0, fxT = 10.0, held = false, hidden = false;
   var weights = []; for (i = 0; i < N; i++) weights.push(0); weights[0] = 1;
 
   function smooth(x){ x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }

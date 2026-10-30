@@ -162,6 +162,9 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     cyan:    makeSprite('96,208,255',  '190,240,255'),
     magenta: makeSprite('232,84,255',  '255,190,255'),
     smoke:   makeSprite('168,180,198', '196,206,220'),
+    smokeD:  makeSprite('228,234,242', '250,247,238'),
+    smokeS:  makeSprite('255,158,120', '255,198,150'),
+    smokeN:  makeSprite('104,138,216', '156,186,244'),
     shade:   makeSprite('10,12,20',    '6,7,14')
   };
   /* a gold coin: bright core, rich rim, a struck inner ring */
@@ -363,13 +366,23 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   }
   /* rolling smoke: big soft banks drifting sideways, swelling and thinning */
   function smokeWaves(R, w, t, blobs, strength){
+    /* state-tinted and doubled (Oct 30 magnitude pass): sunlit white by
+       day, pink-orange at sunset, blue neon-rimmed at night — two depth
+       layers, and it TRAVELS: visible drift inside the first seconds */
+    var ssw = stateW(t, STATE_PERIOD);
+    var sprs = [SPR.smokeD, SPR.smokeS, SPR.smokeN];
     ctx.globalCompositeOperation = 'source-over';
-    for (var m = 0; m < blobs.length; m++){
-      var sm = blobs[m];
-      var bx = sm.x + 0.05 * Math.sin(t * 0.09 + sm.ph) + (sm.drift || 0) * Math.sin(t * 0.05 + sm.ph * 2);
-      var by = sm.y + 0.018 * Math.sin(t * 0.13 + sm.ph * 1.7);
-      var a = sm.a * strength * (0.72 + 0.28 * Math.sin(t * 0.21 + sm.ph)) * w;
-      glow(SPR.smoke, R.ox + bx * R.rw, R.oy + by * R.rh, sm.r * R.rw * (1 + 0.08 * Math.sin(t * 0.1 + sm.ph)), a);
+    for (var pass = 0; pass < 2; pass++){
+      for (var m = 0; m < blobs.length; m++){
+        var sm = blobs[m];
+        var ph2 = sm.ph + pass * 2.13;
+        var bx = sm.x + (0.085 + pass * 0.03) * Math.sin(t * 0.16 + ph2) + (sm.drift || 0) * 1.7 * Math.sin(t * 0.09 + ph2 * 2);
+        var by = sm.y + 0.026 * Math.sin(t * 0.20 + ph2 * 1.7) - pass * 0.012;
+        var a = sm.a * strength * 1.8 * (pass ? 0.55 : 1) * (0.72 + 0.28 * Math.sin(t * 0.30 + ph2)) * w;
+        var rr = sm.r * R.rw * (1 + pass * 0.22) * (1 + 0.08 * Math.sin(t * 0.16 + ph2));
+        for (var si2 = 0; si2 < 3; si2++)
+          if (ssw[si2] > 0.03) glow(sprs[si2], R.ox + bx * R.rw, R.oy + by * R.rh, rr, a * ssw[si2]);
+      }
     }
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -388,7 +401,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
      A true 3-state cycle: weights crossfade A -> B -> C -> A over
      `period` seconds, so stills ~10 s apart land in different states
      instead of watching one state breathe. */
-  var STATE_PERIOD = 30;
+  var STATE_PERIOD = 20;
   function stateW(t, period){
     var p = (((t % period) + period) % period) / period;
     var ws = [0, 0, 0], sum = 0;
@@ -1127,13 +1140,13 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
      the plate. (s0/s4/s5 used to "change state" via darkDrift's slow
      navy breathing — un-synced to the cycle; the arc replaces it.) */
   var GRADES = [
-    [[1.08,1.15,-4,0.03],[1.28,1.01,-2,0.32],[1.20,0.88,10,0.02]],
-    [[1.06,1.16,-4,0.02],[1.26,1.02,-2,0.30],[1.22,0.88,10,0]],
-    [[1.06,1.10,-2,0.02],[1.34,1.00,-2,0.42],[1.27,0.82,16,0]],
-    [[1.05,1.10,-2,0.02],[1.34,1.00,-2,0.42],[1.25,0.82,16,0]],
-    [[1.08,1.15,-4,0.03],[1.30,1.02,-2,0.34],[1.22,0.87,10,0]],
-    [[1.08,1.16,-4,0.03],[1.30,1.02,-2,0.32],[1.24,0.87,10,0]],
-    [[1.08,1.16,-4,0.02],[1.24,1.03,-2,0.30],[1.18,0.90,8,0]]
+    [[1.06,1.27,-3,0],[1.25,1.03,-2,0.34],[1.16,0.78,10,0.02]],
+    [[1.04,1.28,-3,0],[1.24,1.04,-2,0.32],[1.18,0.78,10,0]],
+    [[1.04,1.22,-3,0],[1.31,1.02,-2,0.44],[1.23,0.60,16,0]],
+    [[1.03,1.22,-3,0],[1.31,1.02,-2,0.44],[1.21,0.60,16,0]],
+    [[1.06,1.27,-3,0],[1.27,1.04,-2,0.36],[1.18,0.65,10,0]],
+    [[1.06,1.28,-3,0],[1.27,1.04,-2,0.34],[1.20,0.77,10,0]],
+    [[1.06,1.28,-3,0],[1.22,1.05,-2,0.32],[1.15,0.80,8,0]]
   ];
 
   /* ================= the ARC layer =================
@@ -1249,29 +1262,30 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     if (sw[0] > 0.02){
       /* DAY: pale daylight over the sky region, feathered on every
          side so the band melts into the skyline (Oct 30 skyfix) */
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(168,205,255,' + (0.22 * skyA * boost * sw[0] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(210,228,255,0)']], 'screen');
-      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.30 * sw[0] * w);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(140,185,248,' + Math.min(1, 0.88 * skyA * boost * sw[0] * w).toFixed(3) + ')'],
+                                   [0.55, 'rgba(172,206,250,' + Math.min(1, 0.82 * skyA * boost * sw[0] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,206,160,' + Math.min(1, 0.78 * skyA * boost * sw[0] * w).toFixed(3) + ')']], 'screen');
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.36 * sw[0] * w);
     }
     if (sw[1] > 0.02){
       /* SUNSET: amber-pink band, the sun low on its side */
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(120,70,140,' + (0.10 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
-                                   [0.65, 'rgba(255,130,90,' + (0.16 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(255,180,110,' + (0.20 * skyA * boost * sw[1] * w).toFixed(3) + ')']], 'source-over');
-      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.34 * sw[1] * w);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(96,52,140,' + Math.min(1, 0.55 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
+                                   [0.65, 'rgba(255,110,70,' + Math.min(1, 0.72 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,178,105,' + Math.min(1, 0.85 * skyA * boost * sw[1] * w).toFixed(3) + ')']], 'source-over');
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.42 * sw[1] * w);
     }
     if (sw[2] > 0.02){
       /* NIGHT: deep blue + stars, feathered like the day fill */
       var nA = cfg.nightA || 1;
-      featherFill(x0, y0, x1, y1, [[0, 'rgba(6,10,38,' + (0.26 * skyA * nA * boost * sw[2] * w).toFixed(3) + ')'],
-                                   [1, 'rgba(6,10,38,' + (0.03 * skyA * (1 + 2.3 * (nA - 1)) * boost * sw[2] * w).toFixed(3) + ')']], 'source-over');
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(4,7,30,' + Math.min(1, 0.88 * skyA * nA * boost * sw[2] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(12,18,54,' + Math.min(1, 0.55 * skyA * (1 + 2.3 * (nA - 1)) * boost * sw[2] * w).toFixed(3) + ')']], 'source-over');
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (var st = 0; st < 52; st++){
         var sx = sky[0] + rnd(seed + st * 3.71) * (sky[2] - sky[0]);
         var sy = sky[1] + rnd(seed + st * 9.13) * (sky[3] - sky[1]);
         var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(seed + st * 5.3) * 1.6) + st * 2.7), 2);
-        glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
+        glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.85 * tw * sw[2] * w);
       }
       ctx.restore();
     }
@@ -1289,7 +1303,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   function regionArc(R, w, t, k){
     var cfg = ARC[k]; var rg = cfg.region; if (!rg) return;
     var sw = stateW(t, STATE_PERIOD);
-    var rb = cfg.regionBoost || 1;
+    var rb = (cfg.regionBoost || 1) * 1.25;
     var x0 = R.ox + rg[0] * R.rw, y0 = R.oy + rg[1] * R.rh;
     var x1 = R.ox + rg[2] * R.rw, y1 = R.oy + rg[3] * R.rh;
     if (cfg.regionArc){
@@ -1310,23 +1324,23 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
             var sx = rg[0] + rnd(k * 53.7 + st * 3.71) * (rg[2] - rg[0]);
             var sy = rg[1] + rnd(k * 53.7 + st * 9.13) * (rg[3] - rg[1]) * 0.55;
             var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(k * 53.7 + st * 5.3) * 1.6) + st * 2.7), 2);
-            glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(k * 53.7 + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
+            glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(k * 53.7 + st * 7.7) * 0.0022) * R.rw, 0.75 * tw * sw[2] * w);
           }
           ctx.restore();
         }
       }
     }
     if (cfg.regionTint && sw[2] > 0.02){
-      var ta = (0.15 * sw[2] * w).toFixed(3);
+      var ta = (0.19 * sw[2] * w).toFixed(3);
       featherFill(x0, y0, x1, y1, [[0, cfg.regionTint.replace('A', ta)],
                                    [1, cfg.regionTint.replace('A', ta)]], 'screen');
     }
     if (cfg.regionGlow){
       var gl = glowLayerFor(k);
       if (gl){
-        var ga = Math.min(1, cfg.regionGlow * (0.05 * sw[0] + 0.35 * sw[1] + 1.00 * sw[2]) * w);
+        var ga = Math.min(1, cfg.regionGlow * (0.03 * sw[0] + 0.45 * sw[1] + 1.15 * sw[2]) * w);
         if (ga > 0.01){
-          var filt = 'hue-rotate(' + (-20 * sw[1] + 14 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.45 * sw[2]).toFixed(2) + ')';
+          var filt = 'hue-rotate(' + (-8 * sw[0] - 26 * sw[1] + 20 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.02 + 0.28 * sw[1] + 0.55 * sw[2]).toFixed(2) + ')';
           featherPaint(x0, y0, x1, y1, 'screen', function(g, bw, bh){
             g.globalAlpha = ga; g.filter = filt;
             g.drawImage(gl, rg[0] * gl.width, rg[1] * gl.height, (rg[2] - rg[0]) * gl.width, (rg[3] - rg[1]) * gl.height, 0, 0, bw, bh);
@@ -1345,14 +1359,33 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
         ctx.save();
         ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
         ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = Math.min(1, cfg.glow * (0.05 * sw[0] + 0.45 * sw[1] + 1.05 * sw[2]) * w);
-        ctx.filter = 'hue-rotate(' + (-20 * sw[1] + 14 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.45 * sw[2]).toFixed(2) + ')';
-        ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
+        /* MAGNITUDE PASS (Oct 30): lights pale by day (0.04), blazing
+           with bloom at night; the glow's hue travels pale -> amber-rose
+           -> magenta/cyan-rich; far plane drifts a breath against the
+           near atmosphere — the painting itself never moves */
+        var gA = Math.min(1, cfg.glow * (0.04 * sw[0] + 0.50 * sw[1] + 1.10 * sw[2]) * w);
+        ctx.globalAlpha = gA;
+        ctx.filter = 'hue-rotate(' + (-8 * sw[0] - 26 * sw[1] + 20 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.02 + 0.28 * sw[1] + 0.55 * sw[2]).toFixed(2) + ')';
+        var gdx = 2.2 * Math.sin(t * 0.11) * (R.rw / 1280);
+        ctx.drawImage(gl, R.ox + gdx, R.oy, R.rw, R.rh);
+        if (sw[2] > 0.05){ ctx.globalAlpha = gA * 0.42 * sw[2]; ctx.drawImage(gl, R.ox + gdx, R.oy, R.rw, R.rh); }
         ctx.filter = 'none';
         ctx.restore();
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
       }
+    }
+    if (sw[0] > 0.02){
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = 'rgba(186,214,255,' + (0.13 * sw[0] * w).toFixed(3) + ')';
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (sw[2] > 0.02){
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(86,102,158,' + (0.34 * sw[2] * w).toFixed(3) + ')';
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+      ctx.globalCompositeOperation = 'source-over';
     }
     skyArc(R, w, t, cfg, k * 37.7 + 11.3);
     regionArc(R, w, t, k);
@@ -1360,7 +1393,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       var vg = ctx.createRadialGradient(R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.42,
                                         R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.78);
       vg.addColorStop(0, 'rgba(4,6,20,0)');
-      vg.addColorStop(1, 'rgba(4,6,20,' + (0.26 * sw[2] * w).toFixed(3) + ')');
+      vg.addColorStop(1, 'rgba(4,6,20,' + (0.30 * sw[2] * w).toFixed(3) + ')');
       ctx.fillStyle = vg;
       ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
     }
@@ -1384,7 +1417,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   }
 
   /* ================= melt engine ================= */
-  var meltT = 0, fxT = 0, held = false, hidden = false;
+  var meltT = 0, fxT = 10.0, held = false, hidden = false;
   var weights = []; for (i = 0; i < N; i++) weights.push(0); weights[0] = 1;
 
   function smooth(x){ x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }
