@@ -1494,28 +1494,61 @@ function buildHome(){
   Array.prototype.forEach.call(lvUpNext.querySelectorAll('.np-card'), function(c){
     c.addEventListener('click', function(){ var ei = +c.getAttribute('data-ei'); load(ei, true); openSheet(); });
   });
-  lvShowsPrev.innerHTML = SHOWS.slice(0, 5).map(function(s, i){ return showTileHTML(s, i); }).join('') +
+  lvShowsPrev.innerHTML = '<button type="button" class="lv-showbtn" id="lvUpNextTile"><span class="tile lv-more">UP<br>NEXT</span><span class="nm">Up Next</span><span class="ct">Unheard + resume</span></button>' +
+    SHOWS.slice(0, 5).map(function(s, i){ return showTileHTML(s, i); }).join('') +
     '<button type="button" class="lv-showbtn" id="lvAllShows"><span class="tile lv-more">ALL<br>SHOWS</span>' +
     '<span class="nm">Every show</span><span class="ct">' + SHOWS.length + ' shows</span></button>';
   Array.prototype.forEach.call(lvShowsPrev.querySelectorAll('[data-sidx]'), function(b){
     b.addEventListener('click', function(){ lvListMode = 'show'; lvListShow = +b.getAttribute('data-sidx'); renderHomeList(); });
   });
   $('lvAllShows').addEventListener('click', function(){ lvListMode = 'all'; lvListShow = -1; renderHomeList(); });
+  $('lvUpNextTile').addEventListener('click', function(){ lvListMode = 'upnext'; lvListShow = -1; renderHomeList(); });
   renderHomeList();
 }
 /* ----- the merged list under the carousel: one screen, Catalog-scrapbook style ----- */
-var lvListMode = 'all', lvListShow = -1;
+var lvListMode = 'upnext', lvListShow = -1;
 function homeEpRowHTML(e, ei){
   return '<button type="button" class="lv-eprow" data-ei="' + ei + '"><span class="tile">' + thumbHTML(e) + '</span>' +
     '<span class="tx"><span class="d">' + esc(e.d) + '</span>' +
     '<span class="nm">' + esc(e.t) + '</span>' +
     '<span class="ct">' + pillHTML(e) + '</span></span></button>';
 }
+/* bridge for the Now Playing face (separate closure): tap the show name -> show page */
+window.__goShow = function(e){
+  var ix = 0;
+  if (e && e.guest){ for (var gi = 0; gi < SHOWS.length; gi++){ if (SHOWS[gi].name === (e.show || 'Guest spot')){ ix = gi; break; } } }
+  closeSheet(); openShow(ix);
+};
+function bindHomeEpRows(box){
+  Array.prototype.forEach.call(box.querySelectorAll('.lv-eprow'), function(row){
+    row.addEventListener('click', function(){
+      var ei = +row.getAttribute('data-ei'), e = ALL_EPS[ei];
+      if (e.linkOnly || !e.audio){ window.open(e.link, '_blank'); return; }
+      load(ei, true); openSheet();
+    });
+  });
+}
 function renderHomeList(){
   var head = $('lvListHead'), sub = $('lvListSub'), box = $('lvHomeList');
   if (!head || !box) return;
   Array.prototype.forEach.call(lvShowsPrev.querySelectorAll('.lv-showbtn'), function(b){ b.classList.remove('sel'); });
-  if (lvListMode === 'all'){
+  if (lvListMode === 'upnext'){
+    head.firstChild.textContent = 'UP NEXT';
+    sub.textContent = 'The newest podcasts from your shows that you have not heard \u2014 resume first, then fresh.';
+    box.className = 'lv-grid lv-list';
+    var un = upNext(), seenU = {}, river = [];
+    un.res.forEach(function(e){ river.push(e); if (e.audio) seenU[e.audio] = 1; });
+    for (var i = 0; i < ALL_EPS.length && river.length < 60; i++){
+      var e2 = ALL_EPS[i];
+      if (!e2.audio || seenU[e2.audio]) continue;
+      var r2 = recFor(e2); if (r2 && r2.done) continue;
+      if (isInProg(e2)) continue;
+      river.push(e2); seenU[e2.audio] = 1;
+    }
+    box.innerHTML = river.map(function(e){ return homeEpRowHTML(e, ALL_EPS.indexOf(e)); }).join('');
+    bindHomeEpRows(box);
+    var up = $('lvUpNextTile'); if (up) up.classList.add('sel');
+  } else if (lvListMode === 'all'){
     head.firstChild.textContent = 'ALL SHOWS';
     sub.textContent = 'Every show, most recent first \u2014 tap a show to list its podcasts.';
     box.className = 'lv-grid lv-list';
@@ -1531,13 +1564,7 @@ function renderHomeList(){
     sub.textContent = s.eps.length + (s.eps.length === 1 ? ' podcast' : ' podcasts') + ' \u2014 newest first. Tap one to play.';
     box.className = 'lv-grid lv-list';
     box.innerHTML = s.eps.map(function(ei){ return homeEpRowHTML(ALL_EPS[ei], ei); }).join('');
-    Array.prototype.forEach.call(box.querySelectorAll('.lv-eprow'), function(row){
-      row.addEventListener('click', function(){
-        var ei = +row.getAttribute('data-ei'), e = ALL_EPS[ei];
-        if (e.linkOnly || !e.audio){ window.open(e.link, '_blank'); return; }
-        load(ei, true); openSheet();
-      });
-    });
+    bindHomeEpRows(box);
     var tile = lvShowsPrev.querySelector('[data-sidx="' + lvListShow + '"]'); if (tile) tile.classList.add('sel');
   }
   if (window.updateProgFills) updateProgFills();
@@ -2008,7 +2035,7 @@ function createFace(mount, mode){
     face.el.label.innerHTML = labelHTML(e);
     face.el.date.textContent = e.d || '';
     face.el.title.textContent = e.t || '';
-    face.el.showEl.textContent = showName(e);
+    face.el.showEl.textContent = showName(e) + ' \u203A'; face.el.showEl.style.cursor = 'pointer'; face.el.showEl.onclick = function(){ if (window.__goShow) window.__goShow(e); };
     face.el.uWords.classList.toggle('off', !getTranscript(e));
     face.syncDeck(); face.syncTime(); face.syncTransport();
   };
