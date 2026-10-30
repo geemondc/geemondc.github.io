@@ -44,26 +44,6 @@
     -webkit-mask-position:center; mask-position:center;
     -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   }
-  #oasis .oPill {
-    position:absolute; top:4%; right:3.5%; z-index:3;
-    display:inline-flex; align-items:center;
-    background:rgba(10,16,14,.34); border:1px solid rgba(255,255,255,.38);
-    border-radius:999px; padding:5px;
-    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-    box-shadow:0 2px 14px rgba(0,0,0,.28);
-  }
-  #oasis .oPill span {
-    color:#fff; letter-spacing:.06em; font-weight:600; white-space:nowrap;
-    padding:6px 12px; font-size:12px; font-size:1.75cqw;
-    text-shadow:0 1px 6px rgba(0,0,0,.45);
-  }
-  #oasis .oCaption {
-    position:absolute; left:4%; bottom:4.5%; z-index:3; color:#fff; pointer-events:none;
-    text-shadow:0 1px 10px rgba(0,0,0,.65), 0 0 2px rgba(0,0,0,.5);
-  }
-  #oasis .oCaption h1 { font-size:20px; font-size:3.6cqw; font-weight:600; letter-spacing:.045em; line-height:1.15; }
-  #oasis .oCaption p  { font-size:12px; font-size:2cqw; font-weight:400; letter-spacing:.02em; opacity:.92; margin-top:3px; }
-
   /* ---- living FX canvas: same contain-fit math as the photos, drawn in JS ---- */
   #fx { position:absolute; inset:0; width:100%; height:100%; z-index:5; pointer-events:none; }
 
@@ -82,21 +62,7 @@
   @keyframes sheen { from { transform:translateX(-14%);} to { transform:translateX(14%);} }
   @media (prefers-reduced-motion: reduce) { #holo::after { animation:none; } }
 
-  /* ---- the only furniture: a quiet caption, bottom-centre ---- */
-  #caption {
-    position:absolute; left:0; right:0; bottom:calc(20px + env(safe-area-inset-bottom));
-    z-index:10; text-align:center; color:#fff; pointer-events:none;
-    text-shadow:0 1px 10px rgba(0,0,0,.7), 0 0 2px rgba(0,0,0,.55);
-  }
-  #caption .t {
-    font-size:clamp(14px, 2.1vw, 21px); font-weight:600; letter-spacing:.34em;
-    text-indent:.34em; /* recentre tracked text */
-  }
-  #hint {
-    margin-top:7px; font-size:11px; font-weight:400; letter-spacing:.22em;
-    text-indent:.22em; opacity:.78; transition:opacity 1.4s ease;
-  }
-  #hint.gone { opacity:0; }
+  /* no text furniture at all: the paintings carry the effects only */
 </style>
 </head>
 <body>
@@ -111,10 +77,6 @@
   <canvas id="fx"></canvas>
   <div id="holo"></div>
 
-  <div id="caption">
-    <div class="t">LIVING SCENES — FUTURE READY</div>
-    <div id="hint">TAP TO HOLD</div>
-  </div>
 
 <script>
 (function(){
@@ -145,7 +107,6 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   var canvas = document.getElementById('fx');
   var ctx = canvas.getContext('2d');
   var holoEl = document.getElementById('holo');
-  var hintEl = document.getElementById('hint');
 
   /* ================= the forming frame IS the Oasis page ================= */
   var OASIS_IDX = 0, oasisReady = false;
@@ -155,7 +116,6 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     for (i = 0; i < N; i++)
       els[i].style.opacity = (i === SINGLE && i !== OASIS_IDX) ? '1' : '0';
     oasisEl.style.opacity = SINGLE === OASIS_IDX ? '1' : '0';
-    hintEl.classList.add('gone');
   }
 
   /* ================= view / contain-fit math (per frame aspect) ================= */
@@ -416,6 +376,364 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  /* ================= LIFT PASS instruments =================
+     A true 3-state cycle: weights crossfade A -> B -> C -> A over
+     `period` seconds, so stills ~10 s apart land in different states
+     instead of watching one state breathe. */
+  var STATE_PERIOD = 30;
+  function stateW(t, period){
+    var p = (((t % period) + period) % period) / period;
+    var ws = [0, 0, 0], sum = 0;
+    for (var si = 0; si < 3; si++){
+      var d = Math.abs(p - si / 3); if (d > 0.5) d = 1 - d;
+      var x = Math.max(0, 1 - d * 3);
+      x = x * x * (3 - 2 * x);
+      ws[si] = x; sum += x;
+    }
+    if (sum <= 0.001) return [1, 0, 0];
+    return [ws[0] / sum, ws[1] / sum, ws[2] / sum];
+  }
+  /* the whole plate's grade, blended from a frame's 3 state specs
+     [saturate, brightness, hue-rotate deg, sepia] — the photograph
+     itself changes state, not just the light laid over it */
+  function gradeFor(specs, t, period){
+    if (!specs) return '';
+    var sw = stateW(t, period || STATE_PERIOD);
+    var sat = 0, bri = 0, hue = 0, sep = 0;
+    for (var gi2 = 0; gi2 < 3; gi2++){
+      sat += sw[gi2] * specs[gi2][0]; bri += sw[gi2] * specs[gi2][1];
+      hue += sw[gi2] * specs[gi2][2]; sep += sw[gi2] * specs[gi2][3];
+    }
+    return 'saturate(' + sat.toFixed(3) + ') brightness(' + bri.toFixed(3) +
+           ') hue-rotate(' + hue.toFixed(1) + 'deg) sepia(' + sep.toFixed(3) + ')';
+  }
+  /* a state-weighted colour veil over a region of the frame (light
+     through a doorway, a sky going down) */
+  function stateVeil(R, w, t, period, cols, region){
+    var sw = stateW(t, period || STATE_PERIOD);
+    var x0 = region ? region[0] : 0, y0 = region ? region[1] : 0;
+    var x1 = region ? region[2] : 1, y1 = region ? region[3] : 1;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox + x0 * R.rw, R.oy + y0 * R.rh, (x1 - x0) * R.rw, (y1 - y0) * R.rh); ctx.clip();
+    for (var vi = 0; vi < 3; vi++){
+      var a = cols[vi][1] * sw[vi] * w;
+      if (a <= 0.004) continue;
+      ctx.fillStyle = cols[vi][0].replace('A', a.toFixed(3));
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+    }
+    ctx.restore();
+  }
+  /* ---- real flying objects: silhouettes that TRAVEL through the
+     scene's depth (parallax scale mid-crossing), not twinkle texture */
+  function birdAt(s, flap, color, alpha){
+    ctx.fillStyle = color; ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.32, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(s * 1.02, -s * 0.10, s * 0.30, 0, TAU); ctx.fill();
+    var wy = Math.sin(flap) * s * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.25, -s * 0.05);
+    ctx.quadraticCurveTo(-s * 0.55, -s * 0.75 - wy, -s * 1.75, -s * 0.30 - wy * 1.25);
+    ctx.quadraticCurveTo(-s * 0.60, s * 0.16, s * 0.05, s * 0.14);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.15, s * 0.02);
+    ctx.quadraticCurveTo(-s * 0.75, -s * 0.45 - wy * 0.8, -s * 1.45, -s * 0.18 - wy);
+    ctx.quadraticCurveTo(-s * 0.70, s * 0.22, -s * 0.10, s * 0.20);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  function birdCross(R, w, t, cfg){
+    var u = (((t + (cfg.off || 0)) % cfg.dur) + cfg.dur) % cfg.dur / cfg.dur;
+    var x = cfg.dir < 0 ? cfg.x1 - (cfg.x1 - cfg.x0) * u : cfg.x0 + (cfg.x1 - cfg.x0) * u;
+    var y = cfg.y + (cfg.amp || 0.02) * Math.sin(u * Math.PI * (cfg.bobs || 2) + (cfg.ph || 0));
+    var depth = 0.78 + 0.38 * Math.sin(u * Math.PI);
+    var fade = Math.min(1, u * 9, (1 - u) * 9) * w;
+    if (fade <= 0.02) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.translate(R.ox + x * R.rw, R.oy + y * R.rh);
+    ctx.scale(cfg.dir < 0 ? -1 : 1, 1);
+    var flapAmp = cfg.glide ? (0.25 + 0.75 * Math.max(0, Math.sin(t * 0.55 + (cfg.ph || 0)))) : 1;
+    birdAt(cfg.size * R.rw * depth, t * (cfg.flapHz || 6) * flapAmp + (cfg.ph || 0) * 7,
+           cfg.color || 'rgba(14,13,24,0.88)', (cfg.alpha || 0.9) * fade);
+    ctx.restore();
+  }
+  function planeCross(R, w, t, cfg){
+    var u = (((t + (cfg.off || 0)) % cfg.dur) + cfg.dur) % cfg.dur / cfg.dur;
+    var x = cfg.dir < 0 ? cfg.x1 - (cfg.x1 - cfg.x0) * u : cfg.x0 + (cfg.x1 - cfg.x0) * u;
+    var y = cfg.y + 0.008 * Math.sin(u * 6.28 + (cfg.off || 0));
+    var fade = Math.min(1, u * 10, (1 - u) * 10) * w;
+    if (fade <= 0.02) return;
+    var s = cfg.size * R.rw;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.translate(R.ox + x * R.rw, R.oy + y * R.rh);
+    ctx.scale(cfg.dir < 0 ? -1 : 1, 1);
+    ctx.globalCompositeOperation = 'screen';
+    for (var tr = 1; tr <= 9; tr++)
+      glow(SPR.warm, -tr * s * 0.85, tr * s * 0.14, s * 0.5, 0.22 * (1 - tr / 10) * fade);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(16,17,30,' + (0.92 * fade).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.22, 0, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.15, 0); ctx.lineTo(-s * 0.45, s * 0.78); ctx.lineTo(-s * 0.78, s * 0.78); ctx.lineTo(-s * 0.30, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.82, -s * 0.06); ctx.lineTo(-s * 1.08, -s * 0.42); ctx.lineTo(-s * 1.02, 0); ctx.lineTo(-s * 0.86, s * 0.10);
+    ctx.closePath(); ctx.fill();
+    ctx.globalCompositeOperation = 'screen';
+    if (Math.sin(t * 6.0) > 0.25) glow(SPR.red, 0, -s * 0.28, s * 0.75, 0.7 * fade);
+    glow(SPR.warm, s * 0.95, 0, s * 0.5, 0.35 * fade);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+  function dronePass(R, w, t, cfg){
+    var u = (((t + (cfg.off || 0)) % cfg.dur) + cfg.dur) % cfg.dur / cfg.dur;
+    var x = cfg.x0 + (cfg.x1 - cfg.x0) * u;
+    var y = cfg.y + 0.012 * Math.sin(u * Math.PI * 3 + (cfg.off || 0));
+    var fade = Math.min(1, u * 12, (1 - u) * 12) * w;
+    if (fade <= 0.02) return;
+    var cx = R.ox + x * R.rw, cy = R.oy + y * R.rh, s = cfg.size * R.rw;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var tr = 1; tr <= 5; tr++)
+      glow(SPR.cyan, cx - Math.sign(cfg.x1 - cfg.x0) * tr * s * 0.9, cy + tr * 0.7, s * 0.55, 0.20 * (1 - tr / 6) * fade);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(200,215,235,' + (0.35 * fade).toFixed(3) + ')';
+    var ro = [[-1,-0.55],[1,-0.55],[-1,0.55],[1,0.55]];
+    for (var ri = 0; ri < 4; ri++){
+      ctx.beginPath();
+      ctx.ellipse(cx + ro[ri][0] * s * 0.95, cy + ro[ri][1] * s * 0.42, s * 0.42, s * 0.13, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(14,16,26,' + (0.92 * fade).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.62, s * 0.30, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(14,16,26,' + (0.7 * fade).toFixed(3) + ')';
+    ctx.lineWidth = Math.max(1, s * 0.10);
+    ctx.beginPath();
+    ctx.moveTo(cx - s * 0.5, cy); ctx.lineTo(cx - s * 0.95, cy - s * 0.23);
+    ctx.moveTo(cx + s * 0.5, cy); ctx.lineTo(cx + s * 0.95, cy - s * 0.23);
+    ctx.moveTo(cx - s * 0.5, cy + s * 0.1); ctx.lineTo(cx - s * 0.95, cy + s * 0.33);
+    ctx.moveTo(cx + s * 0.5, cy + s * 0.1); ctx.lineTo(cx + s * 0.95, cy + s * 0.33);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'screen';
+    if (Math.sin(t * 5.2) > 0.2) glow(SPR.red, cx - s * 0.55, cy, s * 0.8, 0.65 * fade);
+    if (Math.sin(t * 5.2 + 2.4) > 0.2) glow(SPR.green, cx + s * 0.55, cy, s * 0.8, 0.65 * fade);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+  /* a shooting star: bright head, tapering trail, once per period */
+  function meteor(R, w, t, cfg){
+    var cyc = cfg.period || 26;
+    var loc = (((t + (cfg.off || 0)) % cyc) + cyc) % cyc;
+    if (loc > cfg.dur) return;
+    var u = loc / cfg.dur;
+    var hx = R.ox + (cfg.x0 + (cfg.x1 - cfg.x0) * u) * R.rw;
+    var hy = R.oy + (cfg.y0 + (cfg.y1 - cfg.y0) * u) * R.rh;
+    var dx = (cfg.x1 - cfg.x0) * R.rw, dy = (cfg.y1 - cfg.y0) * R.rh;
+    var dl = Math.sqrt(dx * dx + dy * dy) || 1, tl = 0.16 * R.rw;
+    var a = Math.sin(u * Math.PI) * w;
+    if (a <= 0.02) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    var grad = ctx.createLinearGradient(hx, hy, hx - dx / dl * tl, hy - dy / dl * tl);
+    grad.addColorStop(0, 'rgba(255,255,255,' + (0.85 * a).toFixed(3) + ')');
+    grad.addColorStop(0.25, 'rgba(170,225,255,' + (0.45 * a).toFixed(3) + ')');
+    grad.addColorStop(1, 'rgba(170,225,255,0)');
+    ctx.strokeStyle = grad; ctx.lineWidth = Math.max(1.6, 0.004 * R.rw); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx / dl * tl, hy - dy / dl * tl); ctx.stroke();
+    glow(SPR.cyan, hx, hy, 0.016 * R.rw, 0.8 * a);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* a car's light trail: a bright head crossing, tail tapering behind */
+  function carTrail(R, w, t, cfg){
+    var u = (((t + (cfg.off || 0)) % cfg.dur) + cfg.dur) % cfg.dur / cfg.dur;
+    var hx = cfg.dir > 0 ? -0.06 + u * 1.12 : 1.06 - u * 1.12;
+    var a = Math.sin(u * Math.PI) * w;
+    if (a <= 0.02) return;
+    var gx0 = R.ox + hx * R.rw, gy = R.oy + cfg.y * R.rh;
+    var gx1 = gx0 - cfg.dir * (cfg.len || 0.30) * R.rw;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    var grad = ctx.createLinearGradient(gx0, 0, gx1, 0);
+    grad.addColorStop(0, cfg.color.replace('A', (0.55 * a).toFixed(3)));
+    grad.addColorStop(1, cfg.color.replace('A', '0'));
+    ctx.fillStyle = grad;
+    var th = Math.max(1.5, 0.006 * R.rw);
+    ctx.fillRect(Math.min(gx0, gx1), gy - th / 2, Math.abs(gx1 - gx0), th);
+    glow(SPR[cfg.spr || 'warm'], gx0, gy, 0.013 * R.rw, 0.7 * a);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* dust / fireflies / motes that genuinely ROAM a region on slow
+     lissajous paths — three depth layers, near ones bigger and faster */
+  function motesDrift(R, w, t, region, count, spr, base, seedBase){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox + region[0] * R.rw, R.oy + region[1] * R.rh, (region[2] - region[0]) * R.rw, (region[3] - region[1]) * R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var mi = 0; mi < count; mi++){
+      var sd = seedBase + mi * 13.73;
+      var depth = 0.4 + rnd(sd) * 0.6;
+      var px = region[0] + (region[2] - region[0]) * (0.5 + 0.46 * Math.sin(t * (0.030 + rnd(sd + 1) * 0.026) * depth + sd));
+      var py = region[1] + (region[3] - region[1]) * (0.5 + 0.46 * Math.sin(t * (0.023 + rnd(sd + 2) * 0.022) * depth + sd * 1.71));
+      var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (0.9 + rnd(sd + 3)) + sd * 3.1), 2);
+      glow(SPR[spr], R.ox + px * R.rw, R.oy + py * R.rh, (0.004 + 0.009 * depth) * R.rw, base * tw * depth * w);
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* pool / water shimmer that MOVES: rows of specular dashes drifting
+     sideways at different speeds, brightening as they travel */
+  function waterShimmer(R, w, t, region, spr){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox + region[0] * R.rw, R.oy + region[1] * R.rh, (region[2] - region[0]) * R.rw, (region[3] - region[1]) * R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var row = 0; row < 7; row++){
+      var yy = region[1] + (region[3] - region[1]) * (row + 0.5) / 7;
+      for (var gl2 = 0; gl2 < 5; gl2++){
+        var sd = row * 37.71 + gl2 * 19.37;
+        var speed = 0.008 + rnd(sd) * 0.014 + row * 0.0016;
+        var gx = region[0] + ((rnd(sd + 5) + t * speed) % 1) * (region[2] - region[0]);
+        var len = (0.025 + rnd(sd + 9) * 0.05) * (1 + row * 0.10) * R.rw;
+        var a = (0.10 + 0.17 * Math.pow(0.5 + 0.5 * Math.sin(t * 1.4 + sd), 2)) * w;
+        if (a <= 0.01) continue;
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.drawImage(SPR[spr], R.ox + gx * R.rw - len / 2, R.oy + yy * R.rh - len * 0.055, len, len * 0.11);
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* hologram shards: small diamonds travelling short rising paths in
+     the side bands of the room — never across the couple at centre */
+  function holoShards(R, w, t, count){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var hi = 0; hi < count; hi++){
+      var sd = hi * 19.73 + 3.1;
+      var life = 6 + rnd(sd) * 5;
+      var u = ((t + rnd(sd + 1) * life) % life) / life;
+      var x0 = (hi % 2 === 0) ? 0.06 + rnd(sd + 2) * 0.30 : 0.64 + rnd(sd + 2) * 0.30;
+      var y0 = 0.12 + rnd(sd + 3) * 0.72;
+      var x = x0 + (rnd(sd + 4) - 0.5) * 0.14 * u;
+      var y = y0 - u * (0.05 + rnd(sd + 5) * 0.09);
+      var a = Math.sin(u * Math.PI) * 0.5 * w;
+      if (a <= 0.02) continue;
+      var s = (0.005 + rnd(sd + 6) * 0.009) * R.rw;
+      ctx.save();
+      ctx.translate(R.ox + x * R.rw, R.oy + y * R.rh);
+      ctx.rotate(t * (0.6 + rnd(sd + 7)) + sd);
+      ctx.fillStyle = (hi % 3 === 2) ? 'rgba(240,140,255,' + a.toFixed(3) + ')' : 'rgba(130,225,255,' + a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(0, -s); ctx.lineTo(s * 0.62, 0); ctx.lineTo(0, s); ctx.lineTo(-s * 0.62, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* a slow diagonal light sweep across a room, once per period */
+  function lightSweep(R, w, t, period){
+    var lt = ((t % period) + period) % period, dur = 3.6;
+    if (lt > dur) return;
+    var u = lt / dur, a = 0.13 * Math.sin(u * Math.PI) * w;
+    if (a <= 0.004) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.translate(R.ox + (-0.25 + u * 1.5) * R.rw, R.oy + 0.5 * R.rh);
+    ctx.rotate(0.32);
+    var g = ctx.createLinearGradient(-0.16 * R.rw, 0, 0.16 * R.rw, 0);
+    g.addColorStop(0, 'rgba(255,220,170,0)');
+    g.addColorStop(0.5, 'rgba(255,220,170,' + a.toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255,220,170,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-0.16 * R.rw, -R.rh, 0.32 * R.rw, R.rh * 2);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* aurora curtains that TRAVEL: three ribbons drifting across the
+     sky, swelling and changing hue family as the states turn */
+  function auroraCurtains(R, w, t){
+    var sw = stateW(t, STATE_PERIOD);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    var bands = [ { bx:0.26, hue:142, a:0.17 }, { bx:0.50, hue:186, a:0.14 }, { bx:0.72, hue:284, a:0.13 } ];
+    for (var bi = 0; bi < 3; bi++){
+      var bd = bands[bi];
+      var cxp = bd.bx + 0.07 * Math.sin(t * 0.045 + bi * 2.1) + 0.05 * (sw[bi] - 0.34);
+      var hueA = ((bd.hue + 22 * Math.sin(t * 0.06 + bi * 1.3)) % 360).toFixed(0);
+      var topA = bd.a * (0.65 + 0.65 * sw[bi]) * w;
+      if (topA <= 0.01) continue;
+      var grad = ctx.createLinearGradient(0, R.oy - 0.02 * R.rh, 0, R.oy + 0.55 * R.rh);
+      grad.addColorStop(0, 'hsla(' + hueA + ',92%,66%,' + topA.toFixed(3) + ')');
+      grad.addColorStop(0.7, 'hsla(' + hueA + ',92%,60%,' + (topA * 0.45).toFixed(3) + ')');
+      grad.addColorStop(1, 'hsla(' + hueA + ',92%,60%,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      var steps = 14, halfW = 0.085 + 0.02 * Math.sin(t * 0.05 + bi);
+      for (var stp = 0; stp <= steps; stp++){
+        var fy = stp / steps * 0.58;
+        var sway = 0.035 * Math.sin(fy * 5.2 + t * 0.45 + bi * 1.9);
+        var px = R.ox + (cxp - halfW + sway) * R.rw, py = R.oy + fy * R.rh;
+        if (stp === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      for (var stb = steps; stb >= 0; stb--){
+        var fy2 = stb / steps * 0.58;
+        var sway2 = 0.035 * Math.sin(fy2 * 5.2 + t * 0.45 + bi * 1.9);
+        ctx.lineTo(R.ox + (cxp + halfW + sway2) * R.rw, R.oy + fy2 * R.rh);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* a lava fountain: ballistic sparks off the summit, height and
+     density driven by `strength` (the eruption state) */
+  function lavaFountain(R, w, t, sx, sy, strength){
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var lp = 0; lp < 30; lp++){
+      var sd = lp * 23.71 + 8.4;
+      var life = 1.5 + rnd(sd) * 1.3;
+      var u = ((t * (0.75 + 0.45 * strength) + rnd(sd + 1) * life) % life) / life;
+      var h = (0.05 + 0.13 * strength) * (0.6 + rnd(sd + 2) * 0.7);
+      var x = sx + (rnd(sd + 3) - 0.5) * 0.055 * u + 0.012 * Math.sin(t * 2 + sd);
+      var y = sy - h * u * (2 - u) + u * u * 0.05;
+      var a = (1 - u) * (0.35 + 0.45 * strength) * w;
+      if (a <= 0.02) continue;
+      glow(SPR.warm, R.ox + x * R.rw, R.oy + y * R.rh, (0.005 + 0.007 * rnd(sd + 4)) * R.rw, a);
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* ember rain: hot motes falling slowly over a region, swaying */
+  function emberRain(R, w, t, region, strength){
+    if (strength <= 0.03) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox + region[0] * R.rw, R.oy + region[1] * R.rh, (region[2] - region[0]) * R.rw, (region[3] - region[1]) * R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var er = 0; er < 34; er++){
+      var sd = er * 17.93 + 2.2;
+      var fall = 0.020 + rnd(sd) * 0.022;
+      var yy = region[1] + ((rnd(sd + 1) + t * fall) % 1) * (region[3] - region[1]);
+      var xx = region[0] + rnd(sd + 2) * (region[2] - region[0]) + 0.012 * Math.sin(t * 1.3 + sd * 2);
+      var a = (0.16 + 0.30 * rnd(sd + 3)) * strength * (0.6 + 0.4 * Math.sin(t * 3 + sd * 5)) * w;
+      if (a <= 0.02) continue;
+      glow(er % 3 ? SPR.warm : SPR.red, R.ox + xx * R.rw, R.oy + yy * R.rh, (0.004 + 0.005 * rnd(sd + 4)) * R.rw, a);
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   /* ================= scored points (photo-fraction coords) ================= */
   function bulbRow(x0, x1, y, n, r, base){
     var pts = [];
@@ -656,11 +974,17 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       {x:0.773,y:0.295,r:0.016,per:5.0,ph:1.3,spr:'warm',base:0.50},
       {x:0.790,y:0.295,r:0.016,per:5.0,ph:2.6,spr:'warm',base:0.50}
     ], R, w, t);
+    /* a drone crosses the window band, high above everyone's heads,
+       the guitar hotel's light playing behind it */
+    dronePass(R, w, t, { x0:0.01, x1:0.37, y:0.17, dur:16, off:5.0, size:0.013 });
+    /* warm motes roam the ceiling-light zone of the room */
+    motesDrift(R, w, t, [0.36, 0.08, 0.96, 0.28], 12, 'warm', 0.13, 77.3);
   }
   function sceneArctic(R, w, t){
-    var h1 = 135 + 45 * Math.sin(t * 0.11), h2 = 275 + 35 * Math.sin(t * 0.09 + 2.0);
-    wash(R, 0.35 + 0.08 * Math.sin(t * 0.05), 0.16, 0.55, 'hsla(' + h1.toFixed(0) + ',85%,62%,A)', 0.10 * w);
-    wash(R, 0.66 + 0.06 * Math.sin(t * 0.04 + 1.0), 0.24, 0.45, 'hsla(' + h2.toFixed(0) + ',80%,64%,A)', 0.07 * w);
+    /* aurora curtains that TRAVEL: three ribbons drifting across the
+       sky, swelling and changing hue family as the states turn —
+       no more shimmering in place over a frozen sunset */
+    auroraCurtains(R, w, t);
     wash(R, 0.80, 0.68, 0.30, 'rgba(255,150,80,A)', (0.10 + 0.04 * Math.sin(t * TAU / 16)) * w);
     var stars = [];
     for (var sa = 0; sa < 26; sa++) stars.push([0.03 + rnd(sa * 3.3) * 0.94, 0.03 + rnd(sa * 7.9) * 0.30]);
@@ -671,6 +995,16 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     var px = arc[i0][0] + (arc[Math.min(i0 + 1, arc.length - 1)][0] - arc[i0][0]) * fr;
     var py = arc[i0][1] + (arc[Math.min(i0 + 1, arc.length - 1)][1] - arc[i0][1]) * fr;
     glow(SPR.warm, R.ox + px * R.rw, R.oy + py * R.rh, 0.020 * R.rw, 0.5 * Math.sin(u * Math.PI) * w);
+    /* the sparkle trail is a moving STREAM behind the plane now */
+    for (var tr = 1; tr <= 7; tr++){
+      var uu = u - tr * 0.018; if (uu < 0) continue;
+      var fj = uu * (arc.length - 1), j0 = Math.floor(fj), fr2 = fj - j0;
+      var tx = arc[j0][0] + (arc[Math.min(j0 + 1, arc.length - 1)][0] - arc[j0][0]) * fr2;
+      var ty = arc[j0][1] + (arc[Math.min(j0 + 1, arc.length - 1)][1] - arc[j0][1]) * fr2;
+      glow(SPR.warm, R.ox + tx * R.rw, R.oy + ty * R.rh, 0.010 * R.rw, 0.30 * (1 - tr / 8) * Math.sin(u * Math.PI) * w);
+    }
+    /* a second distant light crosses high: a shooting star */
+    meteor(R, w, t, { x0:0.14, x1:0.78, y0:0.05, y1:0.24, period:24, off:7, dur:1.6 });
     var wat = [];
     for (var sw = 0; sw < 10; sw++) wat.push([0.62 + rnd(sw * 4.7) * 0.35, 0.80 + rnd(sw * 6.1) * 0.15]);
     twinkles(R, w, t, wat, 'cyan', 0.30, 0.008);
@@ -682,6 +1016,13 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     for (var sp = 0; sp < 16; sp++) pool.push([0.55 + rnd(sp * 3.9) * 0.42, 0.64 + rnd(sp * 8.7) * 0.16]);
     twinkles(R, w, t, pool, 'cyan', 0.40, 0.009);
     glow(SPR.warm, R.ox + (0.85 + 0.06 * Math.sin(t * 0.07)) * R.rw, R.oy + (0.10 + 0.02 * Math.sin(t * 0.11)) * R.rh, 0.035 * R.rw, 0.32 * w);
+    /* the pool's shimmer MOVES: specular dashes drifting across it */
+    waterShimmer(R, w, t, [0.30, 0.56, 0.84, 0.78], 'cyan');
+    /* the falcon actually flies: a silhouette on a slow gliding path
+       across the canyon sky, well above the foxes */
+    birdCross(R, w, t, { x0:0.30, x1:0.86, y:0.085, amp:0.030, bobs:1.5, dur:21, off:3, size:0.020, flapHz:2.6, glide:true, color:'rgba(42,27,17,0.90)', alpha:0.95 });
+    /* light motes drift over the water and sand */
+    motesDrift(R, w, t, [0.42, 0.28, 0.92, 0.66], 10, 'warm', 0.12, 23.9);
   }
   function sceneDesert(R, w, t){
     wash(R, 0.50, 0.40, 0.80, 'rgba(255,180,100,A)', (0.04 + 0.018 * Math.sin(t * TAU / 19)) * w);
@@ -702,6 +1043,22 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       ctx.fill();
     }
     ctx.restore();
+    /* the pool shimmer is visible now: dashes travelling the surface */
+    waterShimmer(R, w, t, [0.05, 0.62, 0.95, 0.80], 'warm');
+    /* a second, farther flock — slower, smaller: parallax depth */
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.fillStyle = 'rgba(24,20,44,' + (0.45 * w).toFixed(3) + ')';
+    for (var bd2 = 0; bd2 < 2; bd2++){
+      var bx2 = 0.16 + ((t * 0.013 + bd2 * 0.09) % 0.30);
+      var by2 = 0.135 + bd2 * 0.028 + 0.006 * Math.sin(t * 0.9 + bd2 * 2.4);
+      ctx.beginPath();
+      ctx.ellipse(R.ox + bx2 * R.rw, R.oy + by2 * R.rh, 0.0045 * R.rw, 0.0026 * R.rw, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    /* warm motes drift in the canyon air — near layer moving most */
+    motesDrift(R, w, t, [0.10, 0.35, 0.90, 0.60], 8, 'warm', 0.10, 63.1);
   }
   function sceneWetland(R, w, t){
     darkDrift(R, w, t, 48, 0.13);
@@ -711,9 +1068,10 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     var pink = [];
     for (var sk = 0; sk < 14; sk++) pink.push([0.56 + rnd(sk * 4.3) * 0.16, 0.42 + rnd(sk * 7.7) * 0.32]);
     twinkles(R, w, t, pink, 'magenta', 0.35, 0.009);
-    var flies = [];
-    for (var sf = 0; sf < 16; sf++) flies.push([0.44 + rnd(sf * 5.9) * 0.53, 0.45 + rnd(sf * 3.7) * 0.48]);
-    twinkles(R, w, t, flies, 'warm', 0.30, 0.007);
+    /* fireflies that WANDER — each roams its own patch of marsh */
+    motesDrift(R, w, t, [0.44, 0.45, 0.97, 0.93], 16, 'warm', 0.34, 41.7);
+    /* a heron crosses the dusk sky on a slow wingbeat */
+    birdCross(R, w, t, { x0:0.02, x1:0.98, y:0.17, amp:0.025, bobs:2, dur:26, off:9, size:0.017, flapHz:3.4, dir:-1, color:'rgba(24,16,30,0.85)', alpha:0.9 });
   }
   function sceneGuitar(R, w, t){
     darkDrift(R, w, t, 52, 0.10);
@@ -730,11 +1088,22 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     var city = [];
     for (var sy = 0; sy < 10; sy++) city.push([0.84 + rnd(sy * 5.3) * 0.13, 0.35 + rnd(sy * 7.1) * 0.20]);
     twinkles(R, w, t, city, 'warm', 0.30, 0.007);
+    /* a plane crosses the aerial sky, beacon blinking, trail behind */
+    planeCross(R, w, t, { x0:0.04, x1:0.96, y:0.085, dur:24, off:4, size:0.015, dir:1 });
+    /* traffic streams along the causeway — the trails MOVE now */
+    carTrail(R, w, t, { y:0.885, dir:1, dur:7, off:0.5, len:0.30, color:'rgba(255,240,210,A)', spr:'warm' });
+    carTrail(R, w, t, { y:0.945, dir:-1, dur:9, off:3.4, len:0.26, color:'rgba(255,120,90,A)', spr:'red' });
   }
   function sceneVolcano(R, w, t){
-    glow(SPR.warm, R.ox + 0.80 * R.rw, R.oy + 0.145 * R.rh, 0.075 * R.rw, (0.50 + 0.25 * Math.sin(t * TAU / 6.5)) * flick(t, 5, 11, 3) * w);
-    wash(R, 0.80, 0.20, 0.24, 'rgba(255,110,40,A)', (0.12 + 0.05 * Math.sin(t * TAU / 8)) * w);
+    var swV = stateW(t, STATE_PERIOD);
+    /* the pulse becomes a PROGRESSION: calm glow -> eruption surge ->
+       ember rain settling over the valley */
+    glow(SPR.warm, R.ox + 0.80 * R.rw, R.oy + 0.145 * R.rh, 0.075 * R.rw,
+         (0.34 * swV[0] + 0.85 * swV[1] + 0.45 * swV[2]) * flick(t, 5, 11, 3) * w);
+    wash(R, 0.80, 0.20, 0.24, 'rgba(255,110,40,A)', (0.06 * swV[0] + 0.17 * swV[1] + 0.10 * swV[2]) * w);
     embers(R, w, t, [{x:0.79,y:0.15},{x:0.815,y:0.14},{x:0.77,y:0.16}]);
+    lavaFountain(R, w, t, 0.80, 0.155, 0.30 + 0.85 * swV[1]);
+    emberRain(R, w, t, [0.52, 0.08, 0.99, 0.58], 0.20 + 0.90 * swV[2]);
     glow(SPR.warm, R.ox + 0.225 * R.rw, R.oy + 0.14 * R.rh, 0.085 * R.rw, (0.28 + 0.10 * Math.sin(t * TAU / 15)) * w);
     smokeWaves(R, w, t, [
       {x:0.30,y:0.55,r:0.30,a:0.10,ph:0.5,drift:0.03},{x:0.55,y:0.68,r:0.34,a:0.11,ph:2.1,drift:0.04},
@@ -758,6 +1127,18 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   }
 
   var SCENES = [sceneCondo, sceneArctic, sceneFoxes, sceneDesert, sceneWetland, sceneGuitar, sceneVolcano];
+
+  /* per-scene 3-state plate grades [saturate, brightness, hue, sepia]
+     for states A/B/C. s0, s4, s5 already change state: null. */
+  var GRADES = [
+    null,
+    [[1.05,1.03,0,0.02],[1.12,0.93,5,0],[1.18,0.87,12,0]],
+    [[1.04,1.06,0,0],[1.18,1.00,-5,0.20],[1.15,0.85,8,0.06]],
+    [[1.02,1.05,0,0],[1.16,0.99,-4,0.18],[1.12,0.86,6,0.08]],
+    null,
+    null,
+    [[1.08,1.00,0,0],[1.20,1.05,0,0.08],[1.14,0.90,4,0]]
+  ];
 
   /* ================= melt engine ================= */
   var meltT = 0, fxT = 0, held = false, hidden = false;
@@ -814,6 +1195,8 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
 
       /* the forming frame lives inside its own page — no second score on top */
       SCENES[k](R, w, t);
+      /* the painting itself rides the scene's 3-state grade (lift pass) */
+      els[k].style.filter = gradeFor(GRADES[k], t, STATE_PERIOD);
 
       /* nostalgia: animated film grain over the photograph, whisper-soft */
       var tile = GRAINS[Math.floor(t * 9) % 4];
@@ -864,17 +1247,9 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   });
 
   /* ================= the one interaction: tap to hold / tap to resume ================= */
-  var hintTimer = null;
-  function showHint(text, ms){
-    hintEl.textContent = text;
-    hintEl.classList.remove('gone');
-    if (hintTimer) clearTimeout(hintTimer);
-    hintTimer = setTimeout(function(){ hintEl.classList.add('gone'); }, ms);
-  }
   function toggleHold(){
     if (REDUCED || SINGLE >= 0) return;
     held = !held;
-    showHint(held ? 'HELD — TAP TO RESUME' : 'TAP TO HOLD', held ? 3400 : 2200);
   }
   document.addEventListener('pointerdown', function(){ toggleHold(); });
 
@@ -895,9 +1270,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     /* prefers-reduced-motion: frame 1, still — no melt, no living FX */
     for (i = 0; i < N; i++){ els[i].style.opacity = i === (SINGLE >= 0 ? SINGLE : 0) ? '1' : '0'; }
     oasisEl.style.opacity = '0';
-    hintEl.classList.add('gone');
   } else {
-    if (SINGLE < 0) showHint('TAP TO HOLD', 6000);
     requestAnimationFrame(frame);
   }
 })();
