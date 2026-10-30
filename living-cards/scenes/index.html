@@ -206,19 +206,27 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
 
   /* ================= shared effect instruments ================= */
   /* marquee bulbs that CHASE: a brightness wave travels along the row */
+  /* the arc's light factor: a scene's own lights ride the outside
+     light — pale by day, coming on at sunset, blazing at night */
+  function lightFactor(t){
+    var sw = stateW(t, STATE_PERIOD);
+    return 0.30 * sw[0] + 0.72 * sw[1] + 1.12 * sw[2];
+  }
   function chaseBulbs(pts, R, w, t, speed){
+    var lf = lightFactor(t);
     for (var b = 0; b < pts.length; b++){
       var pt = pts[b];
       var wave = 0.5 + 0.5 * Math.sin(t * speed - b * 0.62 + pt.ph);
       var tw = 0.38 + 0.62 * wave * wave;
-      glow(SPR.warm, R.ox + pt.x * R.rw, R.oy + pt.y * R.rh, pt.r * R.rw, pt.base * tw * w);
+      glow(SPR.warm, R.ox + pt.x * R.rw, R.oy + pt.y * R.rh, pt.r * R.rw, pt.base * tw * lf * w);
     }
   }
   function pulseLights(pts, R, w, t){
+    var lf = lightFactor(t);
     for (var L = 0; L < pts.length; L++){
       var li = pts[L];
       var pu = 0.72 + 0.28 * Math.sin(t * TAU / li.per + li.ph);
-      glow(SPR[li.spr], R.ox + li.x * R.rw, R.oy + li.y * R.rh, li.r * R.rw, li.base * pu * w);
+      glow(SPR[li.spr], R.ox + li.x * R.rw, R.oy + li.y * R.rh, li.r * R.rw, li.base * pu * lf * w);
     }
   }
   function wash(R, fx, fy, r, color, alpha){
@@ -965,7 +973,6 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     ctx.restore();
   }
   function sceneCondo(R, w, t){
-    darkDrift(R, w, t, 44, 0.15);
     wash(R, 0.62, 0.55, 0.55, 'rgba(255,190,110,A)', (0.05 + 0.02 * Math.sin(t * TAU / 17)) * w);
     twinkles(R, w, t, [[0.06,0.22],[0.09,0.27],[0.12,0.24],[0.075,0.31],[0.105,0.30]], 'warm', 0.5, 0.010);
     glow(SPR.green, R.ox + 0.90 * R.rw, R.oy + 0.40 * R.rh, 0.055 * R.rw, 0.15 * flick(t, 7, 13, 2) * w);
@@ -974,17 +981,17 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       {x:0.773,y:0.295,r:0.016,per:5.0,ph:1.3,spr:'warm',base:0.50},
       {x:0.790,y:0.295,r:0.016,per:5.0,ph:2.6,spr:'warm',base:0.50}
     ], R, w, t);
-    /* a drone crosses the window band, high above everyone's heads,
-       the guitar hotel's light playing behind it */
-    dronePass(R, w, t, { x0:0.01, x1:0.37, y:0.17, dur:16, off:5.0, size:0.013 });
+    /* (accent cull, Oct 30: the drone outside the window is gone —
+       the room's life is its people, its screens and the light
+       through the glass, which the arc now runs) */
     /* warm motes roam the ceiling-light zone of the room */
     motesDrift(R, w, t, [0.36, 0.08, 0.96, 0.28], 12, 'warm', 0.13, 77.3);
   }
   function sceneArctic(R, w, t){
-    /* aurora curtains that TRAVEL: three ribbons drifting across the
-       sky, swelling and changing hue family as the states turn —
-       no more shimmering in place over a frozen sunset */
-    auroraCurtains(R, w, t);
+    /* (accent cull, Oct 30: the canvas aurora curtains are gone —
+       the painting's own aurora is the sky here, and the arc runs
+       its light: pale by day, warm at the horizon's sunset, deep
+       with stars + the arc's comet at night) */
     wash(R, 0.80, 0.68, 0.30, 'rgba(255,150,80,A)', (0.10 + 0.04 * Math.sin(t * TAU / 16)) * w);
     var stars = [];
     for (var sa = 0; sa < 26; sa++) stars.push([0.03 + rnd(sa * 3.3) * 0.94, 0.03 + rnd(sa * 7.9) * 0.30]);
@@ -1003,8 +1010,8 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       var ty = arc[j0][1] + (arc[Math.min(j0 + 1, arc.length - 1)][1] - arc[j0][1]) * fr2;
       glow(SPR.warm, R.ox + tx * R.rw, R.oy + ty * R.rh, 0.010 * R.rw, 0.30 * (1 - tr / 8) * Math.sin(u * Math.PI) * w);
     }
-    /* a second distant light crosses high: a shooting star */
-    meteor(R, w, t, { x0:0.14, x1:0.78, y0:0.05, y1:0.24, period:24, off:7, dur:1.6 });
+    /* (the night comet is the arc layer's now — gated to the night
+       state like every other frame on the page) */
     var wat = [];
     for (var sw = 0; sw < 10; sw++) wat.push([0.62 + rnd(sw * 4.7) * 0.35, 0.80 + rnd(sw * 6.1) * 0.15]);
     twinkles(R, w, t, wat, 'cyan', 0.30, 0.008);
@@ -1018,9 +1025,9 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     glow(SPR.warm, R.ox + (0.85 + 0.06 * Math.sin(t * 0.07)) * R.rw, R.oy + (0.10 + 0.02 * Math.sin(t * 0.11)) * R.rh, 0.035 * R.rw, 0.32 * w);
     /* the pool's shimmer MOVES: specular dashes drifting across it */
     waterShimmer(R, w, t, [0.30, 0.56, 0.84, 0.78], 'cyan');
-    /* the falcon actually flies: a silhouette on a slow gliding path
-       across the canyon sky, well above the foxes */
-    birdCross(R, w, t, { x0:0.30, x1:0.86, y:0.085, amp:0.030, bobs:1.5, dur:21, off:3, size:0.020, flapHz:2.6, glide:true, color:'rgba(42,27,17,0.90)', alpha:0.95 });
+    /* (accent cull, Oct 30: the canvas falcon is gone — the falcon
+       painted into the artwork still soars; nothing flies here that
+       isn't in the painting) */
     /* light motes drift over the water and sand */
     motesDrift(R, w, t, [0.42, 0.28, 0.92, 0.66], 10, 'warm', 0.12, 23.9);
   }
@@ -1029,55 +1036,36 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     var refl = [];
     for (var sr = 0; sr < 18; sr++) refl.push([0.05 + rnd(sr * 3.1) * 0.90, 0.64 + rnd(sr * 9.3) * 0.16]);
     twinkles(R, w, t, refl, 'warm', 0.35, 0.009);
-    wash(R, 0.30, 0.07, 0.10, 'rgba(140,230,160,A)', (0.05 + 0.02 * Math.sin(t * TAU / 13)) * w);
-    wash(R, 0.47, 0.06, 0.10, 'rgba(140,230,160,A)', (0.05 + 0.02 * Math.sin(t * TAU / 13 + 2)) * w);
-    wash(R, 0.87, 0.06, 0.10, 'rgba(140,230,160,A)', (0.05 + 0.02 * Math.sin(t * TAU / 13 + 4)) * w);
-    ctx.save();
-    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
-    ctx.fillStyle = 'rgba(24,20,44,' + (0.55 * w).toFixed(3) + ')';
-    for (var bd = 0; bd < 3; bd++){
-      var bx = 0.60 + ((t * 0.008 + bd * 0.07) % 0.28);
-      var by = 0.08 + bd * 0.035 + 0.008 * Math.sin(t + bd * 2.0);
-      ctx.beginPath();
-      ctx.ellipse(R.ox + bx * R.rw, R.oy + by * R.rh, 0.006 * R.rw, 0.0035 * R.rw, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
+    /* (accent cull, Oct 30: the green sky wisps and the silhouette
+       bird flocks are gone — desert sky takes the arc's own sun,
+       sunset and stars now) */
     /* the pool shimmer is visible now: dashes travelling the surface */
     waterShimmer(R, w, t, [0.05, 0.62, 0.95, 0.80], 'warm');
-    /* a second, farther flock — slower, smaller: parallax depth */
-    ctx.save();
-    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
-    ctx.fillStyle = 'rgba(24,20,44,' + (0.45 * w).toFixed(3) + ')';
-    for (var bd2 = 0; bd2 < 2; bd2++){
-      var bx2 = 0.16 + ((t * 0.013 + bd2 * 0.09) % 0.30);
-      var by2 = 0.135 + bd2 * 0.028 + 0.006 * Math.sin(t * 0.9 + bd2 * 2.4);
-      ctx.beginPath();
-      ctx.ellipse(R.ox + bx2 * R.rw, R.oy + by2 * R.rh, 0.0045 * R.rw, 0.0026 * R.rw, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
     /* warm motes drift in the canyon air — near layer moving most */
     motesDrift(R, w, t, [0.10, 0.35, 0.90, 0.60], 8, 'warm', 0.10, 63.1);
   }
   function sceneWetland(R, w, t){
-    darkDrift(R, w, t, 48, 0.13);
     glow(SPR.warm, R.ox + 0.665 * R.rw, R.oy + 0.24 * R.rh, 0.045 * R.rw, (0.30 + 0.15 * Math.sin(t * TAU / 9)) * w);
-    wash(R, 0.665, 0.24, 0.10, 'hsla(' + ((t * 8) % 360).toFixed(0) + ',90%,62%,A)', 0.06 * w);
+    /* (accent cull, Oct 30: the rainbow hue-cycle wash is gone —
+       the guitar in the distance takes the arc's light like
+       everything else on this page) */
     glow(SPR.warm, R.ox + 0.315 * R.rw, R.oy + 0.265 * R.rh, 0.06 * R.rw, (0.30 + 0.10 * Math.sin(t * TAU / 14)) * w);
     var pink = [];
     for (var sk = 0; sk < 14; sk++) pink.push([0.56 + rnd(sk * 4.3) * 0.16, 0.42 + rnd(sk * 7.7) * 0.32]);
     twinkles(R, w, t, pink, 'magenta', 0.35, 0.009);
     /* fireflies that WANDER — each roams its own patch of marsh */
     motesDrift(R, w, t, [0.44, 0.45, 0.97, 0.93], 16, 'warm', 0.34, 41.7);
-    /* a heron crosses the dusk sky on a slow wingbeat */
-    birdCross(R, w, t, { x0:0.02, x1:0.98, y:0.17, amp:0.025, bobs:2, dur:26, off:9, size:0.017, flapHz:3.4, dir:-1, color:'rgba(24,16,30,0.85)', alpha:0.9 });
+    /* (accent cull, Oct 30: the canvas heron is gone — the painted
+       spoonbills are the birds of this painting) */
   }
   function sceneGuitar(R, w, t){
-    darkDrift(R, w, t, 52, 0.10);
-    var hue = (t * 10) % 360;
-    wash(R, 0.61, 0.27, 0.21, 'hsla(' + hue.toFixed(0) + ',95%,62%,A)', 0.13 * w);
-    wash(R, 0.61, 0.38, 0.16, 'hsla(' + ((hue + 120) % 360).toFixed(0) + ',95%,62%,A)', 0.09 * w);
+    /* the guitar's light show rides the arc now (no rainbow cycling):
+       a pale gleam by day, warm at sunset, full show colours at night */
+    var swG = stateW(t, STATE_PERIOD);
+    wash(R, 0.61, 0.27, 0.21, 'rgba(150,200,255,A)', 0.05 * swG[0] * w);
+    wash(R, 0.61, 0.30, 0.22, 'rgba(255,150,90,A)', 0.10 * swG[1] * w);
+    wash(R, 0.61, 0.27, 0.21, 'rgba(232,84,255,A)', 0.12 * swG[2] * w);
+    wash(R, 0.61, 0.38, 0.16, 'rgba(96,208,255,A)', 0.08 * swG[2] * w);
     glow(SPR.warm, R.ox + 0.275 * R.rw, R.oy + 0.175 * R.rh, 0.055 * R.rw, (0.32 + 0.10 * Math.sin(t * TAU / 15)) * w);
     var pool2 = [];
     for (var sg = 0; sg < 8; sg++) pool2.push([0.54 + rnd(sg * 4.1) * 0.13, 0.58 + rnd(sg * 6.3) * 0.09]);
@@ -1088,8 +1076,8 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     var city = [];
     for (var sy = 0; sy < 10; sy++) city.push([0.84 + rnd(sy * 5.3) * 0.13, 0.35 + rnd(sy * 7.1) * 0.20]);
     twinkles(R, w, t, city, 'warm', 0.30, 0.007);
-    /* a plane crosses the aerial sky, beacon blinking, trail behind */
-    planeCross(R, w, t, { x0:0.04, x1:0.96, y:0.085, dur:24, off:4, size:0.015, dir:1 });
+    /* (accent cull, Oct 30: the canvas plane is gone — the causeway
+       traffic below is this painting's motion) */
     /* traffic streams along the causeway — the trails MOVE now */
     carTrail(R, w, t, { y:0.885, dir:1, dur:7, off:0.5, len:0.30, color:'rgba(255,240,210,A)', spr:'warm' });
     carTrail(R, w, t, { y:0.945, dir:-1, dur:9, off:3.4, len:0.26, color:'rgba(255,120,90,A)', spr:'red' });
@@ -1128,17 +1116,166 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
 
   var SCENES = [sceneCondo, sceneArctic, sceneFoxes, sceneDesert, sceneWetland, sceneGuitar, sceneVolcano];
 
-  /* per-scene 3-state plate grades [saturate, brightness, hue, sepia]
-     for states A/B/C. s0, s4, s5 already change state: null. */
+  /* THE ARC (Gary, Oct 30 14:00 — the condo-card / Birthday mechanism,
+     same as the posters page): every painting's outside light runs
+     DAY -> SUNSET -> NIGHT over the 30 s cycle. Grades carry exposure
+     + balance [saturate, brightness, hue-rotate, sepia]:
+       A day: bright, neutral-cool, natural saturation.
+       B sunset: warm amber (sepia), saturation up, exposure mid.
+       C night: deep, cooler, exposure down — the painting's own
+     lights are carried by the arc layer's glow, never by brightening
+     the plate. (s0/s4/s5 used to "change state" via darkDrift's slow
+     navy breathing — un-synced to the cycle; the arc replaces it.) */
   var GRADES = [
-    null,
-    [[1.05,1.03,0,0.02],[1.12,0.93,5,0],[1.18,0.87,12,0]],
-    [[1.04,1.06,0,0],[1.18,1.00,-5,0.20],[1.15,0.85,8,0.06]],
-    [[1.02,1.05,0,0],[1.16,0.99,-4,0.18],[1.12,0.86,6,0.08]],
-    null,
-    null,
-    [[1.08,1.00,0,0],[1.20,1.05,0,0.08],[1.14,0.90,4,0]]
+    [[1.08,1.15,-4,0.03],[1.28,1.01,-2,0.32],[1.20,0.88,10,0.02]],
+    [[1.06,1.16,-4,0.02],[1.26,1.02,-2,0.30],[1.22,0.88,10,0]],
+    [[1.06,1.10,-2,0.02],[1.34,1.00,-2,0.42],[1.27,0.82,16,0]],
+    [[1.05,1.10,-2,0.02],[1.34,1.00,-2,0.42],[1.25,0.82,16,0]],
+    [[1.08,1.15,-4,0.03],[1.30,1.02,-2,0.34],[1.22,0.87,10,0]],
+    [[1.08,1.16,-4,0.03],[1.30,1.02,-2,0.32],[1.24,0.87,10,0]],
+    [[1.08,1.16,-4,0.02],[1.24,1.03,-2,0.30],[1.18,0.90,8,0]]
   ];
+
+  /* ================= the ARC layer =================
+     Identical mechanism to the posters page: the painting's own
+     light extracted once and drawn back at state intensity (pale by
+     day, on at sunset, blazing at night); the sky band lightens +
+     sun by day, warms + low sun at sunset, deepens + stars + a
+     comet at night; night vignette + a sunset warmth pool move the
+     shading with the light. No face floor here: the paintings'
+     subjects are lamp-lit rooms, bright fur and open landscapes,
+     and the night grades keep a higher floor (0.85+) instead. */
+  var ARC = [
+    { sky:[0.005,0.06,0.295,0.52], sun:[0.10,0.30], glow:0.70, skyA:0.90 },
+    { sky:[0.02,0.00,0.98,0.42], sun:[0.50,0.30], glow:0.60 },
+    { sky:[0.10,0.00,0.90,0.30], sun:[0.45,0.08], glow:0.22, nightA:2.6 },
+    { sky:[0.30,0.00,0.78,0.22], sun:[0.52,0.05], glow:0.22, nightA:2.6 },
+    { sky:[0.02,0.00,0.98,0.34], sun:[0.135,0.155], glow:0.90 },
+    { sky:[0.02,0.00,0.98,0.30], sun:[0.185,0.145], glow:1.00 },
+    { sky:[0.02,0.00,0.98,0.20], sun:[0.80,0.10], glow:1.00 }
+  ];
+  var FACELIFT = [null, null, null, null, null, null, null];
+  var glowCache = {};
+  function glowLayerFor(idx){
+    if (glowCache[idx]) return glowCache[idx];
+    var im = els[idx];
+    if (!im || !im.complete || !im.naturalWidth) return null;
+    var cw = im.naturalWidth, ch = im.naturalHeight;
+    var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    var g = c.getContext('2d');
+    g.drawImage(im, 0, 0);
+    var idata = null;
+    try { idata = g.getImageData(0, 0, cw, ch); } catch (e) { idata = null; }
+    if (!idata) return null;
+    var d = idata.data;
+    for (var p = 0; p < d.length; p += 4){
+      var r = d[p], gg = d[p + 1], b = d[p + 2];
+      var mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+      var lum = (0.30 * r + 0.55 * gg + 0.15 * b) / 255;
+      var m = (lum - 0.40) / 0.60;
+      m = m < 0 ? 0 : (m > 1 ? 1 : m);
+      m = m * m * (3 - 2 * m);
+      var sat = mx > 0 ? (mx - mn) / mx : 0;
+      var boost = 1.10 + 0.55 * sat;
+      d[p]     = Math.min(255, r * boost);
+      d[p + 1] = Math.min(255, gg * boost);
+      d[p + 2] = Math.min(255, b * boost);
+      d[p + 3] = Math.round(255 * m);
+    }
+    g.putImageData(idata, 0, 0);
+    glowCache[idx] = c;
+    return c;
+  }
+  function skyArc(R, w, t, cfg, seed){
+    var sky = cfg.sky; if (!sky) return;
+    var sw = stateW(t, STATE_PERIOD);
+    var x0 = R.ox + sky[0] * R.rw, y0 = R.oy + sky[1] * R.rh;
+    var x1 = R.ox + sky[2] * R.rw, y1 = R.oy + sky[3] * R.rh;
+    var skyA = cfg.skyA || 1;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+    if (sw[0] > 0.02){
+      var gd = ctx.createLinearGradient(0, y0, 0, y1);
+      gd.addColorStop(0, 'rgba(168,205,255,' + (0.22 * skyA * sw[0] * w).toFixed(3) + ')');
+      gd.addColorStop(1, 'rgba(210,228,255,0)');
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = gd; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.globalCompositeOperation = 'source-over';
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.30 * sw[0] * w);
+    }
+    if (sw[1] > 0.02){
+      var gs = ctx.createLinearGradient(0, y0, 0, y1);
+      gs.addColorStop(0, 'rgba(120,70,140,' + (0.10 * skyA * sw[1] * w).toFixed(3) + ')');
+      gs.addColorStop(0.65, 'rgba(255,130,90,' + (0.16 * skyA * sw[1] * w).toFixed(3) + ')');
+      gs.addColorStop(1, 'rgba(255,180,110,' + (0.20 * skyA * sw[1] * w).toFixed(3) + ')');
+      ctx.fillStyle = gs; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.34 * sw[1] * w);
+    }
+    if (sw[2] > 0.02){
+      var nA = cfg.nightA || 1;
+      var gn = ctx.createLinearGradient(0, y0, 0, y1);
+      gn.addColorStop(0, 'rgba(6,10,38,' + (0.26 * skyA * nA * sw[2] * w).toFixed(3) + ')');
+      gn.addColorStop(1, 'rgba(6,10,38,' + (0.03 * skyA * (1 + 2.3 * (nA - 1)) * sw[2] * w).toFixed(3) + ')');
+      ctx.fillStyle = gn;
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      ctx.globalCompositeOperation = 'screen';
+      for (var st = 0; st < 52; st++){
+        var sx = sky[0] + rnd(seed + st * 3.71) * (sky[2] - sky[0]);
+        var sy = sky[1] + rnd(seed + st * 9.13) * (sky[3] - sky[1]);
+        var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(seed + st * 5.3) * 1.6) + st * 2.7), 2);
+        glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.restore();
+    if (sw[2] > 0.45)
+      meteor(R, w * sw[2], t, { x0: sky[0] + 0.10 * (sky[2] - sky[0]), y0: sky[1] + 0.18 * (sky[3] - sky[1]),
+                                x1: sky[0] + 0.52 * (sky[2] - sky[0]), y1: sky[1] + 0.62 * (sky[3] - sky[1]),
+                                period: 26, dur: 1.6, off: seed });
+  }
+  function arcBase(R, w, t, k){
+    var cfg = ARC[k]; if (!cfg) return;
+    var sw = stateW(t, STATE_PERIOD);
+    if (cfg.glow > 0){
+      var gl = glowLayerFor(k);
+      if (gl){
+        ctx.save();
+        ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = Math.min(1, cfg.glow * (0.10 * sw[0] + 0.40 * sw[1] + 0.85 * sw[2]) * w);
+        ctx.filter = 'hue-rotate(' + (-14 * sw[1] + 6 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.30 * sw[2]).toFixed(2) + ')';
+        ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
+        ctx.filter = 'none';
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+    skyArc(R, w, t, cfg, k * 37.7 + 11.3);
+    if (sw[2] > 0.02){
+      var vg = ctx.createRadialGradient(R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.42,
+                                        R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.78);
+      vg.addColorStop(0, 'rgba(4,6,20,0)');
+      vg.addColorStop(1, 'rgba(4,6,20,' + (0.26 * sw[2] * w).toFixed(3) + ')');
+      ctx.fillStyle = vg;
+      ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
+    }
+    if (cfg.sky && sw[1] > 0.02)
+      wash(R, cfg.sun[0], Math.min(0.92, cfg.sun[1] + 0.34), 0.55, 'rgba(255,150,85,A)', 0.10 * sw[1] * w);
+  }
+  function faceLift(R, w, t, k){
+    var faces = FACELIFT[k]; if (!faces) return;
+    var sw = stateW(t, STATE_PERIOD);
+    var a = (0.10 * sw[1] + 0.36 * sw[2]) * w;
+    if (a <= 0.01) return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+    ctx.globalCompositeOperation = 'screen';
+    for (var fi = 0; fi < faces.length; fi++)
+      glow(SPR.warm, R.ox + faces[fi].x * R.rw, R.oy + faces[fi].y * R.rh, faces[fi].r * R.rw, a);
+    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
   /* ================= melt engine ================= */
   var meltT = 0, fxT = 0, held = false, hidden = false;
@@ -1193,8 +1330,12 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       ctx.fillRect(R.ox, R.oy, R.rw, R.rh);
       ctx.globalCompositeOperation = 'source-over';
 
-      /* the forming frame lives inside its own page — no second score on top */
+      /* the arc lays the outside light first (the painting's own
+         glow, the sky, the moving shade); the scene's atmosphere
+         rides on top */
+      arcBase(R, w, t, k);
       SCENES[k](R, w, t);
+      faceLift(R, w, t, k);
       /* the painting itself rides the scene's 3-state grade (lift pass) */
       els[k].style.filter = gradeFor(GRADES[k], t, STATE_PERIOD);
 
