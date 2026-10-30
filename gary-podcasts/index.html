@@ -151,7 +151,19 @@ h2.sec .chev{color:var(--sub2);font-weight:700}
 #intro{position:fixed;inset:0;z-index:60;background:#0b0b10;display:flex;flex-direction:column;overflow:hidden;
   transition:opacity .45s ease,visibility .45s}
 #intro.off{opacity:0;visibility:hidden;pointer-events:none}
-#introImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+#introImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:filter 1.6s ease}
+/* DAY / NIGHT — a graded lighting treatment over the approved cover photo (never a redraw).
+   DAY (light theme): warm sunrise wash + lifted light. NIGHT (dark theme): deep-blue dusk grade,
+   a neon bloom along the crown-molding band at the ceiling, and a pink guitar glow at the window side.
+   Keyed off the same data-theme the header toggle already flips; both layers cross-fade ~1.6s. */
+[data-theme="light"] #introImg{filter:brightness(1.09) saturate(1.07)}
+[data-theme="dark"] #introImg{filter:brightness(.8) saturate(1.06) contrast(1.05)}
+.intro-fx{position:absolute;inset:0;pointer-events:none;transition:opacity 1.6s ease}
+.fx-day{opacity:1;background:linear-gradient(180deg,rgba(255,205,110,.30) 0%,rgba(255,170,80,.10) 34%,rgba(255,190,100,.05) 60%,rgba(255,160,70,.12) 100%),radial-gradient(90% 55% at 78% 18%,rgba(255,226,160,.38),rgba(255,226,160,0) 62%)}
+.fx-night{opacity:0;background:linear-gradient(180deg,rgba(8,12,48,.40) 0%,rgba(6,8,34,.20) 42%,rgba(3,3,16,.46) 100%),radial-gradient(70% 45% at 80% 26%,rgba(255,64,170,.20),rgba(255,64,170,0) 65%)}
+.fx-night .neon-band{position:absolute;left:0;right:0;top:0;height:15%;background:linear-gradient(180deg,rgba(0,229,255,.5),rgba(140,60,255,.28) 55%,rgba(0,229,255,0));filter:blur(7px);mix-blend-mode:screen}
+[data-theme="dark"] .fx-day{opacity:0}
+[data-theme="dark"] .fx-night{opacity:1}
 .intro-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,0,15,.42) 0%,rgba(5,0,15,0) 26%,rgba(5,0,15,0) 50%,rgba(5,0,15,.58) 100%)}
 .intro-head{position:relative;display:flex;align-items:center;gap:9px;padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
 .intro-head .sp{flex:1}
@@ -407,8 +419,8 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 /* desktop Now Playing: stage left, controls spread right — composed, not a stranded column.
    (The show-page mount ignores this: Gary's call — the face is one centered column at every size.) */
 @media (min-width:900px){
-  #npIn{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);column-gap:48px;
-    max-width:1060px;align-content:center}
+  #npIn{display:grid;grid-template-columns:minmax(430px,540px) minmax(0,1fr);column-gap:56px;
+    max-width:1300px;align-content:center}
   #np .grab{grid-column:1/-1}
   #npClose{grid-column:1/-1;justify-self:start}
   #np .f-stage{grid-column:1;grid-row:3/11;width:100%;margin:0;align-self:start}
@@ -417,7 +429,88 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
   #np .seek{grid-column:2}
   #np .transport{grid-column:2}
   #np .vol-row{grid-column:2}
+  #np .f-queue{grid-column:2;margin-top:24px}
+  #np .fq-row{padding:10px 8px}
+  #np .fq-row img{width:52px;height:52px}
 }
+/* ============ APPLE HOME PASS: Up Next river - bookshelf - sidebar rail - on-deck queue ============ */
+.cl-strip{display:flex;gap:12px;overflow-x:auto;padding:10px 18px 6px;margin:2px -18px 0;scroll-snap-type:x proximity}
+.cl-strip::-webkit-scrollbar{display:none}
+.cl-card{flex:none;width:252px;display:flex;gap:11px;align-items:center;background:var(--card-2);border-radius:13px;padding:9px 11px;cursor:pointer;scroll-snap-align:start}
+.cl-card img{width:52px;height:52px;border-radius:8px;object-fit:cover;flex:none}
+.cl-card .cb{flex:1;min-width:0}
+.cl-card .ct{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;font-weight:700;line-height:1.22}
+.cl-card .cs{display:block;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.cl-card .bar{display:block;height:4px;border-radius:2px;background:var(--sep);margin-top:6px;overflow:hidden}
+.cl-card .bar i{display:block;height:100%;background:var(--accent)}
+.cl-card .pill{flex:none}
+.em .lab{font-size:10.5px;font-weight:800;letter-spacing:.07em;padding:2.5px 7px;border-radius:5px;background:var(--accent);color:#fff}
+.em .lab.new{background:var(--card-2);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--sep)}
+.shelf-wrap{margin-top:2px}
+.shelf-row{display:flex;gap:20px;align-items:flex-end;overflow-x:auto;padding:18px 22px 0;margin:0 -18px;scrollbar-width:none}
+.shelf-row::-webkit-scrollbar{display:none}
+.book{flex:none;width:96px;cursor:pointer;position:relative;transform:rotate(var(--lean,0deg));transition:transform .22s ease;transform-origin:bottom center;text-align:center;padding:0}
+.bk-cover{display:block;width:96px;height:96px;border-radius:3px 7px 7px 3px;overflow:hidden;position:relative;box-shadow:5px 7px 14px rgba(20,0,40,.3)}
+.bk-cover img{width:100%;height:100%;object-fit:cover}
+.bk-cover::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(0,0,0,.34) 0%,rgba(0,0,0,.10) 7%,rgba(255,255,255,.14) 11%,rgba(0,0,0,0) 20%)}
+.book .bk-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11.5px;font-weight:600;line-height:1.2;margin-top:7px;color:var(--text)}
+.book.pulled{transform:rotate(0deg) translateY(-13px) scale(1.07);z-index:2}
+.book.pulled .bk-cover{box-shadow:8px 16px 24px rgba(20,0,40,.4)}
+.shelf-plank{height:15px;margin:0 -18px;background:linear-gradient(180deg,#b0814e 0%,#8a5a30 55%,#6f4523 100%);border-radius:3px;box-shadow:0 12px 18px -6px rgba(60,30,5,.45),inset 0 2px 2px rgba(255,220,170,.5)}
+[data-theme="dark"] .shelf-plank{background:linear-gradient(180deg,#7d5a36 0%,#5d3f22 55%,#4a3018 100%)}
+.shelf-under{height:10px;margin:0 -18px;background:linear-gradient(180deg,rgba(60,30,5,.20),rgba(60,30,5,0))}
+.bz-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.person-sq{width:108px;background:var(--card-2);border-radius:14px;padding:12px 10px 10px;text-align:center;cursor:pointer}
+.person-sq .avatar-ini{width:52px;height:52px;font-size:19px;margin:0 auto}
+.person-sq .pt2{display:block;font-size:13.5px;font-weight:700;margin-top:8px;line-height:1.2}
+.person-sq .ps2{display:block;font-size:11.5px;color:var(--sub);margin-top:2px}
+.genre-tile{min-width:136px;flex:1 1 136px;max-width:190px;background:var(--accent-soft);border-radius:14px;padding:13px 13px 11px;cursor:pointer;text-align:left;overflow:hidden}
+.genre-tile .gt{display:block;font-size:15.5px;font-weight:800;color:var(--accent-ink);line-height:1.2}
+.genre-tile .gs{display:block;font-size:12px;color:var(--sub);margin-top:3px}
+.lib-filter{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border-radius:11px;padding:9px 12px;margin:12px 0 2px;font-size:14.5px}
+.lib-filter button{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--accent-ink);font-weight:700;font-size:13.5px;min-height:36px;padding:0 6px}
+.lib-filter button .ic{width:16px;height:16px}
+.f-queue{flex:none;margin:16px auto 4px;width:100%;text-align:left}
+.fq-head{display:flex;align-items:baseline;gap:8px;padding:0 2px}
+.fq-t{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--f-sub)}
+.fq-n{font-size:12px;color:var(--f-sub)}
+.fq-manage{margin-left:auto;color:var(--f-accent);font-size:13.5px;font-weight:700;min-height:36px;padding:0 4px}
+.fq-list{margin-top:6px}
+.fq-row{display:flex;gap:11px;align-items:center;width:100%;padding:8px 6px;border-radius:11px;cursor:pointer;text-align:left;color:var(--f-text)}
+.fq-row:active{background:var(--f-chip)}
+.fq-num{flex:none;width:26px;height:26px;border-radius:50%;background:var(--f-chip);color:var(--f-sub);font-size:12.5px;font-weight:800;display:grid;place-items:center}
+.fq-row img{width:44px;height:44px;border-radius:7px;object-fit:cover;flex:none}
+.fq-mid{flex:1;min-width:0}
+.fq-rt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14.5px;font-weight:600;line-height:1.25}
+.fq-rs{display:block;font-size:12px;color:var(--f-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.fq-rm{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--f-sub)}
+.fq-rm .ic{width:18px;height:18px}
+.fq-empty{font-size:13.5px;color:var(--f-sub);padding:8px 2px 2px;line-height:1.45}
+.f-queue.flash{animation:fqflash 1.2s ease}
+@keyframes fqflash{0%,60%{box-shadow:0 0 0 3px var(--f-accent);border-radius:14px}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}
+.side-sec{margin-top:20px;padding:0 4px}
+.side-sec h3{font-size:12px;font-weight:800;letter-spacing:.09em;color:var(--sub);padding:0 8px;margin-bottom:8px}
+.side-sec .person-card{margin-top:0;padding:10px}
+.side-sec .person-card .avatar-ini{width:46px;height:46px;font-size:17px}
+.side-sec .person-card .pt{font-size:15px}
+.side-sec .person-card .ps{font-size:12px}
+.side-ep{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:7px 8px;border-radius:10px;cursor:pointer;color:var(--text)}
+.side-ep:hover{background:var(--accent-soft)}
+.side-ep img{width:40px;height:40px;border-radius:7px;object-fit:cover;flex:none}
+.side-ep .sb2{flex:1;min-width:0}
+.side-ep .st2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;font-weight:600;line-height:1.25}
+.side-ep .ss2{display:block;font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sideToggle{display:none}
+@media (min-width:900px){
+  #sideToggle{display:grid}
+  #sidebar{overflow-y:auto}
+  body.side-closed #sidebar{display:none}
+  body.side-closed #mini{left:0}
+  body.side-closed #pageView{left:0}
+  body.side-closed main{max-width:1240px}
+  .show-col{max-width:700px}
+}
+@media (min-width:1400px){ main{max-width:1060px} #pvBody{max-width:1060px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 </head>
@@ -427,6 +520,8 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 <div id="intro" role="dialog" aria-label="Gary Podcasts">
   <img id="introImg" alt="">
   <div class="intro-shade"></div>
+  <div class="intro-fx fx-day"></div>
+  <div class="intro-fx fx-night"><div class="neon-band"></div></div>
   <header class="intro-head">
     <a class="fr-mark on-dark" href="https://future-ready-own-your-day-mission-briefing.lovable.app" target="_blank" rel="noopener">FUTURE READY ↗</a>
     <div class="sp"></div>
@@ -444,6 +539,8 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
   <aside id="sidebar">
     <div class="brand brand-home" id="sideBrand" title="Back to the cover"><span class="dot" id="sideDot"></span>Gary Podcasts</div>
     <nav id="sideNav"></nav>
+    <div class="side-sec"><h3 data-i18n="people">People</h3><div id="sidePeople"></div></div>
+    <div class="side-sec"><h3 data-i18n="latest">Latest Episodes</h3><div id="sideLatest"></div></div>
     <div class="side-foot">
       <a class="fr-mark" href="https://future-ready-own-your-day-mission-briefing.lovable.app" target="_blank" rel="noopener">FUTURE READY ↗</a>
       <div style="display:flex;gap:6px;align-items:center">
@@ -456,6 +553,7 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
   </aside>
   <div id="mainWrap">
     <header id="topbar">
+      <button class="icon-btn" id="sideToggle" aria-label="Show or hide the sidebar"></button>
       <div class="brand brand-home" id="topBrand" title="Back to the cover"><span class="dot" id="topDot"></span>Gary Podcasts</div>
       <div class="sp"></div>
       <a class="fr-mark" href="https://future-ready-own-your-day-mission-briefing.lovable.app" target="_blank" rel="noopener">FUTURE READY ↗</a>
@@ -465,7 +563,7 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
     </header>
     <main id="main">
       <section class="screen" data-screen="home"><h1 class="page" data-i18n="tab_home">Home</h1><div id="homeBody"></div></section>
-      <section class="screen" data-screen="browse"><h1 class="page" data-i18n="tab_browse">Browse</h1><div id="browseBody"></div></section>
+      <section class="screen" data-screen="new"><h1 class="page" data-i18n="tab_new">New</h1><div id="newBody"></div></section>
       <section class="screen" data-screen="library"><h1 class="page" data-i18n="tab_library">Library</h1><div id="libBody"></div></section>
       <section class="screen" data-screen="search">
         <h1 class="page" data-i18n="tab_search">Search</h1>
@@ -502,8 +600,9 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 <div id="mini" role="button" aria-label="Open Now Playing">
   <img id="miniArt" alt="">
   <div class="mt"><div class="t" id="miniTitle"></div><div class="s" id="miniShow"></div></div>
+  <button class="mb" id="miniBack" aria-label="Skip back 30 seconds"><span class="ic" data-ic="back30"></span></button>
   <button class="mb" id="miniPlay" aria-label="Play or pause"><span class="ic" data-ic="play"></span></button>
-  <button class="mb" id="miniFwd" aria-label="Skip forward 15 seconds"><span class="ic" data-ic="fwd15"></span></button>
+  <button class="mb" id="miniFwd" aria-label="Skip forward 30 seconds"><span class="ic" data-ic="fwd30"></span></button>
   <div id="miniProg"></div>
 </div>
 
@@ -521,6 +620,9 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 "use strict";
 /* ================= ICONS (inline SVG, stroke style) ================= */
 const IC = {
+  back30:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M11.2 4.6A8 8 0 1 1 4 12.4"/><path d="M4.2 4.4v4.4h4.4" fill="none"/><text x="12" y="16.4" font-size="7.4" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none" font-family="-apple-system,sans-serif">30</text></svg>',
+  panel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><rect x="5.4" y="6.4" width="2.3" height="11.2" rx="1.1" fill="currentColor" stroke="none"/></svg>',
+  spark:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 13.9 10 21.5 12 13.9 14 12 21.5 10.1 14 2.5 12 10.1 10Z"/></svg>',
   home:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 2.8 11v9.3c0 .8.7 1.5 1.5 1.5H9v-6.3h6v6.3h4.7c.8 0 1.5-.7 1.5-1.5V11L12 3.2Z"/></svg>',
   browse:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3.5" y="3.5" width="7.2" height="7.2" rx="1.8"/><rect x="13.3" y="3.5" width="7.2" height="7.2" rx="1.8"/><rect x="3.5" y="13.3" width="7.2" height="7.2" rx="1.8"/><rect x="13.3" y="13.3" width="7.2" height="7.2" rx="1.8"/></svg>',
   library:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="10" r="3.2"/><path d="M12 13.4v3.4M7.6 20.4c.7-2.6 2.4-4 4.4-4s3.7 1.4 4.4 4" stroke-linecap="round"/><path d="M5 5.2C6.6 3.9 9.1 3.2 12 3.2s5.4.7 7 2" stroke-linecap="round"/></svg>',
@@ -1051,7 +1153,8 @@ const QR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" role
    all wired to the same functions. */
 const STR = {
   en: {
-    tab_home:'Home', tab_browse:'Browse', tab_library:'Library', tab_search:'Search',
+    tab_home:'Home', tab_browse:'Browse', tab_library:'Library', tab_search:'Search', tab_new:'New',
+    upNext:'Up Next', onDeck:'On Deck', genres:'Genres',
     tagline:'the total chill player', enter:'ENTER',
     sideNote:'Your library is saved on this device. No account, no sync.',
     searchPh:'Shows, episodes, people…',
@@ -1082,7 +1185,8 @@ const STR = {
     retry:'Retry', openApple:'Open in Apple Podcasts'
   },
   es: {
-    tab_home:'Inicio', tab_browse:'Explorar', tab_library:'Biblioteca', tab_search:'Buscar',
+    tab_home:'Inicio', tab_browse:'Explorar', tab_library:'Biblioteca', tab_search:'Buscar', tab_new:'Nuevo',
+    upNext:'A continuación', onDeck:'En cola', genres:'Géneros',
     tagline:'el reproductor totalmente chill', enter:'ENTRAR',
     sideNote:'Tu biblioteca se guarda en este dispositivo. Sin cuenta, sin sincronización.',
     searchPh:'Programas, episodios, personas…',
@@ -1147,14 +1251,17 @@ function libRowHTML(show){
 function renderLibList(){
   const box = $('#libList'); if(!box) return;
   const q = libQuery.trim().toLowerCase();
-  const list = LIBRARY.filter(s => !q || (s.name + ' ' + (s.artist || '') + ' ' + (s.kw || '')).toLowerCase().includes(q))
+  const pool = libGenre ? LIBRARY.filter(s => genresOf(s).includes(libGenre)) : LIBRARY;
+  const list = pool.filter(s => !q || (s.name + ' ' + (s.artist || '') + ' ' + (s.kw || '')).toLowerCase().includes(q))
     .slice().sort((a, b) => a.name.localeCompare(b.name));
-  let html = '<div class="sort-row"><span class="lbl">' + esc(t('yourLibrary')) + '</span>'
+  let html = '';
+  if(libGenre) html += '<div class="lib-filter"><span>Genre: <b>' + esc(libGenre) + '</b> · ' + pool.length + ' shows</span><button data-act="genre-clear">' + icon('x') + 'Show all</button></div>';
+  html += '<div class="sort-row"><span class="lbl">' + esc(t('yourLibrary')) + '</span>'
     + '<span class="lbl" style="color:var(--sub);font-weight:600">' + list.length + ' / ' + LIBRARY.length + ' ' + esc(t('showsWord')) + '</span></div>';
   if(!list.length) html += '<div class="empty"><div class="et2">' + esc(t('libNoMatch')) + '</div><p>' + esc(t('libNoMatchNote')) + '</p></div>';
   html += list.map(libRowHTML).join('');
   const extra = Object.values(S.follows).filter(f => f.show && !LIB_IDS.has(f.show.id));
-  if(extra.length && !q) html += '<h2 class="sec" style="font-size:19px">' + esc(t('alsoFollowing')) + '</h2>' + extra.map(f => libRowHTML(f.show)).join('');
+  if(extra.length && !q && !libGenre) html += '<h2 class="sec" style="font-size:19px">' + esc(t('alsoFollowing')) + '</h2>' + extra.map(f => libRowHTML(f.show)).join('');
   box.innerHTML = html;
 }
 
@@ -1320,11 +1427,11 @@ function goTab(name){
   $$('#tabbar button, #sideNav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===name));
   $('#main').scrollIntoView(); window.scrollTo(0,0);
   if(name==='home') renderHome();
-  if(name==='browse') renderBrowse();
+  if(name==='new') renderNew();
   if(name==='library') renderLibrary();
   if(name==='search') renderSearchIdle();
 }
-const TABS = [ ['home','tab_home','home'], ['browse','tab_browse','browse'], ['library','tab_library','library'], ['search','tab_search','search'] ];
+const TABS = [ ['home','tab_home','home'], ['new','tab_new','spark'], ['library','tab_library','library'], ['search','tab_search','search'] ];
 function renderTabs(){
   $('#tabbar').innerHTML = TABS.map(([k,lk,ic])=>'<button data-tab="'+k+'" class="'+(curTab===k?'on':'')+'" aria-label="'+esc(t(lk))+'">'+icon(ic)+esc(t(lk))+'</button>').join('');
   $('#sideNav').innerHTML = TABS.map(([k,lk,ic])=>'<button data-tab="'+k+'" class="'+(curTab===k?'on':'')+'">'+icon(ic)+esc(t(lk))+'</button>').join('');
@@ -1350,10 +1457,11 @@ function pillHTML(ep){
     return '<button class="pill" data-act="play" data-key="'+ep.key+'"><span class="pfill" style="width:'+pct+'%"></span>'+icon('play')+'<span>'+fmtDur(dur-p.pos)+' left</span></button>'; }
   return '<button class="pill" data-act="play" data-key="'+ep.key+'">'+icon('play')+(dur?'<span>'+fmtDur(dur)+'</span>':'<span>Play</span>')+'</button>';
 }
-function epRowHTML(ep, showNameOverride){
+function epRowHTML(ep, showNameOverride, label){
   regEp(ep);
   const p = progOf(ep.key);
   const meta = [];
+  if(label) meta.push('<span class="lab'+(label==='NEW'?' new':'')+'">'+esc(label)+'</span>');
   if(ep.date) meta.push(esc(relTime(ep.date)||fmtDate(ep.date)));
   if(showNameOverride || ep.showName) meta.push(esc(showNameOverride||ep.showName));
   if(isDone(ep.key)) meta.push('<span class="done">Played ✓</span>');
@@ -1381,21 +1489,142 @@ function personCardHTML(){
 }
 
 /* ================= HOME ================= */
+/* ================= FOLLOWED SHOWS & THE SHARED FEED PASS =================
+   One memoized pass over every followed show's feed, shared by Home's
+   Up Next river, the New tab and the sidebar's Latest list. "Followed"
+   = Gary's library (the 76) plus anything followed on top of it. */
+function followedShows(){
+  const out = new Map();
+  LIBRARY.forEach(s=>{ registerShow(s); out.set(String(s.id), s); });
+  Object.values(S.follows).forEach(f=>{ if(f && f.show && f.show.id!=null){ registerShow(f.show); out.set(String(f.show.id), f.show); } });
+  return [...out.values()];
+}
+let _feedPass = null;
+function feedPass(){
+  if(_feedPass) return _feedPass;
+  const shows = followedShows();
+  _feedPass = Promise.allSettled(shows.map(s=>loadFeed(s.feed))).then(settled=>{
+    const out = [];
+    settled.forEach((r,i)=>{ if(r.status==='fulfilled' && r.value.eps && r.value.eps.length){
+      const sh = shows[i];
+      out.push({ show: sh, eps: r.value.eps.map(e=>regEp({...e, showId: sh.id, showName: sh.name, art: e.art||sh.art})) });
+    }});
+    return out;
+  });
+  return _feedPass;
+}
+function byDateDesc(eps){ return [...eps].sort((a,b)=>new Date(b.date)-new Date(a.date)); }
+function resumeEps(limit){
+  return Object.entries(S.progress)
+    .filter(([k,p])=>!p.done && !S.played[k] && p.pos>10 && p.dur && p.pos/p.dur<0.97 && S.snaps[k])
+    .sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0, limit||8)
+    .map(([k])=>S.snaps[k]);
+}
+
+/* ================= GENRES (from the metadata the file already carries:
+   baked iTunes genres for the starter shows, the library kw tags, and
+   topical words in each show's own name/artist — nothing invented) ==== */
+const GENRE_NORM = {'Health & Fitness':'Health','Daily News':'News','Business News':'News','News Commentary':'News'};
+const GENRE_WORDS = [ ['Poker',/poker/i], ['Trading',/trad(e|ing|er|ers)\b|day ?trading/i],
+  ['Investing',/invest|wall street|stocks?\b|markets?\b/i], ['Business',/business|entrepreneur|startup|founder|million/i],
+  ['Comedy',/comedy|comedian|conan|carvey|maher/i], ['News',/\bnews\b|daily|journal|politics/i],
+  ['Health',/health|fitness|wellness|doctor|medical/i], ['Technology',/technolog|\bai\b|artificial intelligence|software|gadgets/i],
+  ['Science',/science|scientific|physics|biology|space/i], ['True Crime',/true crime|crime|murder/i],
+  ['Sports',/sports?\b|football|basketball|baseball|\bnfl\b|\bnba\b/i], ['Documentary',/documentary|history/i] ];
+function genresOf(show){
+  const out = new Set();
+  const baked = BAKED.shows.find(s=>String(s.id)===String(show.id));
+  if(baked && baked.genres) baked.genres.forEach(g=>{ if(g && g!=='Podcasts') out.add(GENRE_NORM[g]||g); });
+  (show.kw||'').toLowerCase().split(/[^a-z]+/).forEach(w=>{ if(w==='poker') out.add('Poker'); if(w==='trading') out.add('Trading'); if(w==='investing') out.add('Investing'); });
+  const hay = ((show.name||'')+' '+(show.artist||'')).toLowerCase();
+  GENRE_WORDS.forEach(([g,re])=>{ if(re.test(hay)) out.add(g); });
+  return [...out];
+}
+function genreTiles(){
+  const counts = {};
+  LIBRARY.forEach(s=>genresOf(s).forEach(g=>{ counts[g] = (counts[g]||0)+1; }));
+  return Object.entries(counts).filter(([,c])=>c>=2).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
+}
+let libGenre = null;
+function openGenre(g){ libGenre = g; libSeg = 'shows'; libQuery = ''; goTab('library'); }
+
+/* ================= HOME — Apple's shape, Gary's order =================
+   1) Continue Listening, slim. 2) The Up Next stacked river.
+   3) The Starter Shelf as a BOOKSHELF + the tile carousel under it.
+   4) Browse zone: People as a small square + genre tiles. */
 async function renderHome(){
   const el = $('#homeBody'); let html = '';
-  const cont = Object.entries(S.progress)
-    .filter(([k,p])=>!p.done && !S.played[k] && p.pos>10 && p.dur && p.pos/p.dur<0.97 && S.snaps[k])
-    .sort((a,b)=>b[1].updatedAt-a[1].updatedAt).slice(0,8);
-  if(cont.length) html += '<h2 class="sec">'+esc(t('continueListening'))+'</h2>'+cont.map(([k])=>epRowHTML(S.snaps[k])).join('');
+  const cont = resumeEps(6);
+  if(cont.length){
+    html += '<h2 class="sec">'+esc(t('continueListening'))+'</h2><div class="cl-strip">'
+      + cont.map(ep=>{ const p = progOf(ep.key), dur = (p&&p.dur)||ep.durSec||0, pct = dur? Math.min(100, p.pos/dur*100):0;
+          return '<div class="cl-card" data-act="eppage" data-key="'+ep.key+'"><img src="'+esc(ep.art||'')+'" alt="">'
+          + '<div class="cb"><div class="ct">'+esc(ep.title)+'</div><span class="cs">'+esc(ep.showName||'')+(dur?' · '+fmtDur(dur-p.pos)+' left':'')+'</span>'
+          + '<span class="bar"><i style="width:'+pct+'%"></i></span></div>'+pillHTML(ep)+'</div>'; }).join('') + '</div>';
+  }
+  html += '<h2 class="sec">'+esc(t('upNext'))+'</h2><div id="unextSlot"><div class="spin"></div></div>';
+  const leans = [-1.6,.9,-.5,1.3,-.9,.5,-1.2,0];
   html += '<h2 class="sec">'+esc(t('starterShelf'))+'</h2><p class="sec-note">'+esc(t('starterNote'))+'</p>'
-    + '<div id="leadSlot"><div class="skel" style="aspect-ratio:16/10.2"></div></div>'
+    + '<div class="shelf-wrap"><div class="shelf-row">'
+    + BAKED.shows.map((s,i)=>{ registerShow(s);
+        return '<button class="book" data-book="'+s.id+'" style="--lean:'+leans[i%leans.length]+'deg" aria-label="'+esc(s.name)+'"><span class="bk-cover"><img src="'+esc(s.art||'')+'" alt="" loading="lazy"></span><span class="bk-t">'+esc(s.name)+'</span></button>'; }).join('')
+    + '</div><div class="shelf-plank"></div><div class="shelf-under"></div></div>'
     + '<div class="hrow">'+BAKED.shows.map(s=>showTileHTML(s)).join('')+'</div>';
-  html += '<h2 class="sec">'+esc(t('people'))+'</h2><p class="sec-note">'+esc(t('peopleNote'))+'</p>'+personCardHTML();
-  const fol = Object.values(S.follows);
-  if(fol.length) html += '<h2 class="sec">'+esc(t('latest'))+'</h2><p class="sec-note">'+esc(t('latestNote'))+'</p><div id="latestSlot"><div class="spin"></div></div>';
+  html += '<h2 class="sec">'+esc(t('people'))+'</h2><p class="sec-note">'+esc(t('peopleNote'))+'</p><div class="bz-grid">'
+    + '<button class="person-sq" data-act="bank-ethan"><span class="avatar-ini">EE</span><span class="pt2">Ethan Evans</span><span class="ps2">'+BAKED.ethanEpisodes.length+' appearances banked</span></button></div>';
+  const genres = genreTiles();
+  if(genres.length) html += '<h2 class="sec">'+esc(t('genres'))+'</h2><div class="bz-grid">'
+    + genres.map(g=>'<button class="genre-tile" data-act="genre" data-genre="'+esc(g.name)+'"><span class="gt">'+esc(g.name)+'</span><span class="gs">'+g.count+' shows</span></button>').join('') + '</div>';
   el.innerHTML = html;
-  fillLead();
-  if(fol.length) fillLatest(fol);
+  el.querySelectorAll('.book').forEach(b=>b.addEventListener('click', ()=>{
+    if(b.classList.contains('pulled')) return;
+    el.querySelectorAll('.book.pulled').forEach(x=>x.classList.remove('pulled'));
+    b.classList.add('pulled');
+    const sh = showReg[b.dataset.book];
+    setTimeout(()=>{ if(sh) openShowPage(sh); }, 240);
+  }));
+  fillUpNext();
+}
+async function fillUpNext(){
+  const slot = $('#unextSlot'); if(!slot) return;
+  const data = await feedPass();
+  if(!slot.isConnected) return;
+  if(!data.length){ slot.innerHTML = '<div class="err-box">Couldn\u2019t load episodes from your shows right now. <button class="text-btn" onclick="renderHome()">Retry</button></div>'; return; }
+  const resume = resumeEps(6);
+  const seen = new Set(resume.map(e=>e.key));
+  const picks = [];
+  data.forEach(({eps})=>{ const pick = byDateDesc(eps).find(e=>!isDone(e.key) && !seen.has(e.key)); if(pick) picks.push(pick); });
+  picks.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  slot.innerHTML = (resume.map(e=>epRowHTML(e, null, 'RESUME')).join('') + picks.map(e=>epRowHTML(e, null, 'NEW')).join(''))
+    || '<div class="empty"><div class="et2">All caught up</div><p>No new episodes from your shows right now.</p></div>';
+}
+
+/* ================= NEW — one chronological river ================= */
+async function renderNew(){
+  const el = $('#newBody'); if(!el) return;
+  el.innerHTML = '<div id="newSlot"><div class="spin"></div></div>';
+  const data = await feedPass();
+  const slot = $('#newSlot'); if(!slot) return;
+  if(!data.length){ slot.innerHTML = '<div class="err-box">Couldn\u2019t load new episodes right now. <button class="text-btn" onclick="renderNew()">Retry</button></div>'; return; }
+  const all = [];
+  data.forEach(({eps})=>byDateDesc(eps).slice(0,2).forEach(e=>all.push(e)));
+  all.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  slot.innerHTML = all.slice(0,60).map(e=>epRowHTML(e, null, 'NEW')).join('');
+}
+
+/* ================= SIDEBAR RAIL (desktop): People + Latest ============ */
+async function fillSidebar(){
+  const sp = $('#sidePeople'); if(sp && !sp.innerHTML) sp.innerHTML = personCardHTML();
+  const sl = $('#sideLatest'); if(!sl) return;
+  sl.innerHTML = '<div class="spin" style="margin:10px auto"></div>';
+  const data = await feedPass();
+  if(!sl.isConnected) return;
+  const all = [];
+  data.forEach(({eps})=>{ const d = byDateDesc(eps); if(d.length) all.push(d[0]); });
+  all.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  sl.innerHTML = all.slice(0,6).map(e=>'<button class="side-ep" data-sideep="'+esc(e.key)+'"><img src="'+esc(e.art||'')+'" alt=""><span class="sb2"><span class="st2">'+esc(e.title)+'</span><span class="ss2">'+esc(e.showName||'')+' · '+esc(relTime(e.date)||fmtDate(e.date))+'</span></span></button>').join('')
+    || '<div class="sec-note" style="padding:0 8px">Nothing new right now.</div>';
+  sl.querySelectorAll('[data-sideep]').forEach(b=>b.addEventListener('click', ()=>{ const ep = epReg[b.dataset.sideep]; if(ep) playEpisode(ep); }));
 }
 async function fillLead(){
   const slot = $('#leadSlot'); if(!slot) return;
@@ -1452,7 +1681,7 @@ function renderLibrary(){
   }
   if(libSeg==='saved'){
     const sv = Object.values(S.saved).sort((a,b)=>b.ts-a.ts);
-    if(!sv.length) html += '<div class="empty"><div class="et2">Nothing saved</div><p>Tap ⋯ on any episode and choose Save — it waits for you here.</p><button class="btn" data-act="tab" data-tab="browse">Browse shows</button></div>';
+    if(!sv.length) html += '<div class="empty"><div class="et2">Nothing saved</div><p>Tap ⋯ on any episode and choose Save — it waits for you here.</p><button class="btn" data-act="tab" data-tab="library">Browse shows</button></div>';
     else html += sv.map(x=>epRowHTML(x.ep)).join('');
   }
   if(libSeg==='recent'){
@@ -1581,7 +1810,7 @@ function openEpMenu(ep){
   const items = [
     sheetItem('play', playLbl, '', 'm-play'),
     sheetItem('next', 'Play Next', '', 'm-next'),
-    sheetItem('addq', 'Add to Queue', '', 'm-addq'),
+    sheetItem('addq', 'Add to On Deck', '', 'm-addq'),
     sheetItem(saved?'saveFill':'save', saved?'Remove from Saved':'Save Episode', '', 'm-save'),
     sheetItem('check', done?'Mark as Unplayed':'Mark as Played', '', 'm-played'),
     sheetItem('share', 'Share Episode', '', 'm-share'),
@@ -1652,7 +1881,7 @@ function openShowPage(show){
 }
 const showContexts = {};
 function toggleFollow(show){ if(S.follows[show.id]){ delete S.follows[show.id]; toast('Unfollowed '+show.name); }
-  else { S.follows[show.id]={ts:Date.now(), show}; toast('Following '+show.name); } persist('follows'); }
+  else { S.follows[show.id]={ts:Date.now(), show}; toast('Following '+show.name); } persist('follows'); _feedPass = null; if(typeof fillSidebar==='function') fillSidebar(); }
 
 /* ================= EPISODE PAGE ================= */
 function openEpisodePage(ep){
@@ -1662,7 +1891,7 @@ function openEpisodePage(ep){
       + '<div class="act-row">'
       + '<button id="epSave" class="'+(S.saved[ep.key]?'':'off')+'">'+icon(S.saved[ep.key]?'saveFill':'save')+(S.saved[ep.key]?'Saved':'Save')+'</button>'
       + '<button id="epNext">'+icon('next')+'Play Next</button>'
-      + '<button id="epAddQ">'+icon('addq')+'Add to Queue</button>'
+      + '<button id="epAddQ">'+icon('addq')+'Add to On Deck</button>'
       + '<button id="epShare">'+icon('share')+'Share</button></div>'
       + (ep.desc? '<div class="desc" id="epNotes">'+sanitizeHTML(ep.desc)+'</div>' : (ep.descText? '<div class="desc" id="epNotes">'+esc(ep.descText)+'</div>':''))
       + '</div>';
@@ -1732,7 +1961,7 @@ function openBankPage(){
 }
 
 /* ================= QUEUE PAGE ================= */
-function openQueuePage(){ pushPage('Up Next', renderQueue); }
+function openQueuePage(){ pushPage('On Deck', renderQueue); }
 function renderQueue(body){
   const curEp = window.__cur;
   let html = '';
@@ -1740,9 +1969,9 @@ function renderQueue(body){
     + '<img src="'+esc(curEp.art||'')+'" alt=""><div style="min-width:0"><div style="font-weight:700">'+esc(curEp.title)+'</div>'
     + '<div style="font-size:13px;color:var(--sub)">'+esc(curEp.showName||'')+'</div></div></div>'; }
   /* Section 1 — Queue: what the listener explicitly added; plays first */
-  html += '<div class="sec-head"><h2 class="sec" style="margin-top:16px">Queue</h2>'
-    + (S.queue.length? '<button class="text-btn" id="qClear">Clear Queue</button>':'') + '</div>';
-  if(!S.queue.length) html += '<div class="empty" style="padding:14px 8px 6px"><div class="et2">Nothing in your Queue</div><p>Episodes you pick with Play Next or Add to Queue land here — and they play first, in this order. Nothing is ever added without you.</p></div>';
+  html += '<div class="sec-head"><h2 class="sec" style="margin-top:16px">On Deck</h2>'
+    + (S.queue.length? '<button class="text-btn" id="qClear">Clear</button>':'') + '</div>';
+  if(!S.queue.length) html += '<div class="empty" style="padding:14px 8px 6px"><div class="et2">Nothing on deck</div><p>Episodes you pick with Play Next or Add to On Deck land here — up to 10 — and they play first, in this order. Nothing is ever added without you.</p></div>';
   html += S.queue.map((k,i)=>{ const ep = S.snaps[k]; if(!ep) return '';
     return '<div class="q-row" data-qi="'+i+'"><span class="drag" data-drag="'+i+'" aria-label="Drag to reorder">'+icon('grip')+'</span>'
       + '<img src="'+esc(ep.art||'')+'" alt=""><div class="qb"><div class="qt">'+esc(ep.title)+'</div><div class="qs">'+esc(ep.showName||'')+'</div></div>'
@@ -1761,8 +1990,8 @@ function renderQueue(body){
   }
   body.innerHTML = html;
   const clr = body.querySelector('#qClear');
-  if(clr) clr.addEventListener('click', ()=>{ if(clr.dataset.arm){ S.queue=[]; persist('queue'); updateQBadge(); renderQueue(body); toast('Queue cleared'); }
-    else { clr.dataset.arm='1'; clr.textContent='Tap again to confirm'; setTimeout(()=>{ clr.dataset.arm=''; clr.textContent='Clear Queue'; }, 2600); } });
+  if(clr) clr.addEventListener('click', ()=>{ if(clr.dataset.arm){ S.queue=[]; persist('queue'); updateQBadge(); renderQueue(body); toast('On Deck cleared'); }
+    else { clr.dataset.arm='1'; clr.textContent='Tap again to confirm'; setTimeout(()=>{ clr.dataset.arm=''; clr.textContent='Clear'; }, 2600); } });
   body.querySelectorAll('[data-qup]').forEach(b=>b.addEventListener('click', ()=>moveQ(+b.dataset.qup, -1, body)));
   body.querySelectorAll('[data-qdn]').forEach(b=>b.addEventListener('click', ()=>moveQ(+b.dataset.qdn, +1, body)));
   body.querySelectorAll('[data-qrm]').forEach(b=>b.addEventListener('click', ()=>{ S.queue.splice(+b.dataset.qrm,1); persist('queue'); updateQBadge(); renderQueue(body); }));
@@ -1789,11 +2018,13 @@ function wireDrag(handle, body){
 function updateQBadge(){ if(typeof updateDeck==='function') updateDeck(); }
 function playNext(ep){ if(!ep) return; regEp(ep); snap(ep);
   if(window.__cur && ep.key===window.__cur.key){ toast('That\u2019s playing right now'); return; }
+  if(!S.queue.includes(ep.key) && S.queue.length>=10){ toast('On Deck is full — 10 episodes max. Play or remove one to make room.'); return; }
   S.queue = [ep.key, ...S.queue.filter(k=>k!==ep.key)]; persist('queue','snaps'); updateQBadge(); toast('Up next: '+ep.title.slice(0,42)); }
 function addToQueue(ep){ if(!ep) return; regEp(ep); snap(ep);
   if(window.__cur && ep.key===window.__cur.key){ toast('That\u2019s playing right now'); return; }
-  if(S.queue.includes(ep.key)){ toast('Already in Up Next'); return; }
-  S.queue.push(ep.key); persist('queue','snaps'); updateQBadge(); toast('Added to Up Next'); }
+  if(S.queue.includes(ep.key)){ toast('Already on deck'); return; }
+  if(S.queue.length>=10){ toast('On Deck is full — 10 episodes max. Play or remove one to make room.'); return; }
+  S.queue.push(ep.key); persist('queue','snaps'); updateQBadge(); toast('Added to On Deck'); }
 
 /* ================= THEME ================= */
 function effectiveTheme(){ if(S.settings.theme==='light'||S.settings.theme==='dark') return S.settings.theme;
@@ -1818,6 +2049,8 @@ document.addEventListener('click', e=>{
     case 'eppage': if(ep) openEpisodePage(ep); break;
     case 'show': { const sh = showReg[t.dataset.show]; if(sh){ if(pageStack.length && pageStack[pageStack.length-1].title===sh.name){} else openShowPage(sh); } break; }
     case 'bank-ethan': openBankPage(); break;
+    case 'genre': openGenre(t.dataset.genre); break;
+    case 'genre-clear': libGenre = null; renderLibrary(); break;
     case 'tab': e.preventDefault(); goTab(t.dataset.tab); break;
     case 'research': { const q=t.dataset.q; $('#searchInput').value=q; $('#searchClear').classList.add('on'); noteRecent(q); doSearch(q); break; }
     case 'm-play': closeSheet(); if(window.__menuEp) playEpisode(window.__menuEp, {fromStart: isDone(window.__menuEp.key), context: showContexts[window.__menuEp.showId]||null}); break;
@@ -1957,7 +2190,7 @@ function faceHTML(){ return '<div class="face">'
   + '<div class="deck-lbl"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="f-deck-lbl">NOW PLAYING</span></div>'
   + '<div class="deck-t f-deck-t"></div><div class="deck-s f-deck-s"></div></div>'
   + '<span class="ic deck-chev">'+IC.queue+'</span></div>'
-  + '<div class="deck-next f-deck-next"></div></div>'
+  + '</div>'
   + '<div class="f-date"></div>'
   + '<div class="f-titlerow"><div class="f-title"></div><button class="f-dots" aria-label="Episode options">'+icon('dots')+'</button></div>'
   + '<div class="f-show"></div>'
@@ -1973,6 +2206,8 @@ function faceHTML(){ return '<div class="face">'
   + '<button class="tp-txt f-sleep" aria-label="Sleep timer">'+icon('moon')+'<small class="f-sleep-lbl">SLEEP</small></button>'
   + '</div>'
   + '<div class="vol-row">'+icon('volLo')+'<input type="range" class="vol f-vol" min="0" max="1" step="0.01" value="1" aria-label="Volume">'+icon('volHi')+'</div>'
+  + '<div class="f-queue"><div class="fq-head"><span class="fq-t">ON DECK</span><span class="fq-n f-queue-n"></span><button class="fq-manage f-queue-manage">Manage</button></div>'
+  + '<div class="fq-list f-queue-list"></div><div class="fq-empty f-queue-empty">Nothing on deck. Open any episode and tap <b>Add to On Deck</b> — up to 10 can wait here.</div></div>'
   + '</div>'; }
 function createFace(mount, opts){
   opts = opts||{};
@@ -1985,7 +2220,7 @@ function createFace(mount, opts){
     stagedEp:null, stagedCtx:null, loadFailed:false, dragging:false, destroyed:false, _epKey:null,
     words:{on:false, cues:null, forKey:null, idx:-1},
     el:{ stage:q('.f-stage'), art:q('.f-art'), words:q('.f-words'), wordsBtn:q('.f-words-btn'),
-      deck:q('.f-deck'), deckArt:q('.f-deck-art'), deckLbl:q('.f-deck-lbl'), deckT:q('.f-deck-t'), deckS:q('.f-deck-s'), deckNext:q('.f-deck-next'),
+      deck:q('.f-deck'), deckArt:q('.f-deck-art'), deckLbl:q('.f-deck-lbl'), deckT:q('.f-deck-t'), deckS:q('.f-deck-s'), queue:q('.f-queue'), queueList:q('.f-queue-list'), queueN:q('.f-queue-n'), queueEmpty:q('.f-queue-empty'), queueManage:q('.f-queue-manage'),
       date:q('.f-date'), title:q('.f-title'), showEl:q('.f-show'), dots:q('.f-dots'),
       err:q('.f-err'), errTxt:q('.f-err-txt'), track:q('.f-track'), fill:q('.fillbar'), knob:q('.knob'),
       elT:q('.f-el'), remT:q('.f-rem'), speedV:q('.f-speed-v'), play:q('.f-play'),
@@ -2030,13 +2265,24 @@ function createFace(mount, opts){
     face.el.deck.style.display = '';
     face.el.deckArt.src = ep.art||ART_PH;
     face.el.deckT.textContent = ep.title; face.el.deckS.textContent = ep.showName||'';
-    let next = [];
-    if(face.isLive()){ face.el.deckLbl.textContent = 'NOW PLAYING'; next = nextUpList().slice(0,2); }
-    else { face.el.deckLbl.textContent = face.mode==='episode' ? (isDone(ep.key)? 'PLAYED' : (((progOf(ep.key)||{}).pos>5)? 'IN PROGRESS' : 'EPISODE')) : 'LATEST EPISODE';
-      const ctx = face.stagedCtx||[]; const i = ctx.findIndex(e=>e.key===ep.key);
-      next = i>=0 ? ctx.slice(i+1, i+3) : []; }
-    face.el.deckNext.innerHTML = next.map((e2,i)=>'<div class="deck-chip"><img src="'+esc(e2.art||ART_PH)+'" alt=""><div class="dc-m"><div class="dc-l">'+(i===0?'UP NEXT':'THEN')+'</div><div class="dc-t">'+esc(e2.title)+'</div></div></div>').join('');
-    face.el.deckNext.style.display = next.length? 'flex':'none';
+    face.el.deckLbl.textContent = face.isLive() ? 'NOW PLAYING'
+      : (face.mode==='episode' ? (isDone(ep.key)? 'PLAYED' : (((progOf(ep.key)||{}).pos>5)? 'IN PROGRESS' : 'EPISODE')) : 'LATEST EPISODE');
+    face.syncQueue();
+  };
+  /* ON DECK — the one queue, numbered 1-10, living on the player itself.
+     Tap a row to play it now (it leaves the deck); x removes it. */
+  face.syncQueue = ()=>{
+    const list = face.el.queueList; if(!list) return;
+    const eps = queuedEpisodes().slice(0,10);
+    face.el.queueN.textContent = S.queue.length ? (S.queue.length+' of 10'+(S.queue.length>=10?' — full':'')) : '';
+    face.el.queueEmpty.style.display = eps.length ? 'none' : '';
+    list.innerHTML = eps.map((e2,i)=>'<div class="fq-row" data-fq="'+i+'" role="button" tabindex="0"><span class="fq-num">'+(i+1)+'</span><img src="'+esc(e2.art||ART_PH)+'" alt=""><span class="fq-mid"><span class="fq-rt">'+esc(e2.title)+'</span><span class="fq-rs">'+esc(e2.showName||'')+(e2.durSec?' · '+fmtDur(e2.durSec):'')+'</span></span><button class="fq-rm" data-fqrm="'+i+'" aria-label="Remove from On Deck">'+icon('x')+'</button></div>').join('');
+    list.querySelectorAll('[data-fqrm]').forEach(b=>b.addEventListener('click', ev=>{ ev.stopPropagation();
+      S.queue.splice(+b.dataset.fqrm,1); persist('queue'); updateQBadge(); }));
+    list.querySelectorAll('[data-fq]').forEach(r=>r.addEventListener('click', ev=>{ if(ev.target.closest('[data-fqrm]')) return;
+      const ep = queuedEpisodes()[+r.dataset.fq]; if(!ep) return;
+      S.queue = S.queue.filter(k=>k!==ep.key); persist('queue'); updateQBadge();
+      playEpisode(ep); }));
   };
   face.syncTransport = ()=>{
     const playing = !audio.paused && !audio.ended;
@@ -2069,8 +2315,10 @@ function createFace(mount, opts){
     faces.forEach(f=>{ if(f!==face) f.el.vol.value = audio.volume; }); });
   face.el.dots.addEventListener('click', ()=>{ const ep = face.displayedEp(); if(ep) openEpMenu(ep); });
   face.el.showEl.addEventListener('click', ()=>{ if(face.mode==='np' && cur){ closeNP(); openShowPage(showForEp(cur)); } else if(face.mode==='episode'){ const e2 = face.displayedEp(); if(e2) openShowPage(showForEp(e2)); } });
-  const deckGo = ()=>{ if(face.mode==='np'){ closeNP(); openQueuePage(); }
-    else if(face.isLive()) openQueuePage(); else face.activate(); };
+  const deckGo = ()=>{ const qEl = face.el.queue; if(!qEl) return;
+    qEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+    qEl.classList.remove('flash'); void qEl.offsetWidth; qEl.classList.add('flash'); };
+  face.el.queueManage.addEventListener('click', ()=>{ if(face.mode==='np') closeNP(); openQueuePage(); });
   face.el.deck.addEventListener('click', deckGo);
   face.el.deck.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); deckGo(); } });
   q('.f-retry').addEventListener('click', retryPlayback);
@@ -2100,7 +2348,7 @@ function createFace(mount, opts){
 function destroyPageFace(){ if(pageFace) pageFace.destroy(); }
 window.__destroyPageFace = destroyPageFace;
 function showMini(){ if(!cur) return; $('#miniArt').src = cur.art||ART_PH; $('#miniTitle').textContent = cur.title;
-  $('#miniShow').textContent = cur.showName||''; $('#mini').classList.add('on'); }
+  $('#miniShow').textContent = [fmtDate(cur.date), cur.showName||''].filter(Boolean).join(' · '); $('#mini').classList.add('on'); }
 function updateTransport(){ const playing = !audio.paused && !audio.ended;
   $('#miniPlay').innerHTML = icon(playing?'pause':'play');
   faces.forEach(f=>f.syncTransport()); }
@@ -2124,7 +2372,8 @@ function updateNPTime(){ if(!cur) return; faces.forEach(f=>f.syncTime());
   const dur = npDur(), pos = audio.currentTime||0;
   $('#miniProg').style.width = dur>0 ? Math.min(100, pos/dur*100)+'%' : '0%'; if(window.__chapTick) window.__chapTick(); }
 $('#miniPlay').addEventListener('click', e=>{ e.stopPropagation(); togglePlay(); });
-$('#miniFwd').addEventListener('click', e=>{ e.stopPropagation(); skip(15); });
+$('#miniBack').addEventListener('click', e=>{ e.stopPropagation(); skip(-30); });
+$('#miniFwd').addEventListener('click', e=>{ e.stopPropagation(); skip(30); });
 $('#mini').addEventListener('click', e=>{ if(e.target.closest('button')) return; openNP(); });
 $('#npClose').addEventListener('click', closeNP);
 function openNP(){ if(!cur){ toast('Pick an episode first'); return; } updateNP(); $('#np').classList.add('on'); }
@@ -2222,6 +2471,9 @@ function wireChrome(){
   const tb = $('#topBrand'); if(tb) tb.addEventListener('click', showIntro);
   const sb = $('#sideBrand'); if(sb) sb.addEventListener('click', showIntro);
   const ti = $('#themeBtnIntro'); if(ti) ti.addEventListener('click', toggleTheme);
+  const stg = $('#sideToggle'); if(stg){ stg.innerHTML = icon('panel');
+    if(S.settings.sideClosed) document.body.classList.add('side-closed');
+    stg.addEventListener('click', ()=>{ S.settings.sideClosed = document.body.classList.toggle('side-closed'); persist('settings'); }); }
   $$('.lang-btn').forEach(b => b.addEventListener('click', toggleLang));
   $$('.qr-btn').forEach(b => { if(!b.innerHTML.trim()) b.innerHTML = icon('qr'); b.addEventListener('click', openQR); });
 }
@@ -2231,7 +2483,7 @@ applyLang(false);
 const savedVol = LS.get('vol', 1); audio.volume = savedVol;
 audio.playbackRate = S.settings.speed||1;
 npFace = createFace(document.getElementById('npFaceMount'), {mode:'np'});
-setupMS(); updateQBadge(); goTab('home'); restore();
+setupMS(); updateQBadge(); goTab('home'); restore(); fillSidebar();
 </script>
 </body>
 </html>
