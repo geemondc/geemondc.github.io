@@ -329,39 +329,44 @@
     g.clearRect(0,0,OW,OH);
     g.fillStyle = '#fff'; g.strokeStyle = '#fff';
 
-    // formation at ~85% of the original scale, vertical centre fy 0.16.
-    // word ADRIANA: photo fx 0.101 -> 0.475 (width 0.374 = 0.85 x the original 0.44)
-    var tx0 = (0.101 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
-    var tx1 = (0.475 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
-    var ty  = (0.16 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
+    // formation shrunk to ~60% of the remix-pass scale (Gary: the words read
+    // like a billboard on the glass — they should sit out in the distance).
+    // word ADRIANA: photo fx 0.09 -> 0.315 (width 0.225 = 0.60 x the previous
+    // 0.374), vertical centre fy 0.15 — upper sky over the course, left of centre.
+    var tx0 = (0.09 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
+    var tx1 = (0.315 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
+    var ty  = (0.15 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
     var size = 190;
     g.textBaseline = 'middle'; g.textAlign = 'left';
-    try { g.letterSpacing = '-4px'; } catch (e) {}   // slightly tighter tracking
+    try { g.letterSpacing = '-2px'; } catch (e) {}   // tighter tracking, scaled with the word
     g.font = '700 ' + size + 'px "Avenir Next","Segoe UI",system-ui,sans-serif';
     var w = g.measureText('ADRIANA').width;
     size = Math.floor(size * (tx1 - tx0) / w);
     g.font = '700 ' + size + 'px "Avenir Next","Segoe UI",system-ui,sans-serif';
     g.fillText('ADRIANA', tx0, ty);
 
-    // heart outline: photo fx 0.50 -> 0.585 (fully inside the glass, clear of the
-    // curtain), fy 0.099 -> 0.221 — a touch larger relative to the letters than before
-    var hx0 = (0.50 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
-    var hx1 = (0.585 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
-    var hy0 = (0.099 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
-    var hy1 = (0.221 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
+    // heart outline: photo fx 0.33 -> 0.378 — scaled with the word (x-factor
+    // 0.048/0.085 = 0.565 applied to the height too, so the shape never
+    // distorts), fy 0.116 -> 0.184, same vertical centre as the word (fy 0.15);
+    // still a touch larger relative to the letters than a true 0.60 scale
+    var hx0 = (0.33 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
+    var hx1 = (0.378 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
+    var hy0 = (0.116 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
+    var hy1 = (0.184 - BAND.y0) / (BAND.y1 - BAND.y0) * OH;
     var hcx = (hx0 + hx1) / 2, hcy = (hy0 + hy1) / 2;
     var hw = (hx1 - hx0) / 2, hh = (hy1 - hy0) / 2;
-    g.lineWidth = 13; g.beginPath();
+    g.lineWidth = 7.5; g.beginPath();
     g.moveTo(hcx, hcy + hh * 0.92);
     g.bezierCurveTo(hcx - hw * 1.25, hcy + hh * 0.05, hcx - hw * 0.92, hcy - hh * 0.98, hcx, hcy - hh * 0.34);
     g.bezierCurveTo(hcx + hw * 0.92, hcy - hh * 0.98, hcx + hw * 1.25, hcy + hh * 0.05, hcx, hcy + hh * 0.92);
     g.stroke();
 
     // sample on a REGULAR grid (drone-show dot matrix) so the letterforms read;
-    // widen the grid until the fleet is a few hundred dots at most
+    // the smaller word needs a FINER grid to stay crisp — start at step 8 and
+    // let the fleet run to ~350 rather than widening the grid away
     var img = g.getImageData(0, 0, OW, OH).data;
-    var splitX = (0.4875 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
-    var wordPts = [], heartPts = [], step = 10;
+    var splitX = (0.3225 - BAND.x0) / (BAND.x1 - BAND.x0) * OW;
+    var wordPts = [], heartPts = [], step = 8;
     while (step <= 24){
       wordPts = []; heartPts = [];
       for (var y = step / 2; y < OH; y += step){
@@ -373,12 +378,12 @@
           }
         }
       }
-      if (wordPts.length + heartPts.length <= 260) break;
+      if (wordPts.length + heartPts.length <= 350) break;
       step += 2;
     }
     // heart: resample its region on a finer grid so the outline stays continuous
     heartPts = [];
-    var hStep = Math.max(8, step - 4);
+    var hStep = Math.max(6, step - 2);
     for (var hy = hStep / 2; hy < OH; hy += hStep){
       for (var hx = splitX + hStep / 2; hx < OW; hx += hStep){
         if (img[(Math.floor(hy) * OW + Math.floor(hx)) * 4 + 3] > 140){
@@ -482,7 +487,7 @@
 
     /* drone show */
     if (skyT >= RISE0 && skyT <= SCAT1){
-      var dotR = Math.max(5, view.rw * view.dpr * 0.0062);   // sprite draw size (px)
+      var dotR = Math.max(5, view.rw * view.dpr * 0.0048);   // sprite draw size (px) — shrunk with the formation so dots stay tight, not blobby
 
       /* lake reflections: while the formation holds, its left-hand dots shimmer
          in the lake (fx 0.03-0.30, fy 0.52-0.60) — vertically stretched, faint,
@@ -521,7 +526,7 @@
           alpha = 0.82 + 0.18 * Math.sin(t * 2.1 + dot.ph);
         } else {
           var sq = (skyT - HOLD1) / (SCAT1 - HOLD1);
-          var cx = 0.31, cy = 0.17;
+          var cx = 0.24, cy = 0.15;   // scatter origin = the (shrunken) formation's centroid
           var vx = dot.tx - cx, vy = dot.ty - cy;
           var vl = Math.sqrt(vx*vx + vy*vy) || 1; vx /= vl; vy /= vl;
           var dist = easeIn(sq) * 0.13 * dot.sc;
