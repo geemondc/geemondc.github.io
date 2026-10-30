@@ -1129,42 +1129,85 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
     glowCache[idx] = c;
     return c;
   }
+  /* the sky fills are composited through a feathered mask, so a band
+     melts into the skyline on every side — a straight clip edge can
+     never show (no pasted rectangles, Gary's law, Oct 30 skyfix) */
+  var _skyScratch = null, _skyMask = null, _skyMaskKey = '';
+  function _skyRamp(g, horiz, len, f0, f1){
+    var gr = horiz ? g.createLinearGradient(0, 0, len, 0) : g.createLinearGradient(0, 0, 0, len);
+    gr.addColorStop(0, 'rgba(0,0,0,0)');
+    gr.addColorStop(Math.max(0.001, f0 * 0.40), 'rgba(0,0,0,0.26)');
+    gr.addColorStop(Math.max(0.002, f0 * 0.75), 'rgba(0,0,0,0.68)');
+    gr.addColorStop(Math.min(0.499, f0), 'rgba(0,0,0,1)');
+    gr.addColorStop(Math.max(0.501, 1 - f1), 'rgba(0,0,0,1)');
+    gr.addColorStop(1 - f1 * 0.75, 'rgba(0,0,0,0.68)');
+    gr.addColorStop(1 - f1 * 0.40, 'rgba(0,0,0,0.26)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    return gr;
+  }
+  function skyMaskFor(bw, bh){
+    var key = bw + 'x' + bh;
+    if (_skyMask && _skyMaskKey === key) return _skyMask;
+    var c = document.createElement('canvas'); c.width = bw; c.height = bh;
+    var g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, bw, bh);
+    g.globalCompositeOperation = 'destination-in';
+    var px = Math.min(0.30, Math.max(0.10, 64 / bw));
+    var pt = Math.min(0.34, Math.max(0.14, 26 / bh));
+    var pb = Math.min(0.55, Math.max(0.30, 64 / bh));
+    g.fillStyle = _skyRamp(g, true, bw, px, px); g.fillRect(0, 0, bw, bh);
+    g.fillStyle = _skyRamp(g, false, bh, pt, pb); g.fillRect(0, 0, bw, bh);
+    _skyMask = c; _skyMaskKey = key;
+    return c;
+  }
+  function featherPaint(x0, y0, x1, y1, op, painter){
+    var bw = Math.max(2, Math.round(x1 - x0)), bh = Math.max(2, Math.round(y1 - y0));
+    var sc = _skyScratch || (_skyScratch = document.createElement('canvas'));
+    if (sc.width !== bw || sc.height !== bh){ sc.width = bw; sc.height = bh; }
+    var g = sc.getContext('2d');
+    g.clearRect(0, 0, bw, bh);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.filter = 'none';
+    painter(g, bw, bh);
+    g.globalCompositeOperation = 'destination-in'; g.globalAlpha = 1; g.filter = 'none';
+    g.drawImage(skyMaskFor(bw, bh), 0, 0);
+    ctx.save();
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(sc, Math.round(x0), Math.round(y0));
+    ctx.restore();
+  }
+  function featherFill(x0, y0, x1, y1, stops, op){
+    featherPaint(x0, y0, x1, y1, op, function(g, bw, bh){
+      var gr = g.createLinearGradient(0, 0, 0, bh);
+      for (var i = 0; i < stops.length; i++) gr.addColorStop(stops[i][0], stops[i][1]);
+      g.fillStyle = gr; g.fillRect(0, 0, bw, bh);
+    });
+  }
   function skyArc(R, w, t, cfg, seed){
     var sky = cfg.sky; if (!sky) return;
     var sw = stateW(t, STATE_PERIOD);
     var x0 = R.ox + sky[0] * R.rw, y0 = R.oy + sky[1] * R.rh;
     var x1 = R.ox + sky[2] * R.rw, y1 = R.oy + sky[3] * R.rh;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
     var skyA = cfg.skyA || 1;
     if (sw[0] > 0.02){
       /* DAY: the sky lightens toward pale daylight, sun high —
-         the fill fades out at the skyline so no edge ever shows */
-      var gd = ctx.createLinearGradient(0, y0, 0, y1);
-      gd.addColorStop(0, 'rgba(168,205,255,' + (0.22 * skyA * sw[0] * w).toFixed(3) + ')');
-      gd.addColorStop(1, 'rgba(210,228,255,0)');
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = gd; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      ctx.globalCompositeOperation = 'source-over';
+         the fill is feathered into the skyline on every side */
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(168,205,255,' + (0.22 * skyA * sw[0] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(210,228,255,0)']], 'screen');
       glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.30 * sw[0] * w);
     }
     if (sw[1] > 0.02){
       /* SUNSET: amber-pink band, the sun low on its side */
-      var gs = ctx.createLinearGradient(0, y0, 0, y1);
-      gs.addColorStop(0, 'rgba(120,70,140,' + (0.10 * skyA * sw[1] * w).toFixed(3) + ')');
-      gs.addColorStop(0.65, 'rgba(255,130,90,' + (0.16 * skyA * sw[1] * w).toFixed(3) + ')');
-      gs.addColorStop(1, 'rgba(255,180,110,' + (0.20 * skyA * sw[1] * w).toFixed(3) + ')');
-      ctx.fillStyle = gs; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(120,70,140,' + (0.10 * skyA * sw[1] * w).toFixed(3) + ')'],
+                                   [0.65, 'rgba(255,130,90,' + (0.16 * skyA * sw[1] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,180,110,' + (0.20 * skyA * sw[1] * w).toFixed(3) + ')']], 'source-over');
       glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.34 * sw[1] * w);
     }
     if (sw[2] > 0.02){
       /* NIGHT: deep blue settles over the sky, stars come out —
-         the veil fades at the skyline like the day fill does */
-      var gn = ctx.createLinearGradient(0, y0, 0, y1);
-      gn.addColorStop(0, 'rgba(6,10,38,' + (0.26 * skyA * sw[2] * w).toFixed(3) + ')');
-      gn.addColorStop(1, 'rgba(6,10,38,' + (0.03 * skyA * sw[2] * w).toFixed(3) + ')');
-      ctx.fillStyle = gn;
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+         the veil is feathered like the day fill, no edge anywhere */
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(6,10,38,' + (0.26 * skyA * sw[2] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(6,10,38,' + (0.03 * skyA * sw[2] * w).toFixed(3) + ')']], 'source-over');
+      ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (var st = 0; st < 52; st++){
         var sx = sky[0] + rnd(seed + st * 3.71) * (sky[2] - sky[0]);
@@ -1172,9 +1215,8 @@ var FRAMES = [{"src": "data:image/webp;base64,UklGRsa1AgBXRUJQVlA4ILq1AgAw6w6dAS
         var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(seed + st * 5.3) * 1.6) + st * 2.7), 2);
         glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
       }
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     }
-    ctx.restore();
     /* one comet crosses the night sky */
     if (sw[2] > 0.45)
       meteor(R, w * sw[2], t, { x0: sky[0] + 0.10 * (sky[2] - sky[0]), y0: sky[1] + 0.18 * (sky[3] - sky[1]),

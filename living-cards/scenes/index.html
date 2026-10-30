@@ -1146,13 +1146,13 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
      subjects are lamp-lit rooms, bright fur and open landscapes,
      and the night grades keep a higher floor (0.85+) instead. */
   var ARC = [
-    { sky:[0.005,0.06,0.295,0.52], sun:[0.10,0.30], glow:0.70, skyA:0.90 },
-    { sky:[0.02,0.00,0.98,0.42], sun:[0.50,0.30], glow:0.60 },
-    { sky:[0.10,0.00,0.90,0.30], sun:[0.45,0.08], glow:0.22, nightA:2.6 },
-    { sky:[0.30,0.00,0.78,0.22], sun:[0.52,0.05], glow:0.22, nightA:2.6 },
-    { sky:[0.02,0.00,0.98,0.34], sun:[0.135,0.155], glow:0.90 },
-    { sky:[0.02,0.00,0.98,0.30], sun:[0.185,0.145], glow:1.00 },
-    { sky:[0.02,0.00,0.98,0.20], sun:[0.80,0.10], glow:1.00 }
+    { sky:[0.005,0.06,0.295,0.52], sun:[0.10,0.30], glow:0.85, skyA:0.90, skyBoost:1.15, region:[0.00,0.02,0.64,0.74], regionArc:1, regionStars:1, regionGlow:1.00, regionBoost:1.50, warm:[0.74,0.58,0.46,0.13] },
+    { sky:[0.02,0.00,0.98,0.42], sun:[0.50,0.30], glow:0.75, skyBoost:1.45 },
+    { sky:[0.10,0.00,0.90,0.30], sun:[0.45,0.08], glow:0.55, nightA:2.6, skyBoost:1.15, region:[0.50,0.50,0.99,0.74], regionGlow:0.90, regionTint:'rgba(46,205,225,A)' },
+    { sky:[0.30,0.00,0.78,0.22], sun:[0.52,0.05], glow:0.45, nightA:2.6, skyBoost:1.20, region:[0.28,0.00,0.80,0.46], regionArc:1 },
+    { sky:[0.02,0.00,0.98,0.34], sun:[0.135,0.155], glow:0.90, skyBoost:1.25, region:[0.00,0.60,1.00,1.00], regionArc:1, regionBoost:1.35, regionGlow:0.55 },
+    { sky:[0.02,0.00,0.98,0.30], sun:[0.185,0.145], glow:1.00, skyBoost:1.30, region:[0.36,0.00,0.66,0.58], regionGlow:1.80 },
+    { sky:[0.02,0.00,0.98,0.20], sun:[0.80,0.10], glow:1.00, skyBoost:1.35, region:[0.60,0.30,1.00,0.88], regionGlow:1.80 }
   ];
   var FACELIFT = [null, null, null, null, null, null, null];
   var glowCache = {};
@@ -1186,38 +1186,86 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     glowCache[idx] = c;
     return c;
   }
+  /* the sky fills are composited through a feathered mask, so a band
+     melts into the skyline on every side — a straight clip edge can
+     never show (no pasted rectangles, Gary's law, Oct 30 skyfix) */
+  var _skyScratch = null, _skyMask = null, _skyMaskKey = '';
+  function _skyRamp(g, horiz, len, f0, f1){
+    var gr = horiz ? g.createLinearGradient(0, 0, len, 0) : g.createLinearGradient(0, 0, 0, len);
+    gr.addColorStop(0, 'rgba(0,0,0,0)');
+    gr.addColorStop(Math.max(0.001, f0 * 0.40), 'rgba(0,0,0,0.26)');
+    gr.addColorStop(Math.max(0.002, f0 * 0.75), 'rgba(0,0,0,0.68)');
+    gr.addColorStop(Math.min(0.499, f0), 'rgba(0,0,0,1)');
+    gr.addColorStop(Math.max(0.501, 1 - f1), 'rgba(0,0,0,1)');
+    gr.addColorStop(1 - f1 * 0.75, 'rgba(0,0,0,0.68)');
+    gr.addColorStop(1 - f1 * 0.40, 'rgba(0,0,0,0.26)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    return gr;
+  }
+  function skyMaskFor(bw, bh){
+    var key = bw + 'x' + bh;
+    if (_skyMask && _skyMaskKey === key) return _skyMask;
+    var c = document.createElement('canvas'); c.width = bw; c.height = bh;
+    var g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, bw, bh);
+    g.globalCompositeOperation = 'destination-in';
+    var px = Math.min(0.30, Math.max(0.10, 64 / bw));
+    var pt = Math.min(0.34, Math.max(0.14, 26 / bh));
+    var pb = Math.min(0.55, Math.max(0.30, 64 / bh));
+    g.fillStyle = _skyRamp(g, true, bw, px, px); g.fillRect(0, 0, bw, bh);
+    g.fillStyle = _skyRamp(g, false, bh, pt, pb); g.fillRect(0, 0, bw, bh);
+    _skyMask = c; _skyMaskKey = key;
+    return c;
+  }
+  function featherPaint(x0, y0, x1, y1, op, painter){
+    var bw = Math.max(2, Math.round(x1 - x0)), bh = Math.max(2, Math.round(y1 - y0));
+    var sc = _skyScratch || (_skyScratch = document.createElement('canvas'));
+    if (sc.width !== bw || sc.height !== bh){ sc.width = bw; sc.height = bh; }
+    var g = sc.getContext('2d');
+    g.clearRect(0, 0, bw, bh);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.filter = 'none';
+    painter(g, bw, bh);
+    g.globalCompositeOperation = 'destination-in'; g.globalAlpha = 1; g.filter = 'none';
+    g.drawImage(skyMaskFor(bw, bh), 0, 0);
+    ctx.save();
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(sc, Math.round(x0), Math.round(y0));
+    ctx.restore();
+  }
+  function featherFill(x0, y0, x1, y1, stops, op){
+    featherPaint(x0, y0, x1, y1, op, function(g, bw, bh){
+      var gr = g.createLinearGradient(0, 0, 0, bh);
+      for (var i = 0; i < stops.length; i++) gr.addColorStop(stops[i][0], stops[i][1]);
+      g.fillStyle = gr; g.fillRect(0, 0, bw, bh);
+    });
+  }
   function skyArc(R, w, t, cfg, seed){
     var sky = cfg.sky; if (!sky) return;
     var sw = stateW(t, STATE_PERIOD);
     var x0 = R.ox + sky[0] * R.rw, y0 = R.oy + sky[1] * R.rh;
     var x1 = R.ox + sky[2] * R.rw, y1 = R.oy + sky[3] * R.rh;
     var skyA = cfg.skyA || 1;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+    var boost = cfg.skyBoost || 1;
     if (sw[0] > 0.02){
-      var gd = ctx.createLinearGradient(0, y0, 0, y1);
-      gd.addColorStop(0, 'rgba(168,205,255,' + (0.22 * skyA * sw[0] * w).toFixed(3) + ')');
-      gd.addColorStop(1, 'rgba(210,228,255,0)');
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = gd; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-      ctx.globalCompositeOperation = 'source-over';
+      /* DAY: pale daylight over the sky region, feathered on every
+         side so the band melts into the skyline (Oct 30 skyfix) */
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(168,205,255,' + (0.22 * skyA * boost * sw[0] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(210,228,255,0)']], 'screen');
       glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + cfg.sun[1] * R.rh, 0.13 * R.rw, 0.30 * sw[0] * w);
     }
     if (sw[1] > 0.02){
-      var gs = ctx.createLinearGradient(0, y0, 0, y1);
-      gs.addColorStop(0, 'rgba(120,70,140,' + (0.10 * skyA * sw[1] * w).toFixed(3) + ')');
-      gs.addColorStop(0.65, 'rgba(255,130,90,' + (0.16 * skyA * sw[1] * w).toFixed(3) + ')');
-      gs.addColorStop(1, 'rgba(255,180,110,' + (0.20 * skyA * sw[1] * w).toFixed(3) + ')');
-      ctx.fillStyle = gs; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      /* SUNSET: amber-pink band, the sun low on its side */
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(120,70,140,' + (0.10 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
+                                   [0.65, 'rgba(255,130,90,' + (0.16 * skyA * boost * sw[1] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(255,180,110,' + (0.20 * skyA * boost * sw[1] * w).toFixed(3) + ')']], 'source-over');
       glow(SPR.warm, R.ox + cfg.sun[0] * R.rw, R.oy + (cfg.sun[1] + (sky[3] - cfg.sun[1]) * 0.55) * R.rh, 0.17 * R.rw, 0.34 * sw[1] * w);
     }
     if (sw[2] > 0.02){
+      /* NIGHT: deep blue + stars, feathered like the day fill */
       var nA = cfg.nightA || 1;
-      var gn = ctx.createLinearGradient(0, y0, 0, y1);
-      gn.addColorStop(0, 'rgba(6,10,38,' + (0.26 * skyA * nA * sw[2] * w).toFixed(3) + ')');
-      gn.addColorStop(1, 'rgba(6,10,38,' + (0.03 * skyA * (1 + 2.3 * (nA - 1)) * sw[2] * w).toFixed(3) + ')');
-      ctx.fillStyle = gn;
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      featherFill(x0, y0, x1, y1, [[0, 'rgba(6,10,38,' + (0.26 * skyA * nA * boost * sw[2] * w).toFixed(3) + ')'],
+                                   [1, 'rgba(6,10,38,' + (0.03 * skyA * (1 + 2.3 * (nA - 1)) * boost * sw[2] * w).toFixed(3) + ')']], 'source-over');
+      ctx.save();
       ctx.globalCompositeOperation = 'screen';
       for (var st = 0; st < 52; st++){
         var sx = sky[0] + rnd(seed + st * 3.71) * (sky[2] - sky[0]);
@@ -1225,13 +1273,68 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
         var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(seed + st * 5.3) * 1.6) + st * 2.7), 2);
         glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(seed + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
       }
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
     }
-    ctx.restore();
     if (sw[2] > 0.45)
       meteor(R, w * sw[2], t, { x0: sky[0] + 0.10 * (sky[2] - sky[0]), y0: sky[1] + 0.18 * (sky[3] - sky[1]),
                                 x1: sky[0] + 0.52 * (sky[2] - sky[0]), y1: sky[1] + 0.62 * (sky[3] - sky[1]),
                                 period: 26, dur: 1.6, off: seed });
+  }
+  /* REGION ARC (Oct 30, Gary's scenes pass): a scene's own background
+     region — the condo's window wall, the oasis sky gap, the wetland
+     water, the pool — runs a stronger arc of its own on top of the
+     global grade, all of it feather-masked so no edge can ever show;
+     regionGlow re-lights the picture's OWN extracted light inside the
+     region (the guitar blazing at night, the pool lit after dark) */
+  function regionArc(R, w, t, k){
+    var cfg = ARC[k]; var rg = cfg.region; if (!rg) return;
+    var sw = stateW(t, STATE_PERIOD);
+    var rb = cfg.regionBoost || 1;
+    var x0 = R.ox + rg[0] * R.rw, y0 = R.oy + rg[1] * R.rh;
+    var x1 = R.ox + rg[2] * R.rw, y1 = R.oy + rg[3] * R.rh;
+    if (cfg.regionArc){
+      if (sw[0] > 0.02)
+        featherFill(x0, y0, x1, y1, [[0, 'rgba(190,220,255,' + (0.30 * rb * sw[0] * w).toFixed(3) + ')'],
+                                     [1, 'rgba(215,232,255,' + (0.10 * rb * sw[0] * w).toFixed(3) + ')']], 'screen');
+      if (sw[1] > 0.02)
+        featherFill(x0, y0, x1, y1, [[0, 'rgba(120,70,140,' + (0.13 * rb * sw[1] * w).toFixed(3) + ')'],
+                                     [0.65, 'rgba(255,130,90,' + (0.21 * rb * sw[1] * w).toFixed(3) + ')'],
+                                     [1, 'rgba(255,180,110,' + (0.25 * rb * sw[1] * w).toFixed(3) + ')']], 'source-over');
+      if (sw[2] > 0.02){
+        featherFill(x0, y0, x1, y1, [[0, 'rgba(5,9,36,' + (0.32 * rb * sw[2] * w).toFixed(3) + ')'],
+                                     [1, 'rgba(5,9,36,' + (0.07 * rb * sw[2] * w).toFixed(3) + ')']], 'source-over');
+        if (cfg.regionStars){
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          for (var st = 0; st < 34; st++){
+            var sx = rg[0] + rnd(k * 53.7 + st * 3.71) * (rg[2] - rg[0]);
+            var sy = rg[1] + rnd(k * 53.7 + st * 9.13) * (rg[3] - rg[1]) * 0.55;
+            var tw = 0.45 + 0.55 * Math.pow(0.5 + 0.5 * Math.sin(t * (1.1 + rnd(k * 53.7 + st * 5.3) * 1.6) + st * 2.7), 2);
+            glow(SPR.cyan, R.ox + sx * R.rw, R.oy + sy * R.rh, (0.0016 + rnd(k * 53.7 + st * 7.7) * 0.0022) * R.rw, 0.55 * tw * sw[2] * w);
+          }
+          ctx.restore();
+        }
+      }
+    }
+    if (cfg.regionTint && sw[2] > 0.02){
+      var ta = (0.15 * sw[2] * w).toFixed(3);
+      featherFill(x0, y0, x1, y1, [[0, cfg.regionTint.replace('A', ta)],
+                                   [1, cfg.regionTint.replace('A', ta)]], 'screen');
+    }
+    if (cfg.regionGlow){
+      var gl = glowLayerFor(k);
+      if (gl){
+        var ga = Math.min(1, cfg.regionGlow * (0.05 * sw[0] + 0.35 * sw[1] + 1.00 * sw[2]) * w);
+        if (ga > 0.01){
+          var filt = 'hue-rotate(' + (-20 * sw[1] + 14 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.45 * sw[2]).toFixed(2) + ')';
+          featherPaint(x0, y0, x1, y1, 'screen', function(g, bw, bh){
+            g.globalAlpha = ga; g.filter = filt;
+            g.drawImage(gl, rg[0] * gl.width, rg[1] * gl.height, (rg[2] - rg[0]) * gl.width, (rg[3] - rg[1]) * gl.height, 0, 0, bw, bh);
+            g.globalAlpha = 1; g.filter = 'none';
+          });
+        }
+      }
+    }
   }
   function arcBase(R, w, t, k){
     var cfg = ARC[k]; if (!cfg) return;
@@ -1242,8 +1345,8 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
         ctx.save();
         ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
         ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = Math.min(1, cfg.glow * (0.10 * sw[0] + 0.40 * sw[1] + 0.85 * sw[2]) * w);
-        ctx.filter = 'hue-rotate(' + (-14 * sw[1] + 6 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.30 * sw[2]).toFixed(2) + ')';
+        ctx.globalAlpha = Math.min(1, cfg.glow * (0.05 * sw[0] + 0.45 * sw[1] + 1.05 * sw[2]) * w);
+        ctx.filter = 'hue-rotate(' + (-20 * sw[1] + 14 * sw[2]).toFixed(1) + 'deg) saturate(' + (1.05 + 0.45 * sw[2]).toFixed(2) + ')';
         ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
         ctx.filter = 'none';
         ctx.restore();
@@ -1252,6 +1355,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
       }
     }
     skyArc(R, w, t, cfg, k * 37.7 + 11.3);
+    regionArc(R, w, t, k);
     if (sw[2] > 0.02){
       var vg = ctx.createRadialGradient(R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.42,
                                         R.ox + 0.5 * R.rw, R.oy + 0.46 * R.rh, R.rw * 0.78);
@@ -1262,6 +1366,8 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     }
     if (cfg.sky && sw[1] > 0.02)
       wash(R, cfg.sun[0], Math.min(0.92, cfg.sun[1] + 0.34), 0.55, 'rgba(255,150,85,A)', 0.10 * sw[1] * w);
+    if (cfg.warm && sw[2] > 0.02)
+      wash(R, cfg.warm[0], cfg.warm[1], cfg.warm[2], 'rgba(255,170,95,A)', cfg.warm[3] * sw[2] * w);
   }
   function faceLift(R, w, t, k){
     var faces = FACELIFT[k]; if (!faces) return;
