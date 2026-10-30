@@ -457,6 +457,37 @@
   #lvHomeList .lv-showbtn, #lvHomeList .lv-eprow{padding:11px 13px;}
   #lvHomeList .lv-eprow .nm{font-size:16px;}
   #lvHomeList .lv-eprow .ct .np-pill{margin-top:5px;}
+  /* ---------- player skins (Gary, Oct 30): labeled chips, skins change the
+     stage, NEVER the controls. Night is the built-in look. ---------- */
+  .skin-bar{display:flex;align-items:center;gap:8px;margin:10px 2px 0;flex-wrap:wrap;}
+  .skin-lab{font-size:11px;font-weight:900;letter-spacing:.18em;color:#9a9587;}
+  .skin-chip{flex:1;min-width:70px;min-height:44px;border-radius:999px;background:#17181d;border:1.5px solid #33363d;
+    color:#cfccc2;font-weight:800;letter-spacing:.08em;font-size:12.5px;cursor:pointer;font-family:inherit;padding:9px 4px;}
+  .skin-chip.on{background:linear-gradient(180deg,#ffc95e,#f39c12);color:#23180a;border-color:#f39c12;}
+  html[data-skin="day"] body{background:#f4efe3;color:#1e1a13;}
+  html[data-skin="day"] .np-card, html[data-skin="day"] .np-eprow,
+  html[data-skin="day"] .lv-list .lv-showbtn, html[data-skin="day"] #lvHomeList .lv-eprow{background:#fffdf6;border-color:#ddd2b8;}
+  html[data-skin="day"] .lv-tab{background:#fffdf6;border-color:#d8cdb0;color:#57503f;}
+  html[data-skin="day"] .lv-tab.on{background:linear-gradient(180deg,#ffc95e,#f39c12);color:#23180a;border-color:#f39c12;}
+  html[data-skin="day"] .skin-chip{background:#fffdf6;border-color:#d8cdb0;color:#57503f;}
+  html[data-skin="day"] .skin-chip.on{background:linear-gradient(180deg,#ffc95e,#f39c12);color:#23180a;}
+  html[data-skin="day"] .sec{color:#a86e0a;}
+  html[data-skin="day"] .lv-list .lv-showbtn .ct, html[data-skin="day"] #lvHomeList .lv-eprow .ct{color:#7d7462;}
+  html[data-skin="day"] .face{--f-card:#fffdf6;--f-text:#1e1a13;--f-sub:#6f6653;--f-track:rgba(30,26,19,.25);--f-fill:#1e1a13;--f-chip:rgba(30,26,19,.07);}
+  html[data-skin="theater"] body{background:#20040d;color:#f7ead9;}
+  html[data-skin="theater"] .np-card, html[data-skin="theater"] .np-eprow,
+  html[data-skin="theater"] .lv-list .lv-showbtn, html[data-skin="theater"] #lvHomeList .lv-eprow{background:#2a0b16;border-color:#5f2438;}
+  html[data-skin="theater"] .lv-tab{background:#2a0b16;border-color:#6b2a3f;color:#f0d3c0;}
+  html[data-skin="theater"] .skin-chip{background:#2a0b16;border-color:#6b2a3f;color:#f0d3c0;}
+  html[data-skin="theater"] .sec{color:#e9b64f;}
+  html[data-skin="theater"] .face{--f-card:#2a0b16;--f-text:#fdf6ec;--f-sub:#d8b8a6;--f-accent:#e9b64f;--f-accent-deep:#c98f2d;--f-chip:rgba(255,255,255,.08);}
+  html[data-skin="car"] body{background:#000000;}
+  html[data-skin="car"] .lv-tab{min-height:58px;font-size:14.5px;}
+  html[data-skin="car"] .skin-chip{min-height:52px;font-size:14px;}
+  html[data-skin="car"] #lvHomeList .lv-showbtn .tile, html[data-skin="car"] #lvHomeList .lv-eprow .tile{width:84px;height:84px;}
+  html[data-skin="car"] #lvHomeList .lv-eprow .nm, html[data-skin="car"] .lv-list .lv-showbtn .nm{font-size:18.5px;}
+  html[data-skin="car"] .np-eprow h4{font-size:18.5px;}
+  html[data-skin="car"] .face{--f-card:#101014;--f-accent:#ffc95e;--f-accent-deep:#ffb648;}
 
   /* ---------- show page ---------- */
   .lv-back{display:inline-flex;align-items:center;gap:6px;margin:14px 2px 2px;background:#17181d;
@@ -732,6 +763,7 @@
     .face .eq i{animation:none !important;}
   }
 </style>
+<script>try{var sk=localStorage.getItem('sethSkin');if(sk&&sk!=='night')document.documentElement.dataset.skin=sk;}catch(e){}</script>
 </head>
 <body>
 
@@ -1404,6 +1436,25 @@ function lvSet(mode){
 Array.prototype.forEach.call(lvTabs.children, function(b){
   b.addEventListener('click', function(){ lvSet(b.getAttribute('data-lv')); });
 });
+var skinBar = document.createElement('div');
+skinBar.className = 'skin-bar';
+skinBar.innerHTML = '<span class="skin-lab">LOOK</span>' +
+  [['night','\uD83C\uDF19 NIGHT'],['day','\u2600 DAY'],['car','\uD83D\uDE97 CAR'],['theater','\uD83C\uDFAC THEATER']].map(function(s){
+    return '<button type="button" class="skin-chip" data-skin="' + s[0] + '">' + s[1] + '</button>';
+  }).join('');
+lvTabs.parentNode.insertBefore(skinBar, lvTabs.nextSibling);
+function setSkin(v){
+  if (v === 'night') delete document.documentElement.dataset.skin;
+  else document.documentElement.dataset.skin = v;
+  try{ localStorage.setItem('sethSkin', v); }catch(e){}
+  Array.prototype.forEach.call(skinBar.querySelectorAll('.skin-chip'), function(c){
+    c.classList.toggle('on', c.getAttribute('data-skin') === v);
+  });
+}
+Array.prototype.forEach.call(skinBar.querySelectorAll('.skin-chip'), function(c){
+  c.addEventListener('click', function(){ setSkin(c.getAttribute('data-skin')); });
+});
+setSkin(document.documentElement.dataset.skin || 'night');
 
 function showTileHTML(s, idx){
   var art = s.akimbo ? '<img src="' + SHOW_IMG + '" alt="">'
