@@ -169,21 +169,6 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     smoke:   makeSprite('168,180,198', '196,206,220'),
     shade:   makeSprite('10,12,20',    '6,7,14')
   };
-  /* a gold coin: bright core, rich rim, a struck inner ring */
-  var COIN = (function(){
-    var c = document.createElement('canvas'); c.width = c.height = 96;
-    var g = c.getContext('2d');
-    var grad = g.createRadialGradient(40,36,4, 48,48,47);
-    grad.addColorStop(0, '#fff6c4'); grad.addColorStop(0.45, '#ffd94d');
-    grad.addColorStop(0.8, '#e0a81c'); grad.addColorStop(1, '#9c6d08');
-    g.fillStyle = grad;
-    g.beginPath(); g.arc(48,48,46,0,TAU); g.fill();
-    g.strokeStyle = 'rgba(120,78,4,0.85)'; g.lineWidth = 3;
-    g.beginPath(); g.arc(48,48,34,0,TAU); g.stroke();
-    g.fillStyle = 'rgba(255,252,230,0.95)';
-    g.beginPath(); g.arc(35,30,7,0,TAU); g.fill();
-    return c;
-  })();
   /* film-grain tiles (nostalgia): cycled fast at whisper alpha */
   var GRAINS = [];
   (function(){
@@ -305,39 +290,6 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
         var rr2 = maxR * (0.55 + 0.45 * rnd(b * 31 + j2 * 7));
         glow(spr, cx + Math.cos(ang2) * rr2, cy + Math.sin(ang2) * rr2 + droop,
              0.020 * R.rw * (1 - u * 0.3), alpha);
-      }
-    }
-  }
-  /* gold coins on parametric arcs — spin, glint, never across a face */
-  var COIN_LANES = [
-    { x0:0.05, x1:0.30, base:0.87, peak:0.62, dur:3.4, ph:0.0,  r:0.020 },
-    { x0:0.99, x1:0.72, base:0.85, peak:0.58, dur:3.8, ph:1.2,  r:0.021 },
-    { x0:0.38, x1:0.68, base:0.94, peak:0.68, dur:4.2, ph:2.1,  r:0.023 },
-    { x0:0.55, x1:0.88, base:0.56, peak:0.33, dur:3.6, ph:0.7,  r:0.016 },
-    { x0:0.13, x1:0.46, base:0.98, peak:0.82, dur:3.1, ph:1.8,  r:0.024 },
-    { x0:0.72, x1:0.44, base:0.52, peak:0.30, dur:4.0, ph:2.9,  r:0.015 }
-  ];
-  function coins(R, w, t){
-    for (var L = 0; L < COIN_LANES.length; L++){
-      var lane = COIN_LANES[L];
-      for (var c = 0; c < 2; c++){
-        var u = ((t + lane.ph + c * lane.dur / 2) % lane.dur) / lane.dur;
-        var x = lane.x0 + (lane.x1 - lane.x0) * u;
-        var y = lane.base - Math.sin(u * Math.PI) * (lane.base - lane.peak);
-        var fade = Math.min(1, u * 9, (1 - u) * 9);
-        if (fade <= 0.02) continue;
-        var spin = Math.cos(u * Math.PI * 5 + lane.ph * 2);
-        var sx = 0.22 + 0.78 * Math.abs(spin);
-        var s = lane.r * R.rw;
-        var cxp = R.ox + x * R.rw, cyp = R.oy + y * R.rh;
-        if (Math.abs(spin) > 0.9) glow(SPR.warm, cxp, cyp, s * 1.9, 0.4 * fade * w);
-        ctx.save();
-        ctx.globalAlpha = fade * w;
-        ctx.translate(cxp, cyp);
-        ctx.scale(sx, 1);
-        ctx.drawImage(COIN, -s, -s, s * 2, s * 2);
-        ctx.restore();
-        ctx.globalAlpha = 1;
       }
     }
   }
@@ -757,7 +709,7 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     bulbRow(0.115, 0.605, 0.055, 13, 0.017, 0.55).concat(bulbRow(0.115, 0.605, 0.285, 13, 0.017, 0.47)).concat(bulbCol(0.108, 0.085, 0.255, 4, 0.017, 0.5)),
     /* f1 starting line: theatre marquee, right */
     bulbRow(0.815, 0.965, 0.345, 6, 0.011, 0.5).concat(bulbRow(0.815, 0.965, 0.500, 6, 0.011, 0.42)),
-    /* f2 coin run: the bulb-framed marquee sign, top-left */
+    /* f2 the drive: the bulb-framed marquee sign, top-left */
     bulbRow(0.062, 0.308, 0.128, 8, 0.0125, 0.55).concat(bulbRow(0.062, 0.308, 0.292, 8, 0.0125, 0.49)).concat(bulbCol(0.058, 0.155, 0.265, 3, 0.0125, 0.52)).concat(bulbCol(0.313, 0.155, 0.265, 3, 0.0125, 0.52)),
     /* f3 aftermath: marquee right */
     bulbRow(0.815, 0.985, 0.115, 7, 0.013, 0.55).concat(bulbRow(0.815, 0.985, 0.315, 7, 0.013, 0.47)),
@@ -824,30 +776,109 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     smokeWaves(R, w, t, [{x:0.30,y:0.84,r:0.20,a:0.06,ph:1.0},{x:0.62,y:0.88,r:0.22,a:0.05,ph:3.3}], 1);
   }
 
-  function sceneCoin(R, w, t){
-    /* the background neon itself shifts, as if the world is passing */
-    var hue = (t * 9) % 360;
-    ctx.globalCompositeOperation = 'screen';
-    var lg = ctx.createLinearGradient(0, R.oy, 0, R.oy + R.rh * 0.65);
-    lg.addColorStop(0, 'hsla(' + hue.toFixed(0) + ',95%,60%,' + (0.10 * w).toFixed(3) + ')');
-    lg.addColorStop(1, 'hsla(' + hue.toFixed(0) + ',95%,60%,0)');
-    ctx.fillStyle = lg;
-    ctx.fillRect(R.ox, R.oy, R.rw, R.rh * 0.65);
-    ctx.globalCompositeOperation = 'source-over';
-    wash(R, 0.62, 0.18, 0.42, 'hsla(' + ((hue + 140) % 360).toFixed(0) + ',95%,62%,A)', 0.08 * w);
+  /* f2's own light, lifted off the plate: bright pixels are extracted
+     once into an offscreen canvas, so the neon, the marquee bulbs and
+     the headlights can be re-hued as one body of light per state.
+     Nothing is drawn that is not already in the photograph. */
+  var driveGlowC = null;
+  function driveGlowLayer(){
+    if (driveGlowC) return driveGlowC;
+    var im = els[2];
+    if (!im || !im.complete || !im.naturalWidth) return null;
+    var cw = im.naturalWidth, ch = im.naturalHeight;
+    var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    var g = c.getContext('2d');
+    g.drawImage(im, 0, 0);
+    var idata = null;
+    try { idata = g.getImageData(0, 0, cw, ch); } catch (e) { idata = null; }
+    if (!idata) return null;
+    var d = idata.data;
+    for (var p = 0; p < d.length; p += 4){
+      var r = d[p], gg = d[p + 1], b = d[p + 2];
+      var mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+      var lum = (0.30 * r + 0.55 * gg + 0.15 * b) / 255;
+      var m = (lum - 0.40) / 0.60;
+      m = m < 0 ? 0 : (m > 1 ? 1 : m);
+      m = m * m * (3 - 2 * m);
+      var sat = mx > 0 ? (mx - mn) / mx : 0;
+      var boost = 1.10 + 0.55 * sat;
+      d[p]     = Math.min(255, r * boost);
+      d[p + 1] = Math.min(255, gg * boost);
+      d[p + 2] = Math.min(255, b * boost);
+      d[p + 3] = Math.round(255 * m);
+    }
+    g.putImageData(idata, 0, 0);
+    driveGlowC = c;
+    return c;
+  }
+
+  function sceneDrive(R, w, t){
+    /* THE DRIVE, REDONE (Gary, Oct 30): the spinning coins are GONE.
+       What lives here now is the photo's own weather — the scene's
+       lights change colour through three states, steam rises off the
+       wet street in three depths, and rain falls between the layers.
+       A: cyan-magenta neon, the plate's native night.
+       B: warm amber-teal, and the steam thickens.
+       C: deep violet-blue night, the lights pop hardest. */
+    var sw = stateW(t, STATE_PERIOD);
+    /* the photo's own light, re-hued as one body per state */
+    var gl = driveGlowLayer();
+    if (gl){
+      ctx.save();
+      ctx.beginPath(); ctx.rect(R.ox, R.oy, R.rw, R.rh); ctx.clip();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = Math.min(1, (0.52 * sw[0] + 0.42 * sw[1] + 0.60 * sw[2]) * w);
+      ctx.filter = 'hue-rotate(' + (-38 * sw[1] + 30 * sw[2]).toFixed(1) + 'deg) saturate(1.25)';
+      ctx.drawImage(gl, R.ox, R.oy, R.rw, R.rh);
+      ctx.filter = 'none';
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    /* state washes anchored on the light zones */
+    wash(R, 0.60, 0.16, 0.46, 'rgba(232,84,255,A)', 0.10 * sw[0] * w);
+    wash(R, 0.84, 0.26, 0.34, 'rgba(96,208,255,A)', 0.09 * sw[0] * w);
+    wash(R, 0.55, 0.22, 0.62, 'rgba(255,164,80,A)', 0.14 * sw[1] * w);
+    wash(R, 0.86, 0.80, 0.36, 'rgba(64,200,190,A)', 0.08 * sw[1] * w);
+    wash(R, 0.52, 0.20, 0.58, 'rgba(96,80,220,A)', 0.13 * sw[2] * w);
+    wash(R, 0.78, 0.14, 0.36, 'rgba(70,110,255,A)', 0.09 * sw[2] * w);
+    /* steam off the wet street — far bank: thin in A, thick in B */
+    var steam = 0.55 * sw[0] + 1.50 * sw[1] + 0.95 * sw[2];
+    smokeWaves(R, w, t, [
+      {x:0.70,y:0.47,r:0.105,a:0.13,ph:0.6,drift:0.30},
+      {x:0.88,y:0.45,r:0.090,a:0.11,ph:2.4,drift:0.25},
+      {x:0.60,y:0.50,r:0.080,a:0.09,ph:4.1,drift:0.20}
+    ], steam);
+    /* the marquee's own bulbs keep chasing */
     chaseBulbs(BULBS[2], R, w, t, 2.8);
-    /* gold coins flying past the car */
-    coins(R, w, t);
-    /* speed: the rival cars smear past the edges */
-    streak(R, w, t, 0.475, 1, SPR.cyan, 0.17, 1.5, 0.1, 0.20);
-    streak(R, w, t, 0.53, -1, SPR.red, 0.17, 1.5, 0.8, 0.20);
-    streak(R, w, t, 0.80, 1, SPR.warm, 0.10, 1.9, 1.4, 0.12);
-    /* wet-street sparkle */
+    /* rain, falling between the smoke layers */
+    rain(R, w, t, 64, 0.10);
+    /* mid steam, at the kerbs */
+    smokeWaves(R, w, t, [
+      {x:0.88,y:0.64,r:0.150,a:0.14,ph:1.3,drift:0.35},
+      {x:0.985,y:0.58,r:0.120,a:0.11,ph:3.6,drift:0.30},
+      {x:0.09,y:0.62,r:0.105,a:0.08,ph:5.2,drift:0.20}
+    ], steam);
+    /* traffic light play stays LOW and on the STREET strip only,
+       right of the car — the hood is not a road, and nothing crosses
+       the windshield at face height */
+    ctx.save();
+    ctx.beginPath(); ctx.rect(R.ox + 0.70 * R.rw, R.oy, 0.30 * R.rw, R.rh); ctx.clip();
+    carTrail(R, w, t, { y:0.80, dir:1, dur:7.0, off:1.2, len:0.24, color:'rgba(255,240,210,A)', spr:'warm' });
+    carTrail(R, w, t, { y:0.90, dir:-1, dur:9.0, off:4.0, len:0.22, color:'rgba(255,90,70,A)', spr:'red' });
+    ctx.restore();
+    /* near steam rolling past the kerb in the foreground */
+    smokeWaves(R, w, t, [
+      {x:0.84,y:0.88,r:0.220,a:0.15,ph:0.2,drift:0.45},
+      {x:0.99,y:0.94,r:0.240,a:0.13,ph:2.9,drift:0.40},
+      {x:0.665,y:0.96,r:0.160,a:0.10,ph:4.8,drift:0.30}
+    ], steam * 1.05);
+    /* the wet street throws the state's colour back: shimmer + sparkle */
+    var domSpr = (sw[1] >= sw[0] && sw[1] >= sw[2]) ? 'warm' : (sw[2] > sw[0] ? 'magenta' : 'cyan');
+    waterShimmer(R, w, t, [0.70, 0.60, 1.0, 0.99], domSpr);
     var pts = [];
-    for (var s4 = 0; s4 < 22; s4++) pts.push([0.04 + rnd(s4 * 3.7) * 0.92, 0.80 + rnd(s4 * 9.1) * 0.18]);
-    twinkles(R, w, t, pts, 'cyan', 0.34, 0.009);
-    rain(R, w, t, 42, 0.08);
-    smokeWaves(R, w, t, [{x:0.08,y:0.90,r:0.16,a:0.05,ph:0.8},{x:0.93,y:0.88,r:0.15,a:0.05,ph:2.9}], 1);
+    for (var s4 = 0; s4 < 18; s4++) pts.push([0.72 + rnd(s4 * 3.7) * 0.26, 0.62 + rnd(s4 * 9.1) * 0.35]);
+    twinkles(R, w, t, pts, domSpr, 0.30, 0.009);
   }
 
   function sceneWreck(R, w, t){
@@ -994,14 +1025,15 @@ var FRAMES = [{"src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     twinkles(R, w, t, pts2, 'cyan', 0.28, 0.008);
   }
 
-  var SCENES = [sceneCouple, sceneStart, sceneCoin, sceneWreck, sceneFormingCanvas, sceneHolo, sceneTrailer, sceneMarquee];
+  var SCENES = [sceneCouple, sceneStart, sceneDrive, sceneWreck, sceneFormingCanvas, sceneHolo, sceneTrailer, sceneMarquee];
 
   /* per-frame 3-state plate grades [saturate, brightness, hue, sepia]
-     for states A/B/C. f2 and f4 are the untouched standard: null. */
+     for states A/B/C. f4 alone is the untouched standard: null;
+     f2 was re-graded when its coins came out (Oct 30 redo). */
   var GRADES = [
     [[1.04,1.04,0,0.02],[1.16,0.94,-9,0.26],[1.17,0.90,7,0.02]],
     [[1.05,1.03,0,0.03],[1.13,0.88,6,0],[1.10,0.99,-4,0.10]],
-    null,
+    [[1.10,1.02,0,0],[1.13,0.99,-14,0.16],[1.07,0.88,14,0]],
     [[1.08,1.00,0,0.05],[1.22,0.96,-6,0.22],[1.27,0.87,4,0.10]],
     null,
     [[1.06,1.00,0,0],[1.16,0.97,38,0],[1.13,0.95,-28,0]],
