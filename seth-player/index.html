@@ -1036,6 +1036,15 @@ $('enterBtn').addEventListener('click', function(){
   $('intro').style.display = 'none';
   $('app').hidden = false;
   window.scrollTo(0, 0);
+  /* #412 player-first: ENTER lands on the locked Now Playing sheet,
+     newest Akimbo episode loaded and ready (paused). */
+  if (!window.__noAutoSheet){
+    if (cur < 0){
+      for (var i = 0; i < ALL_EPS.length; i++){ var e0 = ALL_EPS[i];
+        if (!e0.guest && e0.audio && !e0.linkOnly){ load(i, false); break; } }
+    }
+    var bm = $('npBarMain'); if (bm) bm.click();
+  }
 });
 
 /* ---------- sort toggle ---------- */
@@ -1100,7 +1109,7 @@ function renderPost(){
 $('postPrev').addEventListener('click', function(){ if (postIdx > 0){ postIdx--; renderPost(); $('postBox').scrollIntoView({block:'start', behavior:'smooth'}); } });
 $('postNext').addEventListener('click', function(){ if (postIdx < POSTS.length - 1){ postIdx++; renderPost(); $('postBox').scrollIntoView({block:'start', behavior:'smooth'}); } });
 
-$('blogWin').addEventListener('click', function(){ postIdx = 0; renderPost(); $('enterBtn').click(); setView('read'); var pb = $('postBox'); if (pb) pb.scrollIntoView({block:'start'}); });
+$('blogWin').addEventListener('click', function(){ postIdx = 0; renderPost(); window.__noAutoSheet = true; $('enterBtn').click(); window.__noAutoSheet = false; setView('read'); var pb = $('postBox'); if (pb) pb.scrollIntoView({block:'start'}); });
 
 /* ---------- live blog refresh (silent; baked posts stay if blocked) ---------- */
 function dec(s){ var ta = document.createElement('textarea'); ta.innerHTML = s || ''; return ta.value; }
@@ -1266,6 +1275,27 @@ liveBlog();
 })();
 </script>
 
+<style id="playerFirstStyle">
+  /* ============ #412 — PLAYER FIRST (Gary, Oct 30) ============
+     ENTER lands on the locked Now Playing sheet: one screen, no scroll,
+     Apple's order. The face's stage wears the SHOW ART, not the laserdisc;
+     the in-face deck card retires (title row + ON DECK carry it); the home
+     face mount retires (the mini bar is the handle back to the player). */
+  body.sheet-lock{overflow:hidden;}
+  #npSheet{overflow:hidden;}
+  #npSheet .np-sheet-in{height:100%;min-height:0;}
+  #homeFaceMount{display:none;}
+  .face .f-deck{display:none;}
+  .face .f-disc{border-radius:18px;background:#0b2c72;animation:none;
+    box-shadow:0 26px 60px rgba(0,0,0,.65);}
+  .face.playing .f-disc{animation:none;}
+  .face .f-disc .sheen,.face .f-disc .hole{display:none;}
+  .face .f-disc .f-label{left:0;top:0;width:100%;height:100%;transform:none;
+    border-radius:18px;box-shadow:none;}
+  .face .f-disc .f-label img{left:0;top:0;width:100%;height:100%;transform:none;object-fit:cover;}
+  .face .f-disc .f-label .np-typo span{font-size:27px;padding:20px;}
+  @media (max-height:699px){ .face .f-stage{width:min(54vw,216px);} }
+</style>
 <!-- ================= #376 NOW PLAYING: mini bar + Apple-style sheet ================= -->
 <div id="npBar" class="lv-off">
   <div class="in">
@@ -1280,7 +1310,7 @@ liveBlog();
 <div id="npSheet" aria-hidden="true" role="dialog" aria-label="Now playing">
   <div class="np-sheet-in">
     <div class="np-grab"></div>
-    <button id="npClose" type="button" aria-label="Back to the player"><svg viewBox="0 0 24 24" fill="none"><path d="M5 9l7 7 7-7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="npClose" type="button" aria-label="More: shows, episodes and the blog"><svg viewBox="0 0 24 24" fill="none"><path d="M5 9l7 7 7-7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div id="npFaceMount" class="face-col"></div>
   </div>
 </div>
@@ -1661,6 +1691,7 @@ function syncSheetMeta(){
 function openSheet(){
   var e = curEp(); if (!e || !e.audio) return;
   sheetOpen = true;
+  document.body.classList.add('sheet-lock');
   syncSheetMeta();
   var sh = $('npSheet');
   sh.classList.add('open'); sh.setAttribute('aria-hidden', 'false');
@@ -1671,6 +1702,7 @@ function openSheet(){
 function closeSheet(){
   if (!sheetOpen) return;
   sheetOpen = false;
+  document.body.classList.remove('sheet-lock');
   var sh = $('npSheet');
   sh.classList.remove('open'); sh.setAttribute('aria-hidden', 'true');
   if (sheetTimer){ clearInterval(sheetTimer); sheetTimer = null; }
@@ -2354,5 +2386,38 @@ document.addEventListener('lcdtitle', function(){ syncAllFaces(); });
 })();
 </script>
 
+<script id="wakeScript">
+/* ============ #412 stay-awake (Gary, Oct 30: the Drifter treatment) ============
+   While audio plays, hold the screen: Wake Lock where the browser offers it,
+   the silent-loop (NoSleep) pattern where it doesn't. Pause lets go. */
+(function(){
+  var au = document.getElementById('au'); if (!au) return;
+  var wl = null, vid = null;
+  function wantLock(){
+    if ('wakeLock' in navigator){
+      navigator.wakeLock.request('screen').then(function(s){ wl = s; }).catch(function(){});
+    } else {
+      if (!vid){
+        vid = document.createElement('video');
+        vid.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMxbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlt0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHTbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAT5zdGJsAAAAvnN0c2QAAAAAAAAAAQAAAK5hdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2Mi4yOC4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAANGF2Y0MBZAAK/+EAF2dkAAqs2V7ARAAAAwAEAAADAAg8SJZYAQAGaOvjyyLA/fj4AAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAAtEAAAAAAAAABhzdHRzAAAAAAAAAAEAAAACAABAAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAACxQAAAAwAAAAUc3RjbwAAAAAAAAABAAADYQAAAGJ1ZHRhAAAAWm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAAALWlsc3QAAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjIuMTIuMTAyAAAACGZyZWUAAALZbWRhdAAAAq0GBf//qdxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5hbHlzZT0weDM6MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9xcF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2FkYXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAEGWIhAAW//730z/MsuyaJYEAAAAIQZohbEFf/vA='; vid.loop = true; vid.muted = true;
+        vid.setAttribute('playsinline', '');
+        vid.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0.01;pointer-events:none;bottom:0;right:0;';
+        document.body.appendChild(vid);
+      }
+      var p = vid.play(); if (p && p.catch) p.catch(function(){});
+    }
+  }
+  function dropLock(){
+    if (wl){ try { wl.release(); } catch(e){} wl = null; }
+    if (vid) vid.pause();
+  }
+  au.addEventListener('play', wantLock);
+  au.addEventListener('pause', dropLock);
+  au.addEventListener('ended', dropLock);
+  document.addEventListener('visibilitychange', function(){
+    if (!document.hidden && !au.paused) wantLock();
+  });
+})();
+</script>
 </body>
 </html>
