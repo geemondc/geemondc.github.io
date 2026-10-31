@@ -1309,6 +1309,16 @@ liveBlog();
     display:flex;align-items:center;gap:9px;justify-content:center;cursor:pointer;}
   #npClose svg{width:17px;height:17px;}
   #npClose::after{content:"MORE — SHOWS · EPISODES · BLOG";}
+  /* ---- #414: the show page (Gary's screenshots, Oct 30) ---- */
+  .lv-sp-head{flex-direction:column;align-items:center;text-align:center;gap:12px;padding-top:6px;}
+  .lv-sp-head .tile{width:172px;height:172px;border-radius:20px;overflow:hidden;flex:none;
+    box-shadow:0 18px 40px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.4);}
+  .lv-sp-head .tile img{width:100%;height:100%;object-fit:cover;display:block;}
+  .lv-resume{display:flex;margin:16px auto 4px;align-items:center;gap:8px;
+    background:#f4ead2;color:#191a20;border:none;cursor:pointer;
+    font-family:inherit;font-weight:800;letter-spacing:.06em;font-size:13.5px;
+    padding:12px 24px;border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,.4);}
+  .lv-eps-h{margin:22px 0 4px;font-size:12px;font-weight:800;letter-spacing:.22em;color:#c9a35c;}
 </style>
 <!-- ================= #376 NOW PLAYING: mini bar + Apple-style sheet ================= -->
 <div id="npBar" class="lv-off">
@@ -1522,7 +1532,7 @@ function epRowHTML(e, ei){
     ? '<a class="np-eplink" href="' + e.link + '" target="_blank" rel="noopener">EPISODE PAGE &#8599;</a>'
     : pillHTML(e);
   return '<div class="np-eprow' + (ei === cur ? ' now' : '') + '" data-ei="' + ei + '" role="button" tabindex="0">' +
-    '<span class="d">' + esc(e.d) + '</span>' +
+    '<span class="d">' + ((recFor(e) && recFor(e).done) ? '✓ ' : '') + esc(e.d) + '</span>' +
     '<h4>' + esc(e.t) + '<span class="np-nowtag">NOW PLAYING</span></h4>' +
     (e.desc ? '<p class="desc">' + esc(e.desc) + '</p>' : '') +
     '<span class="bot">' + bot + '<span class="sp"></span>' +
@@ -1536,9 +1546,17 @@ function buildShowPage(s){
     '<div class="lv-sp-head"><span class="tile">' + art + '</span><span><h3>' + esc(s.name) + '</h3>' +
     '<p class="meta">' + s.eps.length + (s.eps.length === 1 ? ' episode' : ' episodes') + '</p>' +
     '<p class="by">WITH SETH GODIN</p></span></div>';
+  var resEi = -1, resR = null;
+  s.eps.forEach(function(ei){ var r = recFor(ALL_EPS[ei]);
+    if (r && !r.done && r.p > 8 && (!resR || (r.u || 0) > (resR.u || 0))){ resEi = ei; resR = r; } });
+  if (resEi >= 0){ var re = ALL_EPS[resEi], rem = Math.max(0, (resR.d || epDur(re)) - resR.p);
+    html += '<button type="button" class="lv-resume" id="lvResume">&#9654; RESUME &middot; ' + fmt(rem) + ' LEFT</button>'; }
+  html += '<h4 class="lv-eps-h">EPISODES</h4>';
   html += s.eps.map(function(ei){ return epRowHTML(ALL_EPS[ei], ei); }).join('');
   lvShowPage.innerHTML = html;
   $('lvBack').addEventListener('click', function(){ lvSet(lvReturn); });
+  var rb = $('lvResume');
+  if (rb) rb.addEventListener('click', function(){ load(resEi, true); openSheet(); });
   bindEpRows(lvShowPage);
 }
 function refreshShowPage(){
@@ -1604,7 +1622,7 @@ function buildHome(){
 var lvListMode = 'upnext', lvListShow = -1;
 function homeEpRowHTML(e, ei){
   return '<button type="button" class="lv-eprow" data-ei="' + ei + '"><span class="tile">' + thumbHTML(e) + '</span>' +
-    '<span class="tx"><span class="d">' + esc(e.d) + '</span>' +
+    '<span class="tx"><span class="d">' + ((recFor(e) && recFor(e).done) ? '✓ ' : '') + esc(e.d) + '</span>' +
     '<span class="nm">' + esc(e.t) + '</span>' +
     '<span class="ct">' + pillHTML(e) + '</span></span></button>';
 }
@@ -1740,7 +1758,12 @@ $('npBarMain').addEventListener('click', openSheet);
 $('npBarFwd').addEventListener('click', function(){ skipBy(30); });
 /* #377: the sheet's hand-rolled controls are retired — the face inside
    the sheet carries play, skips, speed, heart and words now. */
-$('npClose').addEventListener('click', closeSheet);
+$('npClose').addEventListener('click', function(){
+    closeSheet();
+    var si = -1;
+    for (var i = 0; i < SHOWS.length; i++){ if (SHOWS[i].eps.indexOf(cur) >= 0){ si = i; break; } }
+    if (si >= 0 && !(lvMode === 'show' && lvShowIdx === si)){ openShow(si); window.scrollTo(0, 0); }
+  });
 document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeSheet(); });
 (function(){
   var dragY = null;
