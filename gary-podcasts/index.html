@@ -571,6 +571,33 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 }
 @media (min-width:1400px){ main{max-width:1060px} #pvBody{max-width:1060px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+:root{--sbw:236px}
+#sideDrag{position:absolute;top:0;right:-7px;width:14px;height:100%;cursor:col-resize;z-index:6;touch-action:none}
+#sideDrag:hover,#sideDrag.on{background:linear-gradient(90deg,transparent,var(--accent-soft),transparent)}
+body.side-dragging{cursor:col-resize;user-select:none}
+#themeBtnPage{margin-left:auto}
+.f-tools{display:flex;align-items:center;gap:10px;width:min(76vw,336px);margin:9px auto 2px}
+.f-ref-note{flex:1;min-width:0;font-size:13px;line-height:1.3;opacity:.72;text-align:right}
+.f-refresh{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:inherit;border:1px solid var(--sep);border-radius:999px;padding:8px 14px;min-height:38px;background:transparent;flex:none}
+.f-refresh svg{width:16px;height:16px;flex:none}
+.f-refresh.busy svg,#miniRefresh.busy svg{animation:gp-rot .9s linear infinite}
+@keyframes gp-rot{to{transform:rotate(360deg)}}
+.f-cc{position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(18,18,22,.74);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:7px 11px;font-size:12.5px;font-weight:800;letter-spacing:.07em;min-height:38px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.f-cc.off{opacity:.38}
+.f-cc.on{background:var(--accent);border-color:var(--accent)}
+#np .f-tools{grid-column:2;width:100%;margin:0}
+@media (min-width:900px){
+  #sidebar{width:var(--sbw)}
+  #mini{left:var(--sbw)}
+  #pageView{left:var(--sbw)}
+  #mini.on{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+  .mleft{display:flex;align-items:center;gap:11px;min-width:0}
+  .mctrl{display:flex;align-items:center;gap:2px;justify-self:center}
+  .mutil{display:flex;align-items:center;gap:2px;justify-self:end}
+}
+@media (max-width:899px){ .mleft{display:contents} .mctrl{display:contents} .mutil{display:none} }
+
 </style>
 </head>
 <body class="intro-on">
@@ -604,6 +631,7 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 </div>
 <div id="app">
   <aside id="sidebar">
+    <div id="sideDrag" title="Drag to make the sidebar wider or narrower"></div>
     <div class="brand brand-home" id="sideBrand" title="Back to the cover"><span class="dot" id="sideDot"></span>Gary Podcasts</div>
     <nav id="sideNav"></nav>
     <div class="side-sec"><h3 data-i18n="people">People</h3><div id="sidePeople"></div></div>
@@ -649,6 +677,7 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
   <div class="pv-head">
     <button class="back-btn" id="pvBack" aria-label="Back"><span class="ic" data-ic="back"></span></button>
     <div class="pv-title" id="pvTitle"></div>
+    <button class="icon-btn" id="themeBtnPage" aria-label="Toggle light / dark theme"></button>
   </div>
   <div id="pvBody"></div>
 </div>
@@ -665,11 +694,13 @@ input[type=range].vol::-moz-range-thumb{width:26px;height:26px;border:none;borde
 
 <!-- mini player -->
 <div id="mini" role="button" aria-label="Open Now Playing">
-  <img id="miniArt" alt="">
-  <div class="mt"><div class="t" id="miniTitle"></div><div class="s" id="miniShow"></div></div>
-  <button class="mb" id="miniBack" aria-label="Skip back 30 seconds"><span class="ic" data-ic="back30"></span></button>
+  <div class="mleft"><img id="miniArt" alt="">
+  <div class="mt"><div class="t" id="miniTitle"></div><div class="s" id="miniShow"></div></div></div>
+  <div class="mctrl"><button class="mb" id="miniBack" aria-label="Skip back 30 seconds"><span class="ic" data-ic="back30"></span></button>
   <button class="mb" id="miniPlay" aria-label="Play or pause"><span class="ic" data-ic="play"></span></button>
-  <button class="mb" id="miniFwd" aria-label="Skip forward 30 seconds"><span class="ic" data-ic="fwd30"></span></button>
+  <button class="mb" id="miniFwd" aria-label="Skip forward 30 seconds"><span class="ic" data-ic="fwd30"></span></button></div>
+  <div class="mutil"><button class="mb" id="miniRefresh" aria-label="Refresh this show for new episodes"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 3v4h-4"/></svg></span></button>
+  <button class="mb" id="miniClose" aria-label="Close the player bar"><span class="ic" data-ic="x"></span></button></div>
   <div id="miniProg"></div>
 </div>
 
@@ -2100,10 +2131,42 @@ function applyTheme(){ const t = effectiveTheme(); document.documentElement.data
   document.querySelector('meta[name=theme-color]').setAttribute('content', t==='dark' ? '#000000' : '#ffffff');
   const ic = t==='dark' ? 'sun' : 'moon';
   $('#themeBtn').innerHTML = icon(ic); $('#themeBtnSide').innerHTML = icon(ic);
-  const ti = $('#themeBtnIntro'); if(ti) ti.innerHTML = icon(ic); }
+  const ti = $('#themeBtnIntro'); if(ti) ti.innerHTML = icon(ic); const tp = $('#themeBtnPage'); if(tp) tp.innerHTML = icon(ic); }
 function toggleTheme(){ S.settings.theme = effectiveTheme()==='dark' ? 'light':'dark'; persist('settings'); applyTheme(); }
 $('#themeBtn').addEventListener('click', toggleTheme);
 $('#themeBtnSide').addEventListener('click', toggleTheme);
+const tpBtn = $('#themeBtnPage'); if(tpBtn) tpBtn.addEventListener('click', toggleTheme);
+
+/* ================= SHOW REFRESH (force-fetch a feed, report what's new) ================= */
+async function refreshShowFeed(feed, hint, noteEl, btn){
+  if(!feed){ if(noteEl) noteEl.textContent = 'No feed to refresh.'; return; }
+  const before = new Set(); Object.values(epReg).forEach(e=>{ if(e.feed===feed) before.add(e.key); });
+  if(btn) btn.classList.add('busy');
+  if(noteEl) noteEl.textContent = 'Checking for new episodes\u2026';
+  try{
+    const f = await loadFeed(feed, true);
+    let n = 0;
+    f.eps.forEach(e=>{ const r = regEp({...e, showId: (hint&&hint.showId!=null)?hint.showId:e.showId, showName: (hint&&hint.showName)||f.show.title||e.showName, art: e.art || (hint&&hint.art) || ''}); if(!before.has(r.key)) n++; });
+    if(noteEl) noteEl.textContent = n ? (n + (n===1 ? ' new episode' : ' new episodes') + ' \u2014 find them up top.') : 'Up to date \u2014 no new episodes.';
+    toast(n ? (n + (n===1 ? ' new episode' : ' new episodes')) : 'Up to date \u2014 no new episodes');
+  }catch(err){ if(noteEl) noteEl.textContent = 'Couldn\u2019t refresh \u2014 check your connection.'; }
+  if(btn) btn.classList.remove('busy');
+}
+function refreshFaceShow(face){ const ep = face.displayedEp(); if(!ep) return; refreshShowFeed(ep.feed, ep, face.el.refNote, face.el.refreshBtn); }
+const mRef = $('#miniRefresh'); if(mRef) mRef.addEventListener('click', e=>{ e.stopPropagation(); if(cur) refreshShowFeed(cur.feed, cur, null, mRef); });
+const mClose = $('#miniClose'); if(mClose) mClose.addEventListener('click', e=>{ e.stopPropagation(); try{ audio.pause(); }catch(_){ } try{ saveProgress(); }catch(_){ } $('#mini').classList.remove('on'); });
+
+/* ================= SIDEBAR DRAG-RESIZE (desktop) ================= */
+(function(){
+  const drag = $('#sideDrag'); if(!drag) return;
+  const setW = w=>{ document.documentElement.style.setProperty('--sbw', w+'px'); };
+  if(S.settings.sbw) setW(S.settings.sbw);
+  let on = false;
+  drag.addEventListener('pointerdown', e=>{ on = true; try{ drag.setPointerCapture(e.pointerId); }catch(_){ } drag.classList.add('on'); document.body.classList.add('side-dragging'); e.preventDefault(); });
+  drag.addEventListener('pointermove', e=>{ if(!on) return; const w = Math.max(180, Math.min(460, Math.round(e.clientX))); setW(w); S.settings.sbw = w; });
+  const end = ()=>{ if(!on) return; on = false; drag.classList.remove('on'); document.body.classList.remove('side-dragging'); persist('settings'); };
+  drag.addEventListener('pointerup', end); drag.addEventListener('pointercancel', end);
+})();
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', ()=>{ if(S.settings.theme==='auto') applyTheme(); });
 
 /* ================= GLOBAL CLICK DELEGATION ================= */
@@ -2250,8 +2313,9 @@ function sameShow(ep, show){ if(!ep || !show) return false;
   if(ep.feed && show.feed && ep.feed===show.feed) return true; return false; }
 function faceHTML(){ return '<div class="face">'
   + '<div class="f-stage" data-skin="screen"><div class="stage-skin stage-skin-screen">'
-  + '<img class="f-art" alt="Episode artwork"><div class="f-words" aria-live="off"></div></div>'
+  + '<img class="f-art" alt="Episode artwork"><div class="f-words" aria-live="off"></div><button class="f-cc" type="button" aria-label="Closed captions — words on the artwork">CC</button></div>'
   + '<button class="f-words-btn" aria-label="Words (transcript)">'+icon('words')+'WORDS</button></div>'
+  + '<div class="f-tools"><span class="f-ref-note" role="status"></span><button class="f-refresh" type="button" aria-label="Refresh this show for new episodes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 3v4h-4"/></svg><span>Refresh</span></button></div>'
   + '<div class="f-deck" role="button" tabindex="0" aria-label="Now playing and on deck — open the queue">'
   + '<div class="deck-row"><img class="f-deck-art" alt=""><div class="deck-mid">'
   + '<div class="deck-lbl"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="f-deck-lbl">NOW PLAYING</span></div>'
@@ -2286,7 +2350,7 @@ function createFace(mount, opts){
   const face = { root, mode: opts.mode||'np', show: opts.show||null,
     stagedEp:null, stagedCtx:null, loadFailed:false, dragging:false, destroyed:false, _epKey:null,
     words:{on:false, cues:null, forKey:null, idx:-1},
-    el:{ stage:q('.f-stage'), art:q('.f-art'), words:q('.f-words'), wordsBtn:q('.f-words-btn'),
+    el:{ stage:q('.f-stage'), art:q('.f-art'), words:q('.f-words'), wordsBtn:q('.f-words-btn'), ccBtn:q('.f-cc'), refreshBtn:q('.f-refresh'), refNote:q('.f-ref-note'),
       deck:q('.f-deck'), deckArt:q('.f-deck-art'), deckLbl:q('.f-deck-lbl'), deckT:q('.f-deck-t'), deckS:q('.f-deck-s'), queue:q('.f-queue'), queueList:q('.f-queue-list'), queueN:q('.f-queue-n'), queueEmpty:q('.f-queue-empty'), queueManage:q('.f-queue-manage'),
       date:q('.f-date'), title:q('.f-title'), showEl:q('.f-show'), dots:q('.f-dots'),
       err:q('.f-err'), errTxt:q('.f-err-txt'), track:q('.f-track'), fill:q('.fillbar'), knob:q('.knob'),
@@ -2308,21 +2372,21 @@ function createFace(mount, opts){
     const key = ep? ep.key : null;
     if(key !== face._epKey){ face._epKey = key;
       face.words = {on:false, cues:null, forKey:null, idx:-1};
-      face.el.words.classList.remove('on'); face.el.wordsBtn.classList.remove('on');
+      face.el.words.classList.remove('on'); face.el.wordsBtn.classList.remove('on'); face.el.ccBtn.classList.remove('on');
       face.el.err.classList.remove('on'); }
     if(!ep){ face.el.art.src = (face.show&&face.show.art)||ART_PH;
       face.el.date.textContent = '';
       face.el.title.textContent = face.show? face.show.name : '';
       face.el.showEl.textContent = face.show? (face.show.artist||'') : '';
       face.el.deck.style.display = 'none';
-      face.el.wordsBtn.classList.add('off');
+      face.el.wordsBtn.classList.add('off'); face.el.ccBtn.classList.add('off');
       face.syncTime(); face.syncTransport(); return; }
     face.el.deck.style.display = '';
     face.el.art.src = ep.art||ART_PH;
     face.el.date.textContent = fmtDateLong(ep.date);
     face.el.title.textContent = ep.title;
     face.el.showEl.textContent = ep.showName||'';
-    face.el.wordsBtn.classList.toggle('off', !ep.transcript);
+    face.el.wordsBtn.classList.toggle('off', !ep.transcript); face.el.ccBtn.classList.toggle('off', !ep.transcript);
     face.syncDeck(); face.syncTime(); face.syncTransport();
   };
   /* On-deck strip: live — the playing episode + queue/continue logic;
@@ -2390,6 +2454,8 @@ function createFace(mount, opts){
   face.el.deck.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); deckGo(); } });
   q('.f-retry').addEventListener('click', retryPlayback);
   face.el.wordsBtn.addEventListener('click', ()=>toggleWords(face));
+  face.el.ccBtn.addEventListener('click', ()=>toggleWords(face));
+  face.el.refreshBtn.addEventListener('click', ()=>refreshFaceShow(face));
   const track = face.el.track;
   const ratio = e=>{ const r = track.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX-r.left)/r.width)); };
   const preview = r=>{ const dur = face.isLive()? npDur() : face.stagedDur();
@@ -2478,7 +2544,7 @@ function updateSleepLbl(){ faces.forEach(f=>{ const lbl = f.el.sleepLbl, b = f.e
 /* ================= WORDS (transcripts) — per face, on the square ================= */
 async function toggleWords(face){ const ep = face.displayedEp(); if(!ep) return; const w = face.words;
   w.on = !w.on;
-  face.el.wordsBtn.classList.toggle('on', w.on);
+  face.el.wordsBtn.classList.toggle('on', w.on); face.el.ccBtn.classList.toggle('on', w.on);
   face.el.words.classList.toggle('on', w.on);
   if(!w.on) return;
   if(w.forKey===ep.key && w.cues!==null){ renderWords(face); if(face.isLive()) syncWords(face, audio.currentTime||0); return; }
