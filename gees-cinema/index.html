@@ -409,9 +409,6 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
 .pa-poster iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;pointer-events:none}
 .pa-poster .pa-shield{position:absolute;inset:0;display:block}
 @media (max-width:640px){.pa-poster{width:270px;height:152px}}
-#ov-poster .ocard{max-width:880px;background:#0d0f1d}
-#ov-poster iframe{width:100%;aspect-ratio:16/9;max-height:66vh;border:0;border-radius:12px;display:block;background:#05060a}
-#ov-poster .pa-close{margin-top:14px;width:100%;background:#c9962e;color:#2a0b16;border:0;border-radius:10px;padding:13px 18px;font-size:16px;font-weight:800;cursor:pointer}
 /* Living-photo lineup (Nov 1, 2026 fix): Lovable originals over baked stills */
 .hello .cozywrap{cursor:pointer}
 .lv-slot{position:absolute;inset:0;opacity:0;transition:opacity 1.4s ease;pointer-events:none}
@@ -426,17 +423,10 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
 .pa-poster .pa-view iframe{opacity:0;transition:opacity 1.2s ease}
 .pa-poster .pa-view iframe.lv-on{opacity:1}
 .pa-poster .pa-cap{display:block;width:100%;padding:8px 10px;font-family:Georgia,serif;font-size:14px;font-weight:700;color:#ffd977;background:#1c0a12;text-align:center;letter-spacing:.3px}
-#ov-poster .pa-lb-name{font-family:Georgia,serif;font-size:19px;font-weight:700;color:#ffd977;text-align:center;margin:0 0 10px}
-#ov-poster .pa-lb-view{position:relative;border-radius:12px;overflow:hidden;background:#05060a;aspect-ratio:16/9;max-height:66vh}
-#ov-poster .pa-lb-view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-#ov-poster .pa-lb-view iframe{position:absolute;inset:0;width:100%;height:100%;max-height:none;border:0;border-radius:0;display:block;opacity:0;transition:opacity 1.2s ease}
-#ov-poster .pa-lb-view iframe.lv-on{opacity:1}
 .ov.lvfs{padding:0;background:#000;z-index:95}
 #ov-live img.lvfs-still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 #ov-live iframe.lvfs-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;pointer-events:none;opacity:0;transition:opacity 1.2s ease}
 #ov-live iframe.lvfs-frame.lv-on{opacity:1}
-#ov-poster .pa-lb-view{cursor:pointer}
-#ov-poster .pa-lb-view iframe{pointer-events:none}
 .hello h1{margin:14px 0 6px}
 .hello p{margin:0;color:#4a1530;font-size:15px;line-height:1.5}
 .hello .sig{color:var(--plum);font-family:Georgia,serif;font-style:italic;font-weight:700;margin-top:8px}
@@ -1030,6 +1020,18 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
       fr.addEventListener('load', function(){ if (fr.getAttribute('src')) fr.classList.add('lv-on'); });
       return fr;
     }
+    /* The ladder-fullscreen frame is static markup, parsed
+       AFTER this script, so they cannot be built by liveFrame(). Arm the
+       same reveal-on-load on them lazily, at open time. Without this they
+       sit at opacity:0 forever and only the baked still ever shows -- the
+       defect Gary caught live on #473 (Nov 1, 2026): tiles moved, the big
+       views were stills. */
+    function armReveal(fr){
+      if (!fr || fr.getAttribute('data-lv-armed')) return;
+      fr.setAttribute('data-lv-armed', '1');
+      fr.addEventListener('load', function(){ if (fr.getAttribute('src')) fr.classList.add('lv-on'); });
+    }
+    var stageGo = null; /* set by the stage block below: promote a scene */
     /* ---- title band: rotation over the title photo's blurred extension ---- */
     var wrap = document.querySelector('.hello .cozywrap');
     var cur = 0, rotTimer = null, slots = [];
@@ -1069,6 +1071,18 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
           show((cur + 1) % slots.length);
         }, 10000);
       };
+      var restartRot = function(){
+        if (rotTimer){ clearInterval(rotTimer); rotTimer = null; }
+        startRot();
+      };
+      /* Gary's model (Nov 1, 2026): the screen IS the stage. Tapping a
+         poster PROMOTES its scene to the stage -- the stage switches to
+         that living photo and the show continues from there. No popup,
+         no separate window, ever. */
+      stageGo = function(i){
+        show(i); restartRot();
+        wrap.scrollIntoView({behavior: 'smooth', block: 'center'});
+      };
       show(0); startRot();
       wrap.addEventListener('click', function(){ window.openLive(cur); });
     }
@@ -1077,7 +1091,7 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
     if (rail){
       LINEUP.forEach(function(p, i){
         var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pa-poster';
-        btn.setAttribute('aria-label', 'Open ' + p.name + ' large');
+        btn.setAttribute('aria-label', 'Put ' + p.name + ' on the big screen');
         var view = document.createElement('span'); view.className = 'pa-view';
         var img = document.createElement('img'); img.className = 'lv-still'; img.src = p.still; img.alt = '';
         img.setAttribute('aria-hidden', 'true');
@@ -1088,7 +1102,7 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
         cap.setAttribute('data-en', p.name); cap.setAttribute('data-es', p.name);
         cap.textContent = p.name;
         btn.appendChild(view); btn.appendChild(cap);
-        btn.addEventListener('click', function(){ openPoster(i); });
+        btn.addEventListener('click', function(){ if (stageGo) stageGo(i); });
         rail.appendChild(btn);
         var arm = function(){ if (!fr.getAttribute('src')) fr.src = p.url; };
         if ('IntersectionObserver' in window){
@@ -1099,36 +1113,15 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
         } else { fr.loading = 'lazy'; arm(); }
       });
     }
-    var lbCur = 0;
-    window.openPoster = function(i){
-      var p = LINEUP[i]; if (!p) return;
-      lbCur = i;
-      var nm = document.getElementById('pa-lb-name');
-      if (nm) nm.textContent = p.name;
-      var st = document.getElementById('pa-lb-still');
-      if (st) st.src = p.still;
-      var fr = document.getElementById('pa-lb-frame');
-      if (fr){ fr.classList.remove('lv-on'); fr.src = p.url; }
-      openOv('ov-poster');
-    };
-    window.paLbStop = function(){
-      var fr = document.getElementById('pa-lb-frame');
-      if (fr){ fr.removeAttribute('src'); fr.classList.remove('lv-on'); }
-    };
-    /* ---- the tap ladder: big picture -> tap -> frameless full screen ----
-       (delegated: the lightbox markup sits later in the document than this
-       script, so the view does not exist yet at parse time) */
-    document.addEventListener('click', function(e){
-      var t = e.target;
-      if (t && t.closest && t.closest('#ov-poster .pa-lb-view')) window.openLive(lbCur);
-    });
+    /* (The poster lightbox is GONE -- Gary, Nov 1, 2026: a tile tap
+       promotes the scene to the stage; it never opens a popup window.) */
     /* ---- tap the title photo: big screen, living, edge to edge ---- */
     window.openLive = function(i){
       var p = LINEUP[i]; if (!p) return;
       var st = document.getElementById('lvfs-still');
       if (st) st.src = p.still;
       var fr = document.getElementById('lvfs-frame');
-      if (fr){ fr.classList.remove('lv-on'); fr.src = p.url; }
+      if (fr){ armReveal(fr); fr.classList.remove('lv-on'); fr.src = p.url; }
       openOv('ov-live');
     };
     window.closeLive = function(){
@@ -1572,13 +1565,6 @@ body.maxmode .cinema-main{max-width:none;padding:8px}
   <h3>🆘 <span data-en="Help" data-es="Ayuda">Help</span></h3>
   <p data-en="Lost? Every room doors back here. Watch a movie in the Cinema, browse the Ante Room — tap any poster and it plays in the theater, right away." data-es="¿Perdido? Cada sala vuelve aquí. Mira una película en el Cine, explora la Antesala — toca cualquier póster y se ve en el teatro, al instante.">Lost? Every room doors back here. Watch a movie in the Cinema, browse the Ante Room — tap any poster and it plays in the theater, right away.</p>
   <button type="button" class="btn-signin" onclick="closeOv('ov-help');show('v-intro')"><span class="" data-en="🏠 Intro" data-es="🏠 Inicio">🏠 Intro</span></button>
- </div>
-</div>
-<div class="ov" id="ov-poster" onclick="if(event.target===this){closeOv('ov-poster');paLbStop();}">
- <div class="ocard">
-  <div class="pa-lb-name" id="pa-lb-name"></div>
-  <div class="pa-lb-view"><img id="pa-lb-still" alt=""><iframe id="pa-lb-frame" title="Living photo, large" scrolling="no"></iframe></div>
-  <button type="button" class="pa-close" onclick="closeOv('ov-poster');paLbStop()" data-en="✕ CLOSE" data-es="✕ CERRAR">✕ CLOSE</button>
  </div>
 </div>
 <div class="ov lvfs" id="ov-live" onclick="closeLive()">
