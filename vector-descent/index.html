@@ -40,6 +40,7 @@
   #hudTime.low{ color:#ff6a5e; text-shadow:0 0 14px rgba(255,80,60,.95),0 0 44px rgba(255,80,60,.5); }
   #hudScore{ top:10px; left:12px; font-size:clamp(13px,3.4vw,17px); color:var(--acc); text-shadow:0 0 8px rgba(182,255,94,.7); letter-spacing:.08em; }
   #hudLvl{ top:10px; right:64px; font-size:clamp(13px,3.4vw,17px); color:var(--dim); letter-spacing:.14em; text-align:right; }
+  #hudBest{ top:34px; right:64px; font-size:clamp(12px,3vw,15px); color:#9be9ff; text-shadow:0 0 8px rgba(103,232,255,.6); letter-spacing:.1em; text-align:right; }
   #hudSpd{ bottom:10px; left:12px; font-size:clamp(12px,3.2vw,16px); color:#9be9ff; text-shadow:0 0 8px rgba(103,232,255,.6); letter-spacing:.08em; }
   #hudProgWrap{ top:74px; left:50%; transform:translateX(-50%); width:min(300px,52vw); height:5px; background:rgba(61,255,110,.14); border-radius:3px; overflow:hidden; }
   #hudProg{ height:100%; width:0%; background:var(--neon); box-shadow:0 0 8px rgba(61,255,110,.8); }
@@ -89,6 +90,19 @@
     box-shadow:0 0 26px rgba(61,255,110,.45);
   }
   #startBtn:active{ transform:scale(.97); }
+  #trackPickLab{ margin:14px 0 2px; font-size:11px; letter-spacing:.3em; color:var(--dim); text-align:center; }
+  #trackRow{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:900px; margin-top:8px; }
+  .trackCard{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 10px 8px;
+    width:132px; color:var(--ink); font-family:var(--font); cursor:pointer; text-align:center;
+  }
+  .trackCard:active{ transform:scale(.97); }
+  .trackCard svg{ width:100%; height:52px; display:block; }
+  .trackCard svg *{ fill:none; stroke:#7d8f80; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+  .trackCard .tcName{ margin-top:6px; font-size:13px; font-weight:bold; letter-spacing:.08em; }
+  .trackCard .tcBest{ margin-top:2px; font-size:11px; color:var(--dim); letter-spacing:.05em; min-height:14px; }
+  .trackCard.sel{ border-color:var(--acc); box-shadow:0 0 16px rgba(61,255,110,.35); }
+  .trackCard.sel svg *{ stroke:var(--acc); }
   #togRow{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:16px; max-width:880px; }
   .tog{
     background:var(--btn); color:var(--ink); border:1px solid var(--line); border-radius:8px;
@@ -135,6 +149,7 @@
 <div class="hud" id="hudScore">0</div>
 <div class="hud" id="hudTime">99</div>
 <div class="hud" id="hudLvl">LEVEL 1</div>
+<div class="hud" id="hudBest"></div>
 <div class="hud" id="hudProgWrap"><div id="hudProg"></div></div>
 <div class="hud" id="hudSpd">0 m/s</div>
 <button id="pauseBtn" aria-label="Pause">| |</button>
@@ -148,6 +163,25 @@
   <div id="hiRow">
     <div class="hiBox"><div class="lab" data-i18n="bestScoreLab">BEST SCORE</div><div class="num" id="hiScore">0</div></div>
     <div class="hiBox"><div class="lab" data-i18n="bestLevelLab">BEST LEVEL</div><div class="num" id="hiLvl">—</div></div>
+  </div>
+  <div id="trackPickLab" data-i18n="pickTrack">CHOOSE YOUR TRACK</div>
+  <div id="trackRow">
+    <button class="trackCard" data-track="0">
+      <svg viewBox="0 0 100 70"><ellipse cx="50" cy="35" rx="40" ry="23"/></svg>
+      <div class="tcName">THE OVAL</div><div class="tcBest">&mdash;</div>
+    </button>
+    <button class="trackCard" data-track="1">
+      <svg viewBox="0 0 100 70"><rect x="13" y="11" width="74" height="48" rx="15"/></svg>
+      <div class="tcName">THE SQUARE</div><div class="tcBest">&mdash;</div>
+    </button>
+    <button class="trackCard" data-track="2">
+      <svg viewBox="0 0 100 70"><path d="M50 35 C60 18 74 12 84 16 C94 20 92 34 80 38 C68 42 56 40 50 35 C44 30 32 28 20 32 C8 36 6 20 16 16 C26 12 40 18 50 35 Z"/></svg>
+      <div class="tcName">FIGURE EIGHT</div><div class="tcBest">&mdash;</div>
+    </button>
+    <button class="trackCard" data-track="3">
+      <svg viewBox="0 0 100 70"><path d="M8 56 H58 a11 11 0 0 0 0 -22 H28"/></svg>
+      <div class="tcName">THE HAIRPIN</div><div class="tcBest">&mdash;</div>
+    </button>
   </div>
   <button id="startBtn" data-i18n="start">START</button>
   <div id="togRow">
@@ -207,9 +241,12 @@
     <h2 id="ovTitle" data-i18n="gameover">TIME UP</h2>
     <div class="statRow"><span data-i18n="scoreLab">SCORE</span><b id="ovScore">0</b></div>
     <div class="statRow"><span data-i18n="best">BEST</span><b id="ovBest">0</b></div>
-    <div class="statRow"><span data-i18n="levelLab">LEVEL</span><b id="ovLvl">1</b></div>
+    <div class="statRow" id="ovLvlRow"><span data-i18n="levelLab">LEVEL</span><b id="ovLvl">1</b></div>
+    <div class="statRow" id="ovTimeRow" style="display:none"><span data-i18n="timeLab">TIME</span><b id="ovTime">0:00.0</b></div>
+    <div class="statRow" id="ovBestTimeRow" style="display:none"><span data-i18n="bestTimeLab">BEST TIME</span><b id="ovBestTime">—</b></div>
     <p id="ovNew" style="color:var(--warn);font-weight:bold;display:none" data-i18n="newBest">NEW BEST!</p>
     <button class="bigBtn" id="againBtn" data-i18n="again">PLAY AGAIN</button>
+    <button class="bigBtn" id="nextBtn" style="display:none">NEXT RACE</button>
     <button class="bigBtn" id="titleBtn" data-i18n="quit">QUIT TO TITLE</button>
   </div>
 </div>
@@ -218,32 +255,34 @@
 "use strict";
 /* ============================== I18N ============================== */
 var STR = {
-en:{ tagline:"The hill pushes. Steer the momentum.", bestScoreLab:"BEST SCORE", bestLevelLab:"BEST LEVEL", start:"START", howto:"HOW TO PLAY",
+en:{ tagline:"The hill pushes. Steer the momentum.", bestScoreLab:"BEST SCORE", bestLevelLab:"BEST TIME", start:"START", howto:"HOW TO PLAY",
   controls:"CONTROLS", close:"CLOSE", paused:"PAUSED", resume:"RESUME", quit:"QUIT TO TITLE",
   gameover:"TIME UP", win:"YOU WIN!", scoreLab:"SCORE", levelLab:"LEVEL", best:"BEST", again:"PLAY AGAIN", newBest:"NEW BEST!",
+  raceWord:"RACE", lapWord:"LAP", timeLab:"TIME", bestTimeLab:"BEST TIME", finishWord:"FINISH!", pickTrack:"CHOOSE YOUR TRACK", nextRace:"NEXT RACE",
   soundOn:"SOUND: ON", soundOff:"SOUND: OFF", levelWord:"LEVEL", finalLevel:"FINAL LEVEL",
-  hGoal:"Goal is to finish and stay on the track — and try not to go too fast. Thirty puzzle descents stand between you and the bottom of the mountain. Each one ends at a blue GOAL pad. Beat the clock, bank the time, climb the ladder.",
-  hPush:"THE PUSH: the marble is heavy and the hill does the driving. Slopes shove you downhill, speed builds, and momentum carries you over rises — arrive at a crest too slow and you stall and roll back. Steering is a shove, not a steering wheel: persuade the marble, plan ahead.",
-  hClock:"THE CLOCK: you start with 99 seconds. Checkpoints hand back +3. Every fall, squash, swallow or dissolve costs −3 and a trip back to the last checkpoint. Finish a level and the leftover seconds turn into bonus points (×100) AND ride into the next level's clock.",
-  hFall:"THE EDGE: slide off the ribbon, miss a bridge or drop through a hole and you fall. Watch for glowing CUSHIONS at the foot of drops and launches — land on one for a soft catch; miss it and the hard bounce can throw you off your line.",
-  hCush:"THE COURSE: troughs cradle you, stairs bump you down step by step, funnels pipe you to shortcuts, hammers pound in rhythm, and some bridges slide or shake. Read the puzzle, pick your line.",
-  hBad:"THE LOCALS: a slinky MUNCHER hops toward you and swallows marbles whole. The black BOWLING BALL just wants to shove you off the edge. The SLIME oozes together into a clump that reaches for you. None of them are friendly.",
-  hGoalTxt:"THE GOAL: a bright blue pad. The last stretch often throws you straight onto it at full speed — cross it and it erupts in rainbow for 5 seconds while your time bonus tallies.",
+  hGoal:"Goal: pick one of FOUR tracks and run one full lap. Start and finish are the same blue GOAL pad — cross the line after a complete loop to end the race. The clock counts UP: it's all about how fast you can get around. Your best time is saved for each track separately.",
+  hPush:"THE TRACKS: THE OVAL is one big gentle loop. THE SQUARE is the classic speedway — long straights and rounded corners. The FIGURE EIGHT runs two loops that cross at the start line. THE HAIRPIN mixes flowing corners with one savage switchback that will throw you off if you enter it hot.",
+  hClock:"THE CLOCK: the race timer counts up from zero — finish the lap as fast as you can. Gates on the racing line pay +100 points each, and every gate you cross becomes the spot where you reappear if you fall. Beat a track's best time to set a new record on it.",
+  hFall:"FALLS: slide off the edge and you drop. You reappear at the last gate you crossed with +3 seconds on your time — so the fastest line is the one that stays on the track.",
+  hCush:"THE EDGES: red rails line every track and catch you at sane speeds — you will glance off with sparks. But the faster you corner, the harder you are thrown outward (centrifugal force): arrive at a corner too fast or too far out and you will hop the lip and fly off. Brake BEFORE the tight ones, not in them.",
+  hBad:"THE HILLS: every track rolls over a couple of hills. Downhills build free speed, uphills eat it, and a fast crest can catch a little air. Enjoy the speed — and remember a downhill feeds you into the next corner hotter than you planned.",
+  hGoalTxt:"THE GOAL: the bright blue pad is start and finish in one. Cross it after a full lap and it erupts in rainbow while your time bonus tallies. On the results screen, NEXT RACE takes you straight to the following track.",
   hKeysLab:"KEYBOARD + MOUSE", hKeys:"Move the MOUSE to steer — the pointer's position against the marble shoves it sideways. Hold LEFT MOUSE BUTTON to ACCELERATE: power up a climb or crest a wave. SPACE is the BRAKE. Arrow keys / A,D steer too. There is NO speed limit — only the physics. Red rails on the edges will hold you... until you arrive way too fast and hop them. P or ESC pauses.",
-  hTouchLab:"TOUCH", hTouch:"Drag to steer, hold to accelerate — the hill does the rest. Drag left or right of the marble to shove it that way. Hold the GAS button to accelerate, hold BRAKE to slow down — or touch a SECOND FINGER anywhere to brake. The red rails hold you on turns, until you come in way too fast.", gasLab:"GAS", brkLab:"BRAKE" },
-es:{ tagline:"La cuesta empuja. Dirige el impulso.", bestScoreLab:"MEJOR PUNTAJE", bestLevelLab:"MEJOR NIVEL", start:"INICIAR", howto:"CÓMO JUGAR",
+  hTouchLab:"TOUCH", hTouch:"Drag to steer, hold to accelerate — the hills do the rest. Drag left or right of the marble to shove it that way. Hold the GAS button to accelerate, hold BRAKE to slow down — or touch a SECOND FINGER anywhere to brake. The red rails hold you on turns, until you come in way too fast.", gasLab:"GAS", brkLab:"BRAKE" },
+es:{ tagline:"La cuesta empuja. Dirige el impulso.", bestScoreLab:"MEJOR PUNTAJE", bestLevelLab:"MEJOR TIEMPO", start:"INICIAR", howto:"CÓMO JUGAR",
   controls:"CONTROLES", close:"CERRAR", paused:"PAUSA", resume:"SEGUIR", quit:"VOLVER AL TÍTULO",
   gameover:"¡SE ACABÓ EL TIEMPO!", win:"¡GANASTE!", scoreLab:"PUNTOS", levelLab:"NIVEL", best:"RÉCORD", again:"JUGAR OTRA VEZ", newBest:"¡NUEVO RÉCORD!",
+  raceWord:"CARRERA", lapWord:"VUELTA", timeLab:"TIEMPO", bestTimeLab:"MEJOR TIEMPO", finishWord:"¡META!", pickTrack:"ELIGE TU PISTA", nextRace:"SIGUIENTE CARRERA",
   soundOn:"SONIDO: SÍ", soundOff:"SONIDO: NO", levelWord:"NIVEL", finalLevel:"NIVEL FINAL",
-  hGoal:"La meta es terminar y mantenerte en la pista — y trata de no ir demasiado rápido. Treinta bajadas rompecabezas te separan de la base de la montaña. Cada una termina en una plataforma azul de META. Vence al reloj, guarda el tiempo y sube la escalera.",
-  hPush:"EL EMPUJE: la canica pesa y la cuesta hace el trabajo. Las pendientes te empujan, la velocidad crece y el impulso te lleva sobre las subidas — si llegas lento a una cresta, te detienes y ruedas hacia atrás. Dirigir es empujar, no girar un volante: convence a la canica y planea con tiempo.",
-  hClock:"EL RELOJ: empiezas con 99 segundos. Los puntos de control devuelven +3. Cada caída, aplastada, tragada o disolución cuesta −3 y un viaje al último punto de control. Al terminar un nivel, los segundos sobrantes se vuelven puntos de bono (×100) Y pasan al reloj del siguiente nivel.",
-  hFall:"EL BORDE: si te sales de la cinta, fallas un puente o caes por un hueco, te desplomas. Busca los COJINES brillantes al pie de las caídas y los lanzamientos — aterriza en uno para un agarre suave; si fallas, el rebote duro puede sacarte de tu línea.",
-  hCush:"EL RECORRIDO: los canales te acunan, las escaleras te bajan golpe a golpe, los embudos te llevan por atajos, los martillos golpean en ritmo, y algunos puentes se deslizan o tiemblan. Lee el rompecabezas y elige tu línea.",
-  hBad:"LOS VECINOS: un TRAGÓN de resorte salta hacia ti y se traga las canicas enteras. La BOLA NEGRA solo quiere empujarte fuera del borde. El MOCO se junta en una masa que estira sus brazos hacia ti. Ninguno es amable.",
-  hGoalTxt:"LA META: una plataforma azul brillante. El último tramo suele lanzarte directo a ella a toda velocidad — crúzala y estalla en arcoíris por 5 segundos mientras se suma tu bono de tiempo.",
+  hGoal:"La meta: elige una de las CUATRO pistas y corre una vuelta completa. La salida y la meta son la misma plataforma azul: cruza la línea tras una vuelta completa para terminar la carrera. El reloj cuenta HACIA ARRIBA: se trata de qué tan rápido puedes dar la vuelta. Tu mejor tiempo se guarda por separado para cada pista.",
+  hPush:"LAS PISTAS: EL ÓVALO es un bucle grande y suave. EL CUADRADO es el speedway clásico: rectas largas y esquinas redondeadas. EL OCHO corre dos bucles que se cruzan en la línea de salida. LA HORQUILLA mezcla curvas fluidas con un zigzag salvaje que te sacará de la pista si entras demasiado rápido.",
+  hClock:"EL RELOJ: el cronómetro cuenta desde cero — termina la vuelta lo más rápido que puedas. Las puertas en la línea de carrera pagan +100 puntos cada una, y cada puerta que cruzas se convierte en el punto donde reaparecerás si te caes. Supera el mejor tiempo de una pista para fijar un nuevo récord en ella.",
+  hFall:"LAS CAÍDAS: si te sales del borde, caes. Reapareces en la última puerta que cruzaste con +3 segundos en tu tiempo — así que la línea más rápida es la que se mantiene en la pista.",
+  hCush:"LOS BORDES: las barandas rojas bordean cada pista y te sostienen a velocidades sensatas — rebotarás con chispas. Pero entre más rápido tomas una curva, más fuerte te empuja hacia afuera (fuerza centrífuga): si llegas a una curva demasiado rápido o demasiado abierto, saltarás la baranda y saldrás volando. Frena ANTES de las curvas cerradas, no dentro de ellas.",
+  hBad:"LAS COLINAS: cada pista pasa sobre un par de colinas. Bajando ganas velocidad gratis, subiendo la pierdes, y una cresta rápida puede hacerte volar un poco. Disfruta la velocidad — y recuerda que una bajada te deja en la siguiente curva más rápido de lo que planeaste.",
+  hGoalTxt:"LA META: la plataforma azul brillante es salida y meta en una sola. Crúzala tras una vuelta completa y estallará en arcoíris mientras se suma tu bono de tiempo. En la pantalla de resultados, SIGUIENTE CARRERA te lleva directo a la pista que sigue.",
   hKeysLab:"TECLADO + RATÓN", hKeys:"Mueve el RATÓN para dirigir — su posición contra la canica la empuja de lado. Mantén el BOTÓN IZQUIERDO para ACELERAR: sube una cuesta o pasa una ola. ESPACIO es el FRENO. Las flechas / A,D también dirigen. NO hay límite de velocidad — solo la física. Las barandas rojas te sostienen... hasta que llegas demasiado rápido y las saltas. P o ESC pausa.",
-  hTouchLab:"TÁCTIL", hTouch:"Arrastra para dirigir, mantén para acelerar — la cuesta hace el resto. Arrastra a la izquierda o derecha de la canica para empujarla. Mantén GAS para acelerar, mantén FRENO para frenar — o toca con un SEGUNDO DEDO en cualquier parte para frenar. Las barandas rojas te sostienen en las curvas, hasta que llegas demasiado rápido.", gasLab:"GAS", brkLab:"FRENO" }
+  hTouchLab:"TÁCTIL", hTouch:"Arrastra para dirigir, mantén para acelerar — las cuestas hacen el resto. Arrastra a la izquierda o derecha de la canica para empujarla. Mantén GAS para acelerar, mantén FRENO para frenar — o toca con un SEGUNDO DEDO en cualquier parte para frenar. Las barandas rojas te sostienen en las curvas, hasta que llegas demasiado rápido.", gasLab:"GAS", brkLab:"FRENO" }
 };
 var lang = "en", soundOn = true;
 function T(k){ return STR[lang][k] || STR.en[k] || k; }
@@ -254,14 +293,16 @@ function applyLang(){
   $("togSound").textContent = soundOn ? T("soundOn") : T("soundOff");
   $("gasBtn").textContent = T("gasLab"); $("brkBtn").textContent = T("brkLab");
   $("hiScore").textContent = bestScore;
-  $("hiLvl").textContent = bestLevel > 0 ? bestLevel : "—";
+  $("hiLvl").textContent = bestRaceMs ? fmtTime(bestRaceMs / 1000) : "—";
   if(typeof updateHud === "function") updateHud();
+  if(typeof refreshTrackUI === "function") refreshTrackUI();
 }
 
 /* ============================== STORAGE ============================== */
 function store(k, v){ try{ if(v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } }
 var bestScore = parseInt(store("vd2_bestScore") || "0", 10) || 0;
 var bestLevel = parseInt(store("vd2_bestLevel") || "0", 10) || 0;
+var bestRaceMs = parseInt(store("vd2_raceBestMs") || "0", 10) || 0;
 lang = store("vd_lang") || "en";
 soundOn = store("vd_sound") !== "off";
 
@@ -564,6 +605,128 @@ function buildLevel(idx){
     totalSegs:totalSegs, totalLen:totalSegs * SEG, base:base, name:def.name || null, goalSeg:env.meta.goalSeg };
 }
 
+/* ============================== THE CIRCUITS ============================== */
+/* Four closed race tracks, all built from straights and sine-weighted
+   corners (a corner sweeps the centreline sideways by D over n segments;
+   two matching corners make a U-turn; the four Square corners sum to a
+   full 360 deg). Hills are painted on afterwards as a height profile over
+   lap fraction - whole sine cycles only, so the ribbon's height closes
+   exactly at the line. The centreline's total lateral drift over a lap
+   (lapDrift) is handed to the renderer, which adds it back when drawing
+   the wrapped copy of the start straight past the finish. One lap = race. */
+var CENTRI = 0.14;   // centrifugal drift: outward lateral accel = CENTRI * vz^2 * centreline curvature (curvature sampled over +/-300 units)
+
+function racePad(env){
+  addSegs(env, 6, function(j){ return { dy:0, wf:1.12, feat:function(s){ s.rail = true; if(j < 3) s.dual = true; } }; }, {});
+}
+function raceCross(env){
+  // the figure eight's mid-lap crossing pad: same blue pad language as the start line, with a gate on it
+  addSegs(env, 6, function(j){ return { dy:0, wf:1.12, feat:function(s){ s.rail = true; if(j < 3) s.dual = true; } }; }, { cpAt:[2] });
+}
+function raceStraight(env, n, gates){
+  addSegs(env, n, function(){ return { dy:0, wf:1.05, feat:function(s){ s.rail = true; } }; }, { cpAt: gates || [] });
+}
+function raceCorner(env, n, D, o){
+  o = o || {};
+  var sum = 0, j; for(j = 0; j < n; j++) sum += Math.sin(Math.PI * (j + 0.5) / n);
+  var bankAmt = (o.bank !== undefined ? o.bank : 0.25);
+  var wfBase = (o.wf !== undefined ? o.wf : 1.05), wfPeak = (o.wfPeak !== undefined ? o.wfPeak : 0.25);
+  addSegs(env, n, function(j2, n2){
+    var sn = Math.sin(Math.PI * (j2 + 0.5) / n2);
+    return { dy:0, dcx: D * sn / sum, wf: wfBase + wfPeak * sn,
+      feat:function(s){ s.rail = true; s.bank = -(D < 0 ? -1 : 1) * bankAmt * sn; if(j2 % (o.chev ? 3 : 6) === (o.chev ? 1 : 3)) s.chev = true; } };
+  }, { cpAt: o.gates || [n - 1] });
+}
+function applyHills(env, hills){
+  var N = env.seg.length, k, i, f, y;
+  for(k = 0; k <= N; k++){
+    f = k / N; y = 0;
+    for(i = 0; i < hills.length; i++){
+      y += hills[i].amp * (Math.sin(2 * Math.PI * (hills[i].cyc * f + hills[i].ph)) - Math.sin(2 * Math.PI * hills[i].ph));
+    }
+    env.B.y[k] = y;
+  }
+}
+function finishRaceEnv(env, name){
+  var cpSet = {};
+  env.cps.forEach(function(c){ cpSet[c] = true; });
+  var totalSegs = env.seg.length;
+  return { B:env.B, seg:env.seg, cps:env.cps, cpSet:cpSet, ents:env.ents, meta:env.meta,
+    totalSegs:totalSegs, totalLen:totalSegs * SEG, base:0, name:name,
+    goalSeg:0, dualSeg:0, lapDrift: env.B.cx[env.B.cx.length - 1] };
+}
+var TRACK_NAMES = {
+  oval:    { en:"THE OVAL", es:"EL \u00d3VALO", sub_en:"One big gentle loop. Flat out, mostly.", sub_es:"Un bucle grande y suave. Casi todo a fondo." },
+  square:  { en:"THE SQUARE", es:"EL CUADRADO", sub_en:"The classic speedway - long straights, rounded corners.", sub_es:"El speedway cl\u00e1sico: rectas largas, esquinas redondeadas." },
+  eight:   { en:"FIGURE EIGHT", es:"EL OCHO", sub_en:"Two loops that cross at the start line.", sub_es:"Dos bucles que se cruzan en la l\u00ednea de salida." },
+  hairpin: { en:"THE HAIRPIN", es:"LA HORQUILLA", sub_en:"Flowing corners - and one savage switchback. Brake for it.", sub_es:"Curvas fluidas y un zigzag salvaje. Frena para pasarlo." }
+};
+function buildOval(){
+  var env = newEnv(1);
+  racePad(env);
+  raceStraight(env, 290, [50, 120, 190, 260]);
+  raceCorner(env, 100, 3400, { bank:0.18, gates:[49, 99] });
+  raceStraight(env, 290, [50, 120, 190, 260]);
+  raceCorner(env, 100, 3400, { bank:0.18, gates:[49, 99] });
+  applyHills(env, [ { amp:820, cyc:1, ph:0.12 }, { amp:280, cyc:3, ph:0.55 } ]);
+  return finishRaceEnv(env, TRACK_NAMES.oval);
+}
+function buildSquare(){
+  var env = newEnv(1), D = 2600;
+  racePad(env);
+  raceStraight(env, 187, [30, 70, 110, 150, 175]); raceCorner(env, 26, D, {});
+  raceStraight(env, 137, [25, 60, 95, 125]);       raceCorner(env, 26, D, {});
+  raceStraight(env, 187, [30, 70, 110, 150, 175]); raceCorner(env, 26, D, {});
+  raceStraight(env, 137, [25, 60, 95, 125]);       raceCorner(env, 26, D, {});
+  applyHills(env, [ { amp:680, cyc:2, ph:0.07 }, { amp:240, cyc:5, ph:0.31 } ]);
+  return finishRaceEnv(env, TRACK_NAMES.square);
+}
+function buildEight(){
+  var env = newEnv(1);
+  // each U-turn pairs a flowing corner with a TIGHT one (bigger sweep, fewer
+  // segments, no mid-corner widening) - the tight one is the eight's teeth
+  var tight = { bank:0.34, wf:0.98, wfPeak:0.02, chev:true };
+  racePad(env);
+  raceStraight(env, 152, [35, 80, 125]);
+  raceCorner(env, 15, 2600, {});
+  raceStraight(env, 24, [12]);
+  raceCorner(env, 13, 3400, tight);
+  raceStraight(env, 96, [48]);
+  raceCross(env);
+  raceStraight(env, 96, [48]);
+  raceCorner(env, 15, -2600, {});
+  raceStraight(env, 24, [12]);
+  raceCorner(env, 13, -3400, tight);
+  raceStraight(env, 152, [35, 80, 125]);
+  applyHills(env, [ { amp:620, cyc:2, ph:0.2 }, { amp:300, cyc:4, ph:0.6 } ]);
+  return finishRaceEnv(env, TRACK_NAMES.eight);
+}
+function buildHairpin(){
+  var env = newEnv(1);
+  racePad(env);
+  raceStraight(env, 205, [45, 95, 145, 190]);
+  raceCorner(env, 34, 2200, {});
+  raceStraight(env, 88, [44]);
+  raceCorner(env, 16, 3500, { bank:0.38, wf:0.97, wfPeak:-0.05, chev:true, gates:[0, 15] });
+  raceStraight(env, 88, [44]);
+  raceCorner(env, 34, -2200, {});
+  raceStraight(env, 205, [45, 95, 145, 190]);
+  applyHills(env, [ { amp:760, cyc:2, ph:0.1 }, { amp:260, cyc:5, ph:0.45 } ]);
+  return finishRaceEnv(env, TRACK_NAMES.hairpin);
+}
+var TRACKS = [
+  { id:"oval",    name:TRACK_NAMES.oval,    build:buildOval },
+  { id:"square",  name:TRACK_NAMES.square,  build:buildSquare },
+  { id:"eight",   name:TRACK_NAMES.eight,   build:buildEight },
+  { id:"hairpin", name:TRACK_NAMES.hairpin, build:buildHairpin }
+];
+var trackIdx = 1;   // THE SQUARE (the original speedway) is the home track
+function bestKey(id){ return "vd2_best_" + id; }
+function trackBestMs(i){ return parseInt(store(bestKey(TRACKS[i].id)) || "0", 10) || 0; }
+/* one-time migration: the old single best time was set on the Speedway = the Square */
+if(!store(bestKey("square")) && store("vd2_raceBestMs")) store(bestKey("square"), store("vd2_raceBestMs"));
+bestRaceMs = trackBestMs(trackIdx);
+
 /* ============================== RUNTIME STATE ============================== */
 var cv = $("cv"), ctx = cv.getContext("2d");
 var W = 0, H = 0, horizonY = 0;
@@ -571,6 +734,12 @@ var CAM_H = 1120, CAM_DEPTH = 0.84, PLAYER_Z = 950, DRAW_SEGS = 78;
 var state = "title"; // title | card | ready | play | fall | eaten | dissolved | squash | pipe | lift | finish | paused | over
 var LV = null, levelIdx = 0;
 var clock = 99, score = 0, tNow = 0;
+var raceMode = false, raceT = 0, laps = 0;   // circuit-race state: count-up timer, completed laps
+function fmtTime(s){
+  if(s === null || s === undefined || !isFinite(s)) return "—";
+  var m = Math.floor(s / 60), r = s - m * 60;
+  return m + ":" + (r < 10 ? "0" : "") + r.toFixed(1);
+}
 var ball = null;      // { z, x, y, vz, vx, vy, grounded, onPlat, onLedge, squashY }
 var camX = 0, camY = 300, camShake = 0;
 var popups = [], parts = [];
@@ -671,6 +840,7 @@ function sparks(x, y, z){
 
 /* ============================== GAME FLOW ============================== */
 function loadLevel(idx, startClock){
+  raceMode = false;
   levelIdx = idx;
   LV = buildLevel(idx);
   clock = LV.base + (startClock || 0);
@@ -684,12 +854,28 @@ function loadLevel(idx, startClock){
   state = LV.name ? "card" : "ready";
   updateHud();
 }
+function loadCircuit(){
+  raceMode = true;
+  levelIdx = 0;
+  LV = TRACKS[trackIdx].build();
+  bestRaceMs = trackBestMs(trackIdx);
+  raceT = 0; laps = 0; clock = 0;
+  ball = { z: 60, x: cxAt(60), y: yAt(60), vz:0, vx:0, vy:0, grounded:true, onPlat:false, onLedge:false, squashY:1 };
+  respawnPt = { z: 60, x: cxAt(60) };
+  cpsHit = {}; orbHit = {}; funnelUsed = false; ghostT = 0;
+  popups = []; parts = [];
+  initEnts();
+  camX = ball.x; camY = ball.y + CAM_H;
+  stateT = 0;
+  state = "card";
+  updateHud();
+}
 function startGame(){
   score = 0; seenVillain = {};
   $("intro").style.display = "none";
   closeAll();
   document.body.classList.add("playing");
-  loadLevel(0, 0);
+  loadCircuit();
   SFX.start();
 }
 function quitToTitle(){
@@ -698,7 +884,7 @@ function quitToTitle(){
   $("intro").style.display = "flex";
   closeAll();
   $("hiScore").textContent = bestScore;
-  $("hiLvl").textContent = bestLevel > 0 ? bestLevel : "—";
+  $("hiLvl").textContent = bestRaceMs ? fmtTime(bestRaceMs / 1000) : "—";
   rollSet(0, false);
 }
 function saveBests(finishedAll){
@@ -714,15 +900,22 @@ function gameOver(won){
   $("ovTitle").textContent = won ? T("win") : T("gameover");
   $("ovScore").textContent = score;
   $("ovBest").textContent = bestScore;
+  $("ovLvlRow").style.display = "";
+  $("ovTimeRow").style.display = "none";
+  $("ovBestTimeRow").style.display = "none";
   $("ovLvl").textContent = levelIdx + 1;
   $("ovNew").style.display = isNew ? "block" : "none";
+  $("nextBtn").style.display = "none";
   $("overOverlay").classList.add("open");
   rollSet(0, false);
   if(won) SFX.sting();
 }
 function penalizeAndRespawn(){
-  clock -= 3;
-  if(clock <= 0){ clock = 0; gameOver(false); return; }
+  if(raceMode){ raceT += 3; addTextPopup("+3s", "#ff8a5e", 1.1); }
+  else {
+    clock -= 3;
+    if(clock <= 0){ clock = 0; gameOver(false); return; }
+  }
   var rz = respawnPt.z;
   ball.z = rz; ball.x = cxAt(rz); ball.y = yAt(rz);
   ball.vz = 330; ball.vx = 0; ball.vy = 0; ball.grounded = true; ball.squashY = 1;
@@ -739,7 +932,7 @@ function doFall(){
 }
 
 /* ============================== PHYSICS ============================== */
-var G_SLOPE = 3050, G_VERT = 4600, STEER_F = 3350, ACCEL_F = 1350, BRAKE_F = 4600, RAIL_HOP_VX = 2500;
+var G_SLOPE = 3050, G_VERT = 4600, STEER_F = 4600, ACCEL_F = 1350, BRAKE_F = 4600, RAIL_HOP_VX = 2500;
 var input = { steer:0, accel:false, brake:false };
 function physStep(h){
   var seg = LV.seg[segIdxAt(ball.z)];
@@ -754,6 +947,12 @@ function physStep(h){
     var cx = cxAt(ball.z), hw = halfWAt(ball.z, seg), u = (ball.x - cx) / hw;
     var latSlope = seg.bank + (seg.trough ? seg.trough * u * 1.35 : 0);
     ax += -G_SLOPE * latSlope * 0.55;
+    if(raceMode){
+      // centrifugal drift: a corner throws you outward, harder the faster you go.
+      // (curvature sampled over +/-300 units so the push is a smooth shove, not a kick)
+      var curv = (cxAt(ball.z + 300) - 2 * cxAt(ball.z) + cxAt(ball.z - 300)) / 90000;
+      ax += -ball.vz * ball.vz * curv * CENTRI;
+    }
     if(seg.trough) ball.vx -= ball.vx * Math.min(1, 0.6 * h); // damped cradle: follows the channel, resists sloshing out
     if(seg.shake) ax += Math.sin(tNow * 43 + ball.z * 0.01) * 620;
     if(input.accel) az += ACCEL_F;
@@ -761,8 +960,8 @@ function physStep(h){
       var sp = Math.hypot(ball.vz, ball.vx);
       if(sp > 1){ az += -ball.vz / sp * BRAKE_F; ax += -ball.vx / sp * BRAKE_F; }
     }
-    az -= ball.vz * 0.028;                       // gentle rolling drag — no speed cap, only physics
-    ball.vx -= ball.vx * Math.min(1, 0.55 * h);   // lateral grip bleed
+    az -= ball.vz * (raceMode ? 0.24 : 0.028);   // rolling drag (the flat circuit needs a governed top speed: 1350/0.24 ≈ 5,600 u/s)
+    ball.vx -= ball.vx * Math.min(1, 2.2 * h);    // lateral grip bleed — tuned up from 0.55 (the ice rink): the sphere settles instead of sliding on
   } else {
     if(input.accel) az += ACCEL_F * 0.25;
     az -= ball.vz * 0.004;
@@ -794,6 +993,8 @@ function physStep(h){
       }
       ball.vy = 0; ball.grounded = true; ball.onPlat = !!fl.plat; ball.onLedge = !!fl.ledge;
       if(fl.ledge) checkLedge(ball.z);
+    } else if(!fl && raceMode && Math.abs((ball.x - cxAt(ball.z)) / halfWAt(ball.z, seg)) > 1.35){
+      doFall(); return;   // hopped the lip and carried well past the edge: gone, not coming back
     } else if(!fl && ball.y < -4000){
       doFall(); return;
     }
@@ -877,14 +1078,18 @@ function physStep(h){
   for(var c = 0; c < LV.cps.length; c++){
     var cpSeg = LV.cps[c];
     if(!cpsHit[cpSeg] && ball.z > cpSeg * SEG + SEG){
-      cpsHit[cpSeg] = true; clock += 3; score += 25;
+      cpsHit[cpSeg] = true;
+      if(raceMode){ score += 100; addTextPopup("+100", "#b6ff5e", 1.1); }
+      else { clock += 3; score += 25; addTextPopup("+3s", "#b6ff5e", 1.1); }
       respawnPt = { z:(cpSeg + 1) * SEG + 30, x: cxAt((cpSeg + 1) * SEG + 30) };
-      addTextPopup("+3s", "#b6ff5e", 1.1);
       SFX.cp();
     }
   }
   /* --- goal --- */
-  if(ball.grounded && segIdxAt(ball.z) >= LV.goalSeg && ball.z > LV.goalSeg * SEG + 60){
+  if(raceMode){
+    if(ball.z >= LV.totalLen) startRaceFinish();
+  }
+  else if(ball.grounded && segIdxAt(ball.z) >= LV.goalSeg && ball.z > LV.goalSeg * SEG + 60){
     startFinish();
   }
 }
@@ -915,6 +1120,47 @@ function startFinish(){
   addTextPopup("+" + leftover + "s ⏱", "#9be9ff", 2.2);
   SFX.sting();
   updateHud();
+}
+function startRaceFinish(){
+  var finalMs = Math.round(raceT * 1000);
+  var bonus = Math.max(0, 60 - Math.floor(raceT)) * 100;   // speed bonus: every second under a minute pays 100
+  score += bonus;
+  var isBest = !bestRaceMs || finalMs < bestRaceMs;
+  if(isBest){ bestRaceMs = finalMs; store(bestKey(TRACKS[trackIdx].id), String(finalMs)); }
+  finData = { t:0, raceMs:finalMs, bonus:bonus, newBest:isBest };
+  laps = 1;
+  burst(ball.x, ball.y + 120, ball.z, "#ff5e8a", 14, 800);
+  burst(ball.x, ball.y + 120, ball.z, "#ffd76a", 14, 800);
+  burst(ball.x, ball.y + 120, ball.z, "#5eff8a", 14, 800);
+  addTextPopup(fmtTime(raceT), "#9be9ff", 2.2);
+  // rebase into the next lap's frame so the victory roll-out continues onto the start straight
+  ball.z -= LV.totalLen; ball.x -= LV.lapDrift; camX -= LV.lapDrift;
+  respawnPt = { z: 60, x: cxAt(60) };
+  for(var i = 0; i < parts.length; i++){ parts[i].z -= LV.totalLen; parts[i].x -= LV.lapDrift; }
+  popups.length = 0;
+  state = "finish"; stateT = 0;
+  SFX.sting();
+  updateHud();
+}
+function raceResults(){
+  state = "over";
+  document.body.classList.remove("playing");
+  if(score > bestScore){ bestScore = score; store("vd2_bestScore", String(bestScore)); }
+  $("ovTitle").textContent = T("finishWord");
+  $("ovScore").textContent = score;
+  $("ovBest").textContent = bestScore;
+  $("ovLvlRow").style.display = "none";
+  $("ovTimeRow").style.display = "";
+  $("ovBestTimeRow").style.display = "";
+  $("ovTime").textContent = fmtTime(finData.raceMs / 1000);
+  $("ovBestTime").textContent = fmtTime(bestRaceMs / 1000);
+  $("ovNew").style.display = finData.newBest ? "block" : "none";
+  var nxT = TRACKS[(trackIdx + 1) % TRACKS.length];
+  $("nextBtn").textContent = T("nextRace") + " \u2014 " + (lang === "es" ? nxT.name.es : nxT.name.en);
+  $("nextBtn").style.display = "";
+  $("overOverlay").classList.add("open");
+  rollSet(0, false);
+  SFX.sting();
 }
 
 /* ============================== ENTITY UPDATES ============================== */
@@ -1167,6 +1413,7 @@ function resumeGame(){
 /* ============================== MAIN UPDATE ============================== */
 var physAcc = 0;
 function tickClock(dt){
+  if(raceMode) return false;   // the race clock counts up, never out
   clock -= dt;
   if(clock <= 0){ clock = 0; updateHud(); gameOver(false); return true; }
   return false;
@@ -1181,7 +1428,8 @@ function update(dt){
     var fl = floorAt(ball.z, ball.x);
     if(fl) ball.y = fl.y;
     if(stateT >= 5){
-      if(levelIdx >= LEVELS.length - 1){ gameOver(true); }
+      if(raceMode){ raceResults(); }
+      else if(levelIdx >= LEVELS.length - 1){ gameOver(true); }
       else { var left = finData.leftover; loadLevel(levelIdx + 1, left); }
     }
     return;
@@ -1225,7 +1473,7 @@ function update(dt){
     return;
   }
   if(state !== "play") return;
-  if(tickClock(dt)) return;
+  if(raceMode){ raceT += dt; } else if(tickClock(dt)) return;
   computeInput();
   ghostT = Math.max(0, ghostT - dt);
   ball.squashY += (1 - ball.squashY) * Math.min(1, dt * 7);
@@ -1244,6 +1492,17 @@ function update(dt){
 }
 function updateHud(){
   if(!ball) return;
+  if(raceMode){
+    $("hudTime").textContent = fmtTime(raceT);
+    $("hudTime").className = "hud";
+    $("hudBest").textContent = T("bestTimeLab") + " " + (bestRaceMs ? fmtTime(bestRaceMs / 1000) : "—");
+    $("hudScore").textContent = score;
+    $("hudLvl").textContent = T("lapWord") + " " + (laps + ((state === "finish" || state === "over") ? 0 : 1));
+    $("hudSpd").textContent = Math.round(Math.abs(ball.vz) / 20) + " m/s";
+    $("hudProg").style.width = Math.min(100, ball.z / LV.totalLen * 100) + "%";
+    return;
+  }
+  $("hudBest").textContent = "";
   var t = Math.max(0, Math.ceil(clock));
   $("hudTime").textContent = t;
   $("hudTime").className = "hud" + (t < 15 ? " low" : "");
@@ -1263,6 +1522,7 @@ function project(wx, wy, wz, out){
   return out;
 }
 var camZ = 0;
+var wrapDX = 0;   // lap drift added to centreline x while drawing wrapped copies of the circuit past the line
 var PA = { x:0, y:0, s:0 }, PB = { x:0, y:0, s:0 }, PC2 = { x:0, y:0, s:0 }, PD = { x:0, y:0, s:0 };
 function P(wx, wy, wz){ var o = { x:0, y:0, s:0 }; return project(wx, wy, wz, o); }
 function quad(pts, fill){
@@ -1318,7 +1578,7 @@ function drawSphereAt(cx, cy, r, rollA, spinA, squash, dark){
 function crossPts(i, z){
   // returns {L, C, R} world top points at boundary i (z given), honouring bank + trough
   var seg = LV.seg[Math.max(0, Math.min(LV.totalSegs - 1, i))];
-  var cx = LV.B.cx[i], y = LV.B.y[i], hw = TRACK_HALF * LV.B.wf[i] * seg.wfMul;
+  var cx = LV.B.cx[i] + wrapDX, y = LV.B.y[i], hw = TRACK_HALF * LV.B.wf[i] * seg.wfMul;
   var bank = seg.bank || 0, tr = seg.trough || 0;
   return {
     L:{ x:cx - hw, y: y - bank * hw + tr * 150, z:z },
@@ -1348,13 +1608,18 @@ function render(){
   }
   if(!LV || !ball) return;
   camZ = ball.z - PLAYER_Z;
-  var baseI = Math.max(0, Math.floor(camZ / SEG) - 1);
-  var topI = Math.min(LV.totalSegs - 1, baseI + DRAW_SEGS);
+  var baseK = Math.floor(camZ / SEG) - 1;
+  var topK = baseK + DRAW_SEGS;
+  if(!raceMode){ baseK = Math.max(0, baseK); topK = Math.min(LV.totalSegs - 1, baseK + DRAW_SEGS); }
   var rainbow = (state === "finish");
   var hue = (tNow * 130) % 360;
   // platform slabs + ledges first (they sit in gaps, drawn with their segs below)
-  for(var i = topI; i >= baseI; i--){
-    var seg = LV.seg[i], z0 = i * SEG, z1 = z0 + SEG;
+  // (race mode: kk runs past the end of the table and wraps — i is the wrapped
+  //  segment index, z stays continuous, wrapDX shifts the copy by the lap drift)
+  for(var kk = topK; kk >= baseK; kk--){
+    var i = raceMode ? ((kk % LV.totalSegs) + LV.totalSegs) % LV.totalSegs : kk;
+    wrapDX = raceMode ? Math.floor(kk / LV.totalSegs) * (LV.lapDrift || 0) : 0;
+    var seg = LV.seg[i], z0 = kk * SEG, z1 = z0 + SEG;
     if(z1 - camZ < 60) continue; // segment straddling the camera plane: skip (near-plane stretch artifact)
     var acc = ACCENTS[seg.accent];
     var A = crossPts(i, z0), B = crossPts(i + 1, z1);
@@ -1396,8 +1661,8 @@ function render(){
     /* side skirts — thickness is the 3-D */
     var aLd = P(A.L.x, A.L.y - SKIRT, z0), bLd = P(B.L.x, B.L.y - SKIRT, z1);
     var aRd = P(A.R.x, A.R.y - SKIRT, z0), bRd = P(B.R.x, B.R.y - SKIRT, z1);
-    quad([aL, bL, bLd, aLd], i % 2 ? acc.dark : acc.deep);
-    quad([aR, bR, bRd, aRd], i % 2 ? acc.deep : acc.dark);
+    quad([aL, bL, bLd, aLd], kk % 2 ? acc.dark : acc.deep);
+    quad([aR, bR, bRd, aRd], kk % 2 ? acc.deep : acc.dark);
     ctx.strokeStyle = acc.dim; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
     for(var sk = 1; sk <= 2; sk++){
       var fx1 = A.L.x + (B.L.x - A.L.x) * sk / 3, fy1 = A.L.y + (B.L.y - A.L.y) * sk / 3, fz1 = z0 + (z1 - z0) * sk / 3;
@@ -1408,7 +1673,7 @@ function render(){
     ctx.globalAlpha = 1;
     /* drop face at this boundary (next seg lower / void) */
     var dropH = LV.B.y[i] - LV.B.y[i + 1];
-    var nextGap = LV.seg[i + 1] && LV.seg[i + 1].gap && !LV.seg[i + 1].plat && LV.seg[i + 1].catchY === undefined;
+    var nextGap = LV.seg[(i + 1) % LV.totalSegs] && LV.seg[(i + 1) % LV.totalSegs].gap && !LV.seg[(i + 1) % LV.totalSegs].plat && LV.seg[(i + 1) % LV.totalSegs].catchY === undefined;
     if(dropH > 40 || nextGap){
       var fh = nextGap ? SKIRT * 0.85 : dropH;
       var fL = P(B.L.x, B.L.y, z1), fR = P(B.R.x, B.R.y, z1);
@@ -1428,7 +1693,7 @@ function render(){
     quad([aC, aR, bR, bC], topFill);
     // grid lines
     ctx.strokeStyle = seg.goal ? "rgba(210,230,255,0.65)" : acc.main;
-    ctx.globalAlpha = seg.goal ? 0.95 : Math.max(0.08, 0.55 - (i - baseI) * 0.011);
+    ctx.globalAlpha = seg.goal ? 0.95 : Math.max(0.08, 0.55 - (kk - baseK) * 0.011);
     ctx.lineWidth = 1.1;
     lineP(aL, bL); lineP(aC, bC); lineP(aR, bR);
     var q1 = { x:(aL.x + aC.x) / 2, y:(aL.y + aC.y) / 2 }, q2 = { x:(bL.x + bC.x) / 2, y:(bL.y + bC.y) / 2 };
@@ -1702,7 +1967,7 @@ function drawCard(){
   var nm = LV.name;
   ctx.textAlign = "center";
   ctx.fillStyle = "#9fd8a8"; ctx.font = "bold " + Math.round(W * 0.045) + "px 'Courier New',monospace";
-  ctx.fillText(T("levelWord") + " " + (levelIdx + 1), W / 2, H * 0.3);
+  ctx.fillText(raceMode ? T("raceWord") : T("levelWord") + " " + (levelIdx + 1), W / 2, H * 0.3);
   ctx.fillStyle = "#b6ff5e"; ctx.shadowColor = "#3dff6e"; ctx.shadowBlur = 22;
   var cardName = lang === "es" ? nm.es : nm.en;
   var nfs = Math.min(W * 0.085, 54);
@@ -1719,7 +1984,7 @@ function drawReady(){
   ctx.textAlign = "center";
   ctx.fillStyle = "#eaffea"; ctx.shadowColor = "#3dff6e"; ctx.shadowBlur = 16;
   ctx.font = "bold " + Math.round(Math.min(W * 0.09, 52)) + "px 'Courier New',monospace";
-  ctx.fillText(T("levelWord") + " " + (levelIdx + 1), W / 2, H * 0.34);
+  ctx.fillText(raceMode ? T("raceWord") : T("levelWord") + " " + (levelIdx + 1), W / 2, H * 0.34);
   ctx.shadowBlur = 0; ctx.textAlign = "left";
 }
 
@@ -1770,12 +2035,28 @@ $("togHelp").addEventListener("click", function(){ $("helpOverlay").classList.ad
 $("togControls").addEventListener("click", function(){ $("controlsOverlay").classList.add("open"); });
 $("startBtn").addEventListener("click", function(){ audio(); startGame(); });
 $("againBtn").addEventListener("click", function(){ startGame(); });
+$("nextBtn").addEventListener("click", function(){ audio(); trackIdx = (trackIdx + 1) % TRACKS.length; bestRaceMs = trackBestMs(trackIdx); refreshTrackUI(); startGame(); });
+document.querySelectorAll(".trackCard").forEach(function(c){
+  c.addEventListener("click", function(){ audio(); trackIdx = +c.getAttribute("data-track"); bestRaceMs = trackBestMs(trackIdx); refreshTrackUI(); });
+});
 $("titleBtn").addEventListener("click", function(){ quitToTitle(); });
 $("resumeBtn").addEventListener("click", function(){ resumeGame(); });
 $("quitBtn").addEventListener("click", function(){ quitToTitle(); });
 $("pauseBtn").addEventListener("click", function(){ if(state === "play") pauseGame(); });
 bindHold("gasBtn", function(v){ gasTouch = v; });
 bindHold("brkBtn", function(v){ brkTouch = v; });
+
+function refreshTrackUI(){
+  document.querySelectorAll(".trackCard").forEach(function(c){
+    var i = +c.getAttribute("data-track");
+    if(i >= TRACKS.length) return;
+    c.classList.toggle("sel", i === trackIdx);
+    c.querySelector(".tcName").textContent = (lang === "es" ? TRACKS[i].name.es : TRACKS[i].name.en);
+    var b = trackBestMs(i);
+    c.querySelector(".tcBest").textContent = T("bestTimeLab") + " " + (b ? fmtTime(b / 1000) : "\u2014");
+  });
+  if(state === "title") $("hiLvl").textContent = trackBestMs(trackIdx) ? fmtTime(trackBestMs(trackIdx) / 1000) : "\u2014";
+}
 
 /* debug / QA handle */
 window.VD = {
@@ -1794,7 +2075,25 @@ window.VD = {
   goalZ: function(){ return LV ? LV.goalSeg * SEG : 0; },
   segInfo: function(){ if(!LV || !ball) return null; var s = LV.seg[segIdxAt(ball.z)]; return { rail:!!s.rail, trough:s.trough, bank:s.bank, gap:s.gap, shake:s.shake, goal:!!s.goal, cush:!!s.cush }; },
   ents: function(){ return ents.map(function(e){ return { type:e.type, z:e.z, x:e.x, mode:e.mode, puds:e.puds ? e.puds.length : undefined }; }); },
-  finT: function(){ return finData ? finData.t : -1; }
+  finT: function(){ return finData ? finData.t : -1; },
+  raceMode: function(){ return raceMode; },
+  raceTime: function(){ return raceT; },
+  raceMs: function(){ return finData && finData.raceMs !== undefined ? finData.raceMs : Math.round(raceT * 1000); },
+  bestTimeMs: function(){ return bestRaceMs; },
+  laps: function(){ return laps; },
+  totalLen: function(){ return LV ? LV.totalLen : 0; },
+  totalSegs: function(){ return LV ? LV.totalSegs : 0; },
+  lapDrift: function(){ return LV ? (LV.lapDrift || 0) : 0; },
+  cxAt: function(z){ return cxAt(z); },
+  gatesHit: function(){ var n = 0; for(var k in cpsHit) if(cpsHit[k]) n++; return n; },
+  finBonus: function(){ return finData && finData.bonus !== undefined ? finData.bonus : -1; },
+  track: function(){ return { idx:trackIdx, id:TRACKS[trackIdx].id, name:TRACKS[trackIdx].name.en, bestMs:bestRaceMs }; },
+  tracks: function(){ return TRACKS.map(function(t, i){ return { idx:i, id:t.id, name:t.name.en, bestMs:trackBestMs(i) }; }); },
+  setTrack: function(i){ if(typeof i === "string"){ for(var k = 0; k < TRACKS.length; k++) if(TRACKS[k].id === i) i = k; } trackIdx = Math.max(0, Math.min(TRACKS.length - 1, i | 0)); bestRaceMs = trackBestMs(trackIdx); refreshTrackUI(); },
+  nextRace: function(){ trackIdx = (trackIdx + 1) % TRACKS.length; bestRaceMs = trackBestMs(trackIdx); startGame(); },
+  gatesTotal: function(){ return LV ? LV.cps.length : 0; },
+  cxSlope: function(z){ var a = Math.max(0, z - 100), b = Math.min(LV.totalLen, z + 100); return (cxAt(b) - cxAt(a)) / Math.max(1, b - a); },
+  yAt: function(z){ return yAt(z); }
 };
 
 drawHero();
