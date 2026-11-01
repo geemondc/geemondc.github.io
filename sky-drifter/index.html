@@ -250,6 +250,57 @@
       .jt.u { left: 50%; top: 7px; transform: translateX(-50%); } .jt.d { left: 50%; bottom: 7px; transform: translateX(-50%); }
       .jt.l { left: 8px; top: 50%; transform: translateY(-50%); } .jt.r { right: 8px; top: 50%; transform: translateY(-50%); }
       #depthTag { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(26px + env(safe-area-inset-bottom)); z-index: 9; padding: 7px 16px; border-radius: 999px; background: rgba(4,24,44,.55); border: 1px solid rgba(140,220,255,.35); color: #bfeaff; font-size: 11px; font-weight: 800; letter-spacing: 2px; opacity: 0; transition: opacity .4s ease; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap; }
+      /* ---------- POP-UP DISPLAY (#466, Gary): a holographic button by the
+         joystick — translucent cyan glass, thin bright border, a scanline
+         sheen and a soft glow. It is the ONLY persistent nav element: tap
+         it and the holo panel rises above it with MPH, location and every
+         destination. Shown only in flight, like the stick itself. -------- */
+      #navBtn {
+        display: none; position: fixed; z-index: 11;
+        left: calc(18px + env(safe-area-inset-left)); bottom: calc(160px + env(safe-area-inset-bottom));
+        min-height: 44px; padding: 10px 14px; border-radius: 10px; cursor: pointer;
+        font-family: inherit; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #c9f6ff;
+        background: linear-gradient(160deg, rgba(10,44,60,.55), rgba(6,24,44,.62)), repeating-linear-gradient(0deg, rgba(120,230,255,.05) 0 1px, transparent 1px 3px);
+        border: 1px solid rgba(94,234,255,.75);
+        box-shadow: 0 0 14px rgba(64,200,255,.35), inset 0 0 12px rgba(64,200,255,.16);
+        text-shadow: 0 0 6px rgba(120,230,255,.8);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        -webkit-tap-highlight-color: transparent;
+      }
+      body.flying #navBtn { display: block; }
+      #navBtn:active { transform: scale(.96); }
+      #navPanel {
+        display: none; position: fixed; z-index: 11;
+        left: calc(18px + env(safe-area-inset-left)); bottom: calc(214px + env(safe-area-inset-bottom));
+        width: 234px; max-width: calc(100vw - 36px); max-height: 56vh; overflow-y: auto;
+        padding: 10px 10px 8px; border-radius: 14px; color: #dff8ff;
+        background: linear-gradient(165deg, rgba(8,38,54,.72), rgba(5,20,38,.78)), repeating-linear-gradient(0deg, rgba(120,230,255,.04) 0 1px, transparent 1px 3px);
+        border: 1px solid rgba(94,234,255,.65);
+        box-shadow: 0 0 22px rgba(64,200,255,.30), inset 0 0 18px rgba(64,200,255,.12);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      }
+      #navPanel.open { display: block; }
+      body:not(.flying) #navPanel { display: none; }
+      .navSpeed { display: flex; align-items: baseline; gap: 7px; }
+      .navSpeed #navMph { font-size: 30px; font-weight: 900; line-height: 1; color: #eafcff; text-shadow: 0 0 10px rgba(120,230,255,.75); font-variant-numeric: tabular-nums; }
+      .navSpeed .navUnit { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #8fe8ff; }
+      .navLocRow { margin-top: 5px; font-size: 14px; font-weight: 700; color: #c9f6ff; text-shadow: 0 0 6px rgba(120,230,255,.5); }
+      .navGrp { margin: 7px 0 3px; font-size: 9.5px; font-weight: 800; letter-spacing: 2.5px; color: #6fd8f2; opacity: .85; }
+      .navRow {
+        display: block; width: 100%; text-align: left; margin: 3px 0; padding: 8px 10px; min-height: 38px;
+        border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 650; color: #dff8ff;
+        background: rgba(30,110,140,.20); border: 1px solid rgba(94,234,255,.30);
+      }
+      .navRow:active { transform: scale(.98); }
+      .navRow.here { opacity: .55; cursor: default; border-color: rgba(94,234,255,.15); }
+      .navRow .hereTag { font-size: 9.5px; font-weight: 800; letter-spacing: 1.5px; color: #8fe8ff; }
+      .navLand { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }   /* #466b (defect 8): the eight LAND rows ride two abreast so SPACE + LAND + UNDERWATER all fit the panel */
+      .navLand .navRow { margin: 0; }
+      .navLand .navRow.here { grid-column: 1 / -1; }
+      @media (max-width: 600px) {
+        #navBtn { bottom: calc(150px + env(safe-area-inset-bottom)); }
+        #navPanel { bottom: calc(204px + env(safe-area-inset-bottom)); width: 218px; max-height: 58vh; }
+      }
       /* ---------- Oasis Mix radio (YouTube, the Game Room's player) ---------- */
       #ytWrap { position: fixed; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: .01; pointer-events: none; z-index: 0; }
       .radioUI {
@@ -448,6 +499,12 @@
     <canvas id="sky"></canvas>
     <div id="vignette"></div>
     <div id="biomeLabel"></div>
+    <button id="navBtn" aria-label="Open the pop-up display">POP-UP DISPLAY</button>
+    <div id="navPanel" aria-hidden="true">
+      <div class="navSpeed"><span id="navMph">0</span><span class="navUnit">MPH</span></div>
+      <div class="navLocRow">📍 <span id="navLoc">—</span></div>
+      <div id="navDest"></div>
+    </div>
 
     <button id="takeoffBtn" class="bigAct">🚀 TAKE OFF</button>
 
@@ -874,7 +931,7 @@ function spawnSprite(sp,far){
      landmarks system below, never in this recycling pool */
   if(S.biome==='desert'&&rng()<0.08)sp.type='oasis';
   sp.x=(rng()*2-1)*1.25; sp.z=far?0.55+rng()*0.45:rng();
-  sp.seed=rng()*1000; sp.passed=false;
+  sp.seed=rng()*1000; sp.passed=false; sp.home=S.biome;   /* #466b: every prop belongs to the biome that spawned it — blends weight it by home (defects 4/5) */
   if(S.biome==='city'&&S.alt<0.17){ /* rooftop band props */
     if(rng()<0.55)sp.type=['watertower','antenna','roofbox'][Math.floor(rng()*3)];
     sp.x=(rng()<0.5?-1:1)*(0.45+rng()*0.55);
@@ -901,7 +958,7 @@ const LANDMARKS={
 };
 let landmarks=[];
 function resetLandmarks(b){
-  landmarks=(LANDMARKS[b]||[]).map((L,i)=>({type:L.type, x:L.x, homeX:L.x, z:0.40+i*0.15, seed:400+i*137, passed:false, lm:true}));
+  landmarks=(LANDMARKS[b]||[]).map((L,i)=>({type:L.type, x:L.x, homeX:L.x, z:0.40+i*0.15, seed:400+i*137, passed:false, lm:true, home:b}));
 }
 resetLandmarks(S.biome);
 
@@ -1391,21 +1448,22 @@ function drawPaintedFloor(RP,hy,gb,cx,fields){
   ctx.fillStyle=melt; ctx.fillRect(0,hy,W,gh*0.30);
   ctx.fillStyle=mixCa(RP.hazeC,'#000000',0,0.10); ctx.fillRect(0,hy,W,gh);
   if(RP.nightF>0.03){ ctx.fillStyle='rgba(5,9,30,'+(0.52*RP.nightF)+')'; ctx.fillRect(0,hy,W,gh); }
-  const r3=mulberry(42); ctx.save(); ctx.globalAlpha=0.15;
-  for(let i=0;i<14;i++){ const sd=r3(), sx=r3()*W, sy=hy+((sd+gPhase*0.045*(0.4+sd))%1)*gh, pw=(30+sd*70)*2.2, ph=(6+sd*9)*2.4;
+  const r3=mulberry(42); ctx.save(); ctx.globalAlpha=0.10;
+  for(let i=0;i<10;i++){ const sd=r3(), sx=r3()*W, sy=hy+((sd+gPhase*0.045*(0.4+sd))%1)*gh, pw=(30+sd*60)*1.9, ph=(6+sd*9)*2.4;
     ctx.drawImage(softBlob,sx-pw/2,sy-ph/2,pw,ph); }
   ctx.restore();
   return true;
 }
 function paintGround(RP,hy,gb,cx){
   const gh=gb-hy; if(gh<4)return;
+  ctx.fillStyle=RP.g2; ctx.fillRect(-W*0.55,gb-2,W*2.1,H*0.30);   /* #466b: the ground's deep color runs wide and below the frame, so a steer/look shift can never bare a void at the side or bottom edge */
   const b=S.biome, seaGlare=mixC(RP.sunC,'#ffffff',0.35);
-  ctx.save(); ctx.beginPath(); ctx.rect(0,hy,W,gh+2); ctx.clip();
+  ctx.save(); ctx.beginPath(); ctx.rect(-W*0.55,hy,W*2.1,gh+2); ctx.clip();
   if(b==='beach'){
-    if(!drawPaintedFloor(RP,hy,gb,cx,bcFields)){
+    { /* #466: the painted beach floor is OUT (Gary: fragmented strips, purple voids) — the procedural shore + Broadwalk below is the bottom */
     const shore=hy+gh*0.46;
     let gr=ctx.createLinearGradient(0,hy,0,shore); gr.addColorStop(0,mixC(RP.accent,'#0a4a6e',0.35)); gr.addColorStop(1,RP.accent);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,shore-hy);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,shore-hy);
     /* sun/moon glitter path on the water */
     const gx=cx+(RP.sunAz-0.5)*W*0.9;
     for(let i=0;i<46;i++){ const t=rng(); const y=hy+6+t*(shore-hy-8); const spread=14+t*W*0.16;
@@ -1416,13 +1474,13 @@ function paintGround(RP,hy,gb,cx){
     for(let k=0;k<2;k++){ const fy=shore-4-k*7+Math.sin(S.flyT*1.4+k*2)*1.6;
       ctx.beginPath(); for(let x=0;x<=W;x+=22)ctx.lineTo(x,fy+Math.sin(x*0.02+k*3+S.flyT)*1.8); ctx.stroke(); }
     gr=ctx.createLinearGradient(0,shore,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,shore,W,gb-shore);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,shore,W*2.1,gb-shore);
     /* the Hollywood Beach Broadwalk: a plank ribbon on the sand, lamps lit at night */
     const bwY=shore+gh*0.02, bwH=Math.max(4,gh*0.05);
-    ctx.fillStyle=mixC(RP.rock,'#8a5a34',0.45); ctx.fillRect(0,bwY,W,bwH);
+    ctx.fillStyle=mixC(RP.rock,'#8a5a34',0.45); ctx.fillRect(-W*0.55,bwY,W*2.1,bwH);
     ctx.strokeStyle='rgba(60,35,15,0.35)'; ctx.lineWidth=1;
     for(let x=((gPhase*60)%26+26)%26;x<W;x+=26){ ctx.beginPath(); ctx.moveTo(x,bwY); ctx.lineTo(x,bwY+bwH); ctx.stroke(); }
-    ctx.fillStyle='rgba(255,255,255,0.20)'; ctx.fillRect(0,bwY,W,1.4);
+    ctx.fillStyle='rgba(255,255,255,0.20)'; ctx.fillRect(-W*0.55,bwY,W*2.1,1.4);
     if(RP.nightF>0.2){ for(let x=24+(((gPhase*60)%95)+95)%95;x<W;x+=95){
       const lg2=ctx.createRadialGradient(x,bwY+bwH/2,0,x,bwY+bwH/2,13);
       lg2.addColorStop(0,'rgba(255,210,130,'+(0.65*RP.nightF)+')'); lg2.addColorStop(1,'rgba(255,210,130,0)');
@@ -1432,20 +1490,29 @@ function paintGround(RP,hy,gb,cx){
     for(let i=0;i<26;i++){ const rx=rsp(), ry=rsp(); const y=shore+4+((ry*(gb-shore-6)+gPhase*30)%(gb-shore)); ctx.fillRect(rx*W,y,2.4,1.4); }
   }
   } else if(b==='city'){
-    let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
-    /* avenues converging + window-light rows rushing toward you */
-    ctx.strokeStyle=mixCa(RP.accent,'#000000',0.3,0.25); ctx.lineWidth=1.4;
-    for(let i=-4;i<=4;i++){ ctx.beginPath(); ctx.moveTo(cx,hy); ctx.lineTo(cx+i*W*0.22,gb); ctx.stroke(); }
-    const rows=9;
-    for(let rI=0;rI<rows;rI++){ let t=((rI+ (gPhase%1))/rows); const y=hy+gh*t*t; const n=Math.floor(4+t*22);
+    /* #466: below the skyline is the HARBOR now — dark water modeled on
+       the beach branch's sea: a sun/moon glitter path, the city's lights
+       doubled as broken reflections, slow wave lines. The ferry floats
+       ON water, never on the purple avenue grid again. */
+    let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,mixC(RP.g1,'#0a2e4a',0.45)); gr.addColorStop(1,mixC(RP.g2,'#04101f',0.5));
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
+    const gx=cx+(RP.sunAz-0.5)*W*0.9;
+    for(let i=0;i<46;i++){ const t=rng(); const y=hy+6+t*(gh-10); const spread=14+t*W*0.16;
+      const x=gx+(rng()-0.5)*2*spread; const wlen=3+t*22*(0.4+RP.dayF);
+      ctx.fillStyle=mixCa(seaGlare,'#ffffff',rng()*0.4,0.10+0.30*(1-t)*clamp(RP.dayF+RP.moonF*0.7,0,1));
+      ctx.fillRect(x-wlen/2,y,wlen,1.6); }
+    const rows=7;
+    for(let rI=0;rI<rows;rI++){ let t=((rI+(gPhase%1))/rows); const y=hy+gh*t*t; const n=Math.floor(4+t*20);
       for(let i=0;i<n;i++){ const rr=mulberry(rI*77+i*13+Math.floor(gPhase)); const x=rr()*W;
-        ctx.fillStyle=mixCa('#ffcf8a','#ffffff',rr()*0.3,(0.14+0.5*t)*clamp(RP.nightF+0.35,0,1));
-        ctx.fillRect(x,y,2+t*3.4,1.4+t*1.8); } }
+        ctx.fillStyle=mixCa('#ffcf8a','#ffffff',rr()*0.3,(0.10+0.34*t)*clamp(RP.nightF+0.30,0,1));
+        ctx.fillRect(x,y,1.6+t*2.2,2.2+t*5.5); } }
+    ctx.strokeStyle='rgba(190,225,255,0.16)'; ctx.lineWidth=1.2;
+    for(let k=0;k<3;k++){ const fy=hy+gh*(0.25+k*0.26)+Math.sin(S.flyT*1.1+k*2.2)*1.5;
+      ctx.beginPath(); for(let x=0;x<=W;x+=26)ctx.lineTo(x,fy+Math.sin(x*0.016+k*3+S.flyT*0.8)*1.6); ctx.stroke(); }
   } else if(b==='jungle'){
-    if(!drawPaintedFloor(RP,hy,gb,cx,[pfGround,pfGround2])){
+    { /* #466: the painted Falls floor is OUT on Gary's direct order ('bad remove and redo') — the procedural river valley below is the bottom */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     /* the river, meandering to the vanishing point */
     ctx.fillStyle=mixC(RP.accent,RP.sky[3],0.35);
     ctx.beginPath();
@@ -1461,9 +1528,9 @@ function paintGround(RP,hy,gb,cx){
     ctx.restore();
   }
   } else if(b==='desert'){
-    if(!drawPaintedFloor(RP,hy,gb,cx,dsFields)){
+    { /* #466: the painted desert floor is OUT too — painted floors ship in NO world; the procedural dunes below are the bottom */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     for(let k=0;k<3;k++){ const yy=hy+gh*(0.3+k*0.26)+Math.sin(gPhase*0.4+k)*2;
       ctx.fillStyle='rgba(120,50,20,'+(0.10+k*0.05)+')';
       ctx.beginPath(); ctx.moveTo(0,yy); for(let x=0;x<=W;x+=26)ctx.lineTo(x,yy+Math.sin(x*0.008+k*2.4+gPhase*0.5)*7); ctx.lineTo(W,gb); ctx.lineTo(0,gb); ctx.closePath(); ctx.fill(); }
@@ -1472,7 +1539,7 @@ function paintGround(RP,hy,gb,cx){
   }
   } else if(b==='paris'){
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     /* the Seine: a dark ribbon carrying the city's gold back to the sky */
     ctx.fillStyle=mixC('#16283f',RP.sky[2],0.30);
     ctx.beginPath();
@@ -1499,13 +1566,13 @@ function paintGround(RP,hy,gb,cx){
         if(RP.nightF>0.2&&rr()>0.5){ ctx.fillStyle='rgba(255,196,110,'+(0.65*RP.nightF)+')'; ctx.fillRect(x+wdt*0.3,y+1,1.8,1.8); } } }
   } else if(b==='aurora'){
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     /* the aurora, reflected faintly on the snowfields */
     const ra=clamp(RP.nightF*1.3,0,1);
     if(ra>0.03){
       const rg2=ctx.createLinearGradient(0,hy,0,hy+gh*0.45);
       rg2.addColorStop(0,'rgba(125,255,176,'+(0.13*ra)+')'); rg2.addColorStop(1,'rgba(125,255,176,0)');
-      ctx.fillStyle=rg2; ctx.fillRect(0,hy,W,gh*0.45);
+      ctx.fillStyle=rg2; ctx.fillRect(-W*0.55,hy,W*2.1,gh*0.45);
       ctx.save(); ctx.globalAlpha=(0.08+0.04*Math.sin(S.flyT*0.7))*ra;
       for(let k=0;k<3;k++){ const yy=hy+gh*(0.16+k*0.24); ctx.drawImage(softBlobW,-W*0.1,yy,W*1.2,gh*0.15); }
       ctx.restore(); }
@@ -1518,7 +1585,7 @@ function paintGround(RP,hy,gb,cx){
     for(let i=0;i<20;i++){ ctx.fillRect(rng()*W,hy+rng()*gh,1.8,1.8); }
   } else if(b==='sanjose'){
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     /* the Central Valley bowl: terracotta rooftops by day… */
     const rows=9;
     for(let rI=0;rI<rows;rI++){ const t2=((rI+(gPhase%1))/rows); const y=hy+gh*t2*t2; const n=Math.floor(5+t2*24);
@@ -1534,25 +1601,25 @@ function paintGround(RP,hy,gb,cx){
     /* seen only mid-dive, through the splash: deep water over a sandy reef
        floor — the painting itself takes over once you are fully under */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,mixC(RP.accent,'#0e6b8f',0.55)); gr.addColorStop(0.45,RP.g2); gr.addColorStop(1,mixC(RP.g2,'#020f1c',0.4));
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     let gr2=ctx.createLinearGradient(0,hy+gh*0.5,0,gb); gr2.addColorStop(0,'rgba(216,184,120,0)'); gr2.addColorStop(1,mixCa(RP.g1,'#8a6f3e',0.3,0.55));
-    ctx.fillStyle=gr2; ctx.fillRect(0,hy+gh*0.5,W,gh*0.5);
+    ctx.fillStyle=gr2; ctx.fillRect(-W*0.55,hy+gh*0.5,W*2.1,gh*0.5);
     ctx.fillStyle='rgba(190,240,255,0.35)';
     for(let i=0;i<16;i++){ ctx.fillRect(rng()*W,hy+rng()*gh,1.8,1.8); }
   } else { /* the North Pole: ice fields under a living sky */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
-    ctx.fillStyle=gr; ctx.fillRect(0,hy,W,gh);
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
     /* moonlight on snow: the field stays luminous even at midnight */
     if(RP.nightF>0.05){ const mw=ctx.createLinearGradient(0,hy,0,gb);
       mw.addColorStop(0,'rgba(190,215,255,'+(0.14*RP.nightF)+')'); mw.addColorStop(1,'rgba(190,215,255,'+(0.03*RP.nightF)+')');
-      ctx.fillStyle=mw; ctx.fillRect(0,hy,W,gh); }
+      ctx.fillStyle=mw; ctx.fillRect(-W*0.55,hy,W*2.1,gh); }
     /* the aurora, reflected on the snowfields — breathing on the same
        swell as the curtains above, green at the horizon melting violet */
     const ra=clamp(RP.nightF*1.3,0,1)*(S.aurSwell||1);
     if(ra>0.03){
       const rg2=ctx.createLinearGradient(0,hy,0,hy+gh*0.55);
       rg2.addColorStop(0,'rgba(125,255,176,'+(0.20*ra)+')'); rg2.addColorStop(0.55,'rgba(110,220,190,'+(0.09*ra)+')'); rg2.addColorStop(1,'rgba(150,80,255,0)');
-      ctx.fillStyle=rg2; ctx.fillRect(0,hy,W,gh*0.55);
+      ctx.fillStyle=rg2; ctx.fillRect(-W*0.55,hy,W*2.1,gh*0.55);
       ctx.save(); ctx.globalAlpha=(0.09+0.05*Math.sin(S.flyT*0.7))*(S.aurSwell||1)*clamp(RP.nightF*1.3,0,1);
       for(let k=0;k<3;k++){ const yy=hy+gh*(0.14+k*0.26); ctx.drawImage(softBlobW,-W*0.1,yy,W*1.2,gh*0.16); }
       ctx.restore(); }
@@ -1572,9 +1639,9 @@ function paintGround(RP,hy,gb,cx){
       ctx.fillStyle='rgba(255,255,255,'+tw+')'; ctx.fillRect(rng()*W,hy+rng()*gh,1.8,1.8); }
   }
   /* cloud shadows drifting far below — soft-edged, melting into the ground */
-  if(S.spaceF<0.5){ ctx.save(); ctx.globalAlpha=0.15*(1-S.spaceF*2);
+  if(S.spaceF<0.5){ ctx.save(); ctx.globalAlpha=0.10*(1-S.spaceF*2);   /* #466: shade, not objects — softer and smaller */
     for(const sh of shadows){ const p=1-sh.z; const y=hy+gh*p*p; const x=cx+sh.x*W*(0.15+p);
-      const rx=sh.s*(30+p*130), ry=sh.s*(8+p*30);
+      const rx=sh.s*(26+p*100), ry=sh.s*(7+p*24);
       ctx.drawImage(softBlob,x-rx,y-ry,rx*2,ry*2); }
     ctx.restore(); }
   ctx.restore();
@@ -1614,11 +1681,11 @@ const guitarNight=new Image(); guitarNight.src='assets/guitar-night.webp'; /* No
 /* where the white water lives in each painting (image-space x), and how
    large each view looms on the panel — CLOSE crowds in, FAR hangs back */
 const PF_FALLX={far:0.455,approach:0.52,close:0.57,side:0.55,above:0.53};
-const PF_SCALE={far:0.94,approach:1.0,close:1.17,side:1.04,above:1.10};
+const PF_SCALE={far:0.94,approach:1.0,close:1.08,side:1.04,above:1.10};   /* #466: close zooms out a touch (1.17 -> 1.08) */
 /* where each painting's horizon story sits (image-space row that belongs
    ON the horizon line), and the house's ground-contact point + drawn
    height per view — measured off the paintings and the cutout masks */
-const PF_ANCH={far:0.52,approach:0.52,close:0.52,side:0.52,above:0.85};
+const PF_ANCH={far:0.46,approach:0.46,close:0.52,side:0.52,above:0.85};   /* #466b sweep: the far/approach paintings carry the house at their very top edge — anch 0.52 set the panel ~55px too high there and the roof peak + chimney clipped off-frame; 0.46 seats those two layers lower (close/side/above untouched) */
 const PF_HOUSE={
   far:{x:0.375,y:0.148,h:0.120,on:1},
   approach:{x:0.293,y:0.332,h:0.359,on:1},
@@ -1667,18 +1734,40 @@ function pfFeather(img){
   g.globalCompositeOperation='source-over';
   img._soft=c; return c;
 }
+/* #466c (defect 4): the WIDE-feather variant for a dominant close-up
+   (fitH) layer — the standard feather's 5% sides left a detectable
+   straight border where the contained painting meets its blurred
+   surround (the arctic near painting). Here every edge dissolves
+   over a broad band, so the zone melts into its own blur. */
+function pfFeatherWide(img){
+  if(img._softW!==undefined)return img._softW;
+  if(!img.complete||!img.naturalWidth){ img._softW=null; return null; }
+  const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+  const g=c.getContext('2d'); g.drawImage(img,0,0);
+  g.globalCompositeOperation='destination-in';
+  let gr=g.createLinearGradient(0,0,c.width,0);
+  gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(0.15,'rgba(0,0,0,1)');
+  gr.addColorStop(0.85,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=gr; g.fillRect(0,0,c.width,c.height);
+  gr=g.createLinearGradient(0,0,0,c.height);
+  gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(0.24,'rgba(0,0,0,1)');
+  gr.addColorStop(0.66,'rgba(0,0,0,1)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=gr; g.fillRect(0,0,c.width,c.height);
+  g.globalCompositeOperation='source-over';
+  img._softW=c; return c;
+}
 let PF_W={far:1,approach:0,close:0,side:0,above:0}, pfSideF=0, pfLastT=0;
 function drawFallsVista(RP,hy,cx){
   const t=S.flyT;
   const dtF=clamp(t-pfLastT,0,0.05); pfLastT=t;
   /* ---- the zone weights: the flight itself picks the painting ---- */
-  const wAbove=sstep(0.74,0.92,S.alt);
-  const wClose=(1-sstep(0.30,0.46,S.alt))*(1-wAbove);
+  const wAbove=sstep(0.78,0.88,S.alt);   /* #466: narrow bands — one painting dominant, blends finish */
+  const wClose=(1-sstep(0.34,0.44,S.alt))*(1-wAbove);
   const flankT=Math.max(sstep(0.38,0.72,Math.abs(S.bankD)), sstep(0.65,1.15,Math.abs(S.lookYaw)));
   pfSideF=clamp(pfSideF+clamp(flankT-pfSideF,-dtF*0.45,dtF*1.1),0,1);   /* swings in on a held bank, drifts out slower */
   const wSide=pfSideF*(1-wAbove)*(1-wClose);
   const rem=Math.max(0,1-wAbove-wClose-wSide);
-  const wFar=rem*sstep(0.52,0.70,S.alt);
+  const wFar=rem*sstep(0.56,0.66,S.alt);
   const wApp=rem-wFar;
   PF_W={far:wFar,approach:wApp,close:wClose,side:wSide,above:wAbove};
   const WZ=[['far',wFar],['approach',wApp],['side',wSide],['close',wClose],['above',wAbove]];
@@ -1689,11 +1778,12 @@ function drawFallsVista(RP,hy,cx){
          dissolves behind the valley ridges. Never a pasted rectangle. ---- */
   const pScale=blend(PF_SCALE,1);
   const pw=W*1.05*pScale, ph=pw*0.5625;
-  const maxOff=Math.max(0, pw/2 - W*0.54);
-  const vx=clamp(cx + W*0.15 - S.pan*W*0.012, cx-maxOff, cx+maxOff);
+  const maxOff=Math.max(0, pw/2 - W*0.54)*(1-0.6*wClose);   /* #466 anchor rule: in the close zone the pan clamp tightens so the painted house can NEVER slide out of frame */
+  const vx=clamp(cx + W*0.15 - S.pan*W*0.006, cx-maxOff, cx+maxOff);
   const left=vx-pw/2;
   const anch=blend(PF_ANCH,0.60);
-  const top=clamp(hy - anch*ph - S.pitchD*H*0.03, -0.45*H, H*0.34);
+  const hyR=hy-(S.mode==='landed'?H*0.22:H*0.30);   /* #466: panel top held at its pre-#466 screen position — only the ground moved */
+  const top=clamp(hyR - anch*ph - S.pitchD*H*0.015, -0.45*H, H*0.34);
   ctx.save();
   /* ---- the crossfade: bottom painting first, each laid over with its
          share of what remains, so the five always sum to one view ---- */
@@ -1702,7 +1792,7 @@ function drawFallsVista(RP,hy,cx){
   for(let i=4;i>=0;i--){ acc+=order[i][1]; suf[i]=acc; }
   let drawn=0;
   order.forEach((o,i)=>{ const k=o[0], w=o[1];
-    if(w<=0.004||suf[i]<=0)return;
+    if(w<0.02||suf[i]<=0)return;   /* #466b: a whisper-weight panel does not draw at all */
     const soft=pfFeather(pfImgs[k]); if(!soft)return;
     ctx.globalAlpha=clamp(w/suf[i],0,1);
     ctx.drawImage(soft,left,top,pw,ph); drawn++; });
@@ -1726,12 +1816,12 @@ function drawFallsVista(RP,hy,cx){
   const pourY=top+ph*0.15, pourH=ph*0.53;
   ctx.save(); ctx.globalCompositeOperation='screen';
   for(let sI=0;sI<3;sI++){ const sx=fx+(sI-1)*pw*0.018;
-    const sh=0.05+0.035*Math.sin(t*2.6+sI*2.1);
+    const sh=(0.05+0.035*Math.sin(t*2.6+sI*2.1))*(1-0.82*RP.nightF);   /* #466b: the shimmer rides the painting's night grade — ungraded, the pour columns stood out as glowing bars on the dark Falls (defect 2) */
     const pg=ctx.createLinearGradient(0,pourY,0,pourY+pourH);
     pg.addColorStop(0,'rgba(230,250,255,'+sh+')'); pg.addColorStop(1,'rgba(230,250,255,0)');
     ctx.fillStyle=pg; ctx.fillRect(sx-pw*0.006,pourY,pw*0.012,pourH); }
   for(let i=0;i<9;i++){ const p=((t*0.55+i/9)%1);
-    ctx.globalAlpha=(1-p)*0.15;
+    ctx.globalAlpha=(1-p)*0.15*(1-0.82*RP.nightF);
     ctx.fillStyle='rgba(240,252,255,1)';
     ctx.fillRect(fx-pw*0.020+((i*37)%13)/13*pw*0.04,pourY+p*pourH,pw*0.006,pourH*0.05); }
   ctx.globalAlpha=1;
@@ -1761,7 +1851,7 @@ function drawFallsVista(RP,hy,cx){
   const hGate=1-sstep(0.685,0.738,S.alt);
   if(pres>0.02&&hGate>0.01){
     ax/=pres; ay/=pres; ah/=pres;
-    const bx=left+pw*ax - S.pan*W*0.020*pres;   /* mid-layer parallax: nearer than the falls, so it drifts a little more with the pan */
+    const bx=left+pw*ax - clamp(S.pan,-1,1)*W*0.010*pres;   /* #466: S.pan accumulates forever — the house's extra drift is bounded, so it can never be dragged out of frame on a long flight */   /* mid-layer parallax: nearer than the falls, so it drifts a little more with the pan */
     const by=top+ph*ay;
     const hh=ph*ah;
     const cuts=[['A',pfHouseA,wClose],['B',pfHouseB,wFar+wApp],['C',pfHouseC,wSide]];
@@ -1784,7 +1874,7 @@ function drawFallsVista(RP,hy,cx){
     }
   }
   /* ---- mist at the base: drifting off the plunge pool ---- */
-  ctx.globalAlpha=0.40;
+  ctx.globalAlpha=0.40*(1-0.55*RP.nightF);   /* #466b: the plunge-pool mist takes the night grade too — before, it hung as bright grey eggs on the dark water */
   const mw=pw*0.42, mDrift=Math.sin(t*0.18)*pw*0.02;
   ctx.drawImage(softBlobW,fx-mw/2+mDrift,top+ph*0.58,mw,mw*0.26);
   ctx.drawImage(softBlobW,fx-mw*0.30-mDrift,top+ph*0.64,mw*0.7,mw*0.20);
@@ -1908,13 +1998,30 @@ let BEACH_W={high:0,life:1,low:0,walk:0}, SPACE_W={vista:0,fun:0};
 /* painting aspects (h/w), read off the art itself */
 const ASP_169=0.5625;
 function imgAsp(img,def){ return (img&&img.naturalWidth)? img.naturalHeight/img.naturalWidth : def; }
+/* #466b: a biome's live weight in the current view — 1 when settled,
+   ramping through a blend (the incoming biome owns S.biomeBlend of the
+   frame, the outgoing keeps the rest). Props, landmarks and the free
+   clouds key off this so nothing foreign leaks across a blend */
+function biomeW(b){ if(b===S.biome)return (S.biomeFrom===S.biome)?1:S.biomeBlend; if(b===S.biomeFrom)return 1-S.biomeBlend; return 0; }
+/* #466b: a small blurred copy of a painting, cached on the image itself
+   (built once, never per frame) — the full-frame base under a close-up
+   zone's sharp panel, so the zone reads as one scene (defect 3) */
+function blurCache(img){ if(!img||!img.complete||!img.naturalWidth)return null; if(img._blur)return img._blur;
+  const c=document.createElement('canvas'); const sc=176/img.naturalWidth; c.width=176; c.height=Math.max(2,Math.round(img.naturalHeight*sc));
+  const x=c.getContext('2d'); try{ x.filter='blur(5px)'; }catch(e){}
+  x.drawImage(img,-10,-10,c.width+20,c.height+20); img._blur=c; return c; }
 /* one horizon-anchored panel for a stack: wider than the screen at any
    pan, so no side edge can ever show (the Paradise Falls geometry) */
-function vistaPanel(anch,scale,hy,asp){
-  const pw=W*1.05*scale, ph=pw*asp;
+function vistaPanel(anch,scale,hy,asp,wide){
+  const pw=W*(wide||1.05)*scale, ph=pw*asp;
   const maxOff=Math.max(0,pw/2-W*0.54);
-  const vx=clamp(W/2+W*0.15-S.pan*W*0.012, W/2-maxOff, W/2+maxOff);
-  const top=clamp(hy-anch*ph-S.pitchD*H*0.03, -0.45*H, H*0.34);
+  const vx=clamp(W/2+W*0.15-S.pan*W*0.006, W/2-maxOff, W/2+maxOff);
+  /* #466 (Gary's mechanism rule): the panel TOP is computed from the
+     PRE-#466 horizon, so the paintings never moved on screen — only the
+     ground band thinned beneath them, uncovering more of each painting.
+     Pan/pitch response gains are halved too: the painting is STEADY. */
+  const hyR=hy-(S.mode==='landed'?H*0.22:H*0.30);
+  const top=clamp(hyR-anch*ph-S.pitchD*H*0.015, -0.45*H, H*0.34);
   return {left:vx-pw/2, top:top, pw:pw, ph:ph};
 }
 /* draw a weighted stack of feathered paintings so they always sum to
@@ -1923,13 +2030,32 @@ function vistaPanel(anch,scale,hy,asp){
 function drawVistaStack(layers,RP,hy){
   let tw=0; for(const L of layers)tw+=Math.max(0,L.w);
   if(tw<=0.004)return null;
-  let anch=0, scale=0, asp=0;
-  for(const L of layers){ const w=Math.max(0,L.w)/tw; anch+=w*L.anch; scale+=w*L.scale; asp+=w*L.asp; }
-  const g=vistaPanel(anch,scale,hy,asp);
+  let anch=0, scale=0, asp=0, wide=0, fitH=0, fitW=0;
+  for(const L of layers){ const w=Math.max(0,L.w)/tw; anch+=w*L.anch; scale+=w*L.scale; asp+=w*L.asp; wide+=w*(L.wide||1.05); if(L.fitH){ fitH+=w*L.fitH; fitW+=w; } }
+  const g=vistaPanel(anch,scale,hy,asp,wide);
+  /* #466 natural scale: a fitH layer caps the panel's height so a close-up
+     painting's animals read SMALL in their world (fennecs, the arctic fox,
+     the macaws) — the feathered panel dissolves into the sky, never a
+     pasted rectangle, and the anchor row stays exactly where it was */
+  if(fitW>0.001){ const target=(fitH/fitW)*H; const nph=g.ph*(1-fitW)+target*fitW; const npw=nph/Math.max(0.2,asp); const cxp=g.left+g.pw/2; g.top=g.top+anch*(g.ph-nph); g.left=cxp-npw/2; g.pw=npw; g.ph=nph; g.top=g.top*(1-fitW)+(hy+H*0.02-nph)*fitW; }   /* #466b: as a close-up zone takes over, the panel seats LOW — its bottom edge lands on the horizon and melts into the ground band instead of hanging in the sky (defect 3) */
+  let domL=null; if(fitW>0.001){ for(const L of layers){ if(L.fitH&&(!domL||L.w>domL.w))domL=L; } }   /* #466c (defect 4): the dominant close-up layer, hoisted — the layer loop below needs it too */
+  if(fitW>0.02){ /* #466b (defect 3): the zone's OWN painting, blurred and
+       dimmed, fills the whole frame beneath the sharp panel — one scene,
+       no floating rectangle, at every blend phase (defect 4b) */
+    /* domL hoisted above (#466c) */
+    const bl=domL?blurCache(domL.img):null; if(bl)g.fitBase=true;
+    if(bl){ const iw=bl.width, ih=bl.height, sc=Math.max(W/iw,H/ih), dw=iw*sc, dh=ih*sc;
+      ctx.globalAlpha=fitW*0.97; ctx.drawImage(bl,(W-dw)/2,(H-dh)/2,dw,dh); ctx.globalAlpha=1;
+      ctx.fillStyle='rgba(5,9,16,'+(0.16*fitW)+')'; ctx.fillRect(0,0,W,H);
+      /* #466c (defect 4): the same blur registered to the panel rect, so
+         inside the feather zone the sharp painting dissolves into its own
+         blurred twin — the cover-fit base alone puts different content
+         under the border, which is what made the border read as a line */
+      ctx.globalAlpha=fitW*0.97; ctx.drawImage(bl,g.left,g.top,g.pw,g.ph); ctx.globalAlpha=1; } }
   const suf=new Array(layers.length); let acc=0;
   for(let i=layers.length-1;i>=0;i--){ acc+=Math.max(0,layers[i].w); suf[i]=acc; }
   let drawn=0;
-  layers.forEach((L,i)=>{ if(L.w<=0.004||suf[i]<=0)return; const soft=pfFeather(L.img); if(!soft)return;
+  layers.forEach((L,i)=>{ if(L.w<0.02||suf[i]<=0)return; const soft=(domL&&L===domL)? pfFeatherWide(L.img) : pfFeather(L.img); if(!soft)return;   /* #466b: a whisper-weight panel does not draw at all. #466c (defect 4): the dominant close-up layer wears the WIDE feather */
     ctx.globalAlpha=clamp(L.w/suf[i],0,1); ctx.drawImage(soft,g.left,g.top,g.pw,g.ph); drawn++; });
   ctx.globalAlpha=1;
   if(!drawn){ const jg=ctx.createLinearGradient(0,g.top,0,g.top+g.ph);
@@ -1940,6 +2066,11 @@ function drawVistaStack(layers,RP,hy){
   melt.addColorStop(0,mixCa(RP.hazeC,'#000000',0,0.55)); melt.addColorStop(1,mixCa(RP.hazeC,'#000000',0,0));
   ctx.fillStyle=melt; ctx.fillRect(g.left,g.top,g.pw,g.ph*0.22);
   if(RP.nightF>0.03){ ctx.fillStyle='rgba(5,9,30,'+(0.52*RP.nightF)+')'; ctx.fillRect(g.left,g.top,g.pw,g.ph); }
+  if(fitW>0.001&&!g.fitBase){ /* #466 QA: a fitH panel is a smaller window of the world — melt ALL its edges into the sky so it never reads as a pasted rectangle (the plain side feather wasn't enough at this size). #466b: skipped when the blurred full-frame base is down — base + feather do the melting, and these pale haze bands were drawing a visible frame around the panel */
+    const mx=g.pw*0.15, my=g.ph*0.18, hzA=mixCa(RP.hazeC,'#000000',0,0.88), hz0=mixCa(RP.hazeC,'#000000',0,0);
+    let eg=ctx.createLinearGradient(g.left,0,g.left+mx,0); eg.addColorStop(0,hzA); eg.addColorStop(1,hz0); ctx.fillStyle=eg; ctx.fillRect(g.left,g.top,mx,g.ph);
+    eg=ctx.createLinearGradient(g.left+g.pw,0,g.left+g.pw-mx,0); eg.addColorStop(0,hzA); eg.addColorStop(1,hz0); ctx.fillStyle=eg; ctx.fillRect(g.left+g.pw-mx,g.top,mx,g.ph);
+    eg=ctx.createLinearGradient(0,g.top+g.ph,0,g.top+g.ph-my); eg.addColorStop(0,hzA); eg.addColorStop(1,hz0); ctx.fillStyle=eg; ctx.fillRect(g.left,g.top+g.ph-my,g.pw,my); }
   return g;
 }
 /* twinkling sun flecks on a painting's water band */
@@ -1958,10 +2089,10 @@ function vistaSparkle(g,t,y0,y1,n,alpha,seed){
    (gPhase) exactly the way the plank ribbon does in the ground below */
 function beachWeights(){
   const alt=S.alt;
-  const wHigh=sstep(0.55,0.78,alt);
-  const wLow=1-sstep(0.30,0.50,alt);
+  const wHigh=sstep(0.62,0.72,alt);   /* #466: narrow bands — one painting at a time */
+  const wLow=1-sstep(0.36,0.46,alt);
   const bwPulse=0.5+0.5*Math.sin(gPhase*0.33+1.7);
-  const wWalk=wLow*sstep(0.52,0.80,bwPulse);
+  const wWalk=wLow*sstep(0.58,0.74,bwPulse);
   const wLowOpen=wLow-wWalk;
   const wLife=Math.max(0,1-wHigh-wLow);
   BEACH_W={high:wHigh,life:wLife,low:wLowOpen,walk:wWalk};
@@ -1981,8 +2112,8 @@ function drawBeachVista(RP,hy,cx){
   const g=drawVistaStack([
     {img:beachImgs.high, w:B.high, anch:0.50, scale:1.00, asp:imgAsp(beachImgs.high,ASP_169)},
     {img:beachImgs.life, w:B.life, anch:0.72, scale:1.02, asp:ASP_169},
-    {img:beachImgs.low,  w:B.low,  anch:0.70, scale:1.12, asp:ASP_169},
-    {img:beachImgs.walk, w:B.walk, anch:0.72, scale:1.14, asp:ASP_169}
+    {img:beachImgs.low,  w:B.low,  anch:0.70, scale:1.04, asp:ASP_169},
+    {img:beachImgs.walk, w:B.walk, anch:0.72, scale:1.05, asp:ASP_169}
   ],RP,hy);
   BEACH_G=g;
   /* HR1 (WOW Oct 28): seated in the very same panel, feathered like
@@ -2180,9 +2311,9 @@ function crStackReady(){ for(const k in crImgs){ const im=crImgs[k];
   if(im.complete&&im.naturalWidth>0)return true; } return false; }
 function crWeights(){
   const alt=S.alt;
-  const wFar=sstep(0.55,0.78,alt);
-  const wSea=1-sstep(0.14,0.30,alt);
-  const wNear=sstep(0.18,0.34,alt)*(1-sstep(0.42,0.58,alt));
+  const wFar=sstep(0.62,0.72,alt);   /* #466: narrow bands — one painting dominant at any settled altitude */
+  const wSea=1-sstep(0.17,0.27,alt);
+  const wNear=sstep(0.22,0.32,alt)*(1-sstep(0.44,0.54,alt));
   const wMid=Math.max(0,1-wFar-wSea-wNear);
   CR_W={far:wFar,mid:wMid,near:wNear,sea:wSea};
   return CR_W;
@@ -2191,10 +2322,10 @@ function drawCRVista(RP,hy,cx){
   if(!crStackReady()){ CR_G=null; CR_NIGHT_F=0; CR_SPRINGS_F=0; return; }
   const B=crWeights();
   CR_G=drawVistaStack([
-    {img:crImgs.far,  w:B.far,  anch:0.50, scale:1.00, asp:imgAsp(crImgs.far,ASP_169)},
-    {img:crImgs.mid,  w:B.mid,  anch:0.66, scale:1.03, asp:ASP_169},
-    {img:crImgs.near, w:B.near, anch:0.72, scale:1.08, asp:ASP_169},
-    {img:crImgs.sea,  w:B.sea,  anch:0.70, scale:1.12, asp:ASP_169}
+    {img:crImgs.far,  w:B.far,  anch:0.50, scale:0.70, wide:1.50, asp:imgAsp(crImgs.far,ASP_169)},   /* #466: Gary's zoom-out x0.70, panel widened so no edge can show and moon+volcano+falls stay in frame at both pan extremes */
+    {img:crImgs.mid,  w:B.mid,  anch:0.66, scale:0.72, wide:1.50, asp:ASP_169},
+    {img:crImgs.near, w:B.near, anch:0.72, scale:0.76, wide:1.50, fitH:0.58, asp:ASP_169},   /* #466: zoom-out + natural scale — the macaws are birds in a valley now, not monsters at the glass */
+    {img:crImgs.sea,  w:B.sea,  anch:0.70, scale:0.78, wide:1.32, asp:ASP_169}   /* #466: the lake painting — waterfall locked in frame at both pan extremes */
   ],RP,hy);
   /* M17 — THE HOT SPRINGS (NEW, Oct 30): Gary's burst ruled the
      springs get their OWN scene — as the light turns golden, the day
@@ -2260,7 +2391,7 @@ function drawSpacePaint(img,alpha,zoom,par){
 function spaceWeights(){
   const inS=S.spaceF;
   if(inS<=0.02||S.uwF>0.4){ SPACE_W={vista:0,fun:0}; return SPACE_W; }
-  SPACE_W={vista:sstep(0.30,0.75,inS), fun:sstep(0.72,0.97,inS)};
+  SPACE_W={vista:sstep(0.22,0.88,inS), fun:sstep(0.62,1.0,inS)};   /* #466: wider, gentler bands — one view at a time, finishing its fade */
   return SPACE_W;
 }
 /* the paintings draw LATE — over ridge, ground and dome — because in
@@ -2399,7 +2530,7 @@ northImgs.mid2.src='assets/np4.webp';
    the dive weight in drawNorthVista is forced to 0 and the descent
    ends at NP3, exactly as shipped. */
 northImgs.dive.src='assets/np5.webp';
-let SAH_G=null, NORTH_G=null;
+let SAH_G=null, NORTH_G=null, NORTH_NEAR_F=0;   /* #466c (defect 4): the near painting's live weight — the fireworks gate reads it */
 
 /* ---- the eruption's cast: fixed seeds, parametric in flyT, so the
    volcano keeps its own slow 26-second rhythm — a grumbling build, the
@@ -2426,6 +2557,10 @@ function crSpurtEnv(lt){
    the falls' mist, the GLASS WATER with its animals underneath and the
    glitter path dancing on it — and at night, fireflies, the drifting
    plume, near embers, and THE ERUPTION itself (see the night block) */
+/* #466b (defect 7): one jittered lava run — broken segments, uneven
+   direction, drawn warm; a chain of these reads as lava, never a letter */
+function crLavaSeg(x0,y0,dx,dy,n,seed,pw){ ctx.beginPath(); ctx.moveTo(x0,y0);
+  for(let si=1;si<=n;si++){ const u=si/n; ctx.lineTo(x0+dx*u*u+Math.sin(seed+si*2.39)*pw*0.0055, y0+dy*u); } ctx.stroke(); }   /* the run hugs the crater first, then spills — and wanders like a channel, not a ruler line */
 function drawCRLife(RP,hy,cx){
   const g=CR_G; if(!g)return;
   const t=S.flyT, nF=CR_NIGHT_F, dayV=clamp(1-nF*1.2,0,1);
@@ -2475,7 +2610,7 @@ function drawCRLife(RP,hy,cx){
     /* the ash plume: grey puffs boiling off the crater, drifting
        downwind as they rise, bellies lit while the fountain runs */
     for(let k=0;k<7;k++){ const u=((t*0.022)+k/7)%1;
-      const px=ex+(0.015+0.115*u)*g.pw, py=ey-(0.015+0.125*u)*g.ph;
+      const px=ex+(0.015+0.060*u)*g.pw, py=ey-(0.015+0.070*u)*g.ph;
       const pw2=g.pw*(0.030+0.085*u);
       ctx.save(); ctx.globalAlpha=(0.05+0.13*(0.3+0.7*env))*(1-u)*vis;
       ctx.drawImage(softBlob,px-pw2/2,py-pw2*0.30,pw2,pw2*0.60); ctx.restore();
@@ -2489,23 +2624,23 @@ function drawCRLife(RP,hy,cx){
     ctx.fillStyle=gg2; ctx.fillRect(ex-g.pw*0.10,ey-g.pw*0.10,g.pw*0.20,g.pw*0.20);
     /* the wide wash: the cloud sea below catches the firelight */
     const csx=g.left+0.68*g.pw, csy=g.top+0.34*g.ph;
-    gg2=ctx.createRadialGradient(csx,csy,0,csx,csy,g.pw*0.38);
-    gg2.addColorStop(0,'rgba(255,140,60,'+(0.14*env*vis)+')'); gg2.addColorStop(1,'rgba(255,120,40,0)');
-    ctx.fillStyle=gg2; ctx.fillRect(csx-g.pw*0.38,csy-g.pw*0.38,g.pw*0.76,g.pw*0.76);
+    gg2=ctx.createRadialGradient(csx,csy,0,csx,csy,g.pw*0.16);   /* #466: the firelight stays ON the volcano — no wide wash running off the photo */
+    gg2.addColorStop(0,'rgba(255,140,60,'+(0.10*env*vis)+')'); gg2.addColorStop(1,'rgba(255,120,40,0)');
+    ctx.fillStyle=gg2; ctx.fillRect(csx-g.pw*0.16,csy-g.pw*0.16,g.pw*0.32,g.pw*0.32);
     /* the lava flow: two brightening streams down the cone's slopes */
     if(env>0.02||grum>0.10){ const flA=(0.16+0.60*env)*vis*(0.75+0.25*Math.sin(t*3.1));
-      ctx.strokeStyle='rgba(255,110,36,1)'; ctx.lineCap='round';
-      ctx.globalAlpha=flA; ctx.lineWidth=Math.max(1.6,g.pw*0.0026); ctx.shadowColor='rgba(255,120,40,1)'; ctx.shadowBlur=8;
-      ctx.beginPath(); ctx.moveTo(ex,ey);
-      ctx.quadraticCurveTo(ex-g.pw*0.016,ey+g.ph*0.045, ex-g.pw*0.030,ey+g.ph*0.098);
-      ctx.moveTo(ex,ey);
-      ctx.quadraticCurveTo(ex+g.pw*0.015,ey+g.ph*0.042, ex+g.pw*0.031,ey+g.ph*0.092); ctx.stroke();
-      ctx.globalAlpha=flA*0.8; ctx.lineWidth=Math.max(1,g.pw*0.0012); ctx.strokeStyle='rgba(255,224,150,1)';
-      ctx.beginPath(); ctx.moveTo(ex,ey);
-      ctx.quadraticCurveTo(ex-g.pw*0.016,ey+g.ph*0.045, ex-g.pw*0.030,ey+g.ph*0.098);
-      ctx.moveTo(ex,ey);
-      ctx.quadraticCurveTo(ex+g.pw*0.015,ey+g.ph*0.042, ex+g.pw*0.031,ey+g.ph*0.092); ctx.stroke();
-      ctx.shadowBlur=0; }
+      /* #466b (defect 7): the old twin symmetric arcs + near-white core +
+         glow halo read as a bright letter A on the cone. The flows now
+         run as broken, jittered segments of uneven length in warm lava
+         tones — no symmetry, no white core, no halo — hugging the cone */
+      ctx.globalCompositeOperation='source-over';   /* #466b: the flows must stay ORANGE — inside the crater glow's 'screen' pass they bleached to a pale letter on the cone */
+      ctx.strokeStyle='rgba(255,104,32,1)'; ctx.lineCap='round';
+      ctx.globalAlpha=Math.min(1,flA*1.5); ctx.lineWidth=Math.max(1.8,g.pw*0.0030);
+      crLavaSeg(ex,ey,-g.pw*0.023,g.ph*0.068,3,1.7,g.pw);   /* the main run: down the left slope */
+      ctx.globalAlpha=Math.min(1,flA*1.1); ctx.lineWidth=Math.max(1.2,g.pw*0.0018);
+      crLavaSeg(ex+g.pw*0.006,ey+g.ph*0.020,g.pw*0.009,g.ph*0.026,3,4.2,g.pw);   /* a separate short channel starting below the right rim — no symmetry, no letter */
+      ctx.globalAlpha=Math.min(1,flA*0.9); ctx.lineWidth=Math.max(1,g.pw*0.0013); ctx.strokeStyle='rgba(255,150,54,1)';
+      crLavaSeg(ex-g.pw*0.010,ey+g.ph*0.030,-g.pw*0.009,g.ph*0.036,2,2.9,g.pw); }   /* a tributary that joins partway down the slope */
     /* the fountain: embers on ballistic arcs while the window runs */
     if(env>0.02){ const lt2=ph2-ws;
       for(const p of CR_EMB_DAY){ const loc=lt2-p.d; if(loc<0||loc>p.life)continue;
@@ -2708,7 +2843,7 @@ function drawCRLife(RP,hy,cx){
     /* the plume: dark puffs boiling up off the crater and shearing
        sideways, their bases lit by the fire below */
     for(let k=0;k<6;k++){ const u=((t*0.018)+k/6)%1;
-      const px=g.left+(0.795+0.135*u)*g.pw, py=g.top+(0.045-0.055*u)*g.ph;
+      const px=g.left+(0.795+0.070*u)*g.pw, py=g.top+(0.045-0.030*u)*g.ph;
       const pw2=g.pw*(0.05+0.11*u);
       ctx.save(); ctx.globalAlpha=0.13*(1-u)*nF;
       ctx.drawImage(softBlob,px-pw2/2,py-pw2*0.30,pw2,pw2*0.60); ctx.restore(); }
@@ -2723,9 +2858,9 @@ function drawCRLife(RP,hy,cx){
     gg.addColorStop(0,'rgba(255,190,90,'+((0.13+0.30*env)*nF)+')'); gg.addColorStop(1,'rgba(255,120,40,0)');
     ctx.fillStyle=gg; ctx.fillRect(ex-g.pw*0.15,ey-g.pw*0.15,g.pw*0.30,g.pw*0.30);
     const csx=g.left+0.72*g.pw, csy=g.top+0.46*g.ph;
-    gg=ctx.createRadialGradient(csx,csy,0,csx,csy,g.pw*0.42);
-    gg.addColorStop(0,'rgba(255,140,60,'+(0.13*env*nF)+')'); gg.addColorStop(1,'rgba(255,120,40,0)');
-    ctx.fillStyle=gg; ctx.fillRect(csx-g.pw*0.42,csy-g.pw*0.42,g.pw*0.84,g.pw*0.84);
+    gg=ctx.createRadialGradient(csx,csy,0,csx,csy,g.pw*0.18);   /* #466: same containment as the day eruption */
+    gg.addColorStop(0,'rgba(255,140,60,'+(0.09*env*nF)+')'); gg.addColorStop(1,'rgba(255,120,40,0)');
+    ctx.fillStyle=gg; ctx.fillRect(csx-g.pw*0.18,csy-g.pw*0.18,g.pw*0.36,g.pw*0.36);
     /* the lava fountain itself: embers on ballistic arcs, born in the
        cycle's windows — grumble, SPURT, aftershock — cooling from
        white-gold to ember red as they fall */
@@ -2763,8 +2898,8 @@ function drawCRLife(RP,hy,cx){
 let SAH_W={far:0,mid:1,life:0};
 function sahWeights(){
   const alt=S.alt;
-  const wFar=sstep(0.55,0.78,alt);
-  const wLife=sstep(0.18,0.34,alt)*(1-sstep(0.42,0.58,alt));
+  const wFar=sstep(0.62,0.72,alt);   /* #466: narrow bands */
+  const wLife=sstep(0.22,0.32,alt)*(1-sstep(0.44,0.54,alt));
   const wMid=Math.max(0,1-wFar-wLife);
   SAH_W={far:wFar,mid:wMid,life:wLife};
   return SAH_W;
@@ -2774,7 +2909,7 @@ function drawDesertVista(RP,hy,cx){
   SAH_G=drawVistaStack([
     {img:sahImgs.far,  w:B.far,  anch:0.55, scale:1.00, asp:ASP_169},
     {img:sahImgs.mid,  w:B.mid,  anch:0.68, scale:1.03, asp:ASP_169},
-    {img:sahImgs.life, w:B.life, anch:0.72, scale:1.08, asp:ASP_169}
+    {img:sahImgs.life, w:B.life, anch:0.72, scale:1.08, fitH:0.44, asp:ASP_169}   /* #466b: natural scale — the sitting fennec is 63% of its painting, so fitH 0.44 puts it at ~28% of frame height */
   ],RP,hy);
 }
 function drawDesertLife(RP,hy,cx){
@@ -2861,12 +2996,13 @@ function drawNorthVista(RP,hy,cx){
   const np3OK=(northImgs.near.complete&&northImgs.near.naturalWidth>0);
   const np4OK=(northImgs.mid2.complete&&northImgs.mid2.naturalWidth>0);
   const np5OK=(northImgs.dive.complete&&northImgs.dive.naturalWidth>0);
-  const wDive=np5OK? 1-sstep(0.05,0.16,S.alt) : 0;
+  const wDive=0;   /* #466: NP5 (the belugas) is the north's UNDERWATER view now — sea animals belong under the water, never hung in the sky */
   const rem=1-wDive;
-  const wNear0=np3OK? 1-sstep(0.16,0.36,S.alt) : 0;
-  const wFar0=sstep(0.50,0.75,S.alt)*(1-wNear0);
+  const wNear0=np3OK? 1-sstep(0.20,0.32,S.alt) : 0;   /* #466: narrow band */
+  const wFar0=sstep(0.56,0.70,S.alt)*(1-wNear0);
   const wMid0=Math.max(0,1-wFar0-wNear0);
   const wNear=rem*wNear0;
+  NORTH_NEAR_F=wNear;
   const wFar=rem*wFar0;
   const wMid=rem*wMid0;
   /* the Pole owns THREE aurora skies: they trade the far band on a
@@ -2891,8 +3027,7 @@ function drawNorthVista(RP,hy,cx){
     {img:northImgs.far2, w:wFar*skyTri(2), anch:0.62, scale:1.00, asp:ASP_169},
     {img:northImgs.mid, w:wMid1, anch:0.70, scale:1.05, asp:ASP_169},
     {img:northImgs.mid2, w:wMid2, anch:0.70, scale:1.05, asp:ASP_169},
-    {img:northImgs.near, w:wNear, anch:0.78, scale:1.12, asp:ASP_169},
-    {img:northImgs.dive, w:wDive, anch:0.80, scale:1.15, asp:ASP_169}
+    {img:northImgs.near, w:wNear, anch:0.78, scale:1.12, fitH:0.65, asp:ASP_169}   /* #466b: natural scale — measured 26.5% of frame at fitH 0.72; trimmed so the fox lands ~24% (target 20-25%); the beluga dive layer is GONE from the air stack */
   ],RP,hy);
   const g=NORTH_G; if(!g)return;
   const t=S.flyT;
@@ -3302,11 +3437,15 @@ function drawUwDeep(alpha,cx,t){
   ctx.globalAlpha=alpha; ctx.drawImage(img,ox,oy,dw,dh); ctx.globalAlpha=1;
 }
 /* the back layer: the depth stack itself, its light, and the far life in it */
+/* #466b (defect 6): the settled north dive — arrived off the Pole, fully
+   under: the beluga painting alone is the world */
+function northDiveSettled(){ return S.uwPrev==='north'&&S.uwF>=0.98&&northImgs.dive.complete&&northImgs.dive.naturalWidth>0; }
 function drawUwBack(RP,hy,cx,t){
   const uwA=S.uwF; if(uwA<=0.01)return;
   uwCountReset();   /* the frame's census starts here; the near pass publishes it */
   const B=uwBands();
   ctx.save();
+  if(northDiveSettled()){ drawUwPainting(northImgs.dive,uwA,1.06,0.026,cx,t); ctx.restore(); return; }   /* #466b (defect 6): belugas alone, opaque — no tropical stack beneath, no teal grades, no light painting, no far life */
   if(uwImgs.mid.complete&&uwImgs.mid.naturalWidth>0){
     /* MID is the base; DEEP lays over it, then SHALLOW over both — each
        with its share of what is left, so the three always sum to one sea */
@@ -3315,7 +3454,8 @@ function drawUwBack(RP,hy,cx,t){
     if(B.deep>0.003&&dm>0)drawUwDeep(uwA*(B.deep/dm),cx,t);
     /* COSTA RICA'S OWN REEF (NEW): dive off San José and the shallows
        hero is M17 — the same bay, seen from inside */
-    const shImg=(S.uwPrev==='sanjose'&&crImgs.reef.complete&&crImgs.reef.naturalWidth)? crImgs.reef : uwImgs.shallow;
+    const shImg=(S.uwPrev==='north'&&northImgs.dive.complete&&northImgs.dive.naturalWidth)? northImgs.dive
+      : (S.uwPrev==='sanjose'&&crImgs.reef.complete&&crImgs.reef.naturalWidth)? crImgs.reef : uwImgs.shallow;   /* #466: dive off the Pole and the shallows are NP5 — belugas under the ice, where they belong */
     if(B.shallow>0.003)drawUwPainting(shImg,uwA*B.shallow,1.06,0.026,cx,t);
     /* UW5: the drop-off wall, drawn over the DEEP as the descent passes
        alt .15 and whole at the floor — hung back with the smallest
@@ -3942,21 +4082,21 @@ function render(){
   const cx=W/2, t=S.flyT;
   const inSpace=S.spaceF;
   /* horizon: pitch is the view — steer up, sky opens; steer down, world rushes up */
-  let hy=H*(0.50 - S.pitchD*0.30) + Math.sin(t*0.9)*H*0.004 - S.diveF*H*0.34 - inSpace*H*0.10;
-  if(S.mode==='landed')hy=H*0.60;
+  let hy=H*(0.80 - S.pitchD*0.30) - S.diveF*H*0.34 - inSpace*H*0.10;   /* #466: painting ~82%, ground a thin accent; the sine bob is gone — backgrounds are STEADY */
+  if(S.mode==='landed')hy=H*0.82;
   hy=clamp(hy,-H*0.30,H*0.86);
   const gb=H+40;
   const fov=1 + S.effSpeed*0.028 + S.diveF*0.075 + S.skimF*0.03 + S.warpF*0.17;
   ctx.save();
   ctx.translate(cx,H*0.52); ctx.rotate(-S.bankD*0.115);
   ctx.scale(fov,fov); ctx.translate(-cx,-H*0.52);
-  ctx.translate(-S.lookYaw*W*0.15, -S.lookPitch*H*0.09 + Math.sin(t*1.3)*1.2);
+  ctx.translate(-S.lookYaw*W*0.08, -S.lookPitch*H*0.09 + Math.sin(t*1.3)*1.2);   /* #466b: gentler look shift — at 0.15 the vista panels and ground could not cover the frame at a hard side-look and bared a void slab at the edge; the look-BACK layer owns the far range */
   if(S.throttle>0.8&&S.mode==='fly'){ const jk=2.2*(1-S.uwF); ctx.translate((rng()-0.5)*jk,(rng()-0.5)*jk); }   /* the full-throttle shudder fades out as the water takes over — underwater there is nothing to mask it, so at full uwF it is gone entirely; in air it is exactly as it was */
 
   /* ---- sky ---- */
   let gr=ctx.createLinearGradient(0,-H*0.3,0,hy+H*0.06);
   gr.addColorStop(0,RP.sky[0]); gr.addColorStop(0.38,RP.sky[1]); gr.addColorStop(0.62,RP.sky[2]); gr.addColorStop(0.84,RP.sky[3]); gr.addColorStop(1,RP.sky[4]);
-  ctx.fillStyle=gr; ctx.fillRect(-W*0.25,-H*0.35,W*1.5,hy+H*0.4);
+  ctx.fillStyle=gr; ctx.fillRect(-W*0.5,-H*0.35,W*2.0,hy+H*0.4);
   spaceWeights();   /* space weights now; the paintings themselves draw late, over ridge and dome */
 
   /* ---- stars + milky way: SPACE dressing only. Inside the atmosphere —
@@ -4040,8 +4180,8 @@ function render(){
   const aurVis=isAur? clamp(RP.nightF*1.35,0,1) : RP.starF;
   const aurSwell=clamp(0.86+0.30*Math.sin(t*0.21)*Math.sin(t*0.073+1.7)+0.10*Math.sin(t*0.53),0.45,1.3);
   S.aurSwell=aurSwell;
-  if(poleF>0&&((isAur&&aurVis>0.05)||RP.starF>0.06||inSpace>0.3)){
-    const baseA=(isAur? (0.30+aurVis*0.36+inSpace*0.15) : (0.30+aurVis*0.40+inSpace*0.18))*poleF*aurSwell;
+  if(poleF>0&&inSpace<0.22&&((isAur&&aurVis>0.05)||RP.starF>0.06)){   /* #466: the climb kills the curtains outright — they never ghost over the space paintings */
+    const baseA=(isAur? (0.30+aurVis*0.36) : (0.30+aurVis*0.40))*poleF*aurSwell*(1-sstep(0.04,0.18,inSpace));   /* #466: faded to zero before the climb painting even reaches a fifth strength */
     const RB=isAur?6:5;
     ctx.save(); ctx.globalCompositeOperation='lighter';
     /* the halo: the whole upper sky takes the light before the curtains do */
@@ -4099,16 +4239,25 @@ function render(){
   }
 
   /* ---- distant + mid silhouette layers ---- */
+  /* #466: vista worlds carry their horizon inside the painting — the
+     silhouette ridges only slice across them (the purple beach band, the
+     green Falls band, the sawtooth in the space climb). Profiles stay
+     for paris/aurora, which have no vista stack, and fade out at the
+     very start of a climb, long before the space paintings rise. */
+  const profVista=(S.biome==='paris'||S.biome==='aurora'||S.biomeFrom==='paris'||S.biomeFrom==='aurora');
+  const profF=profVista? (1-sstep(0.10,0.30,inSpace)) : 0;
+  if(profF>0.01){ ctx.save(); ctx.globalAlpha=profF;
   drawProfile(PROFILES[S.biomeFrom].far,RP,hy,H*0.015,0.10,RP.farHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].far,RP,hy,H*0.015,0.10,mixCa(RP.far,RP.hazeC,0.55,S.biomeBlend));
+  ctx.restore(); }
   /* Paradise Falls: the unreachable vista sits between the far and mid
      ridges — the valley layers overlap its base, the haze keeps it far */
-  if(S.biome==='jungle'&&inSpace<0.5)drawFallsVista(RP,hy,cx);
-  if(S.biome==='beach'&&inSpace<0.5)drawBeachVista(RP,hy,cx);
-  if(S.biome==='city'&&inSpace<0.5)drawCityVista(RP,hy,cx);
-  if(S.biome==='sanjose'&&inSpace<0.5)drawCRVista(RP,hy,cx);
-  if(S.biome==='desert'&&inSpace<0.5)drawDesertVista(RP,hy,cx);
-  if(S.biome==='north'&&inSpace<0.5)drawNorthVista(RP,hy,cx);
+  if(S.biome==='jungle'&&inSpace<0.42)drawFallsVista(RP,hy,cx);
+  if(S.biome==='beach'&&inSpace<0.42)drawBeachVista(RP,hy,cx);
+  if(S.biome==='city'&&inSpace<0.42)drawCityVista(RP,hy,cx);
+  if(S.biome==='sanjose'&&inSpace<0.42)drawCRVista(RP,hy,cx);
+  if(S.biome==='desert'&&inSpace<0.42)drawDesertVista(RP,hy,cx);
+  if(S.biome==='north'&&inSpace<0.42)drawNorthVista(RP,hy,cx);
   /* ---- NORTH POLE FIREWORKS — NP-FIREWORKS-2026-10-27 (Daily WOW Oct 27):
          Gary's Oct 25 direction for the next North Pole pass — "more of a
          colorful FIREWORKS feel, a real LIGHT SHOW, not just curtains."
@@ -4123,8 +4272,8 @@ function render(){
          the ground and sprites. Night-gated like the curtains
          and faded out as you climb toward space; deterministic (no
          per-frame rng), so the show never flickers or stutters. ---- */
-  if(S.biome==='north'&&RP.starF>0.06&&inSpace<0.5){
-    const fwFade=clamp(1-inSpace*2,0,1)*(0.55+0.45*RP.starF);
+  if(S.biome==='north'&&RP.starF>0.06&&inSpace<0.42){
+    const fwFade=clamp(1-inSpace*3.2,0,1)*(0.55+0.45*RP.starF)*(1-NORTH_NEAR_F);   /* #466: out early in the climb, never ghosting over space. #466c (defect 4): the show also sits out while the near painting owns the view — the screen-anchored bursts straddled the contained panel's edge; in the full-bleed bands they stay inside the painting's sky */
     const FW=[{x:0.24,off:0,rot:0.0},{x:0.40,off:9,rot:1.3},{x:0.56,off:18,rot:2.6},{x:0.72,off:27,rot:0.7},{x:0.88,off:36,rot:2.0}];
     const FWC=['255,215,106','255,106,213','106,232,255','183,140,255','125,255,176'];
     const FWCYC=44, RISE=2.4, BURST=3.6;
@@ -4177,8 +4326,10 @@ function render(){
     ctx.restore();
   }
 
+  if(profF>0.01){ ctx.save(); ctx.globalAlpha=profF;
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
   if(S.biomeBlend<1)drawProfile(PROFILES[S.biome].mid,RP,hy,H*0.045,0.22,mixCa(RP.mid,RP.hazeC,0.3,S.biomeBlend));
+  ctx.restore(); }
 
   drawSkywriting();   /* the little plane and its smoke, hanging in the far sky */
 
@@ -4224,44 +4375,48 @@ function render(){
   for(const sp of sorted){
     if(inSpace>0.6)break;
     if(sp.z>1.05)continue;
-    if((((S.biome==='jungle'&&pfGround.complete&&pfGround.naturalWidth)||(S.biome==='beach'&&bcFields[0].complete&&bcFields[0].naturalWidth)||(S.biome==='desert'&&dsFields[0].complete&&dsFields[0].naturalWidth)))&&sprites.indexOf(sp)>=0)continue;   /* Nov 1: the painted floor carries the terrain — no cartoon scatter on it */   /* a passed landmark, parked beyond the horizon */
+    /* #466: no painted floors anywhere, so no scatter suppression — the simple elements layer over every simple bottom again */ if(false)continue;   /* Nov 1: the painted floor carries the terrain — no cartoon scatter on it */   /* a passed landmark, parked beyond the horizon */
     const p=1-sp.z, sy=hy+(gb-hy)*Math.pow(p,2.05);
     const sx=cx+sp.x*W*(0.10+p*1.02);
-    const s=(5+Math.pow(p,2.6)*H*0.36)*altScale*(LM_SCALE[sp.type]||1);
+    let s=(5+Math.pow(p,2.6)*H*0.36)*altScale*(LM_SCALE[sp.type]||1);
+    if(sp.type==='volcano'){ if(S.alt>0.30)continue; s=Math.min(s,H*0.0625); }   /* #466c (defect 3): the ground volcano is a ground-skim silhouette only — at mid/far altitudes a close pass swelled it into a flat trapezoid that hid the valley painting (whose painted volcano is the real one); the cap keeps its cone (64/50*s tall in drawSprite) under ~8% of frame height */
     if(sx<-s*2||sx>W+s*2)continue;
     const nearFade=sp.z<0.06? sp.z/0.06 : 1;
-    if(p>0.2){ ctx.save(); ctx.globalAlpha=0.15*p*clamp(RP.lightF,0.15,1)*nearFade;
+    const hw=biomeW(sp.home||S.biome); let bwA=hw; if(sp.lm){ if(hw<0.5)continue; bwA=(hw-0.5)*2; } else if(hw<=0.02)continue;   /* #466b (defects 4/5): props and landmarks draw only for their HOME biome, weighted by its blend share — a landmark is fully gone before its biome's weight reaches the halfway point */
+    if(p>0.2){ ctx.save(); ctx.globalAlpha=0.15*p*clamp(RP.lightF,0.15,1)*nearFade*bwA;
       const sw=s*1.2; ctx.drawImage(softBlob,sx-sw/2,sy-sw*0.10,sw,sw*0.20); ctx.restore(); }
-    drawSprite(sp,sx,sy,s,RP,nearFade*fogDim*(1-inSpace*0.7));
+    drawSprite(sp,sx,sy,s,RP,nearFade*fogDim*(1-inSpace*0.7)*bwA);
   }
 
   /* ---- cloud sea when high ---- */
   if(S.alt>0.58&&inSpace<0.4){
-    const ca=sstep(0.58,0.8,S.alt)*0.85;
+    const ca=sstep(0.58,0.8,S.alt)*0.5*clamp(RP.lightF,0.35,1)*(1-biomeW('sanjose'));   /* #466: the cloud sea sits ON the horizon line now, thin — never a row of blobs below it. #466b sweep: dim it with the world's own light at night/dusk — un-graded it sat on the dark ice painting as a row of grey rocks. #466c (defect 2): over Costa Rica the row still hung on the far painting's horizon as pale pearl eggs — the CR stack paints its own cloud sea, so the row is suppressed there, like the free puffs */
     for(let i=0;i<7;i++){ const x=((i*0.17+ (S.pan*0.3%0.17))%1.2-0.1)*W;
-      drawCloudShape(x,hy+H*0.045+((i*37)%3)*8,H*0.085,RP,ca,i*7+3); }
+      drawCloudShape(x,hy-H*0.055+((i*37)%3)*5,H*0.055,RP,ca,i*7+3); }
   }
   /* ---- clouds ---- */
+  const cloudFreeF=Math.max(biomeW('paris'),biomeW('aurora'));   /* #466b (defect 1): free puffs live ONLY over procedural skies — every vista-stack world paints its own sky, so the layer is suppressed there (the Costa Rica stack included: its far shot must be puff-free) */
   const cloudSorted=clouds.slice().sort((a,b)=>b.z-a.z);
   for(const c of cloudSorted){
     const p=1-c.z;
-    const sy=hy-(c.alt-S.alt)*H*0.92+Math.pow(p,1.6)*H*0.14;
+    let sy=hy-(c.alt-S.alt)*H*0.92+Math.pow(p,1.6)*H*0.14;
     const sx=cx+c.x*W*(0.12+p*1.0);
-    const s=(14+Math.pow(p,1.8)*H*0.30)*c.s;
+    const s=(14+Math.pow(p,1.8)*H*0.16)*c.s;   /* #466: half the old bulk — wisps, not boulders */
+    sy=Math.min(sy, hy-H*0.02-s*0.78, H*0.30-s*0.78);   /* #466 (Gary, twice): clouds belong HIGH — a puff's belly never crosses the horizon, never sits on the ground or mid-painting; and now that the paintings fill the frame, the puffs stay up in the paintings' own sky band (top ~third) instead of stringing pearls across the scene */
     const aBase=(0.35+S.wx.clouds*0.5+S.wx.rain*0.25)*(c.z<0.05? c.z/0.05:1);
-    drawCloudShape(sx,sy,s,RP,clamp(aBase,0,0.96)*(1-inSpace*0.85),c.seed);
+    if(cloudFreeF>0.02)drawCloudShape(sx,sy,s,RP,clamp(aBase,0,0.55)*(1-inSpace*0.85)*cloudFreeF,c.seed);
   }
 
   /* ---- UNDERWATER backdrop: the painting, its light, its far life.
          Drawn over sky/ground/sprites/clouds — at full uwF the tank IS
          the world; mid-dive it crossfades through the splash. ---- */
   if(S.uwF>0.01)drawUwBack(RP,hy,cx,t);
-  if(S.uwF>0.03)drawUwFlow(RP,cx,t);   /* the streaming water itself: snow, motes and reef riding the sprite stream over the paintings */
+  if(S.uwF>0.03&&!northDiveSettled())drawUwFlow(RP,cx,t);   /* the streaming water itself: snow, motes and reef riding the sprite stream over the paintings */
 
-  if(S.biome==='beach'&&inSpace<0.5)drawBeachLife(RP,hy,cx);
-  if(S.biome==='city'&&inSpace<0.5)drawCityLife(RP,hy,cx);
-  if(S.biome==='sanjose'&&inSpace<0.5)drawCRLife(RP,hy,cx);
-  if(S.biome==='desert'&&inSpace<0.5)drawDesertLife(RP,hy,cx);
+  if(S.biome==='beach'&&inSpace<0.42)drawBeachLife(RP,hy,cx);
+  if(S.biome==='city'&&inSpace<0.42)drawCityLife(RP,hy,cx);
+  if(S.biome==='sanjose'&&inSpace<0.42)drawCRLife(RP,hy,cx);
+  if(S.biome==='desert'&&inSpace<0.42)drawDesertLife(RP,hy,cx);
   drawSpaceVista(RP);
   /* ---- ambient life: birds, a distant plane ---- */
   if(flock&&inSpace<0.3&&S.uwF<0.5){ ctx.strokeStyle=mixCa(RP.sil,'#000000',0.2,0.8); ctx.lineWidth=2; ctx.lineCap='round';
@@ -4352,8 +4507,8 @@ function render(){
   /* ---- UNDERWATER near life: the DETAIL reef floor when flying low,
          then the jellyfish, the ray, the near schools, the swaying reef
          and the rising bubbles that swim WITH the camera ---- */
-  if(S.uwF>0.01)drawUwDetail(t);
-  if(S.uwF>0.01)drawUwNear(RP,hy,cx,t);
+  if(S.uwF>0.01&&!northDiveSettled())drawUwDetail(t);
+  if(S.uwF>0.01&&!northDiveSettled())drawUwNear(RP,hy,cx,t);
 
   ctx.restore(); /* camera */
 
@@ -4548,6 +4703,85 @@ function jumpTo(b){
   applyTrail();
   showLabel(BIOMES[b].label); arriveLight(b);
 }
+/* ================= POP-UP DISPLAY (#466, Gary): the holo nav ============
+   The button by the joystick opens a panel: SPEED in MPH (live), where
+   you ARE, and every destination grouped SPACE / LAND / UNDERWATER.
+   Travel rides the game's own machinery — the cloud gate between sky
+   worlds (startChange), the splash gate in and out of the tank
+   (startSplash), and the spaceRun climb for SPACE — brisk, a few
+   seconds, with the arrival flash on landing. Leaving space or the
+   tank unwinds first, then travels. A pick in MANUAL locks the world
+   (stays until the next pick); a pick on AUTO PILOT resets the tour
+   timers for a full fresh dwell at the chosen stop. */
+const NAV_NAMES={ beach:'Hollywood Beach', city:'New York', jungle:'Paradise Falls', desert:'The Desert', sanjose:'San José', north:'North Pole', paris:'Paris', aurora:'Aurora', underwater:'Underwater', __space:'Space' };
+const NAV_LAND=['beach','city','jungle','desert','sanjose','north','paris','aurora'];
+let navUnwind=null, navAfterSplash=null;
+function navHereKey(){
+  if(S.biome==='underwater')return 'underwater';
+  if(S.spaceF>0.5)return '__space';
+  if(S.biomeBlend<0.5)return S.biomeFrom;   /* mid-blend: origin until halfway, then the destination */
+  return S.biome;
+}
+function navEngageSpace(){
+  S.worldMode='lock'; disengagePilot(); spaceRun=true; showLabel('🚀 SPACE — climbing…'); syncRealm(); syncPilotUI();
+}
+function navGo(dest){
+  closeNavPanel();
+  S.tourT=0; S.ptourT=0;              /* fresh full dwell at the chosen stop */
+  if(!S.pilot)S.worldMode='lock';    /* a hand pick in MANUAL is a lock — it stays */
+  if(dest===navHereKey()){ showLabel(dest==='__space'?'🚀 SPACE':BIOMES[S.biome].label); return; }
+  if(dest==='__space'){
+    if(S.biome==='underwater'){ navAfterSplash='__space'; startSplash(S.uwPrev||'beach'); }
+    else navEngageSpace();
+    return;
+  }
+  if(S.spaceF>0.3){ navUnwind=dest; return; }   /* out of the black first — the sequencer travels when the sky is back */
+  if(dest==='underwater'||S.biome==='underwater'){ startSplash(dest); return; }
+  startChange(dest,true);
+}
+setInterval(()=>{
+  if(navAfterSplash==='__space'&&S.biome!=='underwater'&&!S.gate){ navAfterSplash=null; navEngageSpace(); }
+  if(navUnwind&&!S.gate){
+    if(S.spaceF<=0.3){ const d=navUnwind; navUnwind=null;
+      if(d==='underwater')startSplash(d); else startChange(d,true); }
+    else S.alt=Math.max(0.55,S.alt-0.10);   /* ease down out of the space band */
+  }
+},150);
+const navBtn=$('navBtn'), navPanel=$('navPanel'), navDestEl=$('navDest');
+function navRow(dest){
+  const b=document.createElement('button'); b.className='navRow'; b.dataset.dest=dest; b.textContent=NAV_NAMES[dest];
+  b.addEventListener('click',ev=>{ ev.stopPropagation(); wake(); navGo(dest); });
+  return b;
+}
+(function buildNav(){
+  const mk=(label)=>{ const h=document.createElement('div'); h.className='navGrp'; h.textContent=label; navDestEl.appendChild(h); };
+  mk('SPACE'); navDestEl.appendChild(navRow('__space'));
+  mk('LAND'); const landBox=document.createElement('div'); landBox.className='navLand'; for(const k of NAV_LAND)landBox.appendChild(navRow(k)); navDestEl.appendChild(landBox);
+  mk('UNDERWATER'); navDestEl.appendChild(navRow('underwater'));
+})();
+function navRefresh(){
+  /* MPH: effSpeed is normalized — cruise (~0.62) reads ~136, full
+     throttle 220, warp kisses the 240 cap */
+  $('navMph').textContent=Math.round(clamp(S.effSpeed,0,1.09)*220);
+  const here=navHereKey();
+  let loc=NAV_NAMES[here]||here;
+  if(S.gate&&S.pendingBiome&&NAV_NAMES[S.pendingBiome])loc+=' → '+NAV_NAMES[S.pendingBiome];
+  else if(navUnwind&&NAV_NAMES[navUnwind])loc+=' → '+NAV_NAMES[navUnwind];
+  else if(navAfterSplash)loc+=' → Space';
+  $('navLoc').textContent=loc;
+  navDestEl.querySelectorAll('.navRow').forEach(r=>{
+    const on=r.dataset.dest===here;
+    r.classList.toggle('here',on); r.disabled=on;
+    const tag=r.querySelector('.hereTag'); if(tag)tag.remove();
+    if(on){ const s=document.createElement('span'); s.className='hereTag'; s.textContent=' ● YOU ARE HERE'; r.appendChild(s); }
+  });
+}
+let navTimer=null;
+function openNavPanel(){ if(!document.body.classList.contains('flying'))return; navPanel.classList.add('open'); navPanel.setAttribute('aria-hidden','false'); navRefresh(); if(navTimer)clearInterval(navTimer); navTimer=setInterval(navRefresh,200); }
+function closeNavPanel(){ navPanel.classList.remove('open'); navPanel.setAttribute('aria-hidden','true'); if(navTimer){ clearInterval(navTimer); navTimer=null; } }
+navBtn.addEventListener('click',ev=>{ ev.stopPropagation(); wake(); if(navPanel.classList.contains('open'))closeNavPanel(); else openNavPanel(); });
+document.addEventListener('pointerdown',ev=>{ if(navPanel.classList.contains('open')&&!navPanel.contains(ev.target)&&ev.target!==navBtn)closeNavPanel(); });
+
 const WXSET={ clear:{clear:1,clouds:0.22,rain:0,snow:0,fog:0}, clouds:{clear:0.35,clouds:1,rain:0,snow:0,fog:0.05},
   rain:{clear:0.02,clouds:0.75,rain:1,snow:0,fog:0.08}, snow:{clear:0.12,clouds:0.55,rain:0,snow:1,fog:0.1},
   fog:{clear:0.15,clouds:0.45,rain:0,snow:0,fog:1} };
@@ -4927,7 +5161,7 @@ function update(dt){
     const n=(band==='LOW'||band==='DEEP')?1:band==='MID'?2:(band==='HIGH'||band==='SHALLOW')?3:4;
     document.querySelectorAll('#altBars i').forEach((el,i)=>el.classList.toggle('on',i<n)); }
   const dEl=$('depthTag');
-  if(dEl){ const uwOn=flying&&S.uwF>0.5; const dw=uwOn?(S.alt>=0.58?'🌊 THE SHALLOWS':S.alt>=0.33?'🪸 THE REEF':'🐙 THE DEEP'):''; if(dEl.textContent!==dw)dEl.textContent=dw; dEl.style.opacity=uwOn?'1':'0'; }
+  if(dEl){ const uwOn=flying&&S.uwF>0.5; const dw=(uwOn&&S.uwPrev!=='north')?(S.alt>=0.58?'🌊 THE SHALLOWS':S.alt>=0.33?'🪸 THE REEF':'🐙 THE DEEP'):''; if(dEl.textContent!==dw)dEl.textContent=dw; dEl.style.opacity=uwOn?'1':'0'; }
   const spB=document.querySelector('.realmBtn[data-realm="space"]');
   if(spB){ const spOn=S.biome!=='underwater'&&(spaceRun||S.alt>=1.0); if(spB.classList.contains('on')!==spOn)syncRealm(); }
   /* LAND appears when LOW and SLOW: no gas on, speed settled back down.
@@ -5023,7 +5257,7 @@ function wake(){ S.idleT=0; S.drift=false; S.panelIdle=0; }
 window.addEventListener('pointerdown',e=>{
   wake(); audioInit();
   if(e.target.closest('#panel')){ S.panelPinned=true; return; }
-  if(e.target.closest('#flightHud,#flightStrip,#joyWrap'))return;
+  if(e.target.closest('#flightHud,#flightStrip,#joyWrap,#navBtn,#navPanel'))return;   /* #466: the pop-up display is a control, not sky — its taps never steer and are never captured away from their own click (the canvas capture below swallowed them) */
   if(e.target.closest('#intro,.win,.bigAct'))return;
   /* a tap on the sky while the sidebar is open is a sky tap like any other:
      it steers (and takes over from the tour) — the sidebar stays as it is */
@@ -5165,7 +5399,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
    Space) or a specific world pick ends it instantly and for good; the
    pill up top is the only way back. */
 function syncPilotUI(){
-  const pill=$('pilotPill'); if(pill){ pill.textContent=S.pilot?'✈ AUTO PILOT':'MANUAL'; pill.classList.toggle('on',!!S.pilot); }
+  const pill=$('pilotPill'); if(pill){ pill.textContent=S.pilot?'✈ AUTO PILOT':(S.worldMode==='auto'?'🔀 AUTO':'MANUAL');   /* #466: the pill never disguises the rotating Auto mode as MANUAL again */ pill.classList.toggle('on',!!S.pilot); }
   const box=$('worldChips'); if(!box)return;
   box.querySelectorAll('.chip').forEach(c=>{
     const v=c.dataset.world;
@@ -5182,7 +5416,7 @@ function syncRealm(){
   const wg=$('wxGrp'); if(wg)wg.classList.toggle('off',uw);   /* no weather to pick under the water */
 }
 function engagePilot(){ S.pilot=true; S.worldMode='auto'; S.ptourT=0; S.tourT=0; S.drift=false; syncPilotUI(); }
-function disengagePilot(){ spaceRun=false; if(!S.pilot)return; S.pilot=false; S.worldMode='lock'; syncPilotUI(); }   /* taking MANUAL always lands on "this world, until I say otherwise" — Gary, Oct 24 */
+function disengagePilot(){ spaceRun=false; S.pilot=false; S.worldMode='lock'; syncPilotUI(); }   /* #466: MANUAL always locks the world — the old early return (if pilot was already off) let the Auto rotation survive takeovers while the pill read MANUAL, so the game toured hands-off in 'manual'. Now every takeover hard-locks. */   /* taking MANUAL always lands on "this world, until I say otherwise" — Gary, Oct 24 */
 function startFlight(){
   document.body.classList.add('flying');
   const intro=$('intro'); intro.style.transition='opacity .6s ease'; intro.style.opacity='0';
