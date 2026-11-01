@@ -309,7 +309,8 @@ function spawnChallengeGroup(){
 
 /* ---------------- firing & dives ---------------- */
 function playerFire(){
-  const p=G.player; if(!p.alive || G.beamEvent) return;
+  const p=G.player; if(!p.alive) return;
+  if(G.beamEvent && G.beamEvent.phase==='capture') return;   /* only the beam grab itself locks fire — the dive, hover and return do not */
   const limit = p.dual?4:2;                              // original 2-shot limit per fighter
   if(G.bullets.length>=limit) return;
   if(p.dual){
@@ -482,7 +483,11 @@ function update(dt){
   if(G.beamEvent) updateBeam(dt);
 
   /* ---- player movement ---- */
-  if(p.alive && !G.beamEvent){
+  /* Control stays LIVE through the whole beam sequence (dive, hover, return) —
+     the pilot must be able to dodge the beam and shoot the boss, as in the
+     arcade. Only the 'capture' grab itself takes the ship: updateBeam()
+     drives p.x / p.y during that phase, so this block stands down for it. */
+  if(p.alive && !(G.beamEvent && G.beamEvent.phase==='capture')){
     const spd=340;
     if(keys.left) p.tx-=spd*dt;
     if(keys.right) p.tx+=spd*dt;
@@ -935,10 +940,15 @@ cv.addEventListener('pointerdown',e=>{
   ac(); dragId=e.pointerId; lastPX=e.clientX; fireHeld=true;
   cv.setPointerCapture(e.pointerId); e.preventDefault();
 });
-cv.addEventListener('pointermove',e=>{
+/* bound on WINDOW, not the canvas: the ship follows the mouse's current X
+   from anywhere over the page (HUD, deck, margins) and re-acquires it the
+   instant the pointer comes back — sliding off the playfield or off the
+   window and returning is a non-event, never a stuck state. */
+window.addEventListener('pointermove',e=>{
   const rect=cv.getBoundingClientRect(), scale=W/rect.width;
   if(e.pointerType==='mouse'){
-    if(G && G.player) G.player.tx=Math.max(20,Math.min(W-20,(e.clientX-rect.left)*scale));
+    if(dragId!==null && e.buttons===0){ dragId=null; fireHeld=false; }   /* heal a button release the canvas never saw (released off-window) */
+    if(G && G.player && G.run && !G.paused) G.player.tx=Math.max(20,Math.min(W-20,(e.clientX-rect.left)*scale));
   } else if(dragId===e.pointerId && G && G.player){
     const dx=(e.clientX-lastPX)*scale*1.12; lastPX=e.clientX;
     G.player.tx=Math.max(20,Math.min(W-20,G.player.tx+dx));
