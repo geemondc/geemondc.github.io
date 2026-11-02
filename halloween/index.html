@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Halloween at the Office — A Living Photo (test)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(960px, 100%); margin-top:26px;
+           aspect-ratio: 480 / 360; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; }
+  #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Halloween at the Office</h1>
+  <div class="statement">Gary and the office crew</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay"    src="still.jpg" alt="The original photo, untouched">
+    <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
+    <img id="lyrHeld"   src="held-people.png" alt="" style="opacity:0">
+    <img id="lyrAccWig"     src="acc-wig.png" alt="" style="opacity:0">
+    <img id="lyrAccScrubs"  src="acc-scrubs.png" alt="" style="opacity:0">
+    <img id="lyrAccBlonde2" src="acc-blonde2.png" alt="" style="opacity:0">
+    <img id="lyrAccAfro"    src="acc-afro.png" alt="" style="opacity:0">
+    <img id="lyrAccBlonde5" src="acc-blonde5.png" alt="" style="opacity:0">
+    <img id="lyrAccBanner"  src="acc-banner.png" alt="" style="opacity:0">
+    <img id="lyrAccDeco"    src="acc-deco.png" alt="" style="opacity:0">
+    <img id="lyrAccLed"     src="acc-led.png" alt="" style="opacity:0">
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  A <a href="https://thelivingphotos.com" target="_blank" rel="noopener">living photo</a>
+  — the people stay just as they are.
+</footer>
+
+<div id="fs">
+  <img id="fsDay"    src="still.jpg" alt="">
+  <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
+  <img id="fsGlow"   src="glow.jpg" alt="" style="opacity:0">
+  <img id="fsHeld"   src="held-people.png" alt="" style="opacity:0">
+  <img id="fsAccWig"     src="acc-wig.png" alt="" style="opacity:0">
+  <img id="fsAccScrubs"  src="acc-scrubs.png" alt="" style="opacity:0">
+  <img id="fsAccBlonde2" src="acc-blonde2.png" alt="" style="opacity:0">
+  <img id="fsAccAfro"    src="acc-afro.png" alt="" style="opacity:0">
+  <img id="fsAccBlonde5" src="acc-blonde5.png" alt="" style="opacity:0">
+  <img id="fsAccBanner"  src="acc-banner.png" alt="" style="opacity:0">
+  <img id="fsAccDeco"    src="acc-deco.png" alt="" style="opacity:0">
+  <img id="fsAccLed"     src="acc-led.png" alt="" style="opacity:0">
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 80;                 // room loop, seconds
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var frozen = null;          // QA: freeze the clock at this many seconds
+  var forcedAcc = null;       // QA: force all accents to this opacity factor
+  var anchor = 0;             // scene seconds at anchorNow (phase anchor)
+  var anchorNow = 0;          // performance.now() at the anchor
+  var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
+  var SWEEP_END = 31.5;       // scene time where the sweep hands over (golden hold)
+  var clock = 0;              // current scene clock, seconds (QA state)
+
+  var ACCKEYS = ['Wig','Scrubs','Blonde2','Afro','Blonde5','Banner','Deco','Led'];
+  function stack(p){
+    var o = { day: document.getElementById(p+'Day'),
+              golden: document.getElementById(p+'Golden'),
+              glow: document.getElementById(p+'Glow'),
+              held: document.getElementById(p+'Held') };
+    for (var i = 0; i < ACCKEYS.length; i++) o[ACCKEYS[i]] = document.getElementById(p+'Acc'+ACCKEYS[i]);
+    return o;
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsOpen = false, priorState = 'still';
+
+  // Room timeline: BRIGHT hold -> GOLDEN -> GLOW -> morning back to BRIGHT.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    if (t < 14) return { day:1, golden:0, glow:0 };
+    if (t < 28) return { day:1, golden:(t-14)/14, glow:0 };
+    if (t < 42) return { day:1, golden:1, glow:0 };
+    if (t < 56) return { day:1, golden:1, glow:(t-42)/14 };
+    if (t < 70) return { day:1, golden:1, glow:1 };
+    return { day:1, golden:0, glow:1-(t-70)/10 };
+  }
+  // Accents: independent slow pulses, offset like tree lights.
+  var ACC = { Wig:[12,0.0,1.0], Scrubs:[14,1.2,1.0], Blonde2:[13,2.4,1.0],
+              Afro:[15,3.6,1.0], Blonde5:[11,4.4,1.0], Banner:[16,5.2,1.0],
+              Deco:[11,0.6,1.0], Led:[9,1.8,0.95] };
+  function accOpacities(t){
+    var o = {};
+    for (var i = 0; i < ACCKEYS.length; i++){
+      var a = ACC[ACCKEYS[i]];
+      var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t + a[1]) / a[0]);
+      p = p * p * (3 - 2 * p);
+      o[ACCKEYS[i]] = a[2] * p;
+    }
+    if (forcedAcc !== null){ for (var j = 0; j < ACCKEYS.length; j++) o[ACCKEYS[j]] = forcedAcc; }
+    return o;
+  }
+  function apply(st, so, ao, living){
+    st.day.style.opacity = so.day;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.held.style.opacity = living ? 1 : 0;
+    for (var i = 0; i < ACCKEYS.length; i++)
+      st[ACCKEYS[i]].style.opacity = living ? ao[ACCKEYS[i]] : 0;
+  }
+  function frame(now){
+    // Scene time is a pure function of wall time (performance.now): the phase
+    // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
+    // so frame rate can never stretch the 80s cycle.
+    if (ignited && frozen === null){
+      var tNow = anchor + rate * (now - anchorNow) / 1000;
+      if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
+      clock = tNow;
+    }
+    var t = frozen !== null ? frozen : clock;
+    var so = opacities(t), ao = accOpacities(t);
+    var living = state === 'living';
+    if (!living) so = { day:1, golden:0, glow:0 };
+    apply(page, so, ao, living);
+    if (fsOpen) apply(fs, so, ao, true);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){ ignited = true; anchor = 0; anchorNow = performance.now(); rate = 7; clock = 0; }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  function openFs(){
+    priorState = state;
+    if (!ignited) ignite();
+    fsOpen = true; fsEl.style.display = 'block';
+  }
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (priorState === 'still') setStill(); else setLiving();
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+  });
+
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
+    forceAccents: function(v){ forcedAcc = v; },
+    accOpacities: function(){ return accOpacities(frozen !== null ? frozen : clock); },
+    state: function(){ return { state: state, fsOpen: fsOpen, clock: clock }; },
+    opacities: opacities
+  };
+})();
+</script>
+</body>
+</html>
