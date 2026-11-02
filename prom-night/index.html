@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prom Night — A Living Photo (test)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%); margin-top:26px;
+           aspect-ratio: 1515 / 1046; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; }
+  #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Prom Night</h1>
+  <div class="statement">Gary, Glenn and Neil — 1988</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay"    src="still.jpg" alt="The original photo, untouched">
+    <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
+    <img id="lyrHeld"   src="held-boys.png" alt="" style="opacity:0">
+    <img id="lyrAccRed"   src="acc-red.png" alt="" style="opacity:0">
+    <img id="lyrAccPink"  src="acc-pink.png" alt="" style="opacity:0">
+    <img id="lyrAccBlush" src="acc-blush.png" alt="" style="opacity:0">
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  A <a href="https://thelivingphotos.com" target="_blank" rel="noopener">living photo</a>
+  — the people stay just as they are.
+</footer>
+
+<div id="fs">
+  <img id="fsDay"    src="still.jpg" alt="">
+  <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
+  <img id="fsGlow"   src="glow.jpg" alt="" style="opacity:0">
+  <img id="fsHeld"   src="held-boys.png" alt="" style="opacity:0">
+  <img id="fsAccRed"   src="acc-red.png" alt="" style="opacity:0">
+  <img id="fsAccPink"  src="acc-pink.png" alt="" style="opacity:0">
+  <img id="fsAccBlush" src="acc-blush.png" alt="" style="opacity:0">
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 72;                 // scene loop, seconds
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var frozen = null;          // QA: freeze the clock at this many seconds
+  var forcedAcc = null;       // QA: force all accents to this opacity factor
+  var sweep = 0;              // ignition fast-sweep, seconds remaining
+  var last = performance.now();
+  var clock = 0;
+
+  function stack(p){
+    return { day: document.getElementById(p+'Day'),
+             golden: document.getElementById(p+'Golden'),
+             glow: document.getElementById(p+'Glow'),
+             held: document.getElementById(p+'Held'),
+             red: document.getElementById(p+'AccRed'),
+             pink: document.getElementById(p+'AccPink'),
+             blush: document.getElementById(p+'AccBlush') };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsOpen = false, priorState = 'still';
+
+  // Indoor timeline: original hold -> golden -> glow -> back to original.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    if (t < 14) return { day:1, golden:0, glow:0 };
+    if (t < 26) return { day:1, golden:(t-14)/12, glow:0 };
+    if (t < 40) return { day:1, golden:1, glow:0 };
+    if (t < 52) return { day:1, golden:1, glow:(t-40)/12 };
+    if (t < 64) return { day:1, golden:1, glow:1 };
+    return { day:1, golden:0, glow:1-(t-64)/8 };
+  }
+  // The accents: red tie+rose, pink carnation+square, blush boutonniere -
+  // three independent slow pulses, offset like tree lights.
+  var ACC = [ ['red', 12, 0.0, 1.0], ['pink', 10, 3.3, 1.0], ['blush', 9, 5.5, 1.0] ];
+  function accOpacities(t){
+    var o = {};
+    for (var i = 0; i < ACC.length; i++){
+      var a = ACC[i];
+      var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t + a[2]) / a[1]);
+      p = p * p * (3 - 2 * p);                    // smoothstep ease
+      o[a[0]] = a[3] * p;
+    }
+    if (forcedAcc !== null){ o.red = o.pink = o.blush = forcedAcc; }
+    return o;
+  }
+  function apply(st, so, ao, living){
+    st.day.style.opacity = so.day;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.held.style.opacity = living ? 1 : 0;
+    st.red.style.opacity = living ? ao.red : 0;
+    st.pink.style.opacity = living ? ao.pink : 0;
+    st.blush.style.opacity = living ? ao.blush : 0;
+  }
+  function frame(now){
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (ignited && frozen === null){
+      var scale = 1;
+      if (sweep > 0){ scale = 7; sweep -= dt; }
+      clock += dt * scale;
+    }
+    var t = frozen !== null ? frozen : clock;
+    var so = opacities(t), ao = accOpacities(t);
+    var living = state === 'living';
+    if (!living) so = { day:1, golden:0, glow:0 };
+    apply(page, so, ao, living);
+    if (fsOpen) apply(fs, so, ao, true);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){ ignited = true; sweep = 4.5; }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  function openFs(){
+    priorState = state;
+    if (!ignited) ignite();           // full screen is the living state
+    fsOpen = true; fsEl.style.display = 'block';
+  }
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (priorState === 'still') setStill(); else setLiving();  // exactly the prior state
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ frozen = null; },
+    forceAccents: function(v){ forcedAcc = v; },
+    accOpacities: function(){ return accOpacities(frozen !== null ? frozen : clock); },
+    state: function(){ return { state: state, fsOpen: fsOpen, clock: clock }; },
+    opacities: opacities
+  };
+})();
+</script>
+</body>
+</html>
