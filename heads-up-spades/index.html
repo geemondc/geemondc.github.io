@@ -1949,9 +1949,31 @@
       const L = handLayers(hand);
       const pNil = nilProb(hand);
       /* both plans stay live; the Nil plan's weight commits as the hand
-         fills in, so three low cards never hijack the early draft */
+         fills in, so three low cards never hijack the early draft.
+         DRAFT PRICING (Nov 2 follow-up fix — the bidding fix's honest
+         footnote): the Nil plan's draft value was priced off nilProb(),
+         the same fantasy curve the bid gate retired (97% at danger
+         <= 1.8, still break-even near danger 6, and FREE below 1.8 —
+         danger cost nothing until 1.8, so it crept). Priced that way,
+         nil-SHAPE beat trick strength in keep/pass arguments: measured
+         over 6,000 simulated drafts with this evaluator, the AI passed
+         66% of the honors it peeked at and finished with hands worth
+         1.8 likely tricks against the Board bids it then had to make —
+         the set machine. The draft now prices the Nil plan with the
+         bid gate's honest curve (0.95 - 0.19 x danger, capped at 80%),
+         less a draft margin of 30 points: the gate's own 15 (Nil must
+         WIN the argument, not tie it) plus 15 because a draft-stage
+         Nil is still only an option on an unfinished hand, and the
+         keep/pass comparison flatters options. Calibrated on the same
+         6,000-draft simulation: honors passed fall to 36%, finished
+         hands average 3.75 likely tricks, bids sit on top of hand
+         strength (bid - likely +0.04, was +2.0), and Nil — still
+         gated exactly as shipped — lands near 1 hand in 11. Only
+         .value changes: nilProb(), the pNil field, and the
+         cons/likely/upside aiChooseBid reads are exactly as shipped. */
       const cred = clamp(hand.length / 11, 0.1, 1);
-      const nilTricks = (200 * pNil - 100) / 10 * cred;
+      const pNilDraft = clamp(0.95 - nilDanger(hand) * 0.19, 0.02, 0.80);
+      const nilTricks = (200 * pNilDraft - 130) / 10 * cred;
       return { cons: L.cons, likely: L.likely, upside: L.upside, pNil,
                value: Math.max(L.likely, nilTricks) };
     }
