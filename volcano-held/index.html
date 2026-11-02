@@ -82,9 +82,11 @@
   var ignited = false;
   var frozen = null;          // QA: freeze the clock at this many seconds
   var forcedAcc = null;       // QA: force all accents to this opacity factor
-  var sweep = 0;              // ignition fast-sweep, seconds remaining
-  var last = performance.now();
-  var clock = 0;
+  var anchor = 0;             // scene seconds at anchorNow (phase anchor)
+  var anchorNow = 0;          // performance.now() at the anchor
+  var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
+  var SWEEP_END = 31.5;       // scene time where the sweep hands over (sunset hold)
+  var clock = 0;              // current scene clock, seconds (QA state)
 
   function stack(p){
     return { day: document.getElementById(p+'Day'),
@@ -132,11 +134,13 @@
     st.glass.style.opacity = living ? ao.glass : 0;
   }
   function frame(now){
-    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    // Scene time is a pure function of wall time (performance.now): the phase
+    // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
+    // so frame rate can never stretch the 72s cycle.
     if (ignited && frozen === null){
-      var scale = 1;
-      if (sweep > 0){ scale = 7; sweep -= dt; }
-      clock += dt * scale;
+      var tNow = anchor + rate * (now - anchorNow) / 1000;
+      if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
+      clock = tNow;
     }
     var t = frozen !== null ? frozen : clock;
     var so = opacities(t), ao = accOpacities(t);
@@ -149,7 +153,7 @@
   requestAnimationFrame(frame);
 
   function ignite(){
-    if (!ignited){ ignited = true; sweep = 4.5; }
+    if (!ignited){ ignited = true; anchor = 0; anchorNow = performance.now(); rate = 7; clock = 0; }
     state = 'living';
     document.getElementById('ignite').style.display = 'none';
     document.getElementById('toggle').style.display = 'flex';
@@ -190,7 +194,7 @@
     ignite: ignite, setStill: setStill, setLiving: setLiving,
     openFs: openFs, closeFs: closeFs,
     setPhase: function(sec){ frozen = sec; },
-    unfreeze: function(){ frozen = null; },
+    unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
     forceAccents: function(v){ forcedAcc = v; },
     accOpacities: function(){ return accOpacities(frozen !== null ? frozen : clock); },
     state: function(){ return { state: state, fsOpen: fsOpen, clock: clock }; },
