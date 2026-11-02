@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Christmas Room — A Living Photo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%); margin-top:26px;
+           aspect-ratio: 2176 / 1632; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; }
+  #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The Christmas Room</h1>
+  <div class="statement">A storybook room, lit for the season</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay"    src="still.jpg" alt="The original painting, untouched">
+    <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
+    <img id="lyrDusk"   src="mantel-dusk.png" alt="" style="opacity:0">
+    <img id="lyrNight"  src="mantel-night.png" alt="" style="opacity:0">
+    <img id="lyrAccTree"    src="acc-tree.png" alt="" style="opacity:0">
+    <img id="lyrAccRed"     src="acc-red.png" alt="" style="opacity:0">
+    <img id="lyrAccFire"    src="acc-fire.png" alt="" style="opacity:0">
+    <img id="lyrAccFlame"   src="acc-flame.png" alt="" style="opacity:0">
+    <img id="lyrAccGarland" src="acc-garland.png" alt="" style="opacity:0">
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  A <a href="https://thelivingphotos.com" target="_blank" rel="noopener">Living Photo</a>
+  — thelivingphotos.com
+</footer>
+
+<div id="fs">
+  <img id="fsDay"    src="still.jpg" alt="">
+  <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
+  <img id="fsGlow"   src="glow.jpg" alt="" style="opacity:0">
+  <img id="fsDusk"   src="mantel-dusk.png" alt="" style="opacity:0">
+  <img id="fsNight"  src="mantel-night.png" alt="" style="opacity:0">
+  <img id="fsAccTree"    src="acc-tree.png" alt="" style="opacity:0">
+  <img id="fsAccRed"     src="acc-red.png" alt="" style="opacity:0">
+  <img id="fsAccFire"    src="acc-fire.png" alt="" style="opacity:0">
+  <img id="fsAccFlame"   src="acc-flame.png" alt="" style="opacity:0">
+  <img id="fsAccGarland" src="acc-garland.png" alt="" style="opacity:0">
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 60;                 // scene loop, seconds
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var frozen = null;          // QA: freeze the clock at this many seconds
+  var forcedAcc = null;       // QA: force all accents to this opacity factor
+  var anchor = 0;             // scene seconds at anchorNow (phase anchor)
+  var anchorNow = 0;          // performance.now() at the anchor
+  var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
+  var SWEEP_END = 26.25;      // scene time where the sweep hands over
+  var clock = 0;              // current scene clock, seconds (QA state)
+
+  function stack(p){
+    return { day: document.getElementById(p+'Day'),
+             golden: document.getElementById(p+'Golden'),
+             glow: document.getElementById(p+'Glow'),
+             dusk: document.getElementById(p+'Dusk'),
+             night: document.getElementById(p+'Night'),
+             tree: document.getElementById(p+'AccTree'),
+             red: document.getElementById(p+'AccRed'),
+             fire: document.getElementById(p+'AccFire'),
+             flame: document.getElementById(p+'AccFlame'),
+             garland: document.getElementById(p+'AccGarland') };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsOpen = false, priorState = 'still';
+
+  // Room journey (60s): evening hold -> golden glow -> deep cozy night ->
+  // back through golden -> evening. t=60 wraps exactly to t=0: seamless.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    if (t < 6)  return { day:1, golden:0, glow:0 };
+    if (t < 16) return { day:1, golden:(t-6)/10, glow:0 };
+    if (t < 24) return { day:1, golden:1, glow:0 };
+    if (t < 34) return { day:1, golden:1, glow:(t-24)/10 };
+    if (t < 44) return { day:1, golden:1, glow:1 };
+    if (t < 52) return { day:1, golden:1, glow:1-(t-44)/8 };
+    return { day:1, golden:1-(t-52)/8, glow:0 };
+  }
+  // The three mantel pictures run the same journey ~4s BEHIND the room:
+  // sunset -> dusk -> night inside their little frames, and back.
+  function mantelOpacities(t){
+    t = ((t % T) + T) % T;
+    if (t < 10) return { dusk:0, night:0 };
+    if (t < 20) return { dusk:(t-10)/10, night:0 };
+    if (t < 28) return { dusk:1, night:0 };
+    if (t < 38) return { dusk:1, night:(t-28)/10 };
+    if (t < 46) return { dusk:1, night:1 };
+    if (t < 54) return { dusk:1, night:1-(t-46)/8 };
+    return { dusk:1-(t-54)/6, night:0 };
+  }
+  // Accents, each glowing in its own colour on its own slow rhythm:
+  // tree lights, red ornaments, the breathing fire, candle + lantern
+  // flames, garland lights - offset like real lights, never in unison.
+  var ACC = [ ['tree', 11, 0.0, 0.9], ['red', 13, 4.1, 1.0], ['fire', 7, 1.7, 0.85],
+              ['flame', 9, 2.9, 1.0], ['garland', 10, 6.3, 1.0] ];
+  function accOpacities(t){
+    var o = {};
+    for (var i = 0; i < ACC.length; i++){
+      var a = ACC[i];
+      var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t + a[2]) / a[1]);
+      p = p * p * (3 - 2 * p);                    // smoothstep ease
+      o[a[0]] = a[3] * p;
+    }
+    if (forcedAcc !== null){ for (var k in o) o[k] = forcedAcc; }
+    return o;
+  }
+  function apply(st, so, mo, ao, living){
+    st.day.style.opacity = so.day;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.dusk.style.opacity = living ? mo.dusk : 0;
+    st.night.style.opacity = living ? mo.night : 0;
+    st.tree.style.opacity = living ? ao.tree : 0;
+    st.red.style.opacity = living ? ao.red : 0;
+    st.fire.style.opacity = living ? ao.fire : 0;
+    st.flame.style.opacity = living ? ao.flame : 0;
+    st.garland.style.opacity = living ? ao.garland : 0;
+  }
+  function frame(now){
+    // Scene time is a pure function of wall time (performance.now): the phase
+    // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
+    // so frame rate can never stretch the 60s cycle.
+    if (ignited && frozen === null){
+      var tNow = anchor + rate * (now - anchorNow) / 1000;
+      if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
+      clock = tNow;
+    }
+    var t = frozen !== null ? frozen : clock;
+    var so = opacities(t), mo = mantelOpacities(t), ao = accOpacities(t);
+    var living = state === 'living';
+    if (!living) so = { day:1, golden:0, glow:0 };
+    apply(page, so, mo, ao, living);
+    if (fsOpen) apply(fs, so, mo, ao, true);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){ ignited = true; anchor = 0; anchorNow = performance.now(); rate = 7; clock = 0; }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  function openFs(){
+    priorState = state;
+    if (!ignited) ignite();           // full screen is the living state
+    fsOpen = true; fsEl.style.display = 'block';
+  }
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (priorState === 'still') setStill(); else setLiving();  // exactly the prior state
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
+    forceAccents: function(v){ forcedAcc = v; },
+    accOpacities: function(){ return accOpacities(frozen !== null ? frozen : clock); },
+    state: function(){ return { state: state, fsOpen: fsOpen, clock: clock }; },
+    opacities: opacities, mantelOpacities: mantelOpacities
+  };
+})();
+</script>
+</body>
+</html>
