@@ -3317,6 +3317,80 @@ function drawSeatBiomeLife(RP,hy,cx){
       ctx.drawImage(softBlobW,x-wdt*0.4,y+hgt*0.75,wdt*1.9,hgt*0.5); ctx.restore();
       ctx.save(); ctx.globalAlpha=0.96*env; ctx.drawImage(canalYacht,x-wdt/2,y-hgt/2,wdt,hgt); ctx.restore(); } }
 }
+/* ================= #568 — THE TWO FLAT NIGHT WORLDS, ENRICHED =====
+   (Job 4, Gary: "make this like good underwater with cutouts and
+   shaded stuff or twinkles in sky · this needs more · its like an
+   underwater scene · add stuff" — and of Aurora Horizon: "this too ·
+   another good scene · needs stuff.") These worlds are procedural,
+   so their cut-outs are DRAWN solid — the recipe is the same: a
+   shaded far silhouette with a real place, one solid near element,
+   twinkles in the sky, and the world's own star left alone (Paris's
+   moon and rooftops; the aurora curtains). Sparse: enrich, don't
+   clutter. */
+function drawNightLife(RP,hy,cx){
+  const t=S.flyT, wgt=biomeW(S.biome); if(wgt<0.03)return;
+  const gh=H-hy;
+  ctx.save(); ctx.globalAlpha=wgt;
+  /* twinkles in the sky — both worlds */
+  { ctx.save(); ctx.globalCompositeOperation='screen'; ctx.fillStyle='rgba(235,244,255,1)';
+    const sr=mulberry(S.biome==='paris'? 121 : 343);
+    for(let i=0;i<24;i++){ const fx=0.03+sr()*0.94, fy=0.03+sr()*0.30;
+      const tw=0.5+0.5*Math.sin(t*(0.7+(i%5)*0.19)+i*2.61);
+      ctx.globalAlpha=(0.05+0.30*tw)*(0.3+0.7*(RP.starF||0.6))*wgt; ctx.fillRect(fx*W,fy*H,2.0,2.0); }
+    ctx.restore(); }
+  if(S.biome==='paris'){
+    /* THE EIFFEL — a shaded silhouette standing on the far bank, the
+       shaded-sharks move at city scale: dark against the sky, a few
+       gold points lit on its frame, and its BEACON sweeping slowly
+       (the light is the motion). Fixed place: right bank, x .70. */
+    const bx=W*0.70, by=hy+gh*0.05, bh=H*0.315, bw=bh*0.30;   /* #568b: slimmer — the first drive read as an A-frame; the tower's feet are only ~0.3 of its height */
+    ctx.fillStyle='rgba(12,9,22,0.94)';
+    ctx.beginPath();
+    ctx.moveTo(bx-bw*0.50,by); ctx.quadraticCurveTo(bx-bw*0.30,by-bh*0.42,bx-bw*0.185,by-bh*0.52);
+    ctx.lineTo(bx-bw*0.10,by-bh*0.52); ctx.quadraticCurveTo(bx-bw*0.055,by-bh*0.86,bx-bw*0.028,by-bh*0.965);
+    ctx.lineTo(bx-bw*0.008,by-bh); ctx.lineTo(bx+bw*0.008,by-bh);
+    ctx.quadraticCurveTo(bx+bw*0.055,by-bh*0.86,bx+bw*0.10,by-bh*0.52);
+    ctx.lineTo(bx+bw*0.185,by-bh*0.52); ctx.quadraticCurveTo(bx+bw*0.30,by-bh*0.42,bx+bw*0.50,by);
+    ctx.quadraticCurveTo(bx,by-bh*0.26,bx-bw*0.50,by); ctx.closePath(); ctx.fill();   /* #568b: the arch rises to a quarter of the height */
+    ctx.fillRect(bx-bw*0.30,by-bh*0.545,bw*0.60,bh*0.028);   /* first floor */
+    ctx.fillRect(bx-bw*0.185,by-bh*0.80,bw*0.37,bh*0.022);   /* second floor */
+    /* gold points on the frame, twinkling */
+    ctx.save(); ctx.globalCompositeOperation='screen'; ctx.fillStyle='rgba(255,205,120,1)';
+    const pts=[[0,0.97],[-0.10,0.78],[0.10,0.78],[-0.20,0.53],[0.20,0.53],[0,0.53],[-0.34,0.26],[0.34,0.26],[0,0.30]];
+    pts.forEach((p2,i)=>{ const tw=0.5+0.5*Math.sin(t*1.8+i*1.37); ctx.globalAlpha=(0.25+0.55*tw)*wgt;
+      ctx.fillRect(bx+p2[0]*bw-1.1,by-p2[1]*bh-1.1,2.2,2.2); });
+    /* the beacon: a slow sweep of light from the summit */
+    const ba=t*0.32, bl=bh*1.5;
+    const bg2=ctx.createLinearGradient(bx,by-bh,bx+Math.cos(ba)*bl,by-bh+Math.sin(ba)*bl*0.24);
+    bg2.addColorStop(0,'rgba(255,230,170,0.20)'); bg2.addColorStop(1,'rgba(255,230,170,0)');
+    ctx.fillStyle=bg2; ctx.beginPath(); ctx.moveTo(bx,by-bh);
+    ctx.lineTo(bx+Math.cos(ba-0.055)*bl,by-bh+Math.sin(ba-0.055)*bl*0.24);
+    ctx.lineTo(bx+Math.cos(ba+0.055)*bl,by-bh+Math.sin(ba+0.055)*bl*0.24); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else if(S.biome==='aurora'){
+    /* THE CABIN — one solid little place on the plain: dark timber,
+       two warm windows, and its chimney smoke curling up into the
+       aurora (the motion is a breath, not a machine). Near pines
+       stand solid at its side. The curtains stay the star. */
+    const cbx=W*0.235, cby=hy+gh*0.34, cw=H*0.052, ch=H*0.034;
+    ctx.fillStyle='rgba(16,14,20,0.95)';
+    ctx.fillRect(cbx-cw/2,cby-ch,cw,ch);
+    ctx.beginPath(); ctx.moveTo(cbx-cw*0.62,cby-ch); ctx.lineTo(cbx,cby-ch*1.55); ctx.lineTo(cbx+cw*0.62,cby-ch); ctx.closePath(); ctx.fill();
+    ctx.fillRect(cbx+cw*0.26,cby-ch*1.5,cw*0.13,ch*0.5);   /* chimney */
+    ctx.save(); ctx.globalCompositeOperation='screen'; ctx.fillStyle='rgba(255,190,100,1)';
+    ctx.globalAlpha=0.85*wgt; ctx.fillRect(cbx-cw*0.30,cby-ch*0.68,3.2,2.6); ctx.fillRect(cbx+cw*0.12,cby-ch*0.68,3.2,2.6);
+    ctx.restore();
+    /* chimney smoke: three soft breaths rising and thinning */
+    for(let k=0;k<3;k++){ const u=((t*0.05)+k/3)%1, sx=cbx+cw*0.32+u*W*0.012+Math.sin(t*0.8+k*2.1)*2.5, sy=cby-ch*1.5-u*H*0.075, sr2=cw*(0.16+u*0.5);
+      ctx.save(); ctx.globalAlpha=0.10*(1-u)*wgt; ctx.drawImage(softBlobW,sx-sr2,sy-sr2*0.4,sr2*2,sr2*0.8); ctx.restore(); }
+    /* near pines, solid dark, at the cabin's side of the plain */
+    ctx.fillStyle='rgba(10,14,16,0.95)';
+    for(const pn of [[0.335,0.30],[0.365,0.365],[0.86,0.33]]){ const px=W*pn[0], py=hy+gh*pn[1], ph2=H*0.085*(0.8+pn[1]);
+      ctx.beginPath(); ctx.moveTo(px-ph2*0.20,py); ctx.lineTo(px+ph2*0.20,py); ctx.lineTo(px,py-ph2); ctx.closePath(); ctx.fill();
+      ctx.fillRect(px-1,py,2,ph2*0.10); }
+  }
+  ctx.restore();
+}
 /* ================= #567 — THE DESERT FAMILY =================
    desert-dusk (the Oasis at dusk, its sky composed empty ON PURPOSE)
    becomes THE Desert background, with the dunes aerial and the low-
@@ -5024,6 +5098,7 @@ function render(){
   if(S.biome==='sanjose'&&inSpace<0.42)drawCRLife(RP,hy,cx);
   if(S.biome==='temple'&&inSpace<0.42)drawTempleLife(RP,hy,cx);   /* #560 */
   if(SEAT_BIOMES[S.biome]&&inSpace<0.42)drawSeatBiomeLife(RP,hy,cx);   /* #567 */
+  if((S.biome==='paris'||S.biome==='aurora')&&inSpace<0.42)drawNightLife(RP,hy,cx);   /* #568 */
   if(S.biome==='desert'&&inSpace<0.42)drawDesertLife(RP,hy,cx);
   if(S.biome==='north'&&inSpace<0.42)drawNorthLife(RP,hy,cx);   /* #558 */
   drawSpaceVista(RP);
