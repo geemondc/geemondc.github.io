@@ -20,6 +20,11 @@
            box-shadow: 0 18px 60px rgba(0,0,0,.65); }
   .stage img { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; }
+  .deep { position:absolute; inset:0; pointer-events:none; opacity:0;
+          mix-blend-mode:multiply;
+          background:linear-gradient(180deg, #8aa2b5 0%, #55748f 38%, #2a4a73 68%, #122e57 100%); }
+  .stage canvas, #fs canvas { position:absolute; inset:0; width:100%; height:100%;
+          display:block; pointer-events:none; }
   .controls { margin-top:22px; display:flex; justify-content:center; }
   button { font-family:inherit; cursor:pointer; background:transparent;
            color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
@@ -45,6 +50,7 @@
     <img id="lyrDay"       src="still.jpg" alt="The original painting, untouched">
     <img id="lyrGolden"    src="golden.jpg" alt="" style="opacity:0">
     <img id="lyrNight"     src="night.jpg" alt="" style="opacity:0">
+    <div class="deep" id="lyrDeep"></div>
     <img id="lyrAccClown"   src="acc-clown.png" alt="" style="opacity:0">
     <img id="lyrAccAnemone" src="acc-anemone.png" alt="" style="opacity:0">
     <img id="lyrAccTang"    src="acc-tang.png" alt="" style="opacity:0">
@@ -52,6 +58,7 @@
     <img id="lyrAccJelly"   src="acc-jelly.png" alt="" style="opacity:0">
     <img id="lyrAccStar"    src="acc-star.png" alt="" style="opacity:0">
     <img id="lyrAccCoral"   src="acc-coral.png" alt="" style="opacity:0">
+    <canvas id="lyrBubbles"></canvas>
   </div>
 
   <div class="controls">
@@ -71,6 +78,7 @@
   <img id="fsDay"       src="still.jpg" alt="">
   <img id="fsGolden"    src="golden.jpg" alt="" style="opacity:0">
   <img id="fsNight"     src="night.jpg" alt="" style="opacity:0">
+  <div class="deep" id="fsDeep"></div>
   <img id="fsAccClown"   src="acc-clown.png" alt="" style="opacity:0">
   <img id="fsAccAnemone" src="acc-anemone.png" alt="" style="opacity:0">
   <img id="fsAccTang"    src="acc-tang.png" alt="" style="opacity:0">
@@ -78,6 +86,7 @@
   <img id="fsAccJelly"   src="acc-jelly.png" alt="" style="opacity:0">
   <img id="fsAccStar"    src="acc-star.png" alt="" style="opacity:0">
   <img id="fsAccCoral"   src="acc-coral.png" alt="" style="opacity:0">
+  <canvas id="fsBubbles"></canvas>
 </div>
 
 <script>
@@ -99,13 +108,15 @@
     return { day: document.getElementById(p+'Day'),
              golden: document.getElementById(p+'Golden'),
              night: document.getElementById(p+'Night'),
+             deep: document.getElementById(p+'Deep'),
              clown: document.getElementById(p+'AccClown'),
              anemone: document.getElementById(p+'AccAnemone'),
              tang: document.getElementById(p+'AccTang'),
              school: document.getElementById(p+'AccSchool'),
              jelly: document.getElementById(p+'AccJelly'),
              star: document.getElementById(p+'AccStar'),
-             coral: document.getElementById(p+'AccCoral') };
+             coral: document.getElementById(p+'AccCoral'),
+             bubbles: document.getElementById(p+'Bubbles') };
   }
   var page = stack('lyr'), fs = stack('fs');
   var fsEl = document.getElementById('fs');
@@ -145,10 +156,82 @@
     if (forcedAcc !== null){ for (var k in o) o[k] = forcedAcc; }
     return o;
   }
+  // Bubbles: the reef's own living accent - every world gets its own
+  // twinkle, and underwater the twinkle is bubbles. A sparse handful of
+  // small bubbles rising slowly on their own wall clock, wobbling
+  // gently: seasoning, never a storm. They ride a canvas above the
+  // plates and the glow accents; in the still state they fade away
+  // entirely, and the still photo stays pixel-for-pixel itself.
+  function makeBubbles(canvas, fitPhoto){
+    var ctx = canvas.getContext('2d');
+    var alpha = 0, parts = [], N = 15, lastMs = 0;
+    function rect(){
+      var r = canvas.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) return null;
+      if (!fitPhoto) return { x:0, y:0, w:r.width, h:r.height, cw:r.width, ch:r.height };
+      var ar = 2688 / 1152, w = r.width, h = w / ar;   // the photo's own box (object-fit: contain)
+      if (h > r.height){ h = r.height; w = h * ar; }
+      return { x:(r.width - w) / 2, y:(r.height - h) / 2, w:w, h:h, cw:r.width, ch:r.height };
+    }
+    function spawn(R, anywhere){
+      return { x: R.x + Math.random() * R.w,
+               y: anywhere ? R.y + Math.random() * R.h : R.y + R.h + 6,
+               r: 1.3 + Math.random() * 3.2,
+               v: 10 + Math.random() * 14,
+               ph: Math.random() * Math.PI * 2,
+               sw: 2 + Math.random() * 4 };
+    }
+    function step(now, target){
+      var R = rect();
+      if (!R){ alpha = 0; parts = []; lastMs = 0; return; }
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var pw = Math.round(R.cw * dpr), ph = Math.round(R.ch * dpr);
+      if (canvas.width !== pw || canvas.height !== ph){ canvas.width = pw; canvas.height = ph; }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, R.cw, R.ch);
+      var dt = lastMs ? Math.min(0.05, (now - lastMs) / 1000) : 0.016;
+      lastMs = now;
+      alpha += (target - alpha) * Math.min(1, dt * 1.6);
+      if (alpha < 0.02){ parts = []; return; }
+      while (parts.length < N) parts.push(spawn(R, true));
+      var t = now / 1000;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(R.x, R.y, R.w, R.h); ctx.clip();
+      for (var i = 0; i < parts.length; i++){
+        var b = parts[i];
+        b.y -= b.v * dt;
+        if (b.y < R.y - 8){ parts[i] = b = spawn(R, false); }
+        var x = b.x + Math.sin(t * 0.6 + b.ph) * b.sw;
+        ctx.beginPath();
+        ctx.arc(x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(190,225,255,' + (0.10 * alpha) + ')';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(215,240,255,' + (0.55 * alpha) + ')';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x - b.r * 0.34, b.y - b.r * 0.34, Math.max(0.5, b.r * 0.3), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.6 * alpha) + ')';
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    return { step: step,
+             info: function(){ return { count: parts.length, alpha: Math.round(alpha * 100) / 100 }; } };
+  }
+  var pageBub = makeBubbles(page.bubbles, false);
+  var fsBub = makeBubbles(fs.bubbles, true);
+
   function apply(st, so, ao, living){
     st.day.style.opacity = so.day;
     st.golden.style.opacity = so.golden;
     st.night.style.opacity = so.night;
+    // Deep-water grade: as the night reef arrives, the water itself
+    // goes genuinely deep - a multiplying blue depth that deepens
+    // toward the bottom of the frame. It sits UNDER the glow accents,
+    // so everything already lit keeps glowing in its own colour; it
+    // never touches the still or the day.
+    st.deep.style.opacity = so.night * 0.88;
     st.clown.style.opacity = living ? ao.clown : 0;
     st.anemone.style.opacity = living ? ao.anemone : 0;
     st.tang.style.opacity = living ? ao.tang : 0;
@@ -174,6 +257,8 @@
     if (!living) so = { day:1, golden:0, night:0 };
     apply(page, so, ao, living);
     if (fsOpen) apply(fs, so, ao, true);
+    pageBub.step(now, living ? 1 : 0);
+    fsBub.step(now, fsOpen ? 1 : 0);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -223,6 +308,7 @@
     unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
     forceAccents: function(v){ forcedAcc = v; },
     accOpacities: function(){ return lastAcc; },
+    bubbles: function(){ return { page: pageBub.info(), fs: fsBub.info() }; },
     state: function(){ return { state: state, fsOpen: fsOpen, clock: clock }; },
     opacities: opacities
   };
