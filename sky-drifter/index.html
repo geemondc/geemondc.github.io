@@ -1770,73 +1770,25 @@ const pfElem={};
 ['heron-stand','heron-fly','kingfisher','butterfly-monarch','butterfly-yellow','butterfly-blue','lily-a','lily-b','orchid','vine','frog','dragonfly-blue','dragonfly-green','rainbow'].forEach(n=>{ const im=new Image(); im._gk='pfx-'+n; im.src='assets/falls/'+n+'.png'; pfElem[n]=im; });
 function pfBlendF(tbl,def){ let v=0; for(const k in PF_W){ const w=PF_W[k]; if(!w)continue; v+=w*(tbl[k]!==undefined?tbl[k]:def); } return v; }
 function drawFallsElements(RP,G){
+  /* #559 — THE FALLS RESET (Gary, Nov 3: "too much is happening at the
+     waterfall · remove all · start with 1-3 butterflies · sparce").
+     ALL 13 Brief-1 elements are OUT — rainbow, lilies x2, frog, standing
+     + flying herons, kingfisher, orchids, vine, dragonflies x2 and the
+     third butterfly. The world is the painting + the house + its light
+     again, and the waterfall is the star. What remains: TWO butterflies,
+     small and SOLID, drifting in the light near the mist at the falls'
+     base — at different heights (never lined up), never on the falls'
+     face. Nothing else is added to the Falls in this pass. */
   const t=S.flyT, left=G.left, top=G.top, pw=G.pw, ph=G.ph, fxF=G.fxF;
-  const wA=PF_W.above||0, groundF=1-wA;   /* from directly above, the valley-floor life sits out */
-  const put=(img,cx,cy,w,alpha)=>{ const gr=pfHouseGraded(img,RP); if(!gr||alpha<=0.004)return;
-    const dw=pw*w, dh=dw*img.naturalHeight/img.naturalWidth;
-    ctx.globalAlpha=clamp(alpha,0,1); ctx.drawImage(gr,left+pw*cx-dw/2, top+ph*cy-dh/2, dw, dh); ctx.globalAlpha=1; };
-  const shadow=(cx,cy,w,a)=>{ if(a<=0.004||groundF<=0.01)return;
-    ctx.save(); ctx.translate(left+pw*cx, top+ph*cy); ctx.scale(1,0.30);
-    const sg=ctx.createRadialGradient(0,0,0,0,0,pw*w*0.62);
-    sg.addColorStop(0,'rgba(10,14,8,'+(a*groundF*(1-0.5*RP.nightF))+')'); sg.addColorStop(1,'rgba(10,14,8,0)');
-    ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(0,0,pw*w*0.62,0,TAU); ctx.fill(); ctx.restore(); };
-  const stand=(img,cx,cy,hF,a)=>{ const gr=pfHouseGraded(img,RP); if(!gr||groundF<=0.01)return;
-    const dh=ph*hF, dw=dh*img.naturalWidth/img.naturalHeight;
-    shadow(cx,cy,dw/pw*1.15,a);
-    ctx.globalAlpha=groundF; ctx.drawImage(gr, left+pw*cx-dw/2, top+ph*cy-dh, dw, dh); ctx.globalAlpha=1; };
-  /* ---- the rainbow stands in the plunge-pool mist, behind everything.
-         Anchors are per-zone (QA Nov 2): each painting keeps its pool in a
-         different place — the far view's basin rides high and tight under
-         the falls, the close view's spreads lower — and the panel is wider
-         than the screen, so right-bank anchors must stay inside ~0.82 or
-         they slide off-frame. The house (painted or cutout) owns the left
-         in every view; the water set clusters at the falls' base. ---- */
-  put(pfElem['rainbow'], fxF+0.01, pfBlendF({far:0.615,approach:0.640,close:0.630,side:0.635,above:0.640},0.64), 0.235, 0.88*(1-0.45*wA));
-  /* ---- on the water: the lilies and the frog, bobbing a breath ---- */
-  const bob=p=>Math.sin(t*0.9+p)*0.0016;
-  const wob=(off,y)=>{ const ox=fxF+pfBlendF(off,0), oy=pfBlendF(y,0.7); return [ox,oy]; };
-  let wp1=wob({far:-0.055,approach:-0.105,close:-0.075,side:-0.095,above:-0.105},{far:0.645,approach:0.705,close:0.685,side:0.698,above:0.705});
-  shadow(wp1[0], wp1[1]+0.014, 0.095, 0.20); put(pfElem['lily-a'], wp1[0], wp1[1]+bob(0.0), 0.090, 0.97*groundF);
-  let wp2=wob({far:0.110,approach:0.150,close:0.105,side:0.135,above:0.150},{far:0.655,approach:0.720,close:0.698,side:0.712,above:0.720});
-  shadow(wp2[0], wp2[1]+0.014, 0.088, 0.20); put(pfElem['lily-b'], wp2[0], wp2[1]+bob(2.1), 0.082, 0.97*groundF);
-  let wp3=wob({far:-0.115,approach:-0.215,close:-0.145,side:-0.190,above:-0.215},{far:0.652,approach:0.715,close:0.690,side:0.705,above:0.715});
-  shadow(wp3[0], wp3[1]+0.014, 0.082, 0.20); put(pfElem['frog'], wp3[0], wp3[1]+bob(4.2), 0.076, 0.97*groundF);
-  /* ---- the bank: heron at the water's edge, kingfisher perched on the
-         rocks beside the falls column, orchids on the right bank ---- */
-  stand(pfElem['heron-stand'],
-    pfBlendF({far:0.685,approach:0.705,close:0.730,side:0.715,above:0.705},0.705),
-    pfBlendF({far:0.675,approach:0.715,close:0.720,side:0.710,above:0.715},0.715),
-    pfBlendF({far:0.150,approach:0.165,close:0.185,side:0.175,above:0.165},0.165), 0.30);
-  stand(pfElem['kingfisher'],
-    fxF+pfBlendF({far:-0.135,approach:-0.095,close:-0.105,side:-0.100,above:-0.095},-0.10),
-    pfBlendF({far:0.520,approach:0.560,close:0.545,side:0.550,above:0.560},0.56), 0.072, 0.26);
-  stand(pfElem['orchid'],
-    pfBlendF({far:0.775,approach:0.800,close:0.815,side:0.805,above:0.800},0.80),
-    pfBlendF({far:0.660,approach:0.705,close:0.715,side:0.705,above:0.705},0.705), 0.135, 0.24);
-  /* ---- the vine hangs from the top-right of the frame, swaying a breath.
-         It only reads while the panel top rides at/above the frame's top
-         edge; as the panel sinks into view the vine politely leaves. ---- */
-  { const img=pfElem['vine'], gr=pfHouseGraded(img,RP);
-    const vA=1-sstep(H*0.02,H*0.14,top);
-    if(gr&&vA>0.01){ const dh=ph*0.36, dw=dh*img.naturalWidth/img.naturalHeight;
-      const vxF=clamp((W*0.94-left-dw*0.4)/pw, 0.55, 0.99);
-      ctx.globalAlpha=vA*0.97; ctx.drawImage(gr, left+pw*vxF+Math.sin(t*0.5)*pw*0.0016, top-ph*0.012, dw, dh); ctx.globalAlpha=1; } }
-  /* ---- the flying heron crosses the upper-mid sky on a slow drift ---- */
-  put(pfElem['heron-fly'], 0.660+0.105*Math.sin(t*0.045+1.7), 0.185+0.020*Math.sin(t*0.110), 0.155, 0.98);
-  /* ---- butterflies wander over the water, wings breathing ---- */
-  const bf=['butterfly-monarch','butterfly-yellow','butterfly-blue'];
-  for(let i=0;i<3;i++){ const img=pfElem[bf[i]], gr=pfHouseGraded(img,RP); if(!gr)continue;
-    const p2=i*2.1;
-    const cxp=fxF+0.075+i*0.075+0.030*Math.sin(t*0.23+p2), cyp=0.600+0.018*Math.sin(t*0.31+p2*1.7);
-    const dw=pw*0.036, dh=dw*img.naturalHeight/img.naturalWidth, sq=0.84+0.16*Math.sin(t*6+p2*3.0);
+  const wA=PF_W.above||0, groundF=1-wA;
+  if(groundF<=0.01)return;
+  const bf=[['butterfly-monarch',0.055,0.628,0.0],['butterfly-yellow',0.150,0.664,2.4]];
+  for(let i=0;i<2;i++){ const img=pfElem[bf[i][0]], gr=pfHouseGraded(img,RP); if(!gr)continue;
+    const p2=bf[i][3];
+    const cxp=fxF+bf[i][1]+0.026*Math.sin(t*0.21+p2), cyp=bf[i][2]+0.016*Math.sin(t*0.29+p2*1.7);
+    const dw=pw*0.034, dh=dw*img.naturalHeight/img.naturalWidth, sq=0.84+0.16*Math.sin(t*6+p2*3.0);
     ctx.save(); ctx.translate(left+pw*cxp, top+ph*cyp); ctx.scale(1,sq);
-    ctx.globalAlpha=0.95; ctx.drawImage(gr,-dw/2,-dh/2,dw,dh); ctx.restore(); ctx.globalAlpha=1; }
-  /* ---- dragonflies dart low over the run-out ---- */
-  const dfY=pfBlendF({far:0.648,approach:0.688,close:0.668,side:0.678,above:0.688},0.688);
-  const df=[[pfElem['dragonfly-blue'],0.0,fxF-0.055,dfY],[pfElem['dragonfly-green'],2.6,fxF+0.115,dfY+0.012]];
-  for(let i=0;i<2;i++){ const cxp=df[i][2]+0.045*Math.sin(t*0.9+df[i][1])+0.020*Math.sin(t*2.3+df[i][1]*2.0);
-    const cyp=df[i][3]+0.012*Math.sin(t*1.7+df[i][1]*1.3);
-    put(df[i][0], cxp, cyp, 0.042, 0.95); }
+    ctx.globalAlpha=0.95*groundF; ctx.drawImage(gr,-dw/2,-dh/2,dw,dh); ctx.restore(); ctx.globalAlpha=1; }
 }
 function drawFallsVista(RP,hy,cx){
   const t=S.flyT;
