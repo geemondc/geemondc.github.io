@@ -85,7 +85,7 @@
 <script>
 (function(){
   "use strict";
-  var T = 60;                 // scene loop, seconds
+  var T = 20;                 // scene loop, seconds
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
   var frozen = null;          // QA: freeze the clock at this many seconds
@@ -93,7 +93,7 @@
   var anchor = 0;             // scene seconds at anchorNow (phase anchor)
   var anchorNow = 0;          // performance.now() at the anchor
   var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
-  var SWEEP_END = 26.25;      // scene time where the sweep hands over (sunset hold; rescaled from 31.5 at T=72)
+  var SWEEP_END = 8.75;      // scene time where the sweep hands over (sunset hold; rescaled from 31.5 at T=72)
   var clock = 0;              // current scene clock, seconds (QA state)
 
   function stack(p){
@@ -128,15 +128,15 @@
   // Scene timeline (v2): day hold -> sunset -> night -> dawn back to day.
   function opacities(t){
     t = ((t % T) + T) % T;
-    if (t < 12) return { day:1, sunset:0, night:0 };
-    if (t < 22) return { day:1, sunset:(t-12)/10, night:0 };
-    if (t < 32) return { day:1, sunset:1, night:0 };
-    if (t < 42) return { day:1, sunset:1, night:(t-32)/10 };
-    if (t < 52) return { day:1, sunset:1, night:1 };
-    return { day:1, sunset:0, night:1-(t-52)/8 };
+    if (t < 4) return { day:1, sunset:0, night:0 };
+    if (t < 7.3333) return { day:1, sunset:(t-4)/3.3333, night:0 };
+    if (t < 10.6667) return { day:1, sunset:1, night:0 };
+    if (t < 14) return { day:1, sunset:1, night:(t-10.6667)/3.3333 };
+    if (t < 17.3333) return { day:1, sunset:1, night:1 };
+    return { day:1, sunset:0, night:1-(t-17.3333)/2.6667 };
   }
   // Her accents: three independent slow pulses, offset like tree lights.
-  var ACC = [ ['suit', 13, 3.0, 1.0], ['hair', 11, 0.0, 1.0], ['glass', 8, 1.2, 0.95] ];
+  var ACC = [ ['suit', 4.3333, 1, 1.0], ['hair', 3.6667, 0, 1.0], ['glass', 2.6667, 0.4, 0.95] ];
   function accOpacities(t){
     var o = {};
     for (var i = 0; i < ACC.length; i++){
@@ -160,7 +160,7 @@
   function frame(now){
     // Scene time is a pure function of wall time (performance.now): the phase
     // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
-    // so frame rate can never stretch the 60s cycle.
+    // so frame rate can never stretch the 20s cycle.
     if (ignited && frozen === null){
       var tNow = anchor + rate * (now - anchorNow) / 1000;
       if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
