@@ -92,7 +92,7 @@
 <script>
 (function(){
   "use strict";
-  var T = 60;                 // scene loop, seconds
+  var T = 20;                 // scene loop, seconds
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
   var frozen = null;          // QA: freeze the clock at this many seconds
@@ -100,7 +100,7 @@
   var anchor = 0;             // scene seconds at anchorNow (phase anchor)
   var anchorNow = 0;          // performance.now() at the anchor
   var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
-  var SWEEP_END = 26.25;      // scene time where the sweep hands over
+  var SWEEP_END = 8.75;      // scene time where the sweep hands over
   var clock = 0;              // current scene clock, seconds (QA state)
   var lastAcc = {};           // last computed accent opacities (QA state)
 
@@ -122,17 +122,17 @@
   var fsEl = document.getElementById('fs');
   var fsOpen = false, priorState = 'still';
 
-  // Reef journey (60s): bright day hold -> golden water -> the night reef ->
-  // back through golden -> day. t=60 wraps exactly to t=0: seamless.
+  // Reef journey (20s): bright day hold -> golden water -> the night reef ->
+  // back through golden -> day. t=20 wraps exactly to t=0: seamless.
   function opacities(t){
     t = ((t % T) + T) % T;
-    if (t < 6)  return { day:1, golden:0, night:0 };
-    if (t < 16) return { day:1, golden:(t-6)/10, night:0 };
-    if (t < 24) return { day:1, golden:1, night:0 };
-    if (t < 34) return { day:1, golden:1, night:(t-24)/10 };
-    if (t < 44) return { day:1, golden:1, night:1 };
-    if (t < 52) return { day:1, golden:1, night:1-(t-44)/8 };
-    return { day:1, golden:1-(t-52)/8, night:0 };
+    if (t < 2)  return { day:1, golden:0, night:0 };
+    if (t < 5.3333) return { day:1, golden:(t-2)/3.3333, night:0 };
+    if (t < 8) return { day:1, golden:1, night:0 };
+    if (t < 11.3333) return { day:1, golden:1, night:(t-8)/3.3333 };
+    if (t < 14.6667) return { day:1, golden:1, night:1 };
+    if (t < 17.3333) return { day:1, golden:1, night:1-(t-14.6667)/2.6667 };
+    return { day:1, golden:1-(t-17.3333)/2.6667, night:0 };
   }
   // Accents, each glowing in its own colour on its own slow rhythm: the
   // jellyfish bells slowest, then the anemone tips, the corals, the
@@ -140,10 +140,10 @@
   // lights, never in unison. Their strength rides a scene envelope: a
   // gentle shimmer by day (0.25), fully ON at the night reef (1.0) -
   // the fluorescent life turns on as the water goes navy.
-  var ACC = [ ['clown', 11, 0.0, 1.0], ['anemone', 15, 5.2, 0.95],
-              ['tang', 9, 2.3, 1.0], ['school', 10, 7.1, 1.0],
-              ['jelly', 17, 3.6, 0.9], ['star', 12, 8.4, 1.0],
-              ['coral', 13, 1.1, 1.0] ];
+  var ACC = [ ['clown', 3.6667, 0, 1.0], ['anemone', 5, 1.7333, 0.95],
+              ['tang', 3, 0.7667, 1.0], ['school', 3.3333, 2.3667, 1.0],
+              ['jelly', 5.6667, 1.2, 0.9], ['star', 4, 2.8, 1.0],
+              ['coral', 4.3333, 0.3667, 1.0] ];
   function accOpacities(t, nightAmt){
     var env = 0.25 + 0.75 * nightAmt;
     var o = {};
@@ -243,7 +243,7 @@
   function frame(now){
     // Scene time is a pure function of wall time (performance.now): the phase
     // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
-    // so frame rate can never stretch the 60s cycle.
+    // so frame rate can never stretch the 20s cycle.
     if (ignited && frozen === null){
       var tNow = anchor + rate * (now - anchorNow) / 1000;
       if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }

@@ -98,7 +98,7 @@
 <script>
 (function(){
   "use strict";
-  var T = 60;                 // scene loop, seconds
+  var T = 20;                 // scene loop, seconds
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
   var frozen = null;          // QA: freeze the clock at this many seconds
@@ -106,7 +106,7 @@
   var anchor = 0;             // scene seconds at anchorNow (phase anchor)
   var anchorNow = 0;          // performance.now() at the anchor
   var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
-  var SWEEP_END = 20;         // scene time where the sweep hands over (gold reached)
+  var SWEEP_END = 6.6667;         // scene time where the sweep hands over (gold reached)
   var clock = 0;              // current scene clock, seconds (QA state)
 
   var ACCN = ['Stars','Fireworks','WheelRed','WheelGold','WheelGreen','WheelBlue',
@@ -125,21 +125,21 @@
   function ss(x){ x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); }
   function goldW(t){
     t = ((t % T) + T) % T;
-    if (t < 6) return 0;
-    if (t < 14) return (t - 6) / 8;
-    if (t < 52) return 1;
-    return 1 - (t - 52) / 8;
+    if (t < 2) return 0;
+    if (t < 4.6667) return (t - 2) / 2.6667;
+    if (t < 17.3333) return 1;
+    return 1 - (t - 17.3333) / 2.6667;
   }
   function deepW(t){
     t = ((t % T) + T) % T;
-    if (t < 22) return 0;
-    if (t < 32) return (t - 22) / 10;
-    if (t < 52) return 1;
-    return 1 - (t - 52) / 8;
+    if (t < 7.3333) return 0;
+    if (t < 10.6667) return (t - 7.3333) / 3.3333;
+    if (t < 17.3333) return 1;
+    return 1 - (t - 17.3333) / 2.6667;
   }
   var WSTART = { WheelRed:0.05, WheelGold:0.20, WheelGreen:0.35, WheelBlue:0.50, WheelViolet:0.65 };
-  var WPER = { WheelRed:12, WheelGold:15, WheelGreen:10, WheelBlue:20, WheelViolet:30 };
-  var WPH = { WheelRed:0.0, WheelGold:3.5, WheelGreen:1.2, WheelBlue:7.0, WheelViolet:11.0 };
+  var WPER = { WheelRed:4, WheelGold:5, WheelGreen:3.3333, WheelBlue:6.6667, WheelViolet:10 };
+  var WPH = { WheelRed:0, WheelGold:1.1667, WheelGreen:0.4, WheelBlue:2.3333, WheelViolet:3.6667 };
   function accOpacities(t){
     var dep = deepW(t), o = {}, fams = ['WheelRed','WheelGold','WheelGreen','WheelBlue','WheelViolet'];
     for (var i = 0; i < fams.length; i++){
@@ -148,14 +148,14 @@
       var pulse = 0.62 + 0.38 * Math.cos(2 * Math.PI * (t + WPH[f]) / WPER[f]);
       o[f] = g * pulse * 0.95;
     }
-    o.Lamps = ss((dep - 0.10) / 0.70) * (0.78 + 0.22 * Math.cos(2 * Math.PI * (t + 2) / 15));
-    o.Windows = ss((dep - 0.18) / 0.72) * (0.82 + 0.18 * Math.cos(2 * Math.PI * (t + 5) / 20));
-    o.NeonShell = ss((dep - 0.05) / 0.60) * (0.72 + 0.28 * Math.cos(2 * Math.PI * t / 12));
-    o.NeonPalm = ss((dep - 0.05) / 0.60) * (0.72 + 0.28 * Math.cos(2 * Math.PI * (t + 4) / 15));
-    o.Fireworks = ss((dep - 0.42) / 0.58) * Math.pow(0.5 - 0.5 * Math.cos(2 * Math.PI * t / 20), 3) * 0.85;
-    o.Stars = ss((dep - 0.50) / 0.50) * (0.88 + 0.12 * Math.cos(2 * Math.PI * (t + 9) / 30));
+    o.Lamps = ss((dep - 0.10) / 0.70) * (0.78 + 0.22 * Math.cos(2 * Math.PI * (t + 0.6667) / 5));
+    o.Windows = ss((dep - 0.18) / 0.72) * (0.82 + 0.18 * Math.cos(2 * Math.PI * (t + 1.6667) / 6.6667));
+    o.NeonShell = ss((dep - 0.05) / 0.60) * (0.72 + 0.28 * Math.cos(2 * Math.PI * t / 4));
+    o.NeonPalm = ss((dep - 0.05) / 0.60) * (0.72 + 0.28 * Math.cos(2 * Math.PI * (t + 1.3333) / 5));
+    o.Fireworks = ss((dep - 0.42) / 0.58) * Math.pow(0.5 - 0.5 * Math.cos(2 * Math.PI * t / 6.6667), 3) * 0.85;
+    o.Stars = ss((dep - 0.50) / 0.50) * (0.88 + 0.12 * Math.cos(2 * Math.PI * (t + 3) / 10));
     var amp = 0.22 + 0.78 * Math.max(goldW(t), dep);
-    var P = [9, 13, 17], PH = [0.0, 4.3, 8.1], NM = ['ShimA','ShimB','ShimC'];
+    var P = [3, 4.3333, 5.6667], PH = [0, 1.4333, 2.7], NM = ['ShimA','ShimB','ShimC'];
     for (var k = 0; k < 3; k++){
       var pu = ss(0.5 - 0.5 * Math.cos(2 * Math.PI * (t + PH[k]) / P[k]));
       o[NM[k]] = amp * (0.30 + 0.70 * pu) * 0.9;
@@ -173,7 +173,7 @@
   function frame(now){
     // Scene time is a pure function of wall time (performance.now): the phase
     // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
-    // so frame rate can never stretch the 60s cycle.
+    // so frame rate can never stretch the 20s cycle.
     if (ignited && frozen === null){
       var tNow = anchor + rate * (now - anchorNow) / 1000;
       if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }

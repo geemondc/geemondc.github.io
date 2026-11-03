@@ -98,10 +98,10 @@
 <script>
 (function(){
   "use strict";
-  var T = 60;                 // scene loop, seconds
+  var T = 20;                 // scene loop, seconds
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
-  var clockStarted = false;   // the 60s clock runs once anything ignites it
+  var clockStarted = false;   // the 20s clock runs once anything ignites it
   var fsFromStill = false;    // fullscreen was opened from STILL -> FS is living
   var frozen = null;          // QA: freeze the clock at this many seconds
   var forcedAcc = null;       // QA: force all accents to this opacity factor
@@ -148,23 +148,23 @@
   }
   window.addEventListener('resize', function(){ if (fsOpen) fitFs(); });
 
-  // The journey (60s): as painted -> GOLDEN (sun side swells) -> DUSK
+  // The journey (20s): as painted -> GOLDEN (sun side swells) -> DUSK
   // (blue half takes the frame, valley deepens to teal, lanterns wake) ->
   // NIGHT (moon side wins, the valley's own lights take over) -> gold return.
   // Nested plates: golden under dusk under night; the return fades them
-  // out in reverse order with overlaps. t=60 wraps exactly to t=0.
+  // out in reverse order with overlaps. t=20 wraps exactly to t=0.
   function opacities(t){
     t = ((t % T) + T) % T;
     var golden = 0, dusk = 0, night = 0;
-    if (t >= 4 && t < 12) golden = (t - 4) / 8;
-    else if (t >= 12 && t < 50) golden = 1;
-    else if (t >= 50) golden = 1 - (t - 50) / 8;
-    if (t >= 16 && t < 25) dusk = (t - 16) / 9;
-    else if (t >= 25 && t < 52) dusk = 1;
-    else if (t >= 52) dusk = 1 - (t - 52) / 8;
-    if (t >= 30 && t < 38) night = (t - 30) / 8;
-    else if (t >= 38 && t < 52) night = 1;
-    else if (t >= 52) night = 1 - (t - 52) / 8;
+    if (t >= 1.3333 && t < 4) golden = (t - 1.3333) / 2.6667;
+    else if (t >= 4 && t < 16.6667) golden = 1;
+    else if (t >= 16.6667) golden = 1 - (t - 16.6667) / 2.6667;
+    if (t >= 5.3333 && t < 8.3333) dusk = (t - 5.3333) / 3;
+    else if (t >= 8.3333 && t < 17.3333) dusk = 1;
+    else if (t >= 17.3333) dusk = 1 - (t - 17.3333) / 2.6667;
+    if (t >= 10 && t < 12.6667) night = (t - 10) / 2.6667;
+    else if (t >= 12.6667 && t < 17.3333) night = 1;
+    else if (t >= 17.3333) night = 1 - (t - 17.3333) / 2.6667;
     return { day:1, golden:golden, dusk:dusk, night:night };
   }
   // Accents, each in its own colour on its own slow rhythm. Envelopes:
@@ -175,18 +175,18 @@
   // river's own flecks shimmer with the sun glitter at golden, quieten
   // at dusk, and answer the moon at night.
   // [key, period, phase, max, envelope, pulse floor]
-  var ACC = [ ['accFlameA',  7, 0.0, 0.95, 'lamp', 0.45],
-              ['accFlameB', 11, 3.1, 0.95, 'lamp', 0.45],
-              ['accFlameC', 13, 6.4, 0.95, 'lamp', 0.45],
-              ['accWinA',   10, 0.0, 0.95, 'lamp', 0.45],
-              ['accWinB',   12, 2.7, 0.95, 'lamp', 0.45],
-              ['accWinC',   16, 5.3, 0.95, 'lamp', 0.45],
-              ['accStrings',14, 1.9, 0.90, 'lamp', 0.40],
-              ['accMoon',   15, 0.0, 0.55, 'moon', 0.50],
-              ['accStars',  13, 0.0, 0.90, 'deep2', 0.55],
-              ['accShimA',   9, 0.0, 0.95, 'spark', 0.30],
-              ['accShimB',  13, 4.2, 0.95, 'spark', 0.30],
-              ['accShimC',  17, 8.9, 0.95, 'spark', 0.30] ];
+  var ACC = [ ['accFlameA',  2.3333, 0, 0.95, 'lamp', 0.45],
+              ['accFlameB', 3.6667, 1.0333, 0.95, 'lamp', 0.45],
+              ['accFlameC', 4.3333, 2.1333, 0.95, 'lamp', 0.45],
+              ['accWinA',   3.3333, 0, 0.95, 'lamp', 0.45],
+              ['accWinB',   4, 0.9, 0.95, 'lamp', 0.45],
+              ['accWinC',   5.3333, 1.7667, 0.95, 'lamp', 0.45],
+              ['accStrings',4.6667, 0.6333, 0.90, 'lamp', 0.40],
+              ['accMoon',   5, 0, 0.55, 'moon', 0.50],
+              ['accStars',  4.3333, 0, 0.90, 'deep2', 0.55],
+              ['accShimA',   3, 0, 0.95, 'spark', 0.30],
+              ['accShimB',  4.3333, 1.4, 0.95, 'spark', 0.30],
+              ['accShimC',  5.6667, 2.9667, 0.95, 'spark', 0.30] ];
   function accOpacities(t){
     var so = opacities(t);
     var env = { lamp: 0.10 + 0.90 * Math.max(0.45 * so.dusk, so.night),
@@ -215,7 +215,7 @@
   }
   function frame(now){
     // Scene time is a pure function of wall time (performance.now) since
-    // ignition: frame rate or throttling can never stretch the 60s cycle,
+    // ignition: frame rate or throttling can never stretch the 20s cycle,
     // and entering/leaving fullscreen never touches the clock.
     if (clockStarted && frozen === null) clock = anchor + (now - anchorNow) / 1000;
     var t = frozen !== null ? frozen : clock;

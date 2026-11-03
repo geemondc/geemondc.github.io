@@ -83,7 +83,7 @@
 <script>
 (function(){
   "use strict";
-  var T = 60;                 // scene loop, seconds
+  var T = 20;                 // scene loop, seconds
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
   var frozen = null;          // QA: freeze the clock at this many seconds
@@ -91,7 +91,7 @@
   var anchor = 0;             // scene seconds at anchorNow (phase anchor)
   var anchorNow = 0;          // performance.now() at the anchor
   var rate = 1;               // scene seconds per wall second (7 during the ignition sweep)
-  var SWEEP_END = 26.25;      // scene time where the sweep hands over
+  var SWEEP_END = 8.75;      // scene time where the sweep hands over
   var clock = 0;              // current scene clock, seconds (QA state)
 
   function stack(p){
@@ -110,35 +110,35 @@
   var fsEl = document.getElementById('fs');
   var fsOpen = false, priorState = 'still';
 
-  // Room journey (60s): evening hold -> golden glow -> deep cozy night ->
-  // back through golden -> evening. t=60 wraps exactly to t=0: seamless.
+  // Room journey (20s): evening hold -> golden glow -> deep cozy night ->
+  // back through golden -> evening. t=20 wraps exactly to t=0: seamless.
   function opacities(t){
     t = ((t % T) + T) % T;
-    if (t < 6)  return { day:1, golden:0, glow:0 };
-    if (t < 16) return { day:1, golden:(t-6)/10, glow:0 };
-    if (t < 24) return { day:1, golden:1, glow:0 };
-    if (t < 34) return { day:1, golden:1, glow:(t-24)/10 };
-    if (t < 44) return { day:1, golden:1, glow:1 };
-    if (t < 52) return { day:1, golden:1, glow:1-(t-44)/8 };
-    return { day:1, golden:1-(t-52)/8, glow:0 };
+    if (t < 2)  return { day:1, golden:0, glow:0 };
+    if (t < 5.3333) return { day:1, golden:(t-2)/3.3333, glow:0 };
+    if (t < 8) return { day:1, golden:1, glow:0 };
+    if (t < 11.3333) return { day:1, golden:1, glow:(t-8)/3.3333 };
+    if (t < 14.6667) return { day:1, golden:1, glow:1 };
+    if (t < 17.3333) return { day:1, golden:1, glow:1-(t-14.6667)/2.6667 };
+    return { day:1, golden:1-(t-17.3333)/2.6667, glow:0 };
   }
-  // The three mantel pictures run the same journey ~4s BEHIND the room:
+  // The three mantel pictures run the same journey ~1.33s BEHIND the room:
   // sunset -> dusk -> night inside their little frames, and back.
   function mantelOpacities(t){
     t = ((t % T) + T) % T;
-    if (t < 10) return { dusk:0, night:0 };
-    if (t < 20) return { dusk:(t-10)/10, night:0 };
-    if (t < 28) return { dusk:1, night:0 };
-    if (t < 38) return { dusk:1, night:(t-28)/10 };
-    if (t < 46) return { dusk:1, night:1 };
-    if (t < 54) return { dusk:1, night:1-(t-46)/8 };
-    return { dusk:1-(t-54)/6, night:0 };
+    if (t < 3.3333) return { dusk:0, night:0 };
+    if (t < 6.6667) return { dusk:(t-3.3333)/3.3333, night:0 };
+    if (t < 9.3333) return { dusk:1, night:0 };
+    if (t < 12.6667) return { dusk:1, night:(t-9.3333)/3.3333 };
+    if (t < 15.3333) return { dusk:1, night:1 };
+    if (t < 18) return { dusk:1, night:1-(t-15.3333)/2.6667 };
+    return { dusk:1-(t-18)/2, night:0 };
   }
   // Accents, each glowing in its own colour on its own slow rhythm:
   // tree lights, red ornaments, the breathing fire, candle + lantern
   // flames, garland lights - offset like real lights, never in unison.
-  var ACC = [ ['tree', 11, 0.0, 0.9], ['red', 13, 4.1, 1.0], ['fire', 7, 1.7, 0.85],
-              ['flame', 9, 2.9, 1.0], ['garland', 10, 6.3, 1.0] ];
+  var ACC = [ ['tree', 3.6667, 0, 0.9], ['red', 4.3333, 1.3667, 1.0], ['fire', 2.3333, 0.5667, 0.85],
+              ['flame', 3, 0.9667, 1.0], ['garland', 3.3333, 2.1, 1.0] ];
   function accOpacities(t){
     var o = {};
     for (var i = 0; i < ACC.length; i++){
@@ -165,7 +165,7 @@
   function frame(now){
     // Scene time is a pure function of wall time (performance.now): the phase
     // is anchor + rate * elapsed, re-anchored only at ignite/freeze boundaries,
-    // so frame rate can never stretch the 60s cycle.
+    // so frame rate can never stretch the 20s cycle.
     if (ignited && frozen === null){
       var tNow = anchor + rate * (now - anchorNow) / 1000;
       if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
