@@ -563,6 +563,7 @@
             <button class="chip" data-world="desert">🏜️ Sahara</button>
             <button class="chip" data-world="north">❄️ North Pole</button>
             <button class="chip" data-world="paris">🗼 Paris</button>
+<button class="chip" data-world="temple">🏛️ Temple Valley</button>
             <button class="chip" data-world="aurora">🌌 Aurora</button>
             <button class="chip" data-world="sanjose">🌋 San José</button>
             <button class="chip" data-world="underwater">🫧 Underwater</button>
@@ -769,9 +770,10 @@ const BIOMES={
  paris:{label:'🗼 Paris at Night', far:'#3a3358', mid:'#2c2444', g1:'#241d38', g2:'#171126', accent:'#ffca7a', veg:'#3f5a44', vegD:'#2c4232', rock:'#57506e', ridge:'blocks', sprites:['mansard','mansard','lamp','dome','mansard','lamp']},
  aurora:{label:'🌌 The Aurora Horizon', far:'#4a5f8a', mid:'#33455f', g1:'#dfe9f7', g2:'#a9c0dd', accent:'#7dffb0', veg:'#274d3a', vegD:'#173626', rock:'#8fa5c4', ridge:'ridge', sprites:['snowpine','snowpine','snowpine','rock','snowpine']},
  sanjose:{label:'🌋 San José · Costa Rica', far:'#2e6b4f', mid:'#1f5138', g1:'#7a9a52', g2:'#4a7038', accent:'#e8763a', veg:'#2fae5f', vegD:'#1c7a42', rock:'#7a6a5e', ridge:'ridge', sprites:['house','palm','canopy','house','palm','fern']},
+ temple:{label:'🏛️ Temple Valley', far:'#2a5a48', mid:'#1d4636', g1:'#3f7a52', g2:'#26503a', accent:'#ffd98a', veg:'#2fae5f', vegD:'#1c7a42', rock:'#7a7264', ridge:'ridge', sprites:['canopy','fern','canopy','rock','fern']}   /* #560: NEW destination — the Temple Valley living photo's own plates, flown */,
  underwater:{label:'🫧 Underwater', far:'#0b4a6e', mid:'#083a56', g1:'#d8b878', g2:'#062f47', accent:'#ffd98a', veg:'#2fae7a', vegD:'#14705c', rock:'#5e7a72', ridge:'ridge', sprites:['rock','fern','rock','fern']}
 };
-const CYCLE=['beach','city','jungle','desert','north','paris','aurora','sanjose','underwater'];
+const CYCLE=['beach','city','jungle','desert','north','paris','temple','aurora','sanjose','underwater'];   /* #560: temple sits between two simple worlds (paris/aurora) — painting worlds and simple worlds alternate */
 
 /* ridge profiles, seeded so every world keeps its shape */
 function makeProfile(kind,seed,amp,base){
@@ -806,7 +808,7 @@ const S={
   uwF:0, uwPrev:'beach', surfT:0, uwClock:0   /* underwater: blend, the sky world to surface back to, surface-exit timer, seconds on this dive (the tour's stack traverse is keyed to it) */
 };
 /* trails are automatic: each destination flies its own signature trail */
-const TRAIL_FOR={beach:'gold', city:'neon', jungle:'rainbow', desert:'gold', north:'neon', paris:'gold', aurora:'neon', sanjose:'rainbow', underwater:'gold'};
+const TRAIL_FOR={beach:'gold', city:'neon', jungle:'rainbow', desert:'gold', north:'neon', paris:'gold', aurora:'neon', sanjose:'rainbow', underwater:'gold', temple:'gold'};
 
 /* ============================== ambient bed (relaxing texture only) ==============================
    The old wind is DELETED — its hiss lived in a lowpass that opened past
@@ -1455,6 +1457,7 @@ function drawPaintedFloor(RP,hy,gb,cx,fields){
   return true;
 }
 function paintGround(RP,hy,gb,cx){
+  if(fullPageNow())return;   /* #560: the painting runs to the bottom of the frame — no ground band under a full-page world */
   const gh=gb-hy; if(gh<4)return;
   ctx.fillStyle=RP.g2; ctx.fillRect(-W*0.55,gb-2,W*2.1,H*0.30);   /* #466b: the ground's deep color runs wide and below the frame, so a steer/look shift can never bare a void at the side or bottom edge */
   const b=S.biome, seaGlare=mixC(RP.sunC,'#ffffff',0.35);
@@ -2956,6 +2959,67 @@ function drawCRLife(RP,hy,cx){
   }
   ctx.restore();
 }
+/* ================= TEMPLE VALLEY (NEW, #560) =================
+   Gary (Nov 3): "make 1 new place… wow me… use a living photo." The art
+   is the Temple Valley living photo's OWN plates (day / golden / dusk /
+   true night, from the fleet page) — so the world's journey is the
+   living photo's journey: day → sunset → TRUE night (deep blue, the
+   plate's own night color), by light only. The painting IS the world:
+   full-frame cover, STEADY (no pan, no pitch, no drift — the centered
+   cover never moves), one plate dominant at a time on a triangular
+   journey cycle. Life, sparse per the Underwater Standard: two far
+   birds by day, star twinkles + fireflies in the near grass at night
+   (the accent). Load-guarded: until the plates arrive the world stays
+   its procedural self. */
+const tvImgs={ day:new Image(), golden:new Image(), dusk:new Image(), night:new Image() };
+tvImgs.day.src='assets/seats/tv-day.webp'; tvImgs.golden.src='assets/seats/tv-golden.webp';
+tvImgs.dusk.src='assets/seats/tv-dusk.webp'; tvImgs.night.src='assets/seats/tv-night.webp';
+let TV_G=null;
+function tvReady(){ for(const k in tvImgs){ const im=tvImgs[k]; if(im.complete&&im.naturalWidth>0)return true; } return false; }
+function fullPageNow(){   /* #560/#564: a FULL-PAGE painting owns this view — Gary's ruling: no moving ground band, no clip sprites under it */
+  if(S.biome==='temple'&&tvReady())return true;
+  if(S.biome==='sanjose'&&CR_NIGHT_F>0.35)return true;
+  return false;
+}
+function drawSeatCover(img,alpha){   /* a LIVING painting as the world: full-frame cover, centered, still */
+  if(!img.complete||!img.naturalWidth||alpha<=0.003)return null;
+  const iw=img.naturalWidth, ih=img.naturalHeight, sc=Math.max(W/iw,H/ih);
+  const dw=iw*sc, dh=ih*sc, left=(W-dw)/2, top=(H-dh)/2;
+  ctx.globalAlpha=clamp(alpha,0,1); ctx.drawImage(img,left,top,dw,dh); ctx.globalAlpha=1;
+  return {left:left,top:top,pw:dw,ph:dh};
+}
+function drawTempleVista(RP,hy,cx){
+  TV_G=null; if(!tvReady())return;
+  const j=clamp(RP.warmF*0.45+RP.nightF*1.05,0,1);   /* the journey: 0 day → .4 golden → .7 dusk → 1 true night */
+  const stops=[tvImgs.day,tvImgs.golden,tvImgs.dusk,tvImgs.night], pos=[0,0.40,0.70,1.0];
+  let bi=0; for(let i=0;i<4;i++)if(j>=pos[i])bi=i;
+  const ai=Math.min(bi,2), f=clamp((j-pos[ai])/(pos[ai+1]-pos[ai]),0,1);
+  TV_G=drawSeatCover(stops[ai],1);
+  if(f>0.003)TV_G=drawSeatCover(stops[ai+1],f)||TV_G;
+}
+function drawTempleLife(RP,hy,cx){
+  const g=TV_G; if(!g)return;
+  const t=S.flyT;
+  /* far birds by day: two small dark shapes crossing the high sky, slow */
+  if(RP.nightF<0.5){ ctx.save(); ctx.strokeStyle='rgba(20,30,24,0.75)'; ctx.lineWidth=2; ctx.lineCap='round';
+    for(let i=0;i<2;i++){ const p=(((t*(0.008+i*0.003))+i*0.45)%1.2)-0.1; if(p<0||p>1)continue;
+      const bx=lerp(g.left+g.pw*0.05,g.left+g.pw*0.95,p), by=g.top+g.ph*(0.16+i*0.05)+Math.sin(t*0.9+i*2.0)*3;
+      const f2=Math.sin(t*7+i*1.9)*3.4, s2=7;
+      ctx.beginPath(); ctx.moveTo(bx-s2,by-f2); ctx.quadraticCurveTo(bx,by+1.6,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.6,bx+s2,by-f2); ctx.stroke(); }
+    ctx.restore(); }
+  /* night: star twinkles in the plate's sky + fireflies in the near grass */
+  if(RP.nightF>0.05){ ctx.save(); ctx.globalCompositeOperation='screen';
+    const sr=mulberry(4242); ctx.fillStyle='rgba(235,244,255,1)';
+    for(let i=0;i<34;i++){ const fx=sr(), fy=sr()*0.30;
+      const tw=0.5+0.5*Math.sin(t*(0.8+(i%5)*0.21)+i*2.63);
+      ctx.globalAlpha=RP.nightF*(0.06+0.30*tw); ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.0,2.0); }
+    const fr=mulberry(7331); ctx.fillStyle='rgba(255,217,138,1)';
+    for(let i=0;i<16;i++){ const fx=fr(), fy=0.80+fr()*0.16;
+      const tw=0.5+0.5*Math.sin(t*(1.1+(i%4)*0.3)+i*3.1);
+      ctx.globalAlpha=RP.nightF*(0.10+0.5*tw);
+      ctx.beginPath(); ctx.arc(g.left+(fx+0.012*Math.sin(t*0.6+i))*g.pw, g.top+fy*g.ph, 1.7, 0, TAU); ctx.fill(); }
+    ctx.restore(); ctx.globalAlpha=1; }
+}
 /* ---- SAHARA: the painting as the world's vista, then its life:
    wandering dust devils, a vulture riding a thermal up, the caravan
    crawling a far ridge, and the heat shimmer standing on the horizon  */
@@ -4389,6 +4453,7 @@ function render(){
   if(S.biome==='beach'&&inSpace<0.42)drawBeachVista(RP,hy,cx);
   if(S.biome==='city'&&inSpace<0.42)drawCityVista(RP,hy,cx);
   if(S.biome==='sanjose'&&inSpace<0.42)drawCRVista(RP,hy,cx);
+  if(S.biome==='temple'&&inSpace<0.42)drawTempleVista(RP,hy,cx);   /* #560 */
   if(S.biome==='desert'&&inSpace<0.42)drawDesertVista(RP,hy,cx);
   if(S.biome==='north'&&inSpace<0.42)drawNorthVista(RP,hy,cx);
   /* ---- NORTH POLE FIREWORKS — NP-FIREWORKS-2026-10-27 (Daily WOW Oct 27):
@@ -4507,6 +4572,7 @@ function render(){
   const fogDim=1-S.wx.fog*0.55;
   const sorted=sprites.concat(landmarks).sort((a,b)=>b.z-a.z);
   for(const sp of sorted){
+    if(fullPageNow())break;   /* #560: no clip-art houses/palms under a full-page painting (Gary's CR ruling, applied to every full-page world) */
     if(inSpace>0.6)break;
     if(sp.z>1.05)continue;
     /* #466: no painted floors anywhere, so no scatter suppression — the simple elements layer over every simple bottom again */ if(false)continue;   /* Nov 1: the painted floor carries the terrain — no cartoon scatter on it */   /* a passed landmark, parked beyond the horizon */
@@ -4550,6 +4616,7 @@ function render(){
   if(S.biome==='beach'&&inSpace<0.42)drawBeachLife(RP,hy,cx);
   if(S.biome==='city'&&inSpace<0.42)drawCityLife(RP,hy,cx);
   if(S.biome==='sanjose'&&inSpace<0.42)drawCRLife(RP,hy,cx);
+  if(S.biome==='temple'&&inSpace<0.42)drawTempleLife(RP,hy,cx);   /* #560 */
   if(S.biome==='desert'&&inSpace<0.42)drawDesertLife(RP,hy,cx);
   if(S.biome==='north'&&inSpace<0.42)drawNorthLife(RP,hy,cx);   /* #558 */
   drawSpaceVista(RP);
