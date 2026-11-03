@@ -32,8 +32,10 @@
   .toggle button.on { background:#e8e2d4; color:#141310; }
   footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
   footer a { color:#b9b09a; }
-  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; }
-  #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; overflow:hidden; }
+  #fsBg { position:absolute; inset:-48px; filter:blur(30px) brightness(.55) saturate(1.2); }
+  #fsBg img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #fs > img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
 </style>
 </head>
 <body>
@@ -72,6 +74,12 @@
 </footer>
 
 <div id="fs">
+    <div id="fsBg">
+    <img id="fsBgDay" src="still.jpg" alt="">
+    <img id="fsBgGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="fsBgGlow" src="glow.jpg" alt="" style="opacity:0">
+    <img id="fsBgHeld" src="held.png" alt="" style="opacity:0">
+    </div>
     <img id="fsDay" src="still.jpg" alt="The original photo, untouched">
     <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
     <img id="fsGlow" src="glow.jpg" alt="" style="opacity:0">
@@ -119,6 +127,18 @@
              hair: document.getElementById(p+'Hair') };
   }
   var page = stack('lyr'), fs = stack('fs');
+  // Full-screen surround: the photo shows WHOLE (contain); behind it, a
+  // blurred, darkened copy of the same scene plates fills the frame.
+  var fsBg = { day: document.getElementById('fsBgDay'),
+               golden: document.getElementById('fsBgGolden'),
+               glow: document.getElementById('fsBgGlow'),
+               held: document.getElementById('fsBgHeld') };
+  function applyBg(so){
+    fsBg.day.style.opacity = so.day;
+    fsBg.golden.style.opacity = so.golden;
+    fsBg.glow.style.opacity = so.glow;
+    fsBg.held.style.opacity = 1;      // full screen always shows the living composite
+  }
   var fsEl = document.getElementById('fs');
   var fsOpen = false, priorState = 'still';
 
@@ -204,7 +224,7 @@
     var living = state === 'living';
     if (!living) so = { day:1, golden:0, glow:0 };
     apply(page, so, ao, living);
-    if (fsOpen) apply(fs, so, ao, true);
+    if (fsOpen){ apply(fs, so, ao, true); applyBg(so); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
