@@ -389,5 +389,55 @@
   };
 })();
 </script>
+<style>
+  /* Wall mode fit (added for the Living Photos wall): whole photo, with
+     the photo's own blurred plates filling any surround. */
+  #fs .lp-wallbg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #fs .lp-wallbg img { position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; filter:blur(26px) brightness(.7) saturate(1.06);
+    transform:scale(1.14); display:block; }
+  #fs.lp-wallfit img:not(.acc):not(.crop):not(.lp-bgimg) { object-fit:contain !important; }
+</style>
+<script>
+(function(){
+  "use strict";
+  // Wall mode: embedded in the Living Photos wall (#wall), open directly
+  // on the full-screen living view, framed whole — the wall owns taps
+  // and keys, so the usual tap/key exits are disarmed in this mode only.
+  if (!/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
+  var fsEl = document.getElementById('fs');
+  if (!fsEl || !window.LP) return;
+  // Blurred-extension surround: blurred copies of this piece's own
+  // photographic plates (the .jpg layers), crossfaded in step with them.
+  var plates = [];
+  fsEl.querySelectorAll('img').forEach(function(im){
+    if (/\.jpe?g($|\?)/i.test(im.getAttribute('src') || '')) plates.push(im);
+  });
+  if (plates.length){
+    var bg = document.createElement('div');
+    bg.className = 'lp-wallbg';
+    var clones = plates.map(function(im){
+      var c = document.createElement('img');
+      c.src = im.src; c.alt = ''; c.className = 'lp-bgimg';
+      c.style.opacity = getComputedStyle(im).opacity;
+      bg.appendChild(c);
+      return [c, im];
+    });
+    fsEl.insertBefore(bg, fsEl.firstChild);
+    (function mirror(){
+      for (var i = 0; i < clones.length; i++){
+        var o = clones[i][1].style.opacity;
+        if (o !== '') clones[i][0].style.opacity = o;
+      }
+      requestAnimationFrame(mirror);
+    })();
+  }
+  fsEl.classList.add('lp-wallfit');
+  if (LP.ignite){ try { LP.ignite(); } catch(e){} }
+  if (LP.openFs){ try { LP.openFs(); } catch(e){} }
+  document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
+  fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+})();
+</script>
 </body>
 </html>
