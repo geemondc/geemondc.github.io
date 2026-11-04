@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nocturne — a living photo</title>
+<meta name="description" content="A living night painting: a high-rise lounge above a storm-lit city, with rain, snow or fog on the glass.">
+<style>
+  :root{
+    --led:#ff2a1a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* Blurred, darkened backdrop of the same painting (the original's frame) */
+  #backdrop{
+    position:fixed;
+    inset:0;
+    background-image:url('night-lounge.jpg');
+    background-size:cover;
+    background-position:center;
+    filter:blur(40px) brightness(0.45);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — exactly the painting's box (1920×1088) */
+  #stage{
+    position:relative;
+    width:min(100vw, 176.47vh);
+    aspect-ratio:1920/1088;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#000;
+  }
+  #stage img.painting{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+
+  .layer{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+  }
+
+  /* LED cove glow — the family's breathing layer; the color lives in --led
+     and is set by the chips. Red is the painting's native cove color. */
+  #ledGlow{
+    background:
+      radial-gradient(120% 55% at 50% 0%, var(--led), transparent 70%),
+      linear-gradient(to bottom, var(--led) 0%, transparent 34%);
+    mix-blend-mode:screen;
+    opacity:0.5;
+    animation:ledBreathe 7s ease-in-out infinite alternate;
+    z-index:4;
+  }
+  @keyframes ledBreathe{
+    from{opacity:0.5;}
+    to{opacity:0.78;}
+  }
+  body.still #ledGlow{animation-play-state:paused;}
+  /* LED floor spill */
+  #ledSpill{
+    background:radial-gradient(60% 22% at 50% 102%, var(--led), transparent 70%);
+    mix-blend-mode:screen;
+    opacity:0.16;
+    z-index:5;
+  }
+
+  #lights{z-index:2;}   /* the painting's own lights, flickering (salt) */
+  #fog{z-index:3;}      /* fog banks, on the glass only */
+  #weather{z-index:6;}  /* rain / snow, on the glass only */
+
+  /* Controls */
+  #controls{
+    position:fixed;
+    pointer-events:auto;
+    left:50%;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 18px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:96vw;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls .caption{
+    color:rgba(255,255,255,0.75);
+    font-size:11px;
+    letter-spacing:0.32em;
+    padding-left:0.32em;
+  }
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+  }
+  #modeBtn,#soundBtn,#fsBtn{
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18) !important;
+  }
+  #modeBtn:hover,#soundBtn:hover,#fsBtn:hover{background:rgba(255,255,255,0.10);}
+  #fsBtn{font-size:14px; padding:4px 10px;}
+  .chips{display:flex; align-items:center; gap:8px;}
+  .chip{
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    padding:0;
+    border:1px solid rgba(255,255,255,0.25) !important;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .chip:hover{transform:scale(1.15);}
+  .chip.active{
+    box-shadow:0 0 0 2px rgba(0,0,0,0.7), 0 0 0 4px rgba(255,255,255,0.9);
+  }
+  .weather{display:flex; align-items:center; gap:6px;}
+  .wbtn{
+    font-size:10px;
+    letter-spacing:0.14em;
+    padding:6px 9px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18) !important;
+  }
+  .wbtn:hover{background:rgba(255,255,255,0.10);}
+  .wbtn.active{
+    box-shadow:0 0 0 2px rgba(0,0,0,0.7), 0 0 0 4px rgba(255,255,255,0.9);
+  }
+</style>
+</head>
+<body>
+
+<div id="backdrop"></div>
+
+<div id="stage" title="Tap for full screen">
+  <img class="painting" id="painting" src="night-lounge.jpg" alt="A dark high-rise lounge at night overlooking a storm-lit city skyline and bridge">
+  <canvas class="layer" id="lights"></canvas>
+  <canvas class="layer" id="fog"></canvas>
+  <div class="layer" id="ledGlow"></div>
+  <div class="layer" id="ledSpill"></div>
+  <canvas class="layer" id="weather"></canvas>
+</div>
+
+<div id="controls">
+  <span class="caption">NOCTURNE</span>
+  <button id="modeBtn">STILL</button>
+  <div class="weather">
+    <button class="wbtn active" data-weather="RAIN">RAIN</button>
+    <button class="wbtn" data-weather="SNOW">SNOW</button>
+    <button class="wbtn" data-weather="FOG">FOG</button>
+  </div>
+  <div class="chips">
+    <button class="chip active" data-color="#ff2a1a" style="background:#ff2a1a" aria-label="Red"></button>
+    <button class="chip" data-color="#ffb340" style="background:#ffb340" aria-label="Gold"></button>
+    <button class="chip" data-color="#2eff7a" style="background:#2eff7a" aria-label="Green"></button>
+    <button class="chip" data-color="#22d3ee" style="background:#22d3ee" aria-label="Cyan"></button>
+    <button class="chip" data-color="#3b82f6" style="background:#3b82f6" aria-label="Blue"></button>
+    <button class="chip" data-color="#a855f7" style="background:#a855f7" aria-label="Violet"></button>
+    <button class="chip" data-color="#ffd9a0" style="background:#ffd9a0" aria-label="Warm White"></button>
+  </div>
+  <button id="soundBtn">Sound: Off</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  /* Nocturne — in-house rebuild of Lovable's Futurereadyrain2 ("Midnight
+     Window"). The original is good, except its weather canvas covers the
+     whole painting: rain streaks fall over the sofa and the floor — it is
+     literally raining inside the apartment. This rebuild keeps everything
+     Gary loved (the painting, the flickering lights, the weather kit, the
+     LED cove, the ship horn) and applies the family's proven fix: ALL
+     weather is clipped to the window glass — a polygon traced from the
+     painting, eroded so drops never kiss the frames — and pixel-audited
+     zero over the room. Engine ported from the harvested living-engine.ts;
+     fog banks from the Rain Room's Drifter recipe. */
+
+  var body = document.body;
+  var stage = document.getElementById('stage');
+  var img = document.getElementById('painting');
+  var living = true;
+  var weather = 'RAIN';   /* RAIN | SNOW | FOG */
+  var T = 0;              /* sim clock (s) — frozen in STILL */
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  /* ---------- The window glass — traced from night-lounge.jpg ----------
+     We sit IN the room, so weather may only ever appear ON the glass.
+     Outer boundary (image fractions), traced just inside the true glass,
+     with notches cut around the three things that stand IN FRONT of the
+     glass: the tall plant (left pane), the grand piano (right), and the
+     vase of bare branches on the coffee table (bottom center). Weather is
+     clipped to an INSET copy (every edge shifted inward) so drops never
+     kiss the frames; the audit checks against this outer polygon. */
+  var GLASS = [
+    [0.056, 0.142], [0.966, 0.141],           /* top rail */
+    [0.966, 0.408],                           /* right jamb, down to the piano lid tip */
+    [0.895, 0.530],                           /* along the lid diagonal */
+    [0.818, 0.628], [0.795, 0.690],           /* around the piano body to the sill */
+    [0.458, 0.690],                           /* sill, west to the vase notch */
+    [0.455, 0.622], [0.370, 0.622], [0.368, 0.690],  /* around the vase branches */
+    [0.140, 0.690],                           /* sill, west to the plant notch */
+    [0.140, 0.180], [0.056, 0.180]            /* the plant owns the left pane below this */
+  ];
+  /* True inset of the glass polygon: every edge shifted inward (its
+     inward side proven by a point test, so the concave notch edges —
+     plant step, vase ceiling, piano wall — inset correctly too; a naive
+     shrink-toward-centroid pushes those edges INTO the room). Weather is
+     clipped to this inset copy, so drops never kiss the frames. */
+  function polyInset(poly, dist){
+    function inwardNormal(a, b){
+      var ex = b[0] - a[0], ey = b[1] - a[1];
+      var len = Math.sqrt(ex * ex + ey * ey) || 1; ex /= len; ey /= len;
+      var nx = ey, ny = -ex;
+      var mx = (a[0] + b[0]) / 2 + nx * 0.002, my = (a[1] + b[1]) / 2 + ny * 0.002;
+      if (!inPoly(poly, mx, my)) { nx = -nx; ny = -ny; }
+      return [nx, ny];
+    }
+    var lines = poly.map(function(p, i){
+      var q = poly[(i + 1) % poly.length];
+      var n = inwardNormal(p, q);
+      return { n: n, c: n[0] * p[0] + n[1] * p[1] + dist };
+    });
+    return poly.map(function(_, i){
+      var l1 = lines[(i + lines.length - 1) % lines.length], l2 = lines[i];
+      var det = l1.n[0] * l2.n[1] - l2.n[0] * l1.n[1];
+      if (Math.abs(det) < 1e-9) return poly[i];
+      return [ (l1.c * l2.n[1] - l2.c * l1.n[1]) / det,
+               (l1.n[0] * l2.c - l2.n[0] * l1.c) / det ];
+    });
+  }
+  var GLASS_IN = polyInset(GLASS, 0.012);
+
+  function inPoly(poly, x, y){
+    var inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++){
+      var xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  /* top/bottom boundary (image-fraction y) of a polygon at image-fraction x */
+  function spanAt(poly, fx){
+    var top = Infinity, bot = -Infinity;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++){
+      var xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+      if ((fx >= xi && fx < xj) || (fx >= xj && fx < xi)){
+        var y = yi + ((fx - xi) / (xj - xi)) * (yj - yi);
+        if (y < top) top = y; if (y > bot) bot = y;
+      }
+    }
+    return top === Infinity ? null : [top, bot];
+  }
+  /* a random point inside the (eroded) glass — particles are born on glass */
+  function glassPoint(){
+    for (var tries = 0; tries < 12; tries++){
+      var fx = rand(0.06, 0.96);
+      var span = spanAt(GLASS_IN, fx);
+      if (!span) continue;
+      return { x: fx, y: rand(span[0], span[1]), top: span[0], bot: span[1] };
+    }
+    return { x: 0.5, y: 0.4, top: 0.15, bot: 0.68 };
+  }
+
+  /* ---------- Canvases ---------- */
+  var lightsCanvas = document.getElementById('lights');
+  var fogCanvas = document.getElementById('fog');
+  var weatherCanvas = document.getElementById('weather');
+  var lctx = lightsCanvas.getContext('2d');
+  var fctx = fogCanvas.getContext('2d');
+  var wctx = weatherCanvas.getContext('2d');
+  var W = 0, H = 0;
+  /* Particle scaling: the original's fixed counts/radii were tuned for a
+     desktop frame — on a phone-size stage the same 140 drops crowd the
+     small glass into blobs. Counts scale with stage area, drop radii with
+     stage width; at desktop size both factors are exactly 1. */
+  var SCALE_R = 1, SCALE_N = 1;
+
+  function sizeCanvases(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    SCALE_R = Math.min(1, Math.max(0.55, Math.sqrt(W / 1600)));
+    SCALE_N = Math.min(1, Math.max(0.25, (W * H) / (1600 * 906)));
+    [lightsCanvas, fogCanvas, weatherCanvas].forEach(function(c){
+      c.width = Math.round(W * dpr);
+      c.height = Math.round(H * dpr);
+      c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    });
+  }
+  function clipToGlass(c, poly){
+    var pts = poly || GLASS_IN;
+    c.beginPath();
+    for (var i = 0; i < pts.length; i++){
+      var px = pts[i][0] * W, py = pts[i][1] * H;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.clip();
+  }
+
+  /* ---------- Lights — the painting's own lights, flickering ----------
+     Ported faithfully from the original's detectLights/drawLights: bright
+     points are found IN the painting (city windows, the bridge, the
+     candles, the lamp — the cove band on top is skipped, it has its own
+     breathing layer) and each breathes on three detuned sine clocks, in
+     its own sampled color. Salt: nothing in unison, painting untouched. */
+  var lightPts = [];
+  function detectLights(){
+    var SW = 480, SH = Math.round(480 * img.naturalHeight / img.naturalWidth);
+    var c = document.createElement('canvas');
+    c.width = SW; c.height = SH;
+    var g = c.getContext('2d');
+    g.drawImage(img, 0, 0, SW, SH);
+    var d;
+    try { d = g.getImageData(0, 0, SW, SH).data; } catch (e) { return; }
+    function lum(i){ return 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; }
+    var pts = [];
+    for (var y = 2; y < SH - 2; y++){
+      if (y / SH < 0.22) continue;              /* skip the ceiling cove */
+      for (var x = 2; x < SW - 2; x++){
+        var i = (y * SW + x) * 4;
+        var l = lum(i);
+        if (l < 150) continue;
+        var max = true;
+        for (var dy = -2; dy <= 2 && max; dy++)
+          for (var dx = -2; dx <= 2; dx++){
+            if (!dx && !dy) continue;
+            if (lum(((y + dy) * SW + x + dx) * 4) > l) { max = false; break; }
+          }
+        if (!max) continue;
+        var big = y / SH > 0.6 && l > 200;
+        pts.push({
+          x: x / SW, y: y / SH, l: l,
+          r: big ? 0.012 : 0.004 + Math.random() * 0.003,
+          c: Math.min(255, d[i] + 20) + ',' + Math.min(255, d[i + 1] + 10) + ',' + d[i + 2],
+          f: [0.6 + Math.random() * 1.8, 1.7 + Math.random() * 3.1, 3.3 + Math.random() * 5],
+          p: [Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28],
+          base: 0.35 + Math.random() * 0.4
+        });
+      }
+    }
+    pts.sort(function(a, b){ return b.l - a.l; });
+    lightPts = pts.slice(0, 320);
+  }
+  function drawLights(t){
+    lctx.clearRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'lighter';
+    for (var k = 0; k < lightPts.length; k++){
+      var p = lightPts[k];
+      var n = (Math.sin(t * p.f[0] + p.p[0]) + 0.6 * Math.sin(t * p.f[1] + p.p[1]) + 0.3 * Math.sin(t * p.f[2] + p.p[2])) / 1.9;
+      var a = Math.max(0, p.base * (0.55 + 0.45 * n));
+      var r = p.r * W * (0.85 + 0.3 * n);
+      var gx = p.x * W, gy = p.y * H;
+      var gr = lctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+      gr.addColorStop(0, 'rgba(' + p.c + ',' + a + ')');
+      gr.addColorStop(1, 'rgba(' + p.c + ',0)');
+      lctx.fillStyle = gr;
+      lctx.fillRect(gx - r, gy - r, r * 2, r * 2);
+    }
+    lctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* ---------- Weather — ported from the original WeatherSim, ----------
+     with the fix: every particle is BORN inside the glass polygon and
+     everything is DRAWN inside the glass clip. Rain streaks and flakes
+     die at the sill line under their own x; drops live on the glass. */
+  var streaks = [], drops = [], flakes = [];
+
+  function newStreak(anywhere){
+    var gp = glassPoint();
+    return { x: gp.x, y: anywhere ? gp.y : gp.top + rand(0, 0.02), v: 1.4 + Math.random() * 1.2, l: 0.03 + Math.random() * 0.05, bot: gp.bot };
+  }
+  function newDrop(anywhere){
+    var gp = glassPoint();
+    return { x: gp.x, y: anywhere ? gp.y : gp.top + Math.random() * 0.35 * (gp.bot - gp.top),
+             r: (1 + Math.random() * 3.2) * SCALE_R, v: 0, still: Math.random() * 6, trail: [], bot: gp.bot };
+  }
+  function newFlake(anywhere){
+    var gp = glassPoint();
+    return { x: gp.x, y: anywhere ? gp.y : gp.top - rand(0, 0.02), r: 0.8 + Math.random() * 2.6,
+             v: 0.025 + Math.random() * 0.05, s: 0.3 + Math.random() * 0.8, p: Math.random() * 6.28, bot: gp.bot };
+  }
+  function seedWeather(){
+    streaks = []; drops = []; flakes = [];
+    var i;
+    for (i = 0; i < Math.round(260 * SCALE_N); i++) streaks.push(newStreak(true));
+    for (i = 0; i < Math.round(140 * SCALE_N); i++) drops.push(newDrop(true));
+    for (i = 0; i < Math.round(260 * SCALE_N); i++) flakes.push(newFlake(true));
+  }
+
+  function stepWeather(dt){
+    var i, j;
+    if (weather === 'RAIN'){
+      for (i = 0; i < streaks.length; i++){
+        var s = streaks[i];
+        s.y += s.v * dt; s.x += s.v * dt * 0.12;
+        if (s.y > s.bot + 0.02) streaks[i] = newStreak(false);
+      }
+      for (i = 0; i < drops.length; i++){
+        var dr = drops[i];
+        dr.still -= dt;
+        if (dr.still <= 0 && dr.r > 2 * SCALE_R) dr.v = Math.min(0.5, dr.v + dt * 0.4 * dr.r / 3);
+        else dr.r += dt * 0.08;
+        if (dr.v > 0){
+          dr.y += dr.v * dt;
+          dr.x += Math.sin(dr.y * 40) * 0.0004;
+          dr.trail.push({ x: dr.x, y: dr.y });
+          if (dr.trail.length > 40) dr.trail.shift();
+          if (Math.random() < dt * 0.6) { dr.v = 0; dr.still = Math.random() * 1.2; }
+        }
+        if (dr.y > dr.bot + 0.01) drops[i] = newDrop(false);
+      }
+      /* merging — area-conserving, as the original */
+      for (i = 0; i < drops.length; i++) for (j = i + 1; j < drops.length; j++){
+        var a = drops[i], b = drops[j];
+        var dx = (a.x - b.x) * W, dy = (a.y - b.y) * H;
+        if (dx * dx + dy * dy < (a.r + b.r) * (a.r + b.r)){
+          a.r = Math.min(6 * SCALE_R, Math.sqrt(a.r * a.r + b.r * b.r));
+          a.still = 0;
+          drops[j] = newDrop(false);
+        }
+      }
+    } else if (weather === 'SNOW'){
+      for (i = 0; i < flakes.length; i++){
+        var f = flakes[i];
+        f.y += f.v * dt; f.p += dt * f.s; f.x += Math.sin(f.p) * 0.0006;
+        if (f.y > f.bot + 0.005) flakes[i] = newFlake(false);
+      }
+    }
+  }
+
+  function drawWeather(){
+    wctx.clearRect(0, 0, W, H);
+    if (weather === 'FOG') return;              /* the fog canvas takes over */
+    wctx.save();
+    clipToGlass(wctx);                          /* weather lives on the glass only */
+    var i;
+    if (weather === 'RAIN'){
+      wctx.strokeStyle = 'rgba(200,215,235,0.28)';
+      wctx.lineWidth = Math.max(0.6, W / 1800);
+      wctx.beginPath();
+      for (i = 0; i < streaks.length; i++){
+        var s = streaks[i];
+        wctx.moveTo(s.x * W, s.y * H);
+        wctx.lineTo((s.x - s.l * 0.12) * W, (s.y - s.l) * H);
+      }
+      wctx.stroke();
+      for (i = 0; i < drops.length; i++){
+        var dr = drops[i];
+        if (dr.trail.length > 1){
+          wctx.strokeStyle = 'rgba(190,205,225,0.12)';
+          wctx.lineWidth = dr.r * 0.9;
+          wctx.beginPath();
+          wctx.moveTo(dr.trail[0].x * W, dr.trail[0].y * H);
+          for (var k = 1; k < dr.trail.length; k++) wctx.lineTo(dr.trail[k].x * W, dr.trail[k].y * H);
+          wctx.stroke();
+        }
+        var x = dr.x * W, y = dr.y * H;
+        var g = wctx.createRadialGradient(x - dr.r * 0.3, y - dr.r * 0.3, 0, x, y, dr.r * 1.4);
+        g.addColorStop(0, 'rgba(255,240,225,0.55)');
+        g.addColorStop(0.5, 'rgba(140,150,170,0.18)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        wctx.fillStyle = g;
+        wctx.beginPath(); wctx.arc(x, y, dr.r * 1.4, 0, 6.28); wctx.fill();
+      }
+    } else if (weather === 'SNOW'){
+      for (i = 0; i < flakes.length; i++){
+        var f = flakes[i];
+        var r = f.r * (W / 1400);
+        wctx.fillStyle = 'rgba(240,244,250,' + (0.35 + f.r / 7) + ')';
+        wctx.beginPath(); wctx.arc(f.x * W, f.y * H, r, 0, 6.28); wctx.fill();
+      }
+    }
+    wctx.restore();
+  }
+
+  /* ---------- Fog — the Rain Room's Drifter puff banks, on the glass ----------
+     Puffs are pre-rendered once (shaded belly, lit top, a whisper of city
+     warmth underneath, radial feather so no sprite edge can ever show) and
+     whole banks of them drift across the glass, breathing — the city
+     ghosts through the gaps, never smeared over. Clipped to the glass. */
+  var fogSprites = [], fogBanks = [], fogFade = 0;
+
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function buildFogSprites(){
+    fogSprites = [];
+    for (var v = 0; v < 4; v++){
+      var r = mulberry32(700 + v * 131);
+      var cw = 640, ch = 320, c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      var g = c.getContext('2d');
+      var blobs = [], n = 9 + Math.floor(r() * 6);
+      for (var i = 0; i < n; i++)
+        blobs.push([cw * (0.15 + r() * 0.70), ch * (0.36 + r() * 0.28), (0.13 + r() * 0.17) * cw]);
+      var b, bx, by, br, gr;
+      for (i = 0; i < blobs.length; i++){ b = blobs[i]; bx = b[0]; by = b[1] + b[2] * 0.30; br = b[2];
+        gr = g.createRadialGradient(bx, by, br * 0.08, bx, by, br);
+        gr.addColorStop(0, 'rgba(105,120,145,0.42)');
+        gr.addColorStop(1, 'rgba(105,120,145,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill(); }
+      for (i = 0; i < blobs.length; i++){ b = blobs[i]; bx = b[0]; by = b[1]; br = b[2];
+        gr = g.createRadialGradient(bx, by - br * 0.26, br * 0.08, bx, by, br);
+        gr.addColorStop(0, 'rgba(196,208,226,0.45)');
+        gr.addColorStop(0.65, 'rgba(158,175,199,0.22)');
+        gr.addColorStop(1, 'rgba(158,175,199,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill(); }
+      g.globalCompositeOperation = 'source-atop';
+      var warm = g.createLinearGradient(0, ch * 0.55, 0, ch);
+      warm.addColorStop(0, 'rgba(255,176,102,0)');
+      warm.addColorStop(1, 'rgba(255,176,102,0.10)');
+      g.fillStyle = warm; g.fillRect(0, 0, cw, ch);
+      g.globalCompositeOperation = 'destination-in';
+      g.save(); g.translate(cw / 2, ch / 2); g.scale(1, ch / cw);
+      /* radius 0.46 (not the Rain Room's 0.52): the mask must reach zero
+         INSIDE the canvas on both axes, or the sprite's straight canvas
+         edges print as hard rectangles on the glass */
+      var mg = g.createRadialGradient(0, 0, cw * 0.13, 0, 0, cw * 0.46);
+      mg.addColorStop(0, 'rgba(0,0,0,1)'); mg.addColorStop(0.55, 'rgba(0,0,0,1)'); mg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = mg; g.beginPath(); g.arc(0, 0, cw * 0.52, 0, Math.PI * 2); g.fill(); g.restore();
+      g.globalCompositeOperation = 'source-over';
+      fogSprites.push(c);
+    }
+  }
+  function newBank(low){
+    var wf = low ? rand(0.60, 0.95) : rand(0.35, 0.85);
+    return {
+      img: Math.floor(rand(0, fogSprites.length)),
+      w: wf * W,
+      x: rand(0, W),
+      y: low ? rand(0.55, 0.65) : rand(0.22, 0.52),   /* glass band of THIS painting */
+      dir: Math.random() < 0.5 ? -1 : 1,
+      cross: rand(70, 150),
+      /* peaks kept LOW (the original's banks breathed at 0.12–0.28): a bank
+         sliced by the glass clip at high alpha shows the clip line as a
+         hard rectangle edge; at mist alpha it reads as fog meeting the
+         frame, and the city keeps ghosting through */
+      peak: low ? rand(0.28, 0.45) : rand(0.30, 0.50),
+      cycle: rand(24, 50),
+      phase: rand(0, Math.PI * 2)
+    };
+  }
+  function seedFog(){
+    fogBanks = [];
+    for (var i = 0; i < 5; i++) fogBanks.push(newBank(false));
+    for (var j = 0; j < 2; j++) fogBanks.push(newBank(true));
+  }
+  function drawFog(dt, t){
+    var target = (weather === 'FOG') ? 1 : 0;
+    if (target > fogFade) fogFade = Math.min(target, fogFade + dt / 1.2);
+    else if (target < fogFade) fogFade = Math.max(target, fogFade - dt / 1.2);
+    if (fogFade <= 0){ fctx.clearRect(0, 0, W, H); return; }
+    fctx.clearRect(0, 0, W, H);
+    fctx.save();
+    clipToGlass(fctx);                              /* mist on the glass only */
+    for (var i = 0; i < fogBanks.length; i++){
+      var bk = fogBanks[i];
+      bk.x += bk.dir * (W + bk.w) / bk.cross * dt;
+      if (bk.dir > 0 && bk.x - bk.w / 2 > W + 40){ bk.x = -bk.w / 2 - 40; bk.phase = rand(0, Math.PI * 2); }
+      if (bk.dir < 0 && bk.x + bk.w / 2 < -40){ bk.x = W + bk.w / 2 + 40; bk.phase = rand(0, Math.PI * 2); }
+      var swell = 0.30 + 0.70 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 / bk.cycle + bk.phase));
+      fctx.globalAlpha = fogFade * bk.peak * swell;
+      var h = bk.w * 0.5;
+      fctx.drawImage(fogSprites[bk.img], bk.x - bk.w / 2, bk.y * H - h / 2, bk.w, h);
+    }
+    fctx.restore();
+    fctx.globalAlpha = 1;
+  }
+
+  /* ---------- Sound — the original's synthesized soundscape ----------
+     Web Audio, no files. OFF by default. Rain: bandpassed patter + low
+     body. Snow: a quiet hush breathing on a slow LFO. Fog: near-silence
+     and a distant two-tone ship horn over the bay. */
+  var Soundscape = {
+    ctx: null, master: null, nodes: [], timer: null,
+    build: function(){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.6;
+      this.master.connect(this.ctx.destination);
+    },
+    noise: function(){
+      var b = this.ctx.createBuffer(1, this.ctx.sampleRate * 4, this.ctx.sampleRate);
+      var d = b.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      var s = this.ctx.createBufferSource(); s.buffer = b; s.loop = true; return s;
+    },
+    stop: function(){
+      this.nodes.forEach(function(n){ try { if (n.stop) n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} });
+      this.nodes = [];
+      if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    },
+    set: function(mode){
+      if (!this.ctx) return;
+      this.stop();
+      var c = this.ctx, self = this;
+      if (mode === 'RAIN'){
+        var n = this.noise(), bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2500; bp.Q.value = 0.4;
+        var g = c.createGain(); g.gain.value = 0.35; n.connect(bp); bp.connect(g); g.connect(this.master); n.start();
+        var n2 = this.noise(), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+        var g2 = c.createGain(); g2.gain.value = 0.25; n2.connect(lp); lp.connect(g2); g2.connect(this.master); n2.start();
+        this.nodes.push(n, bp, g, n2, lp, g2);
+      } else if (mode === 'SNOW'){
+        var n3 = this.noise(), lp3 = c.createBiquadFilter(); lp3.type = 'lowpass'; lp3.frequency.value = 380;
+        var g3 = c.createGain(); g3.gain.value = 0.18;
+        var lfo = c.createOscillator(); lfo.frequency.value = 0.08;
+        var lg = c.createGain(); lg.gain.value = 0.12;
+        lfo.connect(lg); lg.connect(g3.gain);
+        n3.connect(lp3); lp3.connect(g3); g3.connect(this.master); n3.start(); lfo.start();
+        this.nodes.push(n3, lp3, g3, lfo, lg);
+      } else {
+        var n4 = this.noise(), lp4 = c.createBiquadFilter(); lp4.type = 'lowpass'; lp4.frequency.value = 200;
+        var g4 = c.createGain(); g4.gain.value = 0.04;
+        n4.connect(lp4); lp4.connect(g4); g4.connect(this.master); n4.start();
+        this.nodes.push(n4, lp4, g4);
+        var horn = function(){
+          if (!self.ctx) return;
+          var t = c.currentTime, o1 = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter(), hg = c.createGain();
+          o1.type = 'sawtooth'; o2.type = 'sawtooth'; o1.frequency.value = 82; o2.frequency.value = 83.5;
+          f.type = 'lowpass'; f.frequency.value = 260;
+          hg.gain.setValueAtTime(0, t);
+          hg.gain.linearRampToValueAtTime(0.22, t + 0.8);
+          hg.gain.setValueAtTime(0.22, t + 2.6);
+          hg.gain.linearRampToValueAtTime(0, t + 4.5);
+          o1.connect(f); o2.connect(f); f.connect(hg); hg.connect(self.master);
+          o1.start(t); o2.start(t); o1.stop(t + 4.6); o2.stop(t + 4.6);
+        };
+        setTimeout(horn, 3000);
+        this.timer = window.setInterval(horn, 20000);
+      }
+    }
+  };
+  var soundOn = false;
+  function applySound(){
+    if (!Soundscape.ctx) return;
+    if (soundOn && living) { Soundscape.ctx.resume(); Soundscape.set(weather); }
+    else Soundscape.ctx.suspend();
+  }
+
+  /* ---------- Main loop ----------
+     One rAF drives everything. In STILL nothing steps and nothing is
+     redrawn — the canvases hold their last frame, the cove breathe is
+     paused by CSS — so the frozen frame is byte-identical. */
+  var last = performance.now();
+  function frame(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (living && W){
+      T += dt;
+      drawLights(T);
+      stepWeather(dt);
+      drawWeather();
+      drawFog(dt, T);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- Controls ---------- */
+  var controls = document.getElementById('controls');
+  var modeBtn = document.getElementById('modeBtn');
+  var soundBtn = document.getElementById('soundBtn');
+
+  modeBtn.addEventListener('click', function(){
+    living = !living;
+    body.classList.toggle('still', !living);
+    modeBtn.textContent = living ? 'STILL' : 'LIVING';
+    applySound();
+  });
+
+  var chips = document.querySelectorAll('.chip');
+  for (var ci = 0; ci < chips.length; ci++){
+    chips[ci].addEventListener('click', function(){
+      document.documentElement.style.setProperty('--led', this.getAttribute('data-color'));
+      for (var j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+      this.classList.add('active');
+    });
+  }
+
+  var wbtns = document.querySelectorAll('.wbtn');
+  function setWeather(w){
+    weather = w;
+    for (var i = 0; i < wbtns.length; i++)
+      wbtns[i].classList.toggle('active', wbtns[i].getAttribute('data-weather') === w);
+    applySound();                             /* sound follows the weather */
+  }
+  for (var wi = 0; wi < wbtns.length; wi++){
+    wbtns[wi].addEventListener('click', function(){
+      setWeather(this.getAttribute('data-weather'));
+    });
+  }
+
+  soundBtn.addEventListener('click', function(){
+    if (!Soundscape.ctx) Soundscape.build();
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+    applySound();
+  });
+
+  /* Fullscreen on stage tap — with the click-trap guard: a tap aimed at
+     the controls (even while the chrome is faded out, when the tap falls
+     through to the stage) wakes the chrome and is swallowed here; it never
+     toggles fullscreen and never eats the click meant for a pill. */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+  }
+  stage.addEventListener('click', function(e){
+    var cr = controls.getBoundingClientRect();
+    if (cr.width > 0 && e.clientX >= cr.left && e.clientX <= cr.right && e.clientY >= cr.top && e.clientY <= cr.bottom) return;
+    toggleFS();
+  });
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+  controls.addEventListener('click', function(e){ e.stopPropagation(); });
+
+  /* Controls auto-fade — pointerdown wakes FIRST, so by the time a tap's
+     click lands, a faded pill is hit-testable again (hardening). */
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ controls.classList.add('faded'); }, 3500);
+  }
+  document.addEventListener('pointermove', wake);
+  document.addEventListener('pointerdown', wake);
+  document.addEventListener('keydown', wake);
+  wake();
+
+  /* ---------- Init ---------- */
+  function init(){
+    sizeCanvases();
+    buildFogSprites();
+    seedWeather();
+    seedFog();
+  }
+  if (img.complete && img.naturalWidth) detectLights();
+  else img.addEventListener('load', detectLights);
+  init();
+  requestAnimationFrame(frame);
+  var resizeTimer = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function(){ sizeCanvases(); seedWeather(); seedFog(); }, 150);
+  });
+
+  /* verification hooks */
+  window.__nocturne = {
+    get living(){ return living; },
+    get weather(){ return weather; },
+    get t(){ return T; },
+    get led(){ return document.documentElement.style.getPropertyValue('--led') || '#ff2a1a'; },
+    lights: function(){ return lightPts; },
+    counts: function(){ return { streaks: streaks.length, drops: drops.length, flakes: flakes.length, fogBanks: fogBanks.length }; },
+    glass: function(){ return GLASS; },
+    glassIn: function(){ return GLASS_IN; },
+    stage: function(){ return stage; },
+    weatherEl: function(){ return weatherCanvas; },
+    fogEl: function(){ return fogCanvas; },
+    lightsEl: function(){ return lightsCanvas; },
+    setWeather: setWeather,
+    setLiving: function(v){
+      if (v !== living) modeBtn.click();
+    }
+  };
+})();
+</script>
+
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
