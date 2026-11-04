@@ -5,10 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Glass — a living rainy window</title>
 <style>
+  :root{ --led:#ff2a1a; }
   html,body{margin:0;padding:0;height:100%;background:#060a14;overflow:hidden;}
   body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
   #stage{position:fixed;inset:0;overflow:hidden;background:#060a14;}
-  #view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;}
+  #view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;z-index:1;}
+
+  /* LED cove layers (family pattern, from the Rain Room): the cove glow
+     hugs the ceiling, the spill whispers the same color onto the floor.
+     The color lives in --led and is set by the chips. */
+  .layer{position:absolute;inset:0;pointer-events:none;}
+  #ledGlow{
+    background:
+      radial-gradient(120% 55% at 50% 0%, var(--led), transparent 70%),
+      linear-gradient(to bottom, var(--led) 0%, transparent 34%);
+    mix-blend-mode:screen;
+    opacity:.30;
+    animation:ledBreathe 7s ease-in-out infinite alternate;
+    z-index:2;
+  }
+  @keyframes ledBreathe{ from{opacity:.30;} to{opacity:.52;} }
+  body.still #ledGlow{animation-play-state:paused;}
+  #ledSpill{
+    background:radial-gradient(60% 22% at 50% 102%, var(--led), transparent 70%);
+    mix-blend-mode:screen;
+    opacity:.16;
+    z-index:2;
+  }
+
   body.ui-hidden{cursor:none;}
   /* Controls: family pill chrome. pointer-events:auto is explicit and always
      on for the container; when auto-hidden it fades out and stops taking
@@ -31,7 +55,7 @@
   }
   #controls.hidden{opacity:0;pointer-events:none;}
   .grp{
-    display:flex;gap:4px;
+    display:flex;gap:4px;align-items:center;
     background:rgba(8,12,22,.42);
     border-radius:999px;
     padding:4px;
@@ -49,12 +73,31 @@
   }
   .grp button:hover{color:#fff;}
   .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  .chip{
+    width:22px;height:22px;border-radius:50%;
+    padding:0 !important;
+    border:1px solid rgba(255,255,255,.25);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .chip:hover{transform:scale(1.15);}
+  .chip.active{box-shadow:0 0 0 2px rgba(0,0,0,.7), 0 0 0 4px rgba(255,255,255,.9);}
 </style>
 </head>
 <body>
 <div id="stage">
-  <canvas id="view" role="img" aria-label="A living rain-soaked window at night, looking out over a sharp city skyline, a lit bridge and water. Tap for full screen."></canvas>
+  <canvas id="view" role="img" aria-label="A living rainy window in a cozy penthouse room at night: rain on the glass, a crisp city skyline and lit bridge beyond, candles and a red LED cove inside. Tap for full screen."></canvas>
+  <div class="layer" id="ledGlow"></div>
+  <div class="layer" id="ledSpill"></div>
   <div id="controls">
+    <div class="grp" id="chips">
+      <button class="chip active" type="button" data-color="#ff2a1a" style="background:#ff2a1a" aria-label="Red cove"></button>
+      <button class="chip" type="button" data-color="#ffb340" style="background:#ffb340" aria-label="Gold cove"></button>
+      <button class="chip" type="button" data-color="#2eff7a" style="background:#2eff7a" aria-label="Green cove"></button>
+      <button class="chip" type="button" data-color="#22d3ee" style="background:#22d3ee" aria-label="Cyan cove"></button>
+      <button class="chip" type="button" data-color="#3b82f6" style="background:#3b82f6" aria-label="Blue cove"></button>
+      <button class="chip" type="button" data-color="#a855f7" style="background:#a855f7" aria-label="Violet cove"></button>
+      <button class="chip" type="button" data-color="#ffd9a0" style="background:#ffd9a0" aria-label="Warm white cove"></button>
+    </div>
     <div class="grp">
       <button id="btnRain" type="button" class="on">Rain</button>
       <button id="btnMist" type="button">Mist</button>
@@ -72,18 +115,16 @@
 <script>
 (() => {
 "use strict";
-/* The Glass — in-house port of Lovable's Futurereadywindow (RainWindow.tsx).
-   The rain system (drop physics, wet trails, mist, orb light-breathing,
-   synthesized sound) is ported faithfully from the harvested source.
-   Retrofits vs the original:
-   1) The backdrop is a NEW razor-sharp photograph (city.jpg). The original
-      asset was itself a photo of a wet window with the city baked in as
-      bokeh — soft at the source, unfixable by removing filters. Here the
-      view stays crisp and ALL the water lives on the glass (canvas drops).
-   2) Layout is always one cover-fit pane, edge to edge — the original's
-      portrait mode pasted the photo as a band over a blurred copy of itself
-      (three stacked bands, hard seams). One continuous image, no seams.
-   3) Click-trap hardening from birth (see #controls note above). */
+/* The Glass v2 — the camera backs up. v1 filled the screen with a bare
+   pane and was rejected: every winner in this family is a ROOM you sit in.
+   v2's stage is a painted penthouse interior (room.jpg): window wall with
+   real frames ahead, sofas and candles inside, LED cove in the ceiling.
+   The rain engine (drop physics, wet trails, mist, orb light-breathing,
+   synthesized sound) is the same port of Lovable's Futurereadywindow
+   RainWindow.tsx, now CLIPPED TO THE GLASS — framing law: weather lives
+   on the window panes only, never in the room. The clip follows the
+   rain-room glass-clip pattern (measured polygon, weather drawn inside
+   ctx.clip()). */
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
@@ -148,18 +189,55 @@ function createSound() {
 }
 
 /* ---------------- State ---------------- */
-const state = { weather: "rain", living: true, sound: false };
+const state = { weather: "rain", living: true, sound: false, led: "#ff2a1a" };
 let soundEng = null;
 function applySound() {
   if (state.sound && !soundEng) soundEng = createSound();
   if (soundEng) soundEng.set(state.weather, state.sound && state.living);
 }
 
-/* ---------------- Scene (ported engine) ---------------- */
+/* ---------------- The glass — measured from room.jpg ----------------
+   Outer boundary of the window wall (image fractions), traced from the
+   painting: top rail left wall -> corner post -> top rail right wall ->
+   right jamb -> sill right wall -> corner base -> sill left wall.
+   Weather is clipped to an ERODED copy (pulled ~2.5% toward the
+   centroid) so drops never kiss the frames; the audit checks against
+   this outer polygon. */
+const GLASS = [
+  [0.038, 0.166], [0.150, 0.176], [0.300, 0.192], [0.479, 0.238],
+  [0.620, 0.206], [0.850, 0.166], [0.990, 0.147], [0.992, 0.734],
+  [0.850, 0.744], [0.730, 0.748], [0.600, 0.726], [0.479, 0.697],
+  [0.350, 0.714], [0.260, 0.720], [0.140, 0.692], [0.038, 0.673]
+];
+const GC = GLASS.reduce((a, p) => [a[0] + p[0] / GLASS.length, a[1] + p[1] / GLASS.length], [0, 0]);
+const GLASS_IN = GLASS.map((p) => [p[0] + (GC[0] - p[0]) * 0.03, p[1] + (GC[1] - p[1]) * 0.03]);
+
+function inPoly(poly, x, y) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+/* top/bottom boundary (image-fraction y) of a polygon at image-fraction x */
+function spanAt(poly, fx) {
+  let top = Infinity, bot = -Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+    if ((fx >= xi && fx < xj) || (fx >= xj && fx < xi)) {
+      const y = yi + ((fx - xi) / (xj - xi)) * (yj - yi);
+      if (y < top) top = y; if (y > bot) bot = y;
+    }
+  }
+  return top === Infinity ? null : [top, bot];
+}
+
+/* ---------------- Scene (ported engine, glass-clipped) ---------------- */
 const canvas = document.getElementById("view");
 const ctx = canvas.getContext("2d");
 const img = new Image();
-img.src = "city.jpg";
+img.src = "room.jpg";
 let W = 0, H = 0, dpr = 1;
 const base = document.createElement("canvas");
 const trail = document.createElement("canvas");
@@ -167,6 +245,7 @@ const mist = document.createElement("canvas");
 const micro = document.createElement("canvas");
 const microTex = document.createElement("canvas");
 let rect = { x: 0, y: 0, w: 0, h: 0 };
+let glassPts = [];   // eroded polygon in canvas coords
 let orbsN = [];
 let orbs = [];
 let drops = [];
@@ -175,23 +254,40 @@ const clears = [];
 let mistAmt = 0;
 let t = 0, lastBig = 0;
 
-/* Cover-fit focus: keep the tower cluster + bridge tower in the slice a
-   portrait phone shows; bias slightly upward so the view (skyline, bridge,
-   water) dominates and foreground shore crops away first. */
-const FOCUS_X = 0.60, FOCUS_Y = 0.40;
+/* Cover-fit focus: portrait phones see a slice around the corner post
+   and the bridge; the room's edges (sofas, cove) stay in frame on wide
+   screens. Slight upward bias keeps the cove in view. */
+const FOCUS_X = 0.50, FOCUS_Y = 0.45;
+
+function clipToGlass(c) {
+  c.beginPath();
+  for (let i = 0; i < glassPts.length; i++) {
+    if (i === 0) c.moveTo(glassPts[i][0], glassPts[i][1]); else c.lineTo(glassPts[i][0], glassPts[i][1]);
+  }
+  c.closePath();
+  c.clip();
+}
+/* canvas coords -> image fractions / and back */
+const toFracX = (cx) => (cx - rect.x) / rect.w;
+const toFracY = (cy) => (cy - rect.y) / rect.h;
 
 function detectOrbs() {
-  const gw = 192, gh = Math.round((192 * img.height) / img.width);
+  /* Retuned for a painting: v1's photo thresholds (192 grid, L>=175) found
+     nothing here — oil-paint lights top out near L=178 with soft peaks.
+     A 256 grid at L>=125 finds the bridge/city hotspots (~23 in-glass). */
+  const gw = 256, gh = Math.round((256 * img.height) / img.width);
   const c = document.createElement("canvas"); c.width = gw; c.height = gh;
   const g = c.getContext("2d"); g.filter = "blur(1px)"; g.drawImage(img, 0, 0, gw, gh);
   const d = g.getImageData(0, 0, gw, gh).data;
   const L = (x, y) => { const i = (y * gw + x) * 4; return 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; };
   const found = [];
   for (let y = 2; y < gh - 2; y++) for (let x = 2; x < gw - 2; x++) {
-    const l = L(x, y); if (l < 175) continue;
+    const l = L(x, y); if (l < 125) continue;
     let max = true;
     for (let j = -2; j <= 2 && max; j++) for (let i = -2; i <= 2; i++) if ((i || j) && L(x + i, y + j) > l) { max = false; break; }
     if (!max) continue;
+    // only the city's lights (behind the glass) breathe — not the candles
+    if (!inPoly(GLASS, x / gw, y / gh)) continue;
     const k = (y * gw + x) * 4;
     found.push({ u: x / gw, v: y / gh, r: 0.012 + Math.random() * 0.01, c: d[k] + "," + d[k + 1] + "," + d[k + 2], ph: rand(0, 6.28), sp: rand(0.15, 0.7) });
   }
@@ -199,7 +295,15 @@ function detectOrbs() {
 }
 
 function newDrop(r) {
-  return { x: Math.random() * W, y: Math.random() * H, r: r * dpr, vy: 0, slide: false, wob: rand(0, 6) };
+  // rejection-sample a birthplace inside the glass
+  for (let tries = 0; tries < 12; tries++) {
+    const fx = rand(0.05, 0.98);
+    const span = spanAt(GLASS_IN, fx);
+    if (!span) continue;
+    const fy = rand(span[0], span[1]);
+    return { x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: r * dpr, vy: 0, slide: false, wob: rand(0, 6) };
+  }
+  return { x: rect.x + 0.5 * rect.w, y: rect.y + 0.4 * rect.h, r: r * dpr, vy: 0, slide: false, wob: rand(0, 6) };
 }
 
 function layout() {
@@ -214,7 +318,7 @@ function layout() {
     mt.beginPath(); mt.arc(Math.random() * microTex.width, Math.random() * microTex.height, rand(0.25, 0.8), 0, 7); mt.fill();
   }
   if (!img.complete || !img.width) return;
-  // ONE continuous pane: cover-fit at every aspect. No bands, no surround.
+  // ONE continuous room: cover-fit at every aspect. No bands, no surround.
   const iw = img.width, ih = img.height;
   const s = Math.max(W / iw, H / ih);
   const w = iw * s, h = ih * s;
@@ -223,6 +327,7 @@ function layout() {
   x = Math.min(0, Math.max(W - w, x));
   y = Math.min(0, Math.max(H - h, y));
   rect = { x, y, w, h };
+  glassPts = GLASS_IN.map((p) => [rect.x + p[0] * rect.w, rect.y + p[1] * rect.h]);
   const b = base.getContext("2d");
   b.drawImage(img, rect.x, rect.y, w, h);
   orbs = orbsN.map((o) => ({ x: rect.x + o.u * rect.w, y: rect.y + o.v * rect.h, r: o.r * rect.w, c: o.c, ph: o.ph, sp: o.sp }));
@@ -261,7 +366,10 @@ function step(dt) {
   for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.6, state.weather === "rain" ? 2.6 : 1.2)));
   if (rainK > 0.5 && t - lastBig > rand(6, 14)) {
     lastBig = t;
-    drops.push({ x: Math.random() * W, y: -10 * dpr, r: rand(7, 10) * dpr, vy: 120 * dpr, slide: true, big: true, wob: 0 });
+    const fx = rand(0.08, 0.95);
+    const span = spanAt(GLASS_IN, fx);
+    const fy = span ? span[0] + 0.01 : 0.2;
+    drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(7, 10) * dpr, vy: 120 * dpr, slide: true, big: true, wob: 0 });
   }
   const tc = trail.getContext("2d");
   for (const d of drops) {
@@ -276,12 +384,11 @@ function step(dt) {
       d.y += d.vy * dt;
       tc.strokeStyle = "rgba(150,170,200,0.10)"; tc.lineWidth = d.r * 1.3; tc.lineCap = "round";
       tc.beginPath(); tc.moveTo(px, py); tc.lineTo(d.x, d.y); tc.stroke();
-      /* Retrofit: the source's big-racer "glow smear" (an offset copy of the
-         base pasted down the trail canvas every frame) read as a ruler-
-         straight translucent column against this bright sky backdrop, so the
-         racer keeps only its normal wet-trail stroke. */
       d.r -= dt * 0.25 * dpr;
-      if (Math.random() < dt * 4) drops.push({ x: d.x, y: py, r: rand(0.8, 1.6) * dpr, vy: 0, slide: false, wob: 0 });
+      if (Math.random() < dt * 4) {
+        const nd = { x: d.x, y: py, r: rand(0.8, 1.6) * dpr, vy: 0, slide: false, wob: 0 };
+        drops.push(nd);
+      }
     }
   }
   drops.sort((a, b) => a.x - b.x);
@@ -298,7 +405,10 @@ function step(dt) {
       }
     }
   }
-  drops = drops.filter((d) => d.r > 0.4 * dpr && d.y < H + 30 * dpr);
+  // a drop that leaves the glass is gone (it is never drawn outside anyway —
+  // the render clips — this just keeps the population honest)
+  drops = drops.filter((d) => d.r > 0.4 * dpr && d.y < H + 30 * dpr &&
+    inPoly(GLASS, toFracX(d.x), toFracY(d.y) + (d.slide ? 0.004 : 0)));
   if (drops.length > 900) drops.splice(0, drops.length - 900);
   tc.globalCompositeOperation = "destination-out";
   tc.fillStyle = "rgba(0,0,0," + Math.min(1, dt * 0.25) + ")"; tc.fillRect(0, 0, W, H);
@@ -309,10 +419,19 @@ function step(dt) {
   }
 }
 
+/* mist lives in "glass space": u,v in 0..1 map onto the glass bbox */
+const GB = { x0: 0.05, x1: 0.98, y0: 0.16, y1: 0.74 };
+const gX = (u) => rect.x + (GB.x0 + u * (GB.x1 - GB.x0)) * rect.w;
+const gY = (v) => rect.y + (GB.y0 + v * (GB.y1 - GB.y0)) * rect.h;
+
 function render() {
   ctx.globalCompositeOperation = "source-over";
   ctx.drawImage(base, 0, 0);
-  // lights: only the mapped orbs breathe, each in its own color & rhythm
+  /* Weather + city light, all inside the glass clip: the room itself
+     (sofas, candles, frames, cove) is never touched by the weather. */
+  ctx.save();
+  clipToGlass(ctx);
+  // lights: only the mapped city orbs breathe, each in its own color
   for (const o of orbs) {
     const k = Math.sin(t * o.sp + o.ph);
     const a = k * 0.28;
@@ -330,21 +449,23 @@ function render() {
   ctx.globalCompositeOperation = "source-over";
   ctx.drawImage(trail, 0, 0);
   for (const d of drops) drawDrop(d);
-  // mist patches with clearings (weather ON the glass, never a flat wash)
+  // mist patches with clearings (on the glass only, never a flat wash)
   if (mistAmt > 0.01) {
     const mc = mist.getContext("2d"), mw = mist.width, mh = mist.height;
     mc.clearRect(0, 0, mw, mh);
     for (const b of blobs) {
       const breath = 0.55 + 0.45 * Math.sin(t * b.sp + b.ph);
-      const R = b.r * Math.max(mw, mh) * (0.85 + 0.25 * breath);
-      const g = mc.createRadialGradient(b.x * mw, b.y * mh, R * 0.15, b.x * mw, b.y * mh, R);
+      const cx = ((gX(b.x) / dpr) / (W / dpr)) * mw, cy = ((gY(b.y) / dpr) / (H / dpr)) * mh;
+      const R = b.r * Math.max(mw, mh) * (0.85 + 0.25 * breath) * 0.62;
+      const g = mc.createRadialGradient(cx, cy, R * 0.15, cx, cy, R);
       g.addColorStop(0, "rgba(200,210,225," + (0.55 * breath) + ")"); g.addColorStop(0.7, "rgba(190,200,220," + (0.3 * breath) + ")"); g.addColorStop(1, "rgba(190,200,220,0)");
-      mc.fillStyle = g; mc.beginPath(); mc.ellipse(b.x * mw, b.y * mh, R * 1.3, R * 0.8, b.ph, 0, 7); mc.fill();
+      mc.fillStyle = g; mc.beginPath(); mc.ellipse(cx, cy, R * 1.3, R * 0.8, b.ph, 0, 7); mc.fill();
     }
     mc.globalCompositeOperation = "destination-out";
     for (const c of clears) {
-      const R = c.r * Math.max(mw, mh) * (0.9 + 0.2 * Math.sin(t * c.sp + c.ph));
-      const g = mc.createRadialGradient(c.x * mw, c.y * mh, 0, c.x * mw, c.y * mh, R);
+      const cx = ((gX(c.x) / dpr) / (W / dpr)) * mw, cy = ((gY(c.y) / dpr) / (H / dpr)) * mh;
+      const R = c.r * Math.max(mw, mh) * (0.9 + 0.2 * Math.sin(t * c.sp + c.ph)) * 0.62;
+      const g = mc.createRadialGradient(cx, cy, 0, cx, cy, R);
       g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(0.6, "rgba(0,0,0,0.85)"); g.addColorStop(1, "rgba(0,0,0,0)");
       mc.fillStyle = g; mc.fillRect(0, 0, mw, mh);
     }
@@ -358,6 +479,7 @@ function render() {
     ctx.globalAlpha = mistAmt; ctx.drawImage(micro, 0, 0, W, H);
     ctx.globalAlpha = 1;
   }
+  ctx.restore();
 }
 
 let last = performance.now();
@@ -400,6 +522,7 @@ function setWeather(wth) {
 }
 function setLiving(v) {
   state.living = v;
+  document.body.classList.toggle("still", !v);
   btnStill.classList.toggle("on", !v);
   btnLiving.classList.toggle("on", v);
   applySound();
@@ -416,6 +539,15 @@ btnSound.addEventListener("click", (e) => {
   applySound();
   wake();
 });
+for (const chip of document.querySelectorAll(".chip")) {
+  chip.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.led = chip.getAttribute("data-color");
+    document.documentElement.style.setProperty("--led", state.led);
+    for (const c of document.querySelectorAll(".chip")) c.classList.toggle("active", c === chip);
+    wake();
+  });
+}
 controls.addEventListener("click", (e) => e.stopPropagation());
 
 canvas.addEventListener("click", (e) => {
@@ -433,10 +565,15 @@ canvas.addEventListener("click", (e) => {
 window.__glass = {
   get living() { return state.living; },
   get weather() { return state.weather; },
+  get led() { return state.led; },
   get t() { return t; },
   drops: () => drops.length,
   rect: () => rect,
   orbs: () => orbs.length,
+  glass: () => GLASS,
+  glassIn: () => GLASS_IN,
+  view: () => canvas,
+  baseEl: () => base,
 };
 })();
 </script>
