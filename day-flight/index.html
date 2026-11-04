@@ -88,8 +88,10 @@
       centred on a focus point that keeps the wing + wingtip in frame,
       with the ambient backdrop and warm frame surround visible around
       it (a fill-the-screen pass at ~86% left no cabin frame at all;
-      the Lovable original managed only ~21%). Landscape/desktop keep
-      the whole scene contained at a framed 85% scale.
+      the Lovable original managed only ~21%). Landscape/desktop scale
+      by height so the glass covers ~90% of the screen height (an
+      earlier contained 85% pass, glass ≈ 75%, left fat ambient
+      pillars on a wide monitor — Gary asked for the window larger).
    2) NEAR-GROUND SHARPNESS — (a) the strip is now built at native
       resolution: the original drew each 1024px painting into a 1244px
       slot (a 21.5% horizontal stretch); segments now sit 1:1 with a
@@ -580,9 +582,12 @@ let t = 0, speed = 1, last = performance.now(), frame = 0, dirty = 3;
 onStripDirty = () => { dirty = Math.max(dirty, 3); };
 
 /* Fix 1: framing per breakpoint.
-   Landscape / wide: the original composition, whole scene contained,
-   at 85% scale so the window sits inside its frame surround instead
-   of running edge-to-edge (glass ≈ 75% of screen height).
+   Landscape / wide: scaled by height so the GLASS covers ~90% of the
+   screen height — Gary's ruling after the earlier contained 85% pass
+   (glass ≈ 75%) left fat ambient pillars on both sides of his wide
+   monitor. Centred by default; on narrower landscape aspects the
+   tighter crop is clamped so the wingtip and the glass's right edge
+   stay on screen.
    Portrait: scale so the GLASS height is ~62.5% of the screen height;
    the scene is centred vertically with the ambient backdrop around
    it, and centred horizontally on a focus point (x=1070) chosen so
@@ -591,8 +596,10 @@ function computeView() {
   const cw = view.clientWidth, ch = view.clientHeight;
   let s, dx, dy;
   if (cw / ch >= 0.95) {
-    s = 0.85 * Math.min(cw / W, ch / H);
+    s = (ch * 0.90) / WIN.h;            // glass ≈ 90% of screen height
     dx = (cw - W * s) / 2;
+    dx = Math.min(dx, cw - (WIN.x + WIN.w) * s); // keep the wingtip / glass right edge on screen
+    dx = Math.max(dx, cw - W * s);      // never scroll past the scene's right edge
     dy = (ch - H * s) / 2;
   } else {
     s = (ch * 0.625) / WIN.h;           // glass ≈ 62.5% of screen height
