@@ -211,13 +211,14 @@
   function rand(a, b){ return a + Math.random() * (b - a); }
 
   /* ---------- The globe's real geography, measured off the photo ----------
-     Glass circle: center (67.0% of width, 44.5% of height), radius 24.5% of
-     stage width (= 43.5% of stage height) — a true circle in pixels. The
-     sphere's bottom dips behind the wooden base; the fit comes from the
-     left/right extremes, the top, and the rim curvature at the base line.
-     The snow mask rides a hair inside the rim: 0.96 × R. */
-  var GX = 0.670, GY = 0.445, GR = 0.245;   /* fractions of stage W / H / W */
-  var MASK = 0.96;
+     Glass circle fitted from the actual pixels of globe.jpg (2560×1440):
+     an edge-contrast grid search over the rim arc plus a least-squares
+     (Kåsa) fit on radial gradient peaks — center (1503px, 592px), radius
+     579px, RMS residual 4.4px. The sphere's bottom dips behind the wooden
+     base, so the fit uses the top and side arcs only.
+     The snow mask rides safely inside the rim: 0.94 × R. */
+  var GX = 0.5871, GY = 0.4112, GR = 0.2261;   /* fractions of stage W / H / W */
+  var MASK = 0.94;
 
   /* Village twinkles — [x%, y%] on the lit windows and the lamppost,
      read off the photo window by window. */
@@ -424,8 +425,9 @@
         spawnAtTop(f);
       }
 
-      /* fade softly at the glass so nothing ever clips at the rim */
-      var edge = 1 - Math.min(1, Math.max(0, (nd / RM - 0.86) / 0.14));
+      /* fade softly toward the glass — fully transparent by 0.98 × RM,
+         so no flake can ever visually touch the rim */
+      var edge = 1 - Math.min(1, Math.max(0, (nd / RM - 0.80) / 0.18));
       if (edge <= 0) continue;
       var a = (0.35 + 0.60 * f.z) * edge;
       var r = (1 + 2.5 * f.z) * sizeK;
