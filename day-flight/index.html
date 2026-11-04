@@ -83,11 +83,13 @@
 /* =====================================================================
    Day Flight — engine ported faithfully from the Lovable source
    (engine.ts / NightFlight.tsx), with three rebuild fixes:
-   1) PHONE WINDOW SIZE — portrait phones get a window-first framing:
-      the scene is scaled so its height fills the screen and the view is
-      centred on a focus point that keeps the full wing + wingtip in
-      frame; the glass then covers ~85% of the screen instead of ~21%.
-      Landscape/desktop keep the original full-scene letterbox.
+   1) PHONE WINDOW SIZE — portrait phones get a window-seat framing:
+      the scene is scaled so the glass covers ~62% of the screen height,
+      centred on a focus point that keeps the wing + wingtip in frame,
+      with the ambient backdrop and warm frame surround visible around
+      it (a fill-the-screen pass at ~86% left no cabin frame at all;
+      the Lovable original managed only ~21%). Landscape/desktop keep
+      the whole scene contained at a framed 85% scale.
    2) NEAR-GROUND SHARPNESS — (a) the strip is now built at native
       resolution: the original drew each 1024px painting into a 1244px
       slot (a 21.5% horizontal stretch); segments now sit 1:1 with a
@@ -578,19 +580,22 @@ let t = 0, speed = 1, last = performance.now(), frame = 0, dirty = 3;
 onStripDirty = () => { dirty = Math.max(dirty, 3); };
 
 /* Fix 1: framing per breakpoint.
-   Landscape / wide: the original composition, whole scene contained.
-   Portrait: scale so the scene's height fills the screen, centred on a
-   focus point (x=1070) chosen so the wing — root sweep, tip and winglet —
-   stays in frame; the glass then dominates the phone screen. */
+   Landscape / wide: the original composition, whole scene contained,
+   at 85% scale so the window sits inside its frame surround instead
+   of running edge-to-edge (glass ≈ 75% of screen height).
+   Portrait: scale so the GLASS height is ~62.5% of the screen height;
+   the scene is centred vertically with the ambient backdrop around
+   it, and centred horizontally on a focus point (x=1070) chosen so
+   the wing — sweep, tip and winglet — stays in frame. */
 function computeView() {
   const cw = view.clientWidth, ch = view.clientHeight;
   let s, dx, dy;
   if (cw / ch >= 0.95) {
-    s = Math.min(cw / W, ch / H);
+    s = 0.85 * Math.min(cw / W, ch / H);
     dx = (cw - W * s) / 2;
     dy = (ch - H * s) / 2;
   } else {
-    s = ch / H;
+    s = (ch * 0.625) / WIN.h;           // glass ≈ 62.5% of screen height
     dx = cw / 2 - 1070 * s;
     dx = Math.min(dx, cw - 1300 * s);   // keep the wingtip (x<=1300) on screen
     dx = Math.max(dx, cw - W * s);      // never scroll past the scene's right edge
