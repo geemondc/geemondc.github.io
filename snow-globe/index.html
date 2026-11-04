@@ -85,35 +85,81 @@
     color:rgba(255,240,214,0.55);
   }
 
-  /* The fireplace breathing — one soft warm glow over the hearth zone */
+  /* The fireplace — an irregular flame flicker over the hearth zone,
+     centered on the firebox flames measured in the pixels (~4%, 46%),
+     plus a smaller, hotter core that dances faster (Gary, Nov 4:
+     the room lights flicker too — salt, not sauce). */
   #hearth{
-    left:-5%;
-    top:24%;
-    width:26%;
-    height:40%;
+    left:-6%;
+    top:26%;
+    width:24%;
+    height:38%;
     mix-blend-mode:screen;
     background:radial-gradient(50% 50% at 50% 50%,
       rgba(255,146,58,0.50) 0%, rgba(255,110,40,0.18) 48%, transparent 72%);
-    animation:hearthBreathe 7.5s ease-in-out infinite alternate;
+    animation:hearthFlick 2.6s linear infinite;
     z-index:2;
   }
-  @keyframes hearthBreathe{
-    from{opacity:0.14;}
-    to{opacity:0.26;}
+  @keyframes hearthFlick{
+    0%{opacity:0.20;} 11%{opacity:0.32;} 19%{opacity:0.23;} 30%{opacity:0.36;}
+    41%{opacity:0.25;} 52%{opacity:0.33;} 63%{opacity:0.21;} 74%{opacity:0.35;}
+    85%{opacity:0.26;} 100%{opacity:0.22;}
+  }
+  #fireCore{
+    left:3.5%;
+    top:46%;
+    width:11%;
+    height:20%;
+    transform:translate(-50%,-50%);
+    mix-blend-mode:screen;
+    background:radial-gradient(50% 50% at 50% 50%,
+      rgba(255,178,80,0.65) 0%, rgba(255,128,44,0.26) 50%, transparent 74%);
+    animation:fireCoreFlick 1.35s linear infinite;
+    z-index:2;
+  }
+  @keyframes fireCoreFlick{
+    0%{opacity:0.60;} 8%{opacity:0.95;} 16%{opacity:0.66;} 25%{opacity:1;}
+    33%{opacity:0.72;} 44%{opacity:0.93;} 52%{opacity:0.62;} 61%{opacity:0.88;}
+    70%{opacity:0.68;} 79%{opacity:0.97;} 88%{opacity:0.74;} 100%{opacity:0.63;}
   }
 
-  /* Christmas-tree bokeh breathing gently at the right edge */
+  /* Room dots — the mantel candles breathing above the fireplace, the
+     snowflake candle holder glowing bottom-left, the lantern on the
+     side table. Positions read off the photo; each on its own clock. */
+  #roomDots{inset:0; z-index:3;}
+  .roomDot{
+    position:absolute;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    mix-blend-mode:screen;
+    background:radial-gradient(circle, rgba(255,216,140,0.88) 0%, rgba(255,170,84,0.32) 48%, transparent 72%);
+  }
+  @keyframes candleBreathe{
+    0%{opacity:0.35;}
+    42%{opacity:0.62;}
+    63%{opacity:0.48;}
+    100%{opacity:0.38;}
+  }
+  @keyframes dotFlick{
+    0%{opacity:0.45;} 13%{opacity:0.78;} 27%{opacity:0.52;} 44%{opacity:0.85;}
+    61%{opacity:0.58;} 79%{opacity:0.80;} 100%{opacity:0.50;}
+  }
+
+  /* Christmas-tree bulbs — slow twinkles on the tree's brightest bulb
+     spots, detected from the pixels; each bulb on its own clock */
   #bokeh{inset:0; z-index:3;}
   .bokehDot{
     position:absolute;
     border-radius:50%;
     transform:translate(-50%,-50%);
     mix-blend-mode:screen;
-    animation:bokehPulse ease-in-out infinite alternate;
+    animation:bokehPulse ease-in-out infinite;
   }
   @keyframes bokehPulse{
-    from{opacity:0.22; transform:translate(-50%,-50%) scale(0.96);}
-    to{opacity:0.55; transform:translate(-50%,-50%) scale(1.06);}
+    0%,100%{opacity:0.30;}
+    30%{opacity:0.95;}
+    55%{opacity:0.45;}
+    78%{opacity:0.80;}
   }
 
   /* Village twinkles — warm candle-rhythm dots on the lit windows */
@@ -192,7 +238,9 @@
 <div id="stage" title="Tap the globe to shake it — tap elsewhere for full screen">
   <img class="painting" src="globe.jpg" alt="The Snow Globe">
   <div class="layer" id="hearth"></div>
+  <div class="layer" id="fireCore"></div>
   <div class="layer" id="bokeh"></div>
+  <div class="layer" id="roomDots"></div>
   <div class="layer" id="twinkles"></div>
   <canvas class="layer" id="snow"></canvas>
 </div>
@@ -259,11 +307,16 @@
     addDot(LAMPPOST[0], LAMPPOST[1], 9);   /* the lantern burns a touch bigger */
   })();
 
-  /* Tree bokeh — [x%, y%, size px, warm gold or red] over the tree zone */
+  /* Tree bulbs — [x%, y%, size px, warm gold or red]: the tree's
+     brightest bulb spots, found by scanning globe.jpg for local
+     luminance peaks in the tree zone (x 81.5–100%); a dozen-plus,
+     each twinkling on its own slow clock. */
   var BOKEH = [
-    [85.0, 15.0, 26, 'gold'], [92.5, 21.0, 20, 'gold'], [96.0, 27.0, 24, 'gold'],
-    [89.5, 32.0, 16, 'gold'], [99.0, 12.0, 18, 'gold'], [84.0, 38.0, 14, 'gold'],
-    [91.0,  6.5, 20, 'red' ], [94.5, 17.0, 14, 'red' ]
+    [93.2,  2.4, 13, 'gold'], [86.3, 30.6, 13, 'gold'], [81.6, 18.8, 12, 'gold'],
+    [87.6, 11.6, 12, 'gold'], [96.7, 18.7, 12, 'gold'], [86.0, 22.0, 11, 'gold'],
+    [92.6,  9.0, 11, 'gold'], [98.9, 27.9, 12, 'gold'], [99.5,  2.4, 11, 'gold'],
+    [86.8, 36.2, 11, 'gold'], [91.2, 29.9, 10, 'gold'],
+    [83.2, 24.9, 11, 'red' ], [91.2, 14.9, 10, 'red' ]
   ];
   (function buildBokeh(){
     var box = document.getElementById('bokeh');
@@ -277,8 +330,40 @@
       d.style.background = b[3] === 'red'
         ? 'radial-gradient(circle, rgba(255,120,90,0.55) 0%, rgba(230,70,50,0.20) 50%, transparent 72%)'
         : 'radial-gradient(circle, rgba(255,214,140,0.55) 0%, rgba(255,178,92,0.20) 50%, transparent 72%)';
-      d.style.animationDuration = rand(4, 8).toFixed(2) + 's';
-      d.style.animationDelay = (-rand(0, 6)).toFixed(2) + 's';
+      d.style.animationDuration = rand(3.5, 7.5).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 7)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+  })();
+
+  /* Room dots — [x%, y%, size px, rhythm]: the lights OUTSIDE the glass.
+     'candle' = the mantel flames above the fireplace (peak-scanned at
+     (17.5%, 1.1%) and (22.8%, 4.2%)) and the garland orbs beside them —
+     a slow warm breathing. 'flick' = the snowflake candle holder
+     bottom-left (2.4%, 66.5%) and the side-table lantern (26.8%, 57%) —
+     a gentle irregular flame flicker. */
+  var ROOMDOTS = [
+    [17.2,  1.6, 13, 'candle'],   /* mantel candle — left flame */
+    [22.8,  4.2, 11, 'candle'],   /* mantel candle — right flame */
+    [13.6, 10.8, 10, 'candle'],   /* garland orb above the mantel */
+    [31.4, 17.4, 10, 'candle'],   /* garland orb by the stocking */
+    [ 2.4, 66.5, 17, 'flick' ],   /* snowflake candle holder, bottom-left */
+    [26.8, 57.0, 15, 'flick' ]    /* lantern on the side table */
+  ];
+  (function buildRoomDots(){
+    var box = document.getElementById('roomDots');
+    for (var i = 0; i < ROOMDOTS.length; i++){
+      var b = ROOMDOTS[i], d = document.createElement('div');
+      d.className = 'roomDot';
+      d.style.width = b[2] + 'px';
+      d.style.height = b[2] + 'px';
+      d.style.left = b[0] + '%';
+      d.style.top = b[1] + '%';
+      if (b[3] === 'candle'){
+        d.style.animation = 'candleBreathe ' + rand(4.5, 7.5).toFixed(2) + 's ease-in-out ' + (-rand(0, 6)).toFixed(2) + 's infinite alternate';
+      } else {
+        d.style.animation = 'dotFlick ' + rand(2.2, 3.8).toFixed(2) + 's linear ' + (-rand(0, 3)).toFixed(2) + 's infinite';
+      }
       box.appendChild(d);
     }
   })();
