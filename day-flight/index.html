@@ -47,6 +47,7 @@
     display:flex;
     gap:8px;
     z-index:2;
+    pointer-events:auto;
     transition:opacity .7s ease;
   }
   #controls.hidden{opacity:0;pointer-events:none;}
@@ -666,7 +667,13 @@ btnSound.addEventListener('click', (e) => {
   }
   wake();
 });
-view.addEventListener('click', () => {
+view.addEventListener('click', (e) => {
+  // Clicks aimed at the controls are never scene clicks: while the chrome
+  // is auto-hidden it is pointer-events:none, so such a click lands here —
+  // swallow it (the pointerdown already woke the controls) instead of
+  // toggling fullscreen or eating the click meant for a pill.
+  const r = controls.getBoundingClientRect();
+  if (r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
 });
