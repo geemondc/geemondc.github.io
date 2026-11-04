@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hour Slider — Living Photo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#0b0b0d; overflow:hidden; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+
+  /* The piece's own golden plate, blurred, fills any surround — the same
+     treatment the Big View's wall fit uses (whole photo, blurred extension). */
+  #bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+        filter:blur(26px) brightness(.55) saturate(1.06); transform:scale(1.14);
+        display:block; }
+
+  /* The standalone Hour Slider page, framed so its .stage scene exactly
+     fills this viewport. The page itself is never modified; this wrapper
+     measures the stage inside it (same origin) and maps it onto the screen. */
+  #inner { position:absolute; left:0; top:0; border:0; display:block;
+           transform-origin:0 0; opacity:0; transition:opacity .45s ease; }
+  #inner.on { opacity:1; }
+
+  /* Tap shield over the scene: the wall/store own taps on the photo.
+     Only the viewer's own hour bar below is interactive. */
+  #shield { position:absolute; display:none; }
+
+  /* The hour bar — the piece's own slider, re-homed under the scene where
+     the viewport leaves room for it (portrait / tall screens). It drives
+     the piece through its own HS hooks: same hour, same light. */
+  #bar { position:absolute; left:0; right:0; bottom:0; display:none;
+         padding:14px 22px calc(16px + env(safe-area-inset-bottom));
+         background:linear-gradient(0deg, rgba(8,6,4,.88), rgba(8,6,4,0)); }
+  #bar.on { display:block; }
+  .readout { font-size:clamp(19px, 3.2vw, 26px); letter-spacing:.1em; color:#f2ead6;
+             text-align:center; }
+  .readout .phase { font-style:italic; font-size:.62em; color:#cfc5ab;
+                    letter-spacing:.06em; margin-left:.5em; }
+  .sliderRow { width:min(680px, 100%); margin:10px auto 0; }
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%;
+                      height:34px; background:transparent; cursor:pointer; display:block; }
+  input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:3px;
+      background:linear-gradient(90deg,#7d94b8 0%,#c9a86a 55%,#e08a3c 72%,#4a5f9e 84%,#141c3a 100%); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
+      width:26px; height:26px; margin-top:-10px; border-radius:50%;
+      background:#f2ead6; border:2px solid #8a7f63;
+      box-shadow:0 2px 10px rgba(0,0,0,.6); }
+  input[type=range]::-moz-range-track { height:6px; border-radius:3px;
+      background:linear-gradient(90deg,#7d94b8 0%,#c9a86a 55%,#e08a3c 72%,#4a5f9e 84%,#141c3a 100%); }
+  input[type=range]::-moz-range-thumb { width:22px; height:22px; border-radius:50%;
+      background:#f2ead6; border:2px solid #8a7f63;
+      box-shadow:0 2px 10px rgba(0,0,0,.6); }
+  .ticks { display:flex; justify-content:space-between; margin-top:2px;
+           font-size:12.5px; letter-spacing:.08em; color:#b6ae9c; }
+  .hint { margin-top:8px; font-size:13px; font-style:italic; color:#b6ae9c;
+          text-align:center; }
+</style>
+</head>
+<body>
+  <img id="bg" src="https://geemondc.github.io/hour-slider/gold.jpg" alt="">
+  <iframe id="inner" src="https://geemondc.github.io/hour-slider/"
+          title="The Hour Slider — living" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  <div id="shield" aria-hidden="true"></div>
+
+  <div id="bar">
+    <div class="readout"><span id="clock">6:40 PM</span><span class="phase" id="phaseName">Golden Hour</span></div>
+    <div class="sliderRow">
+      <input type="range" id="hourBar" min="360" max="1440" step="1" value="1120"
+             aria-label="Hour of day, 6 AM to midnight">
+      <div class="ticks"><span>6 AM</span><span>Noon</span><span>6 PM</span><span>Midnight</span></div>
+    </div>
+    <div class="hint">Slide the hour — the light travels, the view never moves.</div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  var inner = document.getElementById('inner'),
+      shield = document.getElementById('shield'),
+      bar = document.getElementById('bar'),
+      barInput = document.getElementById('hourBar'),
+      clockEl = document.getElementById('clock'),
+      phaseEl = document.getElementById('phaseName'),
+      fitted = false, dragging = false, lastMinute = -1;
+
+  function innerDoc(){ try { return inner.contentWindow && inner.contentWindow.document; } catch(e){ return null; } }
+  function innerHS(){ try { return inner.contentWindow && inner.contentWindow.HS; } catch(e){ return null; } }
+
+  /* Map the piece's .stage onto this viewport, whole and centered.
+     The inner iframe keeps a fixed tall layout box; only the stage
+     rectangle is brought into view, everything else is clipped away. */
+  function fit(){
+    var d = innerDoc(); if (!d) return false;
+    var stage = d.querySelector('.stage'); if (!stage) return false;
+    var vw = document.documentElement.clientWidth,
+        vh = document.documentElement.clientHeight;
+    var LW = Math.max(320, vw);
+    inner.style.width = LW + 'px';
+    inner.style.height = '1100px';
+    var r = stage.getBoundingClientRect();
+    if (!r.width) return false;
+    var s = Math.min(vw / r.width, vh / r.height);
+    var tx = (vw - r.width * s) / 2 - r.left * s,
+        ty = (vh - r.height * s) / 2 - r.top * s;
+    inner.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+    /* Shield exactly over the scene. */
+    shield.style.display = 'block';
+    shield.style.left = ((vw - r.width * s) / 2) + 'px';
+    shield.style.top = ((vh - r.height * s) / 2) + 'px';
+    shield.style.width = (r.width * s) + 'px';
+    shield.style.height = (r.height * s) + 'px';
+    /* The hour bar shows only when real room remains under the scene. */
+    var sceneBottom = (vh + r.height * s) / 2;
+    bar.classList.toggle('on', (vh - sceneBottom) >= 120);
+    if (!fitted){ fitted = true; inner.classList.add('on'); }
+    return true;
+  }
+
+  function syncFromPiece(){
+    var hs = innerHS(); if (!hs || !hs.state) return;
+    var st; try { st = hs.state(); } catch(e){ return; }
+    if (typeof st.minutes === 'number' && st.minutes !== lastMinute){
+      lastMinute = st.minutes;
+      if (!dragging) barInput.value = st.minutes;
+      var d = innerDoc();
+      var c = d && d.getElementById('clock'), ph = d && d.getElementById('phaseName');
+      if (c) clockEl.textContent = c.textContent;
+      if (ph) phaseEl.textContent = ph.textContent;
+    }
+  }
+
+  barInput.addEventListener('input', function(){
+    var hs = innerHS(); if (!hs || !hs.setHour) return;
+    var v = parseInt(barInput.value, 10);
+    try { hs.setHour(v); } catch(e){}
+    lastMinute = v;
+    var d = innerDoc();
+    var c = d && d.getElementById('clock'), ph = d && d.getElementById('phaseName');
+    if (c) clockEl.textContent = c.textContent;
+    if (ph) phaseEl.textContent = ph.textContent;
+  });
+  barInput.addEventListener('pointerdown', function(){ dragging = true; });
+  window.addEventListener('pointerup', function(){ dragging = false; });
+
+  inner.addEventListener('load', function(){
+    var tries = 0;
+    (function attempt(){
+      if (fit() || ++tries > 40) return;
+      setTimeout(attempt, 150);
+    })();
+    /* Layout settles as the piece's plates arrive; refit a few times. */
+    [400, 1200, 2500, 4500].forEach(function(ms){ setTimeout(fit, ms); });
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', function(){ setTimeout(fit, 250); });
+  setInterval(function(){ syncFromPiece(); }, 400);
+})();
+</script>
+</body>
+</html>
