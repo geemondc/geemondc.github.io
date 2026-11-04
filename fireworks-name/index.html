@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fireworks — Your Name in the Sky · Future Ready Living Photos</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* Blurred, darkened surround of the same scene (portrait letterbox) */
+  #bgSurround{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    filter:blur(30px) brightness(0.5);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — the scene's own box, never cropped */
+  #stage{
+    position:relative;
+    width:min(100vw, 177.78vh);
+    aspect-ratio:16/9;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#04060f;
+  }
+  #stage canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+  }
+  #fx{z-index:2;}
+
+  /* Title — quiet, small caps, fades with the controls */
+  #titlebar{
+    position:fixed;
+    top:22px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:10;
+    text-align:center;
+    pointer-events:none;
+    transition:opacity 0.8s ease;
+    text-shadow:0 1px 10px rgba(0,0,0,0.85), 0 0 26px rgba(0,0,0,0.6);
+    width:96vw;
+  }
+  #titlebar.faded{opacity:0;}
+  #titlebar h1{
+    font-size:15px;
+    font-weight:normal;
+    letter-spacing:0.42em;
+    padding-left:0.42em;
+    color:rgba(255,240,210,0.88);
+  }
+  #titlebar p{
+    margin-top:5px;
+    font-size:12px;
+    font-style:italic;
+    letter-spacing:0.18em;
+    padding-left:0.18em;
+    color:rgba(255,240,210,0.55);
+  }
+
+  /* Controls — slim pill bar; the name input lives here, never over the sky */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:calc(14px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 14px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:96vw;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:9px 12px;
+    min-height:38px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18);
+    white-space:nowrap;
+  }
+  #controls button:hover{background:rgba(255,255,255,0.10);}
+  #lightBtn{
+    border-color:rgba(255,210,122,0.55);
+    color:#ffd98c;
+  }
+  #lightBtn:hover{background:rgba(255,210,122,0.14);}
+  .pill.on{
+    background:rgba(255,240,210,0.92);
+    color:#14100a;
+    border-color:rgba(255,240,210,0.92);
+  }
+  #fsBtn{font-size:14px; padding:6px 12px;}
+  #nameInput{
+    font-family:inherit;
+    font-size:15px;
+    letter-spacing:0.08em;
+    color:#fff;
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:999px;
+    padding:9px 16px;
+    min-height:38px;
+    width:168px;
+    outline:none;
+    text-transform:uppercase;
+  }
+  #nameInput::placeholder{color:rgba(255,255,255,0.38); text-transform:none; letter-spacing:0.02em;}
+  #nameInput:focus{border-color:rgba(255,210,122,0.6); background:rgba(255,255,255,0.11);}
+  .sep{width:1px; align-self:stretch; background:rgba(255,255,255,0.14); margin:2px 0;}
+  @media (max-width:560px){
+    #nameInput{width:128px;}
+    #controls{gap:7px; padding:8px 10px;}
+    #controls button{padding:9px 9px;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bgSurround"></canvas>
+
+<div id="titlebar">
+  <h1>FIREWORKS</h1>
+  <p>your name in the sky — a living photo</p>
+</div>
+
+<div id="stage" title="Tap for full screen">
+  <canvas id="bg"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+
+<div id="controls">
+  <input id="nameInput" type="text" maxlength="14" value="CAROL" placeholder="Your name" autocomplete="off" spellcheck="false" aria-label="Name to write in fireworks">
+  <button id="lightBtn">LIGHT IT</button>
+  <div class="sep"></div>
+  <button id="stillBtn" class="pill">STILL</button>
+  <button id="livingBtn" class="pill on">LIVING</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var stage   = document.getElementById('stage');
+  var bgC     = document.getElementById('bg');
+  var fxC     = document.getElementById('fx');
+  var surC    = document.getElementById('bgSurround');
+  var bgX     = bgC.getContext('2d');
+  var fx      = fxC.getContext('2d');
+  var input   = document.getElementById('nameInput');
+  var WALL    = (location.hash === '#wall');
+
+  var living  = true;
+  var W = 0, H = 0, waterY = 0;
+  var rafId = null, lastT = 0;
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+  function pick(arr){ return arr[(Math.random() * arr.length) | 0]; }
+
+  /* ---------------- palette + glow sprites ---------------- */
+  var COLORS = ['#ffd27a', '#ff6a5e', '#4fe3c1', '#b48cff', '#ffffff', '#7ac7ff'];
+  var sprites = COLORS.map(function(col){
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, col);
+    grad.addColorStop(0.6, col + '55');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    return c;
+  });
+  function drawDot(x, y, size, si, alpha){
+    if (alpha <= 0.003) return;
+    fx.globalAlpha = alpha > 1 ? 1 : alpha;
+    fx.drawImage(sprites[si], x - size / 2, y - size / 2, size, size);
+  }
+  function drawReflection(x, y, size, si, alpha){
+    if (y >= waterY) return;
+    var ry = waterY + (waterY - y) * 0.32;
+    if (ry > H) return;
+    drawDot(x, ry, size * 0.9, si, alpha * 0.15);
+  }
+
+  /* ---------------- static backdrop: night, shore, water ---------------- */
+  var shimmer = [];   /* animated water streaks: {x,y,len,phase,speed} */
+  function paintScene(g, w, h){
+    var wy = h * 0.68;
+    /* sky */
+    var sky = g.createLinearGradient(0, 0, 0, wy);
+    sky.addColorStop(0, '#05081f');
+    sky.addColorStop(0.55, '#0a1440');
+    sky.addColorStop(1, '#16265c');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, w, wy + 1);
+    /* stars */
+    var i, x, y;
+    for (i = 0; i < 150; i++){
+      x = Math.random() * w;
+      y = Math.pow(Math.random(), 1.4) * wy * 0.92;
+      g.fillStyle = 'rgba(255,255,255,' + rand(0.12, 0.65).toFixed(2) + ')';
+      var r = Math.random() < 0.12 ? 1.6 : 1;
+      g.fillRect(x, y, r, r);
+    }
+    /* moon + glow */
+    var mx = w * 0.885, my = h * 0.115, mr = h * 0.028;
+    var glow = g.createRadialGradient(mx, my, 0, mx, my, mr * 5);
+    glow.addColorStop(0, 'rgba(220,232,255,0.30)');
+    glow.addColorStop(1, 'rgba(220,232,255,0)');
+    g.fillStyle = glow;
+    g.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10);
+    g.fillStyle = '#e8efff';
+    g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(190,205,235,0.5)';
+    g.beginPath(); g.arc(mx - mr * 0.3, my + mr * 0.2, mr * 0.16, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(mx + mr * 0.25, my - mr * 0.35, mr * 0.11, 0, Math.PI * 2); g.fill();
+    /* distant shore: low rolling hills, then a small town of dark blocks */
+    g.fillStyle = '#04060f';
+    g.beginPath();
+    g.moveTo(0, wy);
+    for (x = 0; x <= w; x += w / 90){
+      var ridge = wy - h * 0.012
+        - Math.sin(x / w * 5.1 + 1.3) * h * 0.007
+        - Math.sin(x / w * 13.7 + 0.4) * h * 0.004;
+      g.lineTo(x, ridge);
+    }
+    g.lineTo(w, wy);
+    g.closePath();
+    g.fill();
+    var bx = w * 0.01;
+    while (bx < w * 0.985){
+      var bw = rand(w * 0.012, w * 0.034);
+      var bh = rand(h * 0.014, h * 0.042);
+      g.fillRect(bx, wy - bh, bw, bh);
+      /* a lit window or two in the block */
+      if (Math.random() < 0.8){
+        g.fillStyle = Math.random() < 0.78 ? 'rgba(255,199,110,0.9)' : 'rgba(170,215,255,0.85)';
+        g.fillRect(bx + rand(2, Math.max(3, bw - 4)), wy - bh + rand(2, Math.max(3, bh - 4)),
+                   Math.max(1.4, w * 0.0016), Math.max(1.4, h * 0.0028));
+        g.fillStyle = '#04060f';
+      }
+      bx += bw + rand(w * 0.002, w * 0.016);
+    }
+    /* tiny lit windows + shore lights */
+    for (i = 0; i < 40; i++){
+      x = Math.random() * w;
+      y = wy - rand(h * 0.003, h * 0.020);
+      g.fillStyle = Math.random() < 0.75 ? 'rgba(255,199,110,0.9)' : 'rgba(170,215,255,0.85)';
+      g.fillRect(x, y, Math.max(1.4, w * 0.0016), Math.max(1.4, h * 0.0028));
+      if (Math.random() < 0.3){  /* faint reflection of a shore light */
+        var lg = g.createLinearGradient(0, wy, 0, wy + h * 0.09);
+        lg.addColorStop(0, 'rgba(255,199,110,0.13)');
+        lg.addColorStop(1, 'rgba(255,199,110,0)');
+        g.fillStyle = lg;
+        g.fillRect(x - 1, wy, Math.max(2, w * 0.0022), h * 0.09);
+      }
+    }
+    /* water */
+    var wat = g.createLinearGradient(0, wy, 0, h);
+    wat.addColorStop(0, '#0a1730');
+    wat.addColorStop(0.25, '#071022');
+    wat.addColorStop(1, '#03050c');
+    g.fillStyle = wat;
+    g.fillRect(0, wy, w, h - wy);
+    /* moon path on the water */
+    var mp = g.createLinearGradient(0, wy, 0, h);
+    mp.addColorStop(0, 'rgba(200,220,255,0.13)');
+    mp.addColorStop(1, 'rgba(200,220,255,0)');
+    g.fillStyle = mp;
+    for (i = 0; i < 22; i++){
+      var yy = wy + (i / 22) * (h - wy) + rand(-2, 2);
+      var len = rand(w * 0.008, w * 0.03) * (0.5 + i / 22);
+      g.fillRect(mx - len / 2 + rand(-4, 4), yy, len, Math.max(1, h * 0.0022));
+    }
+    /* static shimmer flecks */
+    for (i = 0; i < 80; i++){
+      x = Math.random() * w;
+      y = wy + Math.random() * (h - wy);
+      g.fillStyle = 'rgba(160,195,255,' + rand(0.03, 0.10).toFixed(2) + ')';
+      g.fillRect(x, y, rand(4, 18), Math.max(1, h * 0.0018));
+    }
+  }
+  function seedShimmer(){
+    shimmer = [];
+    for (var i = 0; i < 64; i++){
+      shimmer.push({
+        x: Math.random(), y: Math.random(),
+        len: rand(6, 26), phase: rand(0, Math.PI * 2), speed: rand(0.4, 1.1)
+      });
+    }
+  }
+
+  /* ---------------- fireworks state ---------------- */
+  var shells = [];        /* rising shells */
+  var parts  = [];        /* ambient burst particles */
+  var trails = [];        /* shell trail sparks */
+  var launchTimer = 0.25; /* first ambient shell almost immediately */
+  var warm = 2;           /* two quick follow-ups so the show is alive before the name */
+  var nameSeq = null;     /* active name sequence or null */
+  var pendingLetters = [];/* letters waiting for their staggered shell */
+
+  function launchShell(tx, ty, si, onArrive){
+    shells.push({
+      x: tx + rand(-8, 8), y: waterY,
+      vx: rand(-6, 6), vy: -Math.sqrt(2 * 118 * Math.max(40, waterY - ty)),
+      targetY: ty, si: si, onArrive: onArrive || null
+    });
+  }
+  function launchAmbient(){
+    var si = (Math.random() * COLORS.length) | 0;
+    var tx = rand(W * 0.08, W * 0.92);
+    var ty = rand(H * 0.10, H * 0.44);
+    launchShell(tx, ty, si, function(x, y, s){ burst(x, y, s); });
+  }
+  function burst(x, y, si){
+    var type = Math.random();
+    var n = 60 + ((Math.random() * 41) | 0);
+    var i, ang, spd;
+    for (i = 0; i < n; i++){
+      ang = Math.random() * Math.PI * 2;
+      if (type < 0.22){           /* ring */
+        spd = rand(105, 125);
+      } else if (type < 0.45){    /* willow: long droop, gold */
+        spd = Math.pow(Math.random(), 0.6) * 120;
+      } else {                    /* sphere */
+        spd = Math.pow(Math.random(), 0.5) * 135;
+      }
+      var willow = type >= 0.22 && type < 0.45;
+      parts.push({
+        x: x, y: y,
+        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 12,
+        life: 0, maxLife: willow ? rand(2.2, 3.0) : rand(1.5, 2.4),
+        size: rand(9, 17), si: willow ? 0 : si,
+        twPhase: rand(0, Math.PI * 2), twFreq: rand(5, 11),
+        grav: willow ? 88 : 58, dragK: willow ? 0.55 : 0.95
+      });
+    }
+  }
+
+  /* ---------------- the name sequence ---------------- */
+  function sampleText(text){
+    var F = 150, pad = 24;
+    var oc = document.createElement('canvas');
+    var o = oc.getContext('2d');
+    var font = '800 ' + F + 'px Arial, Helvetica, sans-serif';
+    o.font = font;
+    var widths = [], total = 0, i;
+    for (i = 0; i < text.length; i++){
+      var cw = o.measureText(text[i]).width;
+      widths.push(cw); total += cw;
+    }
+    oc.width = Math.ceil(total) + pad * 2;
+    oc.height = Math.ceil(F * 1.55);
+    o.font = font;
+    o.fillStyle = '#fff';
+    o.textBaseline = 'middle';
+    var ranges = [], cx = pad;
+    for (i = 0; i < text.length; i++){
+      o.fillText(text[i], cx, oc.height / 2);
+      ranges.push([cx, cx + widths[i]]);
+      cx += widths[i];
+    }
+    var data = o.getImageData(0, 0, oc.width, oc.height).data;
+    function sample(step){
+      var pts = [];
+      for (var yy = step / 2; yy < oc.height; yy += step){
+        for (var xx = step / 2; xx < oc.width; xx += step){
+          var a = data[(((yy | 0) * oc.width) + (xx | 0)) * 4 + 3];
+          if (a > 120){
+            var li = 0;
+            for (var r = 0; r < ranges.length; r++){
+              if (xx >= ranges[r][0] && xx < ranges[r][1]){ li = r; break; }
+              if (xx >= ranges[r][0]) li = r;
+            }
+            pts.push({x: xx, y: yy, letter: li});
+          }
+        }
+      }
+      return pts;
+    }
+    var step = 7, pts = sample(step);
+    while (pts.length > 1050 && step < 16){ step += 2; pts = sample(step); }
+    return {pts: pts, step: step};
+  }
+
+  function fireName(raw){
+    var text = (raw || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+    if (!text) text = 'CAROL';
+    if (!living) setLiving(true);
+    if (nameSeq) { nameSeq.particles.length = 0; nameSeq = null; }
+    pendingLetters.length = 0;
+
+    var s = sampleText(text.toUpperCase());
+    if (!s.pts.length) return;
+    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9, i, p;
+    for (i = 0; i < s.pts.length; i++){
+      p = s.pts[i];
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+    var extW = Math.max(1, maxX - minX), extH = Math.max(1, maxY - minY);
+    var scale = Math.min((W * 0.86) / extW, (H * 0.44) / extH);
+    var ox = W / 2 - (minX + extW / 2) * scale;
+    var oy = H * 0.29 - (minY + extH / 2) * scale;
+    if (oy + minY * scale < H * 0.04) oy = H * 0.04 - minY * scale;
+
+    /* group targets by letter */
+    var groups = {};
+    for (i = 0; i < s.pts.length; i++){
+      p = s.pts[i];
+      var tx = ox + p.x * scale, ty = oy + p.y * scale;
+      if (!groups[p.letter]) groups[p.letter] = [];
+      groups[p.letter].push({tx: tx, ty: ty});
+    }
+    var letters = Object.keys(groups).map(Number).sort(function(a, b){ return a - b; });
+    nameSeq = { particles: [], phase: 'volley', phaseT: 0, arrived: 0, total: s.pts.length };
+    letters.forEach(function(li, idx){
+      var gpts = groups[li];
+      var cx = 0, cy = 0;
+      gpts.forEach(function(q){ cx += q.tx; cy += q.ty; });
+      cx /= gpts.length; cy /= gpts.length;
+      pendingLetters.push({
+        delay: idx * 0.12,
+        cx: Math.max(W * 0.05, Math.min(W * 0.95, cx)),
+        cy: cy,
+        si: li % COLORS.length,
+        pts: gpts,
+        dotSize: Math.max(7, Math.min(20, s.step * scale * 2.1))
+      });
+    });
+  }
+
+  function spawnLetter(L, bx, by){
+    L.pts.forEach(function(q){
+      var mx = (bx + q.tx) / 2 + rand(-14, 14);
+      var my = Math.min(by, q.ty) - rand(18, 55);
+      nameSeq.particles.push({
+        sx: bx, sy: by, cx: mx, cy: my, tx: q.tx, ty: q.ty,
+        x: bx, y: by, t: 0, dur: rand(0.6, 0.95),
+        si: L.si, size: L.dotSize,
+        twPhase: rand(0, Math.PI * 2), twFreq: rand(2.2, 4.2),
+        fallV: 0, counted: false
+      });
+    });
+  }
+
+  /* ---------------- main loop ---------------- */
+  function frame(now){
+    if (!living){ rafId = null; return; }
+    rafId = requestAnimationFrame(frame);
+    var dt = Math.min((now - lastT) / 1000, 0.05);
+    lastT = now;
+    var t = now / 1000;
+    var i, p;
+
+    fx.clearRect(0, 0, W, H);
+    fx.globalCompositeOperation = 'lighter';
+
+    /* gentle water shimmer */
+    fx.fillStyle = '#9db9e8';
+    for (i = 0; i < shimmer.length; i++){
+      var sm = shimmer[i];
+      var a = 0.028 + 0.026 * (0.5 + 0.5 * Math.sin(t * sm.speed + sm.phase));
+      fx.globalAlpha = a;
+      fx.fillRect(sm.x * W, waterY + 4 + sm.y * (H - waterY - 8), sm.len, Math.max(1, H * 0.0022));
+    }
+    fx.globalAlpha = 1;
+
+    /* name volley timing */
+    if (nameSeq && nameSeq.phase === 'volley'){
+      for (i = pendingLetters.length - 1; i >= 0; i--){
+        pendingLetters[i].delay -= dt;
+        if (pendingLetters[i].delay <= 0){
+          var L = pendingLetters.splice(i, 1)[0];
+          (function(LL){
+            launchShell(LL.cx, LL.cy, LL.si, function(x, y){ spawnLetter(LL, x, y); });
+          })(L);
+        }
+      }
+      if (!pendingLetters.length && !shells.length) nameSeq.phase = 'form';
+    }
+
+    /* ambient launches pause during the name */
+    if (!nameSeq){
+      launchTimer -= dt;
+      if (launchTimer <= 0){
+        launchAmbient();
+        if (warm > 0){ warm--; launchTimer = rand(0.7, 1.1); }
+        else launchTimer = rand(1.4, 2.4);
+      }
+    }
+
+    /* shells */
+    for (i = shells.length - 1; i >= 0; i--){
+      var sh = shells[i];
+      sh.vy += 118 * dt * 0.55;
+      sh.x += sh.vx * dt;
+      sh.y += sh.vy * dt;
+      trails.push({x: sh.x, y: sh.y, life: 0, maxLife: 0.32, size: rand(6, 10), si: sh.si});
+      if (sh.y <= sh.targetY || sh.vy > -26){
+        shells.splice(i, 1);
+        if (sh.onArrive) sh.onArrive(sh.x, sh.y, sh.si);
+      }
+    }
+    /* shell trails */
+    for (i = trails.length - 1; i >= 0; i--){
+      var tr = trails[i];
+      tr.life += dt;
+      if (tr.life >= tr.maxLife){ trails.splice(i, 1); continue; }
+      var ta = 0.55 * (1 - tr.life / tr.maxLife);
+      drawDot(tr.x, tr.y, tr.size, tr.si, ta);
+      drawReflection(tr.x, tr.y, tr.size, tr.si, ta);
+    }
+    /* shells heads */
+    for (i = 0; i < shells.length; i++){
+      drawDot(shells[i].x, shells[i].y, 13, shells[i].si, 0.95);
+    }
+
+    /* ambient particles */
+    for (i = parts.length - 1; i >= 0; i--){
+      p = parts[i];
+      p.life += dt;
+      if (p.life >= p.maxLife){ parts.splice(i, 1); continue; }
+      var retain = Math.exp(-p.dragK * dt);
+      p.vx *= retain; p.vy = p.vy * retain + p.grav * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      var lt = p.life / p.maxLife;
+      var env = (lt < 0.08 ? lt / 0.08 : 1) * Math.pow(1 - lt, 1.15);
+      var tw = 0.72 + 0.28 * Math.sin(t * p.twFreq + p.twPhase);
+      var al = env * tw;
+      drawDot(p.x, p.y, p.size, p.si, al);
+      drawReflection(p.x, p.y, p.size, p.si, al);
+    }
+
+    /* name particles */
+    if (nameSeq){
+      var np = nameSeq.particles;
+      var allIn = np.length > 0;
+      for (i = 0; i < np.length; i++){
+        p = np[i];
+        if (p.t < 1){
+          allIn = false;
+          p.t = Math.min(1, p.t + dt / p.dur);
+          var e = 1 - Math.pow(1 - p.t, 3);
+          var u = 1 - e;
+          p.x = u * u * p.sx + 2 * u * e * p.cx + e * e * p.tx;
+          p.y = u * u * p.sy + 2 * u * e * p.cy + e * e * p.ty;
+          drawDot(p.x, p.y, p.size * (0.6 + 0.4 * e), p.si, 0.35 + 0.65 * e);
+          drawReflection(p.x, p.y, p.size, p.si, 0.4 * e);
+          if (p.t >= 1 && !p.counted){ p.counted = true; nameSeq.arrived++; }
+        } else if (nameSeq.phase === 'fade'){
+          p.fallV += 26 * dt;
+          p.y += p.fallV * dt;
+          var fa = Math.max(0, 1 - nameSeq.phaseT / 0.95);
+          var jx = Math.sin(t * 3.1 + p.twPhase) * 0.7;
+          drawDot(p.tx + jx, p.y, p.size, p.si, fa * (0.75 + 0.25 * Math.sin(t * p.twFreq + p.twPhase)));
+          drawReflection(p.tx + jx, p.y, p.size, p.si, fa * 0.5);
+        } else {
+          var jx2 = Math.sin(t * 3.1 + p.twPhase) * 0.7;
+          var jy2 = Math.cos(t * 2.6 + p.twPhase) * 0.7;
+          var twA = 0.74 + 0.26 * Math.sin(t * p.twFreq + p.twPhase);
+          drawDot(p.tx + jx2, p.ty + jy2, p.size, p.si, twA);
+          drawReflection(p.tx + jx2, p.ty + jy2, p.size, p.si, twA);
+        }
+      }
+      if (nameSeq.phase === 'form' && allIn && np.length){
+        nameSeq.phase = 'hold'; nameSeq.phaseT = 0;
+      } else if (nameSeq.phase === 'hold'){
+        nameSeq.phaseT += dt;
+        if (nameSeq.phaseT >= 1.6){ nameSeq.phase = 'fade'; nameSeq.phaseT = 0; }
+      } else if (nameSeq.phase === 'fade'){
+        nameSeq.phaseT += dt;
+        if (nameSeq.phaseT >= 0.95){
+          nameSeq = null;
+          launchTimer = rand(0.7, 1.3);
+        }
+      }
+    }
+
+    fx.globalAlpha = 1;
+    fx.globalCompositeOperation = 'source-over';
+  }
+  function startLoop(){
+    if (rafId === null && living){
+      lastT = performance.now();
+      rafId = requestAnimationFrame(frame);
+    }
+  }
+  function stopLoop(){
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) stopLoop();
+    else startLoop();
+  });
+
+  /* ---------------- STILL / LIVING ---------------- */
+  var stillBtn = document.getElementById('stillBtn');
+  var livingBtn = document.getElementById('livingBtn');
+  function setLiving(v){
+    living = v;
+    stillBtn.classList.toggle('on', !living);
+    livingBtn.classList.toggle('on', living);
+    if (living) startLoop(); else stopLoop();   /* freeze keeps the last frame: particles halt mid-air */
+  }
+  stillBtn.addEventListener('click', function(){ setLiving(false); });
+  livingBtn.addEventListener('click', function(){ setLiving(true); });
+
+  /* ---------------- Light it ---------------- */
+  function currentName(){
+    var v = (input.value || '').trim();
+    return v ? v : 'CAROL';
+  }
+  document.getElementById('lightBtn').addEventListener('click', function(){ fireName(currentName()); });
+  input.addEventListener('keydown', function(ev){ if (ev.key === 'Enter') fireName(currentName()); });
+  input.addEventListener('click', function(ev){ ev.stopPropagation(); });
+
+  /* ---------------- fullscreen on stage tap ---------------- */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+  stage.addEventListener('click', toggleFS);
+  document.getElementById('fsBtn').addEventListener('click', function(ev){ ev.stopPropagation(); toggleFS(); });
+
+  /* ---------------- controls + title auto-fade ---------------- */
+  var controls = document.getElementById('controls');
+  var titlebar = document.getElementById('titlebar');
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    titlebar.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){
+      controls.classList.add('faded');
+      titlebar.classList.add('faded');
+    }, 3500);
+  }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, {passive: true});
+  wake();
+
+  /* ---------------- sizing ---------------- */
+  function resize(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    waterY = H * 0.68;
+    [bgC, fxC].forEach(function(c){
+      c.width = Math.round(W * dpr);
+      c.height = Math.round(H * dpr);
+    });
+    bgX.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintScene(bgX, W, H);
+    /* surround: same scene, full window, blurred by CSS */
+    surC.width = Math.round(window.innerWidth * 0.5);
+    surC.height = Math.round(window.innerHeight * 0.5);
+    paintScene(surC.getContext('2d'), surC.width, surC.height);
+    seedShimmer();
+  }
+  var rsT = null;
+  window.addEventListener('resize', function(){
+    clearTimeout(rsT);
+    rsT = setTimeout(resize, 120);
+  });
+  document.addEventListener('fullscreenchange', function(){ setTimeout(resize, 60); });
+
+  /* ---------------- init ---------------- */
+  var params = new URLSearchParams(location.search);
+  var qName = params.get('name');
+  if (qName) input.value = qName.slice(0, 14);
+
+  resize();
+  startLoop();
+  /* the product moment, unprompted: the name lights itself ~2.5s in */
+  setTimeout(function(){ if (living && !nameSeq) fireName(currentName()); }, 2500);
+  /* on the living wall, re-light the name now and then */
+  if (WALL){
+    setInterval(function(){
+      if (living && !nameSeq && !pendingLetters.length) fireName(currentName());
+    }, 30000);
+  }
+})();
+</script>
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}#titlebar{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
