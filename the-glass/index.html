@@ -368,7 +368,7 @@ function layout() {
   b.drawImage(img, rect.x, rect.y, w, h);
   orbs = orbsN.map((o) => ({ x: rect.x + o.u * rect.w, y: rect.y + o.v * rect.h, r: o.r * rect.w, c: o.c, ph: o.ph, sp: o.sp }));
   candles = candlesN.map((c) => ({ x: rect.x + c.u * rect.w, y: rect.y + c.v * rect.h, r: c.r * rect.w, f1: c.f1, f2: c.f2, f3: c.f3, p1: c.p1, p2: c.p2, p3: c.p3 }));
-  drops = []; for (let i = 0; i < 520; i++) drops.push(newDrop(rand(1.2, 4)));
+  drops = []; for (let i = 0; i < 347; i++) drops.push(newDrop(rand(0.8, 2.67)));
 }
 
 for (let i = 0; i < 9; i++) blobs.push({ x: Math.random(), y: Math.random(), r: rand(0.18, 0.38), ph: rand(0, 6.28), sp: rand(0.08, 0.2), dx: rand(-0.004, 0.004), dy: rand(-0.003, 0.003) });
@@ -411,14 +411,14 @@ function drawDrop(d) {
 function step(dt) {
   mistAmt += ((state.weather === "mist" ? 1 : 0) - mistAmt) * Math.min(1, dt * 0.4);
   const rainK = 1 - mistAmt;
-  const births = (state.weather === "rain" ? 120 : 6) * dt;
-  for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.8, state.weather === "rain" ? 3.0 : 1.2)));
-  if (rainK > 0.5 && t - lastBig > rand(1.2, 2.8)) {
+  const births = (state.weather === "rain" ? 80 : 6) * dt;
+  for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.53, state.weather === "rain" ? 2.0 : 0.8)));
+  if (rainK > 0.5 && t - lastBig > rand(1.8, 4.2)) {
     lastBig = t;
     const fx = rand(0.08, 0.95);
     const span = spanAt(GLASS_IN, fx);
     const fy = span ? span[0] + 0.01 : 0.2;
-    drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(6, 9) * dpr, vy: 160 * dpr, slide: true, big: true, wob: 0 });
+    drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(4, 6) * dpr, vy: 160 * dpr, slide: true, big: true, wob: 0 });
   }
   /* Runners: drips born already running, all over the panes — Gary's
      downpour signature is water DRIPPING, constantly, everywhere; a
@@ -426,7 +426,7 @@ function step(dt) {
      runs depend on static drops growing fat enough to let go, which
      reads as a leaky faucet: one lonely drip here and there. */
   if (state.weather === "rain" && rainK > 0.5) {
-    let runners = 7 * dt;
+    let runners = 4.7 * dt;
     for (let i = 0; i < runners; i++) {
       if (Math.random() >= runners - i) continue;
       for (let tries = 0; tries < 10; tries++) {
@@ -434,7 +434,7 @@ function step(dt) {
         const span = spanAt(GLASS_IN, fx);
         if (!span) continue;
         const fy = span[0] + Math.random() * (span[1] - span[0]) * 0.55;
-        drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(3.5, 5.5) * dpr, vy: rand(40, 90) * dpr, slide: true, wob: rand(0, 6) });
+        drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(2.33, 3.67) * dpr, vy: rand(40, 90) * dpr, slide: true, wob: rand(0, 6) });
         break;
       }
     }
@@ -443,7 +443,7 @@ function step(dt) {
   for (const d of drops) {
     if (!d.slide) {
       d.r += 0.10 * dpr * dt * rainK * Math.random();
-      if (d.r > 3.4 * dpr && Math.random() < dt * 1.6) { d.slide = true; d.vy = 10 * dpr; }
+      if (d.r > 2.27 * dpr && Math.random() < dt * 1.6) { d.slide = true; d.vy = 10 * dpr; }
     } else {
       d.vy = Math.min(d.vy + 300 * dpr * dt * (d.r / (8 * dpr)), (d.big ? 680 : 420) * dpr);
       if (Math.random() < dt * 3) d.vy *= 0.4; // stick-slip
@@ -454,7 +454,7 @@ function step(dt) {
       tc.beginPath(); tc.moveTo(px, py); tc.lineTo(d.x, d.y); tc.stroke();
       d.r -= dt * 0.10 * dpr;
       if (Math.random() < dt * 7) {
-        const nd = { x: d.x, y: py, r: rand(1.2, 2.4) * dpr, vy: 0, slide: false, wob: 0 };
+        const nd = { x: d.x, y: py, r: rand(0.8, 1.6) * dpr, vy: 0, slide: false, wob: 0 };
         drops.push(nd);
       }
     }
@@ -467,7 +467,7 @@ function step(dt) {
       const dx = a.x - b.x, dy = a.y - b.y, rr = (a.r + b.r) * 0.8;
       if (dx * dx + dy * dy < rr * rr) {
         const big = a.r >= b.r ? a : b; const small = big === a ? b : a;
-        big.r = Math.min(9 * dpr, Math.sqrt(big.r * big.r + small.r * small.r));
+        big.r = Math.min(6 * dpr, Math.sqrt(big.r * big.r + small.r * small.r));
         big.slide = big.slide || small.slide; big.big = !!(big.big || small.big); big.vy = Math.max(big.vy, small.vy);
         small.r = 0;
       }
@@ -477,7 +477,7 @@ function step(dt) {
   // the render clips — this just keeps the population honest)
   drops = drops.filter((d) => d.r > 0.4 * dpr && d.y < H + 30 * dpr &&
     inPoly(GLASS, toFracX(d.x), toFracY(d.y) + (d.slide ? 0.004 : 0)));
-  if (drops.length > 2800) drops.splice(0, drops.length - 2800);
+  if (drops.length > 1870) drops.splice(0, drops.length - 1870);
   tc.globalCompositeOperation = "destination-out";
   tc.fillStyle = "rgba(0,0,0," + Math.min(1, dt * 0.35) + ")"; tc.fillRect(0, 0, W, H);
   tc.globalCompositeOperation = "source-over";
