@@ -73,6 +73,7 @@
 <canvas id="bg" width="160" height="100" aria-hidden="true"></canvas>
 <canvas id="view" role="img" aria-label="Day flight: the view from an airplane window over farmland, a turquoise coast, desert mountains and a bright city"></canvas>
 <div id="controls">
+  <button id="btnMode" type="button">&#9789; Night</button>
   <button id="btnLiving" type="button">Still</button>
   <button id="btnSound" type="button">Sound off</button>
 </div>
@@ -101,6 +102,17 @@
    3) PAINTERLIER REGISTER — warm sunlit wing shading with a soft cast
       shadow, warmed sky/horizon, warm ivory frame with a soft inner
       shadow inside the glass. The four segment paintings are untouched.
+   4) DAY/NIGHT + FRAMING (Nov 4) — a DAY|NIGHT pill crossfades the whole
+      scene between the noon grade above and a night grade derived from
+      the SAME master scene (deep sky, stars + moon, silver-edged clouds,
+      multiply-graded ground, prominent nav lights + a double strobe,
+      dimmed cabin frame) — one window, one wing, two times of day,
+      ~600ms crossfade. Framing: portrait now FITS THE WHOLE window
+      frame inside the viewport (fit-whole; it previously cropped to a
+      focus point and sliced both bezels), and landscape is plainly
+      centred (an old clamp shoved the scene flush right whenever it
+      was narrower than the screen, leaving a wide blurred band down
+      the left side).
    ===================================================================== */
 const W = 1600, H = 1000;
 const HOR = 340;          // horizon line (canvas px)
@@ -127,6 +139,26 @@ const smooth = (e0, e1, x) => {
   return k * k * (3 - 2 * k);
 };
 const wrap = (x) => ((x % L) + L) % L;
+const C3 = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+const mix3 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+const css3 = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+
+/* ---- day/night state (fix 4): nightMix crossfades 0 (day) <-> 1 (night) ---- */
+let nightTarget = 0;
+let nightMix = 0;
+const MOON = { x: 1135, y: 148, r: 30 };
+const stars = (() => {
+  const r = rng(777);
+  const out = [];
+  for (let i = 0; i < 340; i++) {
+    out.push({
+      x: WIN.x + r() * WIN.w,
+      y: WIN.y + 8 + Math.pow(r(), 1.35) * (HOR - WIN.y - 20),
+      r: 0.7 + r() * 1.6, p: r() * 6.283, s: 0.6 + r() * 1.8, a: 0.35 + r() * 0.65,
+    });
+  }
+  return out;
+})();
 
 function buildClouds() {
   const r = rng(42);
@@ -226,25 +258,55 @@ function drawScene(ctx, t) {
   const h = altitude(camA);
   const cx = W / 2;
   const bottom = WIN.y + WIN.h;
+  const nm = nightMix;
 
   ctx.save();
   ctx.clip(winPath);
 
-  // sky — noon blue overhead warming to a pale sunlit haze at the horizon (fix 3)
+  // sky — noon blue overhead warming to a pale sunlit haze at the horizon
+  // (fix 3); the same gradient sinks to a deep night sky at night (fix 4)
   const sky = ctx.createLinearGradient(0, WIN.y, 0, HOR + 10);
-  sky.addColorStop(0, '#2b65ba');
-  sky.addColorStop(0.52, '#5f94d8');
-  sky.addColorStop(0.85, '#b9d4ee');
-  sky.addColorStop(1, '#f4e9c9');
+  sky.addColorStop(0, css3(mix3(C3('#2b65ba'), C3('#03061a'), nm)));
+  sky.addColorStop(0.52, css3(mix3(C3('#5f94d8'), C3('#0a1334'), nm)));
+  sky.addColorStop(0.85, css3(mix3(C3('#b9d4ee'), C3('#22335e'), nm)));
+  sky.addColorStop(1, css3(mix3(C3('#f4e9c9'), C3('#46598c'), nm)));
   ctx.fillStyle = sky;
   ctx.fillRect(WIN.x, WIN.y, WIN.w, HOR + 10 - WIN.y);
-  // sun high above — glare spilling in from the top
+  // sun high above — glare spilling in from the top (fades out at night)
   const sg = ctx.createRadialGradient(420, WIN.y - 80, 10, 420, WIN.y - 80, 520);
-  sg.addColorStop(0, 'rgba(255,252,235,0.9)');
-  sg.addColorStop(0.25, 'rgba(255,245,215,0.35)');
+  sg.addColorStop(0, `rgba(255,252,235,${0.9 * (1 - nm)})`);
+  sg.addColorStop(0.25, `rgba(255,245,215,${0.35 * (1 - nm)})`);
   sg.addColorStop(1, 'rgba(255,245,215,0)');
   ctx.fillStyle = sg;
   ctx.fillRect(WIN.x, WIN.y, WIN.w, 600);
+  // stars + moon (night only) — in the sky, outside stays clear, no veil
+  if (nm > 0.01) {
+    for (const st of stars) {
+      const tw = 0.72 + 0.28 * Math.sin(t * st.s + st.p);
+      ctx.fillStyle = `rgba(235,242,255,${(st.a * tw * nm).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 6.283); ctx.fill();
+    }
+    const mg = ctx.createRadialGradient(MOON.x, MOON.y, 4, MOON.x, MOON.y, 170);
+    mg.addColorStop(0, `rgba(215,228,255,${0.5 * nm})`);
+    mg.addColorStop(0.3, `rgba(190,205,245,${0.16 * nm})`);
+    mg.addColorStop(1, 'rgba(190,205,245,0)');
+    ctx.fillStyle = mg;
+    ctx.fillRect(MOON.x - 170, MOON.y - 170, 340, 340);
+    ctx.fillStyle = `rgba(238,243,252,${nm})`;
+    ctx.beginPath(); ctx.arc(MOON.x, MOON.y, MOON.r, 0, 6.283); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(MOON.x, MOON.y, MOON.r, 0, 6.283); ctx.clip();
+    ctx.fillStyle = `rgba(168,182,208,${0.20 * nm})`;
+    for (const cr of [[-9, -5, 6], [8, 9, 4.5], [11, -11, 3.4], [-13, 12, 3]]) {
+      ctx.beginPath(); ctx.arc(MOON.x + cr[0], MOON.y + cr[1], cr[2], 0, 6.283); ctx.fill();
+    }
+    const term = ctx.createLinearGradient(MOON.x - MOON.r, 0, MOON.x + MOON.r, 0);
+    term.addColorStop(0, `rgba(120,135,170,${0.18 * nm})`);
+    term.addColorStop(0.5, 'rgba(120,135,170,0)');
+    ctx.fillStyle = term;
+    ctx.fillRect(MOON.x - MOON.r, MOON.y - MOON.r, MOON.r * 2, MOON.r * 2);
+    ctx.restore();
+  }
 
   // ground — painted terrain, one perspective row at a time.
   // Fix 2b: each 2px screen row now samples the true band of texture it
@@ -274,6 +336,22 @@ function drawScene(ctx, t) {
     }
   }
 
+  // night grade on the ground (fix 4): the paintings sink into a deep blue
+  // night — darker near the plane, a touch lighter toward the moonlit
+  // distance. A multiply, graded like a real night photo, never a flat veil.
+  if (nm > 0.01) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    const gg = ctx.createLinearGradient(0, HOR, 0, bottom);
+    gg.addColorStop(0, css3(mix3([255, 255, 255], [104, 118, 164], nm)));
+    gg.addColorStop(1, css3(mix3([255, 255, 255], [30, 38, 78], nm)));
+    ctx.fillStyle = gg;
+    ctx.fillRect(WIN.x, HOR, WIN.w, bottom - HOR);
+    ctx.restore();
+    ctx.fillStyle = `rgba(22,32,78,${0.14 * nm})`;
+    ctx.fillRect(WIN.x, HOR, WIN.w, bottom - HOR);
+  }
+
   // cloud shadows drifting slowly across the ground
   const half = L / 2;
   const proj = (a, d, alt) => {
@@ -290,8 +368,8 @@ function drawScene(ctx, t) {
     ctx.translate(p.x, p.y);
     ctx.scale(1, sq);
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rr);
-    g.addColorStop(0, `rgba(18,32,48,${s.o})`);
-    g.addColorStop(0.6, `rgba(18,32,48,${s.o * 0.6})`);
+    g.addColorStop(0, `rgba(18,32,48,${s.o * (1 - 0.75 * nm)})`);
+    g.addColorStop(0.6, `rgba(18,32,48,${s.o * 0.6 * (1 - 0.75 * nm)})`);
     g.addColorStop(1, 'rgba(18,32,48,0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0, 0, rr, 0, 6.283); ctx.fill();
@@ -324,11 +402,12 @@ function drawScene(ctx, t) {
 
   // atmospheric haze toward the horizon
   const hz = ctx.createLinearGradient(0, HOR, 0, HOR + 260);
-  hz.addColorStop(0, 'rgba(228,230,222,1)');
-  hz.addColorStop(0.08, 'rgba(210,224,236,0.85)');
-  hz.addColorStop(0.2, 'rgba(200,218,232,0.55)');
-  hz.addColorStop(0.5, 'rgba(190,210,228,0.25)');
-  hz.addColorStop(1, 'rgba(190,210,228,0)');
+  const hzA = 1 - 0.45 * nm;
+  hz.addColorStop(0, css3(mix3([228, 230, 222], [64, 78, 120], nm), hzA));
+  hz.addColorStop(0.08, css3(mix3([210, 224, 236], [40, 50, 88], nm), 0.85 * hzA));
+  hz.addColorStop(0.2, css3(mix3([200, 218, 232], [34, 44, 80], nm), 0.55 * hzA));
+  hz.addColorStop(0.5, css3(mix3([190, 210, 228], [20, 28, 54], nm), 0.25 * hzA));
+  hz.addColorStop(1, css3(mix3([190, 210, 228], [20, 28, 54], nm), 0));
   ctx.fillStyle = hz;
   ctx.fillRect(WIN.x, HOR, WIN.w, 260);
 
@@ -341,13 +420,13 @@ function drawScene(ctx, t) {
     ctx.translate(p.x, p.y);
     ctx.scale(1, 0.45);
     const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, rr);
-    cg.addColorStop(0, `rgba(238,242,248,${c.o * 0.85})`);
-    cg.addColorStop(0.5, `rgba(216,226,238,${c.o * 0.5})`);
-    cg.addColorStop(1, 'rgba(205,218,232,0)');
+    cg.addColorStop(0, css3(mix3([238, 242, 248], [56, 68, 108], nm), c.o * 0.85));
+    cg.addColorStop(0.5, css3(mix3([216, 226, 238], [36, 46, 80], nm), c.o * 0.5));
+    cg.addColorStop(1, css3(mix3([205, 218, 232], [24, 32, 62], nm), 0));
     ctx.fillStyle = cg;
     ctx.beginPath(); ctx.arc(0, 0, rr, 0, 6.283); ctx.fill();
     const tg = ctx.createRadialGradient(0, -rr * 0.25, 0, 0, -rr * 0.25, rr * 0.6);
-    tg.addColorStop(0, `rgba(255,255,252,${c.o * 0.7})`);
+    tg.addColorStop(0, css3(mix3([255, 255, 252], [208, 222, 248], nm), c.o * (0.7 - 0.18 * nm)));
     tg.addColorStop(1, 'rgba(255,255,252,0)');
     ctx.fillStyle = tg;
     ctx.beginPath(); ctx.arc(0, -rr * 0.25, rr * 0.6, 0, 6.283); ctx.fill();
@@ -359,27 +438,27 @@ function drawScene(ctx, t) {
   // glass: soft brightening and a faint sheen
   const vg = ctx.createRadialGradient(cx, 500, 320, cx, 500, 820);
   vg.addColorStop(0, 'rgba(255,255,255,0)');
-  vg.addColorStop(1, 'rgba(40,55,75,0.35)');
+  vg.addColorStop(1, css3(mix3([40, 55, 75], [6, 8, 20], nm), 0.35 + 0.17 * nm));
   ctx.fillStyle = vg;
   ctx.fillRect(WIN.x, WIN.y, WIN.w, WIN.h);
   const rf = ctx.createLinearGradient(WIN.x, WIN.y, WIN.x + 700, WIN.y + 600);
-  rf.addColorStop(0, 'rgba(255,255,255,0.10)');
+  rf.addColorStop(0, `rgba(255,255,255,${0.10 - 0.05 * nm})`);
   rf.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = rf;
   ctx.fillRect(WIN.x, WIN.y, WIN.w, WIN.h);
   // soft inner shadow inside the glass — depth against the frame (fix 3)
   const ishT = ctx.createLinearGradient(0, WIN.y, 0, WIN.y + 170);
-  ishT.addColorStop(0, 'rgba(24,30,46,0.20)');
+  ishT.addColorStop(0, `rgba(24,30,46,${0.20 + 0.16 * nm})`);
   ishT.addColorStop(1, 'rgba(24,30,46,0)');
   ctx.fillStyle = ishT;
   ctx.fillRect(WIN.x, WIN.y, WIN.w, 170);
   const ishB = ctx.createLinearGradient(0, WIN.y + WIN.h - 190, 0, WIN.y + WIN.h);
   ishB.addColorStop(0, 'rgba(24,30,46,0)');
-  ishB.addColorStop(1, 'rgba(24,30,46,0.24)');
+  ishB.addColorStop(1, `rgba(24,30,46,${0.24 + 0.18 * nm})`);
   ctx.fillStyle = ishB;
   ctx.fillRect(WIN.x, WIN.y + WIN.h - 190, WIN.w, 190);
   ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(22,28,42,0.30)';
+  ctx.strokeStyle = `rgba(22,28,42,${0.30 + 0.2 * nm})`;
   ctx.stroke(winPath);
   ctx.restore();
 
@@ -387,6 +466,7 @@ function drawScene(ctx, t) {
 }
 
 function drawWing(ctx, t) {
+  const nm = nightMix;
   const tipX = 1265, tipY = 610;
   const body = new Path2D();
   body.moveTo(60, 820);
@@ -402,46 +482,55 @@ function drawWing(ctx, t) {
   ctx.shadowOffsetY = 18;
   // warm sunlit metal: ivory in the sun, cool blue-grey in shade (fix 3)
   const wg = ctx.createLinearGradient(0, 600, 0, 1020);
-  wg.addColorStop(0, '#f6f2e4');
-  wg.addColorStop(0.25, '#e8e9e2');
-  wg.addColorStop(0.6, '#bcc5cc');
-  wg.addColorStop(1, '#808e9b');
+  wg.addColorStop(0, css3(mix3(C3('#f6f2e4'), C3('#7d889c'), nm)));
+  wg.addColorStop(0.25, css3(mix3(C3('#e8e9e2'), C3('#576274'), nm)));
+  wg.addColorStop(0.6, css3(mix3(C3('#bcc5cc'), C3('#333c4a'), nm)));
+  wg.addColorStop(1, css3(mix3(C3('#808e9b'), C3('#20242d'), nm)));
   ctx.fillStyle = wg;
   ctx.fill(body);
   ctx.restore();
   ctx.save();
   ctx.clip(body);
-  // warm sunlight washing in from the sun side
+  // warm sunlight washing in from the sun side (fades out at night)
   const sun = ctx.createRadialGradient(340, 630, 40, 340, 630, 880);
-  sun.addColorStop(0, 'rgba(255,240,200,0.42)');
+  sun.addColorStop(0, `rgba(255,240,200,${0.42 * (1 - nm)})`);
   sun.addColorStop(1, 'rgba(255,240,200,0)');
   ctx.fillStyle = sun;
   ctx.fillRect(0, 580, 1400, 460);
+  // cool moonlight washing in from the moon side (night)
+  if (nm > 0.01) {
+    const mw = ctx.createRadialGradient(1090, 600, 40, 1090, 600, 820);
+    mw.addColorStop(0, `rgba(188,203,240,${0.20 * nm})`);
+    mw.addColorStop(1, 'rgba(188,203,240,0)');
+    ctx.fillStyle = mw;
+    ctx.fillRect(0, 580, 1400, 460);
+  }
   // sky reflected along the top surface
   const sk = ctx.createLinearGradient(0, 620, 600, 1000);
-  sk.addColorStop(0, 'rgba(140,180,225,0.30)');
+  sk.addColorStop(0, css3(mix3([140, 180, 225], [110, 140, 220], nm), 0.30 + 0.08 * nm));
   sk.addColorStop(1, 'rgba(140,180,225,0)');
   ctx.fillStyle = sk;
   ctx.fillRect(0, 600, 1400, 420);
   // gentle shading pooling along the underside
   const oc = ctx.createLinearGradient(0, 870, 0, 1020);
-  oc.addColorStop(0, 'rgba(43,40,36,0)');
-  oc.addColorStop(1, 'rgba(43,40,36,0.20)');
+  oc.addColorStop(0, css3(mix3([43, 40, 36], [8, 10, 18], nm), 0));
+  oc.addColorStop(1, css3(mix3([43, 40, 36], [8, 10, 18], nm), 0.20 + 0.16 * nm));
   ctx.fillStyle = oc;
   ctx.fillRect(0, 860, 1400, 170);
-  // sunlight glint on the wing — gently breathing
-  const gx = 760 + 30 * Math.sin(t * 0.07), gy = 705;
+  // sunlight glint on the wing — gently breathing; at night it becomes a
+  // cooler, dimmer moon glint riding toward the moon side
+  const gx = 760 + 30 * Math.sin(t * 0.07) + 230 * nm, gy = 705 - 35 * nm;
   const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, 260);
-  const gi = 0.75 + 0.2 * Math.sin(t * 0.31);
-  gl.addColorStop(0, `rgba(255,253,240,${gi})`);
-  gl.addColorStop(0.2, `rgba(255,250,232,${gi * 0.45})`);
+  const gi = (0.75 + 0.2 * Math.sin(t * 0.31)) * (1 - 0.5 * nm);
+  gl.addColorStop(0, css3(mix3([255, 253, 240], [205, 218, 248], nm), gi));
+  gl.addColorStop(0.2, css3(mix3([255, 250, 232], [205, 218, 248], nm), gi * 0.45));
   gl.addColorStop(1, 'rgba(255,250,232,0)');
   ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = gl;
   ctx.fillRect(gx - 260, gy - 260, 520, 520);
   ctx.globalCompositeOperation = 'source-over';
   // panel lines
-  ctx.strokeStyle = 'rgba(56,62,76,0.26)';
+  ctx.strokeStyle = `rgba(56,62,76,${0.26 + 0.08 * nm})`;
   ctx.lineWidth = 1;
   for (let k = 1; k < 5; k++) {
     ctx.beginPath();
@@ -454,7 +543,7 @@ function drawWing(ctx, t) {
   ctx.beginPath();
   ctx.moveTo(60, 820);
   ctx.bezierCurveTo(500, 700, 900, 640, tipX, tipY);
-  ctx.strokeStyle = 'rgba(255,253,240,0.92)';
+  ctx.strokeStyle = css3(mix3([255, 253, 240], [190, 205, 235], nm), 0.92 - 0.37 * nm);
   ctx.lineWidth = 2.6;
   ctx.stroke();
   // winglet
@@ -465,38 +554,85 @@ function drawWing(ctx, t) {
   ctx.lineTo(tipX + 20, tipY + 12);
   ctx.closePath();
   const wl = ctx.createLinearGradient(tipX, tipY - 74, tipX + 20, tipY + 10);
-  wl.addColorStop(0, '#f8f4e8');
-  wl.addColorStop(1, '#a3adb8');
+  wl.addColorStop(0, css3(mix3(C3('#f8f4e8'), C3('#6e7a8e'), nm)));
+  wl.addColorStop(1, css3(mix3(C3('#a3adb8'), C3('#2e3540'), nm)));
   ctx.fillStyle = wl;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(84,92,104,0.45)';
+  ctx.strokeStyle = `rgba(84,92,104,${0.45 + 0.1 * nm})`;
   ctx.stroke();
-  // red nav light — slow, steady blink (on sim clock)
+  // nav lights + strobe. By day the red light keeps its slow blink from
+  // the source; at night the nav lights burn steady and prominent — red
+  // at the tip, green on the winglet — and the white strobe double-
+  // flashes on the real aviation rhythm (fix 4).
   const p = (t % 2.6) / 2.6;
-  const on = p < 0.45 ? smooth(0, 0.06, p) * (1 - smooth(0.36, 0.45, p)) : 0;
+  const blink = p < 0.45 ? smooth(0, 0.06, p) * (1 - smooth(0.36, 0.45, p)) : 0;
+  const steady = 0.86 + 0.14 * Math.sin(t * 2.1);
+  const on = blink + (steady - blink) * nm * 0.92;
   const lx = tipX + 14, ly = tipY + 2;
+  const lr = 46 + 34 * nm;
   ctx.globalCompositeOperation = 'lighter';
-  const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, 46);
+  const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
   lg.addColorStop(0, `rgba(255,70,55,${0.95 * on})`);
   lg.addColorStop(0.25, `rgba(255,50,40,${0.3 * on})`);
   lg.addColorStop(1, 'rgba(255,40,30,0)');
   ctx.fillStyle = lg;
-  ctx.fillRect(lx - 46, ly - 46, 92, 92);
+  ctx.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = `rgb(${180 + 75 * on},${40 + 60 * on},${40 + 50 * on})`;
   ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, 6.283); ctx.fill();
+  if (nm > 0.01) {
+    // green nav light on the winglet
+    const gx2 = tipX + 17, gy2 = tipY - 70;
+    const gon = (0.85 + 0.15 * Math.sin(t * 1.7 + 1)) * nm;
+    ctx.globalCompositeOperation = 'lighter';
+    const gg2 = ctx.createRadialGradient(gx2, gy2, 0, gx2, gy2, 36);
+    gg2.addColorStop(0, `rgba(70,255,150,${0.8 * gon})`);
+    gg2.addColorStop(0.3, `rgba(50,230,120,${0.28 * gon})`);
+    gg2.addColorStop(1, 'rgba(50,230,120,0)');
+    ctx.fillStyle = gg2;
+    ctx.fillRect(gx2 - 36, gy2 - 36, 72, 72);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(120,255,175,${nm})`;
+    ctx.beginPath(); ctx.arc(gx2, gy2, 2.6, 0, 6.283); ctx.fill();
+    // white strobe: double flash every 1.7s, gated by sim speed so a
+    // frozen STILL frame never holds a flash mid-burst
+    const sp = t % 1.7;
+    const pulse = (c) => Math.max(0, 1 - Math.abs(sp - c) / 0.055);
+    const si = Math.max(pulse(0.03), pulse(0.24)) * Math.min(1, speed * 4);
+    if (si > 0.01) {
+      const sx = tipX + 24, sy = tipY + 8;
+      const sa = si * (0.35 + 0.65 * nm);
+      ctx.globalCompositeOperation = 'lighter';
+      const sgr = ctx.createRadialGradient(sx, sy, 0, sx, sy, 120);
+      sgr.addColorStop(0, `rgba(255,255,255,${0.9 * sa})`);
+      sgr.addColorStop(0.2, `rgba(240,246,255,${0.35 * sa})`);
+      sgr.addColorStop(1, 'rgba(240,246,255,0)');
+      ctx.fillStyle = sgr;
+      ctx.fillRect(sx - 120, sy - 120, 240, 240);
+      // the flash spills across the wing and the nearby glass
+      const wgr = ctx.createRadialGradient(sx, sy, 0, sx, sy, 430);
+      wgr.addColorStop(0, `rgba(235,242,255,${0.13 * si * nm})`);
+      wgr.addColorStop(1, 'rgba(235,242,255,0)');
+      ctx.fillStyle = wgr;
+      ctx.fillRect(sx - 430, sy - 430, 860, 860);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = `rgba(255,255,255,${sa})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 3, 0, 6.283); ctx.fill();
+    }
+  }
 }
 
 function drawFrame(ctx) {
+  const nm = nightMix;
   ctx.save();
   const outer = new Path2D();
   outer.rect(0, 0, W, H);
   outer.addPath(winPath);
-  // warm ivory fuselage, softly shaded (fix 3)
+  // warm ivory fuselage, softly shaded (fix 3); the cabin goes dim at night
   const fg = ctx.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 1000);
-  fg.addColorStop(0, '#e4dfd3');
-  fg.addColorStop(0.6, '#c0bbae');
-  fg.addColorStop(1, '#7d776c');
+  fg.addColorStop(0, css3(mix3(C3('#e4dfd3'), C3('#4c4d55'), nm)));
+  fg.addColorStop(0.6, css3(mix3(C3('#c0bbae'), C3('#2f3038'), nm)));
+  fg.addColorStop(1, css3(mix3(C3('#7d776c'), C3('#141519'), nm)));
   ctx.fillStyle = fg;
   ctx.fill(outer, 'evenodd');
   // inner bevel rings
@@ -504,15 +640,15 @@ function drawFrame(ctx) {
     const p = new Path2D();
     const o = 6 + i * 14;
     p.roundRect(WIN.x - o, WIN.y - o, WIN.w + o * 2, WIN.h + o * 2, WIN.r + o);
-    ctx.strokeStyle = i === 0 ? 'rgba(58,54,48,0.7)' : `rgba(255,252,244,${0.35 - i * 0.07})`;
+    ctx.strokeStyle = i === 0 ? 'rgba(58,54,48,0.7)' : `rgba(255,252,244,${(0.35 - i * 0.07) * (1 - 0.55 * nm)})`;
     ctx.lineWidth = i === 0 ? 10 : 3;
     ctx.stroke(p);
   }
   // seat-back hint
   const sb = ctx.createLinearGradient(0, 955, 0, H);
   sb.addColorStop(0, 'rgba(52,56,72,0)');
-  sb.addColorStop(0.4, 'rgba(48,52,66,0.9)');
-  sb.addColorStop(1, '#2b303e');
+  sb.addColorStop(0.4, css3(mix3([48, 52, 66], [18, 19, 26], nm), 0.9));
+  sb.addColorStop(1, css3(mix3(C3('#2b303e'), C3('#101116'), nm)));
   ctx.fillStyle = sb;
   ctx.beginPath();
   ctx.moveTo(1050, H);
@@ -581,31 +717,34 @@ let living = true;
 let t = 0, speed = 1, last = performance.now(), frame = 0, dirty = 3;
 onStripDirty = () => { dirty = Math.max(dirty, 3); };
 
-/* Fix 1: framing per breakpoint.
+/* Framing per breakpoint (fix 1, corrected Nov 4).
    Landscape / wide: scaled by height so the GLASS covers ~90% of the
    screen height — Gary's ruling after the earlier contained 85% pass
    (glass ≈ 75%) left fat ambient pillars on both sides of his wide
-   monitor. Centred by default; on narrower landscape aspects the
-   tighter crop is clamped so the wingtip and the glass's right edge
-   stay on screen.
-   Portrait: scale so the GLASS height is ~62.5% of the screen height;
-   the scene is centred vertically with the ambient backdrop around
-   it, and centred horizontally on a focus point (x=1070) chosen so
-   the wing — sweep, tip and winglet — stays in frame. */
+   monitor — and plainly CENTRED both ways. The old clamps were the
+   landscape defect: `dx = Math.max(dx, cw - W*s)` fires whenever the
+   scene is narrower than the screen and shoves the scene flush right,
+   leaving a wide blurred band down the left and zero margin on the
+   right; on wider screens the band grew to ~30% of the width.
+   Portrait: FIT-WHOLE — the scale is the smallest of the 62.5%-glass-
+   height scale and the scales that fit the whole scene inside the
+   viewport, so the complete window frame (all four bezels) always
+   sits inside the screen, centred, with the ambient backdrop around
+   it. The old focus-point crop (glass at 62.5% of height, centred on
+   x=1070) sliced both bezels off a phone-width screen — the frame is
+   never cropped on any side now. On a tall phone the width fit binds
+   first, so the whole frame reads at ~25% of the screen height; that
+   is the honest price of fit-whole for a 16:10 scene. */
 function computeView() {
   const cw = view.clientWidth, ch = view.clientHeight;
   let s, dx, dy;
   if (cw / ch >= 0.95) {
     s = (ch * 0.90) / WIN.h;            // glass ≈ 90% of screen height
     dx = (cw - W * s) / 2;
-    dx = Math.min(dx, cw - (WIN.x + WIN.w) * s); // keep the wingtip / glass right edge on screen
-    dx = Math.max(dx, cw - W * s);      // never scroll past the scene's right edge
     dy = (ch - H * s) / 2;
   } else {
-    s = (ch * 0.625) / WIN.h;           // glass ≈ 62.5% of screen height
-    dx = cw / 2 - 1070 * s;
-    dx = Math.min(dx, cw - 1300 * s);   // keep the wingtip (x<=1300) on screen
-    dx = Math.max(dx, cw - W * s);      // never scroll past the scene's right edge
+    s = Math.min((ch * 0.625) / WIN.h, (cw * 0.98) / W, (ch * 0.96) / H);
+    dx = (cw - W * s) / 2;
     dy = (ch - H * s) / 2;
   }
   return { s, dx, dy, cw, ch };
@@ -629,6 +768,7 @@ function render() {
   vctx.clearRect(0, 0, viewInfo.cw, viewInfo.ch);
   vctx.drawImage(scene, viewInfo.dx, viewInfo.dy, W * viewInfo.s, H * viewInfo.s);
   if (frame % 6 === 0) bctx.drawImage(scene, 0, 0, bg.width, bg.height);
+  document.body.style.background = css3(mix3([13, 20, 32], [4, 6, 13], nightMix));
 }
 function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
@@ -637,6 +777,15 @@ function loop(now) {
   speed += (target - speed) * Math.min(1, dt * 1.1);
   if (!living && speed < 0.002) speed = 0;
   t += dt * speed;
+  if (nightMix !== nightTarget) {
+    // ~600ms day<->night crossfade on the real clock, so it runs even
+    // while STILL (the sim clock is frozen then; the grade still moves)
+    const step = dt / 0.6;
+    nightMix = nightTarget > nightMix
+      ? Math.min(nightTarget, nightMix + step)
+      : Math.max(nightTarget, nightMix - step);
+    dirty = Math.max(dirty, 2);
+  }
   if (speed > 0 || frame < 2 || dirty > 0) {
     render();
     if (dirty > 0) dirty--;
@@ -649,6 +798,7 @@ requestAnimationFrame(loop);
 /* ---- controls (source behavior: action label for STILL/LIVING,
         state label for sound, chrome auto-hides after 3.5s idle) ---- */
 const controls = document.getElementById('controls');
+const btnMode = document.getElementById('btnMode');
 const btnLiving = document.getElementById('btnLiving');
 const btnSound = document.getElementById('btnSound');
 let stopSoundFn = null;
@@ -661,6 +811,12 @@ function wake() {
 wake();
 window.addEventListener('pointermove', wake);
 window.addEventListener('pointerdown', wake);
+btnMode.addEventListener('click', (e) => {
+  e.stopPropagation();
+  nightTarget = nightTarget ? 0 : 1;
+  btnMode.textContent = nightTarget ? '☀ Day' : '☾ Night';
+  wake();
+});
 btnLiving.addEventListener('click', (e) => {
   e.stopPropagation();
   living = !living;
@@ -695,8 +851,16 @@ window.__df = {
   get t() { return t; },
   get speed() { return speed; },
   get living() { return living; },
+  get mode() { return nightTarget; },
+  get nightMix() { return nightMix; },
   loaded: () => loaded.slice(),
   view: () => viewInfo,
+  sceneRect: () => ({ x: viewInfo.dx, y: viewInfo.dy, w: W * viewInfo.s, h: H * viewInfo.s }),
+  glassRect: () => ({ x: viewInfo.dx + WIN.x * viewInfo.s, y: viewInfo.dy + WIN.y * viewInfo.s, w: WIN.w * viewInfo.s, h: WIN.h * viewInfo.s }),
+  sample: (x, y) => {
+    const d = sctx.getImageData(Math.round(x * SS), Math.round(y * SS), 1, 1).data;
+    return [d[0], d[1], d[2]];
+  },
   glassShare: () => {
     // fraction of the screen covered by the window glass (grid-sampled
     // point-in-rounded-rect against the live view transform)
