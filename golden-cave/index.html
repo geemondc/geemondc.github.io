@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Golden Cave — Future Ready Living Photos</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* Blurred, darkened backdrop of the same painting */
+  #backdrop{
+    position:fixed;
+    inset:0;
+    background-image:url('cave.jpg');
+    background-size:cover;
+    background-position:center;
+    filter:blur(40px) brightness(0.45);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — exactly the painting's box */
+  #stage{
+    position:relative;
+    width:min(100vw, 177.78vh);
+    aspect-ratio:16/9;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#000;
+  }
+  #stage img.painting{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+
+  .layer{
+    position:absolute;
+    pointer-events:none;
+  }
+  body.still .layer{display:none !important;}
+
+  /* Title — quiet, small caps, fades with the controls */
+  #titlebar{
+    position:fixed;
+    top:22px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:10;
+    text-align:center;
+    pointer-events:none;
+    transition:opacity 0.8s ease;
+    text-shadow:0 1px 10px rgba(0,0,0,0.85), 0 0 26px rgba(0,0,0,0.6);
+  }
+  #titlebar.faded{opacity:0;}
+  #titlebar h1{
+    font-size:15px;
+    font-weight:normal;
+    letter-spacing:0.42em;
+    padding-left:0.42em;
+    color:rgba(255,240,210,0.88);
+  }
+  #titlebar p{
+    margin-top:5px;
+    font-size:12px;
+    font-style:italic;
+    letter-spacing:0.18em;
+    padding-left:0.18em;
+    color:rgba(255,240,210,0.55);
+  }
+
+  /* 4 — waterfalls: soft shimmer strips over the painted falls */
+  #falls{inset:0; z-index:2;}
+  .fall{
+    position:absolute;
+    mix-blend-mode:screen;
+    filter:blur(1px);
+    opacity:0.3;
+    background-image:repeating-linear-gradient(to bottom,
+      rgba(205,232,255,0.32) 0px, rgba(205,232,255,0.10) 10px,
+      rgba(205,232,255,0) 26px);
+    background-size:100% 52px;
+    animation:fallDrift linear infinite;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+    mask-image:linear-gradient(to right, transparent, #000 30%, #000 70%, transparent);
+  }
+  @keyframes fallDrift{
+    from{background-position:0 0;}
+    to{background-position:0 156px;}
+  }
+
+  /* 2 — river shimmer: soft light streaks on the water */
+  .streak{
+    position:absolute;
+    height:1.6%;
+    mix-blend-mode:screen;
+    background:radial-gradient(50% 50% at 50% 50%,
+      rgba(255,241,205,0.55) 0%, rgba(255,241,205,0.18) 45%, transparent 72%);
+    animation:streakPulse ease-in-out infinite alternate;
+    z-index:2;
+  }
+  @keyframes streakPulse{
+    from{opacity:0.05; transform:scaleX(0.92);}
+    to{opacity:0.16; transform:scaleX(1.05);}
+  }
+
+  /* 2b — sparkle column in the beam's reflection on the river */
+  #sparkle{
+    left:52.3%;
+    top:70.5%;
+    width:4.4%;
+    height:28.5%;
+    mix-blend-mode:screen;
+    opacity:0.13;
+    background-image:repeating-linear-gradient(to bottom,
+      rgba(255,246,214,0.55) 0px, rgba(255,246,214,0) 2px,
+      rgba(255,246,214,0) 9px);
+    background-size:100% 22px;
+    animation:sparkleSlide 7s linear infinite;
+    -webkit-mask-image:linear-gradient(to right, transparent, #000 32%, #000 68%, transparent);
+    mask-image:linear-gradient(to right, transparent, #000 32%, #000 68%, transparent);
+    z-index:3;
+  }
+  @keyframes sparkleSlide{
+    from{background-position:0 0;}
+    to{background-position:0 220px;}
+  }
+
+  /* 1 — the beam: a soft shaft of light along the painted beam */
+  #beam{
+    inset:0;
+    mix-blend-mode:screen;
+    filter:blur(4px);
+    animation:beamBreathe 9s ease-in-out infinite alternate;
+    z-index:4;
+  }
+  @keyframes beamBreathe{
+    from{opacity:0.6;}
+    to{opacity:1;}
+  }
+  /* warm pool where the beam lands on the plateau */
+  #beamGlow{
+    left:43%;
+    top:37.5%;
+    width:21%;
+    height:12%;
+    mix-blend-mode:screen;
+    background:radial-gradient(50% 50% at 50% 50%,
+      rgba(255,238,196,0.30) 0%, transparent 70%);
+    animation:glowBreathe 9s ease-in-out infinite alternate;
+    z-index:4;
+  }
+  @keyframes glowBreathe{
+    from{opacity:0.35;}
+    to{opacity:0.6;}
+  }
+
+  /* 3 — crystal twinkles, each lit in its own color */
+  #twinkles{inset:0; z-index:5;}
+  .twinkle{
+    position:absolute;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    mix-blend-mode:screen;
+    animation:twinkleFlick ease-in-out infinite;
+  }
+  @keyframes twinkleFlick{
+    0%,100%{opacity:0.25;}
+    28%{opacity:1;}
+    52%{opacity:0.4;}
+    74%{opacity:0.85;}
+  }
+
+  /* 1b — dust motes drifting inside the beam */
+  #dust{
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:6;
+  }
+
+  /* Controls */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 18px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:96vw;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+  }
+  #modeBtn,#soundBtn,#fsBtn{
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  #modeBtn:hover,#soundBtn:hover,#fsBtn:hover{background:rgba(255,255,255,0.10);}
+  #fsBtn{font-size:14px; padding:4px 10px;}
+</style>
+</head>
+<body>
+
+<div id="backdrop"></div>
+
+<div id="titlebar">
+  <h1>THE GOLDEN CAVE</h1>
+  <p>a living photo</p>
+</div>
+
+<div id="stage" title="Tap for full screen">
+  <img class="painting" src="cave.jpg" alt="The Golden Cave">
+  <div class="layer" id="falls"></div>
+  <div class="layer" id="streaks"></div>
+  <div class="layer" id="sparkle"></div>
+  <div class="layer" id="beamGlow"></div>
+  <div class="layer" id="beam">
+    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="beamGrad" x1="0" y1="0" x2="0.12" y2="1">
+          <stop offset="0" stop-color="rgb(255,242,205)" stop-opacity="0.11"/>
+          <stop offset="0.55" stop-color="rgb(255,233,185)" stop-opacity="0.08"/>
+          <stop offset="1" stop-color="rgb(255,226,170)" stop-opacity="0.05"/>
+        </linearGradient>
+      </defs>
+      <polygon points="41.5,0 57.5,0 63.5,48 44.5,48" fill="url(#beamGrad)" opacity="0.45"/>
+      <polygon points="43.8,0 55.2,0 60.8,47.5 47,47.5" fill="url(#beamGrad)"/>
+    </svg>
+  </div>
+  <div class="layer" id="twinkles"></div>
+  <canvas class="layer" id="dust"></canvas>
+</div>
+
+<div id="controls">
+  <button id="modeBtn">STILL</button>
+  <button id="soundBtn">Sound: Off</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var body = document.body;
+  var stage = document.getElementById('stage');
+  var living = true;
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  /* ---------- Overlays placed on the painting's real geography ----------
+     All coordinates are % of the stage, read off the painting itself. */
+
+  /* Waterfalls — [left, top, width, height] */
+  var FALLS = [
+    [23.05, 32.5, 0.9, 13.5],   /* left terraces, fall one of the pair */
+    [25.35, 33.0, 0.9, 14.0],   /* left terraces, fall two of the pair */
+    [50.60, 48.0, 1.5, 13.5],   /* main fall below the lit plateau */
+    [58.80, 59.0, 1.4, 10.0],   /* lower tier fall */
+    [81.90, 33.5, 1.1, 11.0],   /* far fall in the teal chamber */
+    [88.35, 47.0, 1.2, 12.0]    /* fall under the rock bridge, right */
+  ];
+  (function buildFalls(){
+    var box = document.getElementById('falls');
+    for (var i = 0; i < FALLS.length; i++){
+      var f = FALLS[i], d = document.createElement('div');
+      d.className = 'fall';
+      d.style.left = f[0] + '%';
+      d.style.top = f[1] + '%';
+      d.style.width = f[2] + '%';
+      d.style.height = f[3] + '%';
+      d.style.animationDuration = rand(5, 9.5).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 6)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+  })();
+
+  /* River shimmer streaks — [left, top, width] */
+  var STREAKS = [
+    [47, 74.0, 26],
+    [42, 83.0, 22],
+    [60, 67.5, 28],
+    [34, 91.0, 20]
+  ];
+  (function buildStreaks(){
+    var box = document.getElementById('streaks');
+    for (var i = 0; i < STREAKS.length; i++){
+      var s = STREAKS[i], d = document.createElement('div');
+      d.className = 'streak';
+      d.style.left = s[0] + '%';
+      d.style.top = s[1] + '%';
+      d.style.width = s[2] + '%';
+      d.style.animationDuration = rand(5, 8.5).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 7)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+  })();
+
+  /* Crystal twinkles — each cluster lit in its own color.
+     [x, y] points read off the painted crystal clusters. */
+  var AMBER = [
+    [5.2,32],[7.6,37],[11.3,43],[13.8,49.5],[15.6,55],       /* great cluster, far left */
+    [85.5,6],[86.8,11],                                       /* hanging crystals, top right */
+    [94.5,24],[97,33],[92,38],                                /* amber crystal wall, right */
+    [64,50.5],[65.3,52],                                      /* warm cluster at the bridge base */
+    [21.8,95.5],[8.6,96.5],                                   /* foreground crystals, bottom left */
+    [71.5,79],[76,81.5],                                      /* small warm lights, right shore */
+    [93.5,65]                                                 /* warm glow, right shoreline rocks */
+  ];
+  var TEAL = [
+    [19,95],[33.3,95],[30.8,90.5],[34.5,92.5],[37.8,88],      /* foreground crystals, bottom left/center */
+    [92,56],[95.5,53.5],[97.5,60],[90.5,62],                  /* teal crystals, right wall */
+    [94,80],[96.8,76.5],[92.8,86.5],                          /* teal cluster, bottom right */
+    [29.8,31.5],[31.2,33.5],                                  /* distant blue cluster, mid-left terrace */
+    [67.2,27],                                                /* hanging crystal, teal chamber */
+    [69.3,52.5],                                              /* teal at the bridge base */
+    [98.6,47]                                                 /* teal tip, right wall */
+  ];
+  (function buildTwinkles(){
+    var box = document.getElementById('twinkles');
+    function addDot(x, y, colors){
+      var d = document.createElement('div');
+      d.className = 'twinkle';
+      var s = rand(2.5, 4).toFixed(1);
+      d.style.width = s + 'px';
+      d.style.height = s + 'px';
+      d.style.left = x + '%';
+      d.style.top = y + '%';
+      d.style.background = 'radial-gradient(circle, ' + colors[0] + ' 0%, ' + colors[1] + ' 45%, transparent 72%)';
+      d.style.animationDuration = rand(1.4, 3.8).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 4)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+    var i;
+    for (i = 0; i < AMBER.length; i++)
+      addDot(AMBER[i][0], AMBER[i][1], ['rgba(255,214,130,0.95)', 'rgba(255,170,80,0.40)']);
+    for (i = 0; i < TEAL.length; i++)
+      addDot(TEAL[i][0], TEAL[i][1], ['rgba(150,245,240,0.95)', 'rgba(64,200,210,0.40)']);
+  })();
+
+  /* ---------- Dust motes inside the beam ----------
+     The beam runs from the ceiling opening (top, x ~44–55%) down to the
+     lit plateau (y ~47%, x ~47–61%). Motes ride that widening shaft.
+     The rappeller hangs at x ~47.6%, y ~17.5% — motes are never drawn
+     over the figure's patch. */
+  var canvas = document.getElementById('dust');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, rafId = null, lastT = 0;
+  var MOTES = 36, motes = [];
+
+  function sizeCanvas(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function beamEdges(t){           /* t: 0 at the opening, 1 at the plateau */
+    return [44.6 + 2.6 * t, 55.2 + 5.6 * t];   /* left, right edge x% */
+  }
+  function newMote(anywhere){
+    return {
+      t: anywhere ? Math.random() : 0,
+      u: rand(0.08, 0.92),                       /* across the beam's width */
+      speed: rand(0.010, 0.028),                 /* t per second — a slow fall */
+      swayAmp: rand(0.1, 0.4),                   /* x% */
+      swayFreq: rand(0.15, 0.45),
+      phase: rand(0, Math.PI * 2),
+      twFreq: rand(0.5, 1.4),
+      r: rand(0.9, 2.2),
+      a: rand(0.3, 0.75)
+    };
+  }
+  function seedMotes(){
+    motes = [];
+    for (var i = 0; i < MOTES; i++) motes.push(newMote(true));
+  }
+  function drawMotes(t){
+    if (!living){ rafId = null; return; }
+    rafId = requestAnimationFrame(drawMotes);
+    var dt = Math.min((t - lastT) / 1000, 0.05);
+    lastT = t;
+    ctx.clearRect(0, 0, W, H);
+    var ts = t / 1000;
+    for (var i = 0; i < motes.length; i++){
+      var m = motes[i];
+      m.t += m.speed * dt;
+      if (m.t > 1){ motes[i] = newMote(false); continue; }
+      var e = beamEdges(m.t);
+      var xp = e[0] + m.u * (e[1] - e[0]) + Math.sin(ts * m.swayFreq + m.phase) * m.swayAmp;
+      var yp = 5 + m.t * 41;                     /* y% — 5% down to 46% */
+      /* never over the rappeller (x ~45.8–49.6%, y ~14.8–20.5%) */
+      if (xp > 45.4 && xp < 50.0 && yp > 14.2 && yp < 21.2) continue;
+      var tw = 0.55 + 0.45 * Math.sin(ts * m.twFreq + m.phase);
+      var a = m.a * tw;
+      var x = xp / 100 * W, y = yp / 100 * H;
+      ctx.fillStyle = 'rgba(255,231,185,' + (a * 0.25).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(x, y, m.r * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,236,196,' + a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(x, y, m.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function startMotes(){
+    if (rafId === null && living){
+      lastT = performance.now();
+      rafId = requestAnimationFrame(drawMotes);
+    }
+  }
+  function stopMotes(){
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+    ctx.clearRect(0, 0, W, H);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) stopMotes();
+    else if (living) startMotes();
+  });
+
+  /* ---------- Sound — procedural cave ambience (Web Audio) ----------
+     A very low water hush, and sparse drips whose "plink" rings through
+     a feedback delay, the way a real drop rings into a cavern. */
+  var audioCtx = null, master = null, dripBus = null;
+  var soundOn = false, dripTimer = null;
+  var soundBtn = document.getElementById('soundBtn');
+
+  function buildAudio(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    master = audioCtx.createGain();
+    master.gain.value = 0;
+    master.connect(audioCtx.destination);
+
+    /* the hush — looped noise through a low filter, barely there */
+    var len = 2 * audioCtx.sampleRate;
+    var buffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    var src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    var lp = audioCtx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 340;
+    var hush = audioCtx.createGain(); hush.gain.value = 0.03;
+    src.connect(lp); lp.connect(hush); hush.connect(master);
+    src.start();
+    /* the hush breathes, very slowly */
+    var lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.06;
+    var lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.008;
+    lfo.connect(lfoGain); lfoGain.connect(hush.gain);
+    lfo.start();
+
+    /* the echo the drips ring into: dry path + 0.28s feedback delay */
+    dripBus = audioCtx.createGain();
+    var dry = audioCtx.createGain(); dry.gain.value = 0.3;
+    var delay = audioCtx.createDelay(1); delay.delayTime.value = 0.28;
+    var fb = audioCtx.createGain(); fb.gain.value = 0.35;
+    var wet = audioCtx.createGain(); wet.gain.value = 0.4;
+    dripBus.connect(dry); dry.connect(master);
+    dripBus.connect(delay); delay.connect(fb); fb.connect(delay);
+    delay.connect(wet); wet.connect(master);
+  }
+
+  function plink(){
+    if (!audioCtx || !soundOn || !living) return;
+    var t0 = audioCtx.currentTime;
+    var o = audioCtx.createOscillator(); o.type = 'sine';
+    var f0 = rand(1250, 1600);
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.5, t0 + 0.12);  /* ~1400→700Hz glide */
+    var g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(0.25, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+    o.connect(g); g.connect(dripBus);
+    o.start(t0); o.stop(t0 + 0.45);
+  }
+  function scheduleDrip(){
+    clearTimeout(dripTimer);
+    if (soundOn && living)
+      dripTimer = setTimeout(function(){ plink(); scheduleDrip(); }, rand(2000, 7000));
+  }
+  function updateMaster(){
+    if (!audioCtx) return;
+    var t = audioCtx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(soundOn && living ? 0.9 : 0, t + 1.2);
+  }
+  soundBtn.addEventListener('click', function(){
+    if (!audioCtx) buildAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+    updateMaster();
+    scheduleDrip();
+  });
+
+  /* ---------- Mode toggle ---------- */
+  var modeBtn = document.getElementById('modeBtn');
+  modeBtn.addEventListener('click', function(){
+    living = !living;
+    body.classList.toggle('still', !living);
+    modeBtn.textContent = living ? 'STILL' : 'LIVING';
+    if (living){ startMotes(); scheduleDrip(); }
+    else stopMotes();
+    updateMaster();
+  });
+
+  /* ---------- Fullscreen on stage tap ---------- */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+  stage.addEventListener('click', toggleFS);
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+
+  /* ---------- Controls + title auto-fade ---------- */
+  var controls = document.getElementById('controls');
+  var titlebar = document.getElementById('titlebar');
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    titlebar.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){
+      controls.classList.add('faded');
+      titlebar.classList.add('faded');
+    }, 3500);
+  }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, {passive:true});
+  wake();
+
+  /* ---------- Init ---------- */
+  function init(){
+    sizeCanvas();
+    seedMotes();
+    startMotes();
+  }
+  window.addEventListener('resize', function(){ sizeCanvas(); seedMotes(); });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
