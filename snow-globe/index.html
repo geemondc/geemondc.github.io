@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Snow Globe — Future Ready Living Photos</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* Blurred, darkened backdrop of the same photo */
+  #backdrop{
+    position:fixed;
+    inset:0;
+    background-image:url('globe.jpg');
+    background-size:cover;
+    background-position:center;
+    filter:blur(40px) brightness(0.45);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — exactly the photo's box */
+  #stage{
+    position:relative;
+    width:min(100vw, 177.78vh);
+    aspect-ratio:16/9;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#000;
+  }
+  #stage img.painting{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+
+  .layer{
+    position:absolute;
+    pointer-events:none;
+  }
+  body.still .layer{display:none !important;}
+
+  /* Title — quiet, small caps, fades with the controls */
+  #titlebar{
+    position:fixed;
+    top:22px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:10;
+    text-align:center;
+    pointer-events:none;
+    transition:opacity 0.8s ease;
+    text-shadow:0 1px 10px rgba(0,0,0,0.85), 0 0 26px rgba(0,0,0,0.6);
+  }
+  #titlebar.faded{opacity:0;}
+  #titlebar h1{
+    font-size:15px;
+    font-weight:normal;
+    letter-spacing:0.42em;
+    padding-left:0.42em;
+    color:rgba(255,240,214,0.88);
+  }
+  #titlebar p{
+    margin-top:5px;
+    font-size:12px;
+    font-style:italic;
+    letter-spacing:0.18em;
+    padding-left:0.18em;
+    color:rgba(255,240,214,0.55);
+  }
+
+  /* The fireplace breathing — one soft warm glow over the hearth zone */
+  #hearth{
+    left:-5%;
+    top:24%;
+    width:26%;
+    height:40%;
+    mix-blend-mode:screen;
+    background:radial-gradient(50% 50% at 50% 50%,
+      rgba(255,146,58,0.50) 0%, rgba(255,110,40,0.18) 48%, transparent 72%);
+    animation:hearthBreathe 7.5s ease-in-out infinite alternate;
+    z-index:2;
+  }
+  @keyframes hearthBreathe{
+    from{opacity:0.14;}
+    to{opacity:0.26;}
+  }
+
+  /* Christmas-tree bokeh breathing gently at the right edge */
+  #bokeh{inset:0; z-index:3;}
+  .bokehDot{
+    position:absolute;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    mix-blend-mode:screen;
+    animation:bokehPulse ease-in-out infinite alternate;
+  }
+  @keyframes bokehPulse{
+    from{opacity:0.22; transform:translate(-50%,-50%) scale(0.96);}
+    to{opacity:0.55; transform:translate(-50%,-50%) scale(1.06);}
+  }
+
+  /* Village twinkles — warm candle-rhythm dots on the lit windows */
+  #twinkles{inset:0; z-index:4;}
+  .twinkle{
+    position:absolute;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    mix-blend-mode:screen;
+    animation:twinkleFlick ease-in-out infinite;
+  }
+  @keyframes twinkleFlick{
+    0%,100%{opacity:0.25;}
+    28%{opacity:1;}
+    52%{opacity:0.4;}
+    74%{opacity:0.85;}
+  }
+
+  /* The snow — a canvas that only ever draws inside the glass */
+  #snow{
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:5;
+  }
+
+  /* Controls */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 18px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:96vw;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+  }
+  #modeBtn,#fsBtn{
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  #modeBtn:hover,#fsBtn:hover{background:rgba(255,255,255,0.10);}
+  #fsBtn{font-size:14px; padding:4px 10px;}
+</style>
+</head>
+<body>
+
+<div id="backdrop"></div>
+
+<div id="titlebar">
+  <h1>THE SNOW GLOBE</h1>
+  <p>tap the globe</p>
+</div>
+
+<div id="stage" title="Tap the globe to shake it — tap elsewhere for full screen">
+  <img class="painting" src="globe.jpg" alt="The Snow Globe">
+  <div class="layer" id="hearth"></div>
+  <div class="layer" id="bokeh"></div>
+  <div class="layer" id="twinkles"></div>
+  <canvas class="layer" id="snow"></canvas>
+</div>
+
+<div id="controls">
+  <button id="modeBtn">STILL</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var body = document.body;
+  var stage = document.getElementById('stage');
+  var living = true;
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  /* ---------- The globe's real geography, measured off the photo ----------
+     Glass circle: center (67.0% of width, 44.5% of height), radius 24.5% of
+     stage width (= 43.5% of stage height) — a true circle in pixels. The
+     sphere's bottom dips behind the wooden base; the fit comes from the
+     left/right extremes, the top, and the rim curvature at the base line.
+     The snow mask rides a hair inside the rim: 0.96 × R. */
+  var GX = 0.670, GY = 0.445, GR = 0.245;   /* fractions of stage W / H / W */
+  var MASK = 0.96;
+
+  /* Village twinkles — [x%, y%] on the lit windows and the lamppost,
+     read off the photo window by window. */
+  var WINDOWS = [
+    [65.5, 28.5],   /* steeple window */
+    [65.5, 39.0],   /* church tall window */
+    [65.3, 43.5],   /* church door light */
+    [57.5, 46.5],   /* left cottage — dormer */
+    [56.3, 52.5],   /* left cottage — ground left */
+    [59.3, 52.8],   /* left cottage — ground right / door */
+    [70.5, 46.3],   /* middle cottage — upper */
+    [69.8, 50.0],   /* middle cottage — left */
+    [74.2, 50.0],   /* middle cottage — right one */
+    [76.8, 50.0],   /* middle cottage — right two */
+    [82.3, 51.0],   /* right cottage — dormer */
+    [80.8, 55.8],   /* right cottage — ground left */
+    [83.8, 56.3],   /* right cottage — ground middle */
+    [86.8, 56.0]    /* right cottage — ground right */
+  ];
+  var LAMPPOST = [65.3, 48.8];
+  (function buildTwinkles(){
+    var box = document.getElementById('twinkles');
+    function addDot(x, y, s){
+      var d = document.createElement('div');
+      d.className = 'twinkle';
+      d.style.width = s + 'px';
+      d.style.height = s + 'px';
+      d.style.left = x + '%';
+      d.style.top = y + '%';
+      d.style.background = 'radial-gradient(circle, rgba(255,220,150,0.95) 0%, rgba(255,178,92,0.40) 45%, transparent 72%)';
+      d.style.animationDuration = rand(1.4, 3.8).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 4)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+    for (var i = 0; i < WINDOWS.length; i++)
+      addDot(WINDOWS[i][0], WINDOWS[i][1], rand(5, 8).toFixed(1));
+    addDot(LAMPPOST[0], LAMPPOST[1], 9);   /* the lantern burns a touch bigger */
+  })();
+
+  /* Tree bokeh — [x%, y%, size px, warm gold or red] over the tree zone */
+  var BOKEH = [
+    [85.0, 15.0, 26, 'gold'], [92.5, 21.0, 20, 'gold'], [96.0, 27.0, 24, 'gold'],
+    [89.5, 32.0, 16, 'gold'], [99.0, 12.0, 18, 'gold'], [84.0, 38.0, 14, 'gold'],
+    [91.0,  6.5, 20, 'red' ], [94.5, 17.0, 14, 'red' ]
+  ];
+  (function buildBokeh(){
+    var box = document.getElementById('bokeh');
+    for (var i = 0; i < BOKEH.length; i++){
+      var b = BOKEH[i], d = document.createElement('div');
+      d.className = 'bokehDot';
+      d.style.width = b[2] + 'px';
+      d.style.height = b[2] + 'px';
+      d.style.left = b[0] + '%';
+      d.style.top = b[1] + '%';
+      d.style.background = b[3] === 'red'
+        ? 'radial-gradient(circle, rgba(255,120,90,0.55) 0%, rgba(230,70,50,0.20) 50%, transparent 72%)'
+        : 'radial-gradient(circle, rgba(255,214,140,0.55) 0%, rgba(255,178,92,0.20) 50%, transparent 72%)';
+      d.style.animationDuration = rand(4, 8).toFixed(2) + 's';
+      d.style.animationDelay = (-rand(0, 6)).toFixed(2) + 's';
+      box.appendChild(d);
+    }
+  })();
+
+  /* ---------- The snow — a storm sealed inside the glass ----------
+     Flakes live in a pseudo-depth field: z 0 (far) to 1 (near) sets size,
+     brightness and fall speed. IDLE keeps ~70 flakes in a lazy drift
+     forever. A shake pours energy into the system (E = 1): the pool
+     surges to ~460, every flake gets an upward + outward kick and the
+     vortex takes hold; drag and a decaying swirl bleed the energy off
+     with a ~9.5s time constant, so the storm eases back to idle over
+     roughly 25–30 seconds. Flakes that reach their own settle line in
+     the village's snow ground fade out and respawn at the top. */
+  var canvas = document.getElementById('snow');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, rafId = null, lastT = 0;
+  var IDLE = 70, MAXP = 460;
+  var flakes = [], energy = 0, SWIRL = 1;   /* vortex direction */
+
+  var cx = 0, cy = 0, R = 0, RM = 0, sizeK = 1;
+  function sizeCanvas(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cx = GX * W; cy = GY * H; R = GR * W; RM = R * MASK;
+    sizeK = Math.min(1.75, Math.max(0.75, W / 1500));
+  }
+
+  function newFlake(){
+    return {
+      x: 0, y: 0, z: Math.random(),
+      vx: 0, vy: 0,
+      phase: rand(0, Math.PI * 2),
+      swayF: rand(0.4, 1.1), swayA: rand(1.5, 4),
+      settleV: rand(0.42, 0.60),   /* personal ground line, in (y-cy)/R */
+      active: false
+    };
+  }
+  function spawnInDisc(f){
+    var a = rand(0, Math.PI * 2), rr = RM * Math.sqrt(Math.random()) * 0.98;
+    f.x = cx + Math.cos(a) * rr;
+    f.y = cy + Math.sin(a) * rr;
+    f.vx = 0; f.vy = 0;
+  }
+  function spawnAtTop(f){
+    /* re-enter through the upper dome of the sphere */
+    var a = rand(Math.PI * 1.12, Math.PI * 1.88), rr = RM * Math.sqrt(Math.random()) * 0.94;
+    f.x = cx + Math.cos(a) * rr;
+    f.y = cy + Math.sin(a) * rr;
+    f.vx = 0; f.vy = rand(0, 4);
+  }
+  function seedFlakes(){
+    flakes = [];
+    for (var i = 0; i < MAXP; i++){
+      var f = newFlake();
+      if (i < IDLE){
+        f.active = true;
+        spawnInDisc(f);
+        if ((f.y - cy) / R > f.settleV) f.y = cy - rand(0, RM * 0.6);
+      }
+      flakes.push(f);
+    }
+  }
+  function activeCount(){
+    var n = 0;
+    for (var i = 0; i < flakes.length; i++) if (flakes[i].active) n++;
+    return n;
+  }
+
+  function shake(){
+    if (!living) return;
+    energy = 1;
+    for (var i = 0; i < flakes.length; i++){
+      var f = flakes[i];
+      if (!f.active){ f.active = true; spawnInDisc(f); }
+      var dx = f.x - cx, dy = f.y - cy;
+      var d = Math.sqrt(dx * dx + dy * dy) || 1;
+      var ux = dx / d, uy = dy / d;
+      var near = 0.6 + 0.4 * f.z;
+      f.vy -= rand(90, 300) * near;                    /* the eruption lifts */
+      f.vx += ux * rand(30, 150);                      /* and bursts outward */
+      f.vy += uy * rand(30, 150);
+      f.vx += -uy * rand(60, 190) * SWIRL;             /* and the vortex grabs */
+      f.vy += ux * rand(60, 190) * SWIRL;
+    }
+  }
+
+  function drawSnow(t){
+    if (!living){ rafId = null; return; }
+    rafId = requestAnimationFrame(drawSnow);
+    var dt = Math.min((t - lastT) / 1000, 0.05);
+    lastT = t;
+    var ts = t / 1000;
+
+    energy *= Math.exp(-dt / 9.5);                     /* the long settle */
+    var target = Math.round(IDLE + (MAXP - IDLE) * energy);
+    var n = activeCount();
+    if (n < target){
+      for (var i = 0, need = target - n; i < flakes.length && need > 0; i++)
+        if (!flakes[i].active){ flakes[i].active = true; spawnAtTop(flakes[i]); need--; }
+    }
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, RM, 0, Math.PI * 2);
+    ctx.clip();
+
+    var dragK = Math.exp(-dt * 0.8);
+    for (var j = 0; j < flakes.length; j++){
+      var f = flakes[j];
+      if (!f.active) continue;
+
+      var dx = f.x - cx, dy = f.y - cy;
+      var d = Math.sqrt(dx * dx + dy * dy) || 1;
+
+      /* the vortex — tangential, fed by the storm's energy */
+      if (energy > 0.01){
+        var aT = energy * 150 * (0.5 + 0.5 * f.z);
+        f.vx += (-dy / d) * aT * SWIRL * dt;
+        f.vy += ( dx / d) * aT * SWIRL * dt;
+      }
+      /* gravity, gentle; drag bleeds every velocity toward the drift */
+      f.vy += 20 * (0.35 + 0.65 * f.z) * dt;
+      f.vx *= dragK; f.vy *= dragK;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+
+      /* stay inside the glass */
+      var ndx = f.x - cx, ndy = f.y - cy;
+      var nd = Math.sqrt(ndx * ndx + ndy * ndy);
+      if (nd > RM){
+        f.x = cx + ndx / nd * RM;
+        f.y = cy + ndy / nd * RM;
+        var vr = (f.vx * ndx + f.vy * ndy) / nd;
+        if (vr > 0){ f.vx -= vr * ndx / nd; f.vy -= vr * ndy / nd; }
+      }
+
+      /* settled into the village snow — recycle, or rest if the storm has passed */
+      if ((f.y - cy) / R > f.settleV){
+        if (activeCount() > target){ f.active = false; continue; }
+        spawnAtTop(f);
+      }
+
+      /* fade softly at the glass so nothing ever clips at the rim */
+      var edge = 1 - Math.min(1, Math.max(0, (nd / RM - 0.86) / 0.14));
+      if (edge <= 0) continue;
+      var a = (0.35 + 0.60 * f.z) * edge;
+      var r = (1 + 2.5 * f.z) * sizeK;
+      var sx = f.x + Math.sin(ts * f.swayF + f.phase) * f.swayA * (0.4 + 0.6 * (1 - energy));
+
+      ctx.fillStyle = 'rgba(255,248,238,' + (a * 0.25).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(sx, f.y, r * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,251,244,' + a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(sx, f.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function startSnow(){
+    if (rafId === null && living){
+      lastT = performance.now();
+      rafId = requestAnimationFrame(drawSnow);
+    }
+  }
+  function stopSnow(){
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+    ctx.clearRect(0, 0, W, H);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) stopSnow();
+    else if (living) startSnow();
+  });
+
+  /* ---------- Tap law ----------
+     On the globe: SHAKE, and only shake. Anywhere else on the stage:
+     fullscreen. True in fullscreen too. In STILL the globe is inert. */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+  stage.addEventListener('click', function(e){
+    var r = stage.getBoundingClientRect();
+    var px = e.clientX - r.left, py = e.clientY - r.top;
+    var ddx = px - GX * r.width, ddy = py - GY * r.height;
+    if (Math.sqrt(ddx * ddx + ddy * ddy) <= GR * r.width){
+      shake();              /* no-ops in STILL — the globe does nothing */
+    } else {
+      toggleFS();
+    }
+  });
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+
+  /* ---------- Mode toggle ---------- */
+  var modeBtn = document.getElementById('modeBtn');
+  modeBtn.addEventListener('click', function(){
+    living = !living;
+    body.classList.toggle('still', !living);
+    modeBtn.textContent = living ? 'STILL' : 'LIVING';
+    if (living) startSnow();
+    else stopSnow();
+  });
+
+  /* ---------- Controls + title auto-fade ---------- */
+  var controls = document.getElementById('controls');
+  var titlebar = document.getElementById('titlebar');
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    titlebar.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){
+      controls.classList.add('faded');
+      titlebar.classList.add('faded');
+    }, 3500);
+  }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, {passive:true});
+  wake();
+
+  /* ---------- Init ---------- */
+  function init(){
+    sizeCanvas();
+    seedFlakes();
+    startSnow();
+  }
+  window.addEventListener('resize', function(){ sizeCanvas(); seedFlakes(); });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
