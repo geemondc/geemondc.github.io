@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Big View — The Hour Slider</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 34px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%); margin-top:26px;
+           aspect-ratio: 2560 / 1440; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .stage img.acc { inset:auto; object-fit:fill; }
+  #controls { margin-top:24px; width:min(680px, 100%); display:flex;
+              flex-direction:column; align-items:center; }
+  .readout { font-size:clamp(22px, 3.4vw, 30px); letter-spacing:.1em; color:#f2ead6;
+             text-align:center; }
+  .readout .phase { font-style:italic; font-size:.62em; color:#b9b09a;
+                    letter-spacing:.06em; margin-left:.5em; }
+  .sliderRow { width:100%; margin-top:14px; }
+  input[type=range] { -webkit-appearance:none; appearance:none; width:100%;
+                      height:34px; background:transparent; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:3px;
+      background:linear-gradient(90deg,#7d94b8 0%,#c9a86a 55%,#e08a3c 72%,#4a5f9e 84%,#141c3a 100%); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
+      width:26px; height:26px; margin-top:-10px; border-radius:50%;
+      background:#f2ead6; border:2px solid #8a7f63;
+      box-shadow:0 2px 10px rgba(0,0,0,.6); }
+  input[type=range]::-moz-range-track { height:6px; border-radius:3px;
+      background:linear-gradient(90deg,#7d94b8 0%,#c9a86a 55%,#e08a3c 72%,#4a5f9e 84%,#141c3a 100%); }
+  input[type=range]::-moz-range-thumb { width:22px; height:22px; border-radius:50%;
+      background:#f2ead6; border:2px solid #8a7f63;
+      box-shadow:0 2px 10px rgba(0,0,0,.6); }
+  .ticks { display:flex; justify-content:space-between; margin-top:2px;
+           font-size:12.5px; letter-spacing:.08em; color:#8f887a; }
+  .toggleRow { margin-top:20px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  .toggle { display:flex; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  .hint { margin-top:14px; font-size:13px; font-style:italic; color:#8f887a;
+          text-align:center; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer;
+        overflow:hidden; }
+  #fsBg { position:absolute; inset:-40px; width:calc(100% + 80px); height:calc(100% + 80px);
+          object-fit:cover; filter:blur(28px) brightness(.62); }
+  #fs .wrap { position:absolute; }
+  #fs .wrap img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  #fs .wrap img.acc { inset:auto; object-fit:fill; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The Big View</h1>
+  <div class="statement">One view, every hour — slide through its day</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay" src="still.jpg" alt="The Big View">
+    <img id="lyrGold" src="gold.jpg" alt="" style="opacity:0">
+    <img id="lyrDusk" src="dusk.jpg" alt="" style="opacity:0">
+    <img id="lyrDeep" src="deep.jpg" alt="" style="opacity:0">
+    <img class="acc" id="lyrAccGuitar" src="acc-guitar.png" alt="" style="opacity:0;left:32.1875%;top:19.5833%;width:8.2812%;height:18.6806%">
+    <img class="acc" id="lyrAccLaser" src="acc-laser.png" alt="" style="opacity:0;left:35.2734%;top:2.7083%;width:2.6953%;height:20.3472%">
+    <img class="acc" id="lyrAccStrip" src="acc-strip.png" alt="" style="opacity:0;left:0.0781%;top:0.7639%;width:98.8672%;height:56.2500%">
+    <img class="acc" id="lyrAccMonitors" src="acc-monitors.png" alt="" style="opacity:0;left:0.0000%;top:37.4306%;width:15.5469%;height:14.9306%">
+    <img class="acc" id="lyrAccLampA" src="acc-lampa.png" alt="" style="opacity:0;left:16.6016%;top:38.4028%;width:8.5156%;height:12.9167%">
+    <img class="acc" id="lyrAccLampB" src="acc-lampb.png" alt="" style="opacity:0;left:88.9844%;top:39.9306%;width:9.5312%;height:11.8750%">
+    <img class="acc" id="lyrAccCandles" src="acc-candles.png" alt="" style="opacity:0;left:42.8125%;top:85.9028%;width:8.1641%;height:12.5000%">
+    <img class="acc" id="lyrAccMoon" src="acc-moon.png" alt="" style="opacity:0;left:70.9766%;top:7.7083%;width:2.4219%;height:4.3056%">
+    <img class="acc" id="lyrAccFireworks" src="acc-fireworks.png" alt="" style="opacity:0;left:68.2031%;top:21.1806%;width:8.5938%;height:9.0278%">
+    <img class="acc" id="lyrAccStars" src="acc-stars.png" alt="" style="opacity:0;left:55.6641%;top:4.3056%;width:34.0234%;height:26.1806%">
+    <img class="acc" id="lyrAccCityA" src="acc-citya.png" alt="" style="opacity:0;left:17.6172%;top:33.4028%;width:68.6719%;height:13.7500%">
+    <img class="acc" id="lyrAccCityB" src="acc-cityb.png" alt="" style="opacity:0;left:18.5156%;top:33.2639%;width:69.1016%;height:14.0972%">
+    <img class="acc" id="lyrAccCityC" src="acc-cityc.png" alt="" style="opacity:0;left:13.7500%;top:33.4028%;width:74.8047%;height:13.8889%">
+    <img class="acc" id="lyrAccLakeA" src="acc-lakea.png" alt="" style="opacity:0;left:38.0469%;top:41.7361%;width:35.1953%;height:11.1111%">
+    <img class="acc" id="lyrAccLakeB" src="acc-lakeb.png" alt="" style="opacity:0;left:35.3906%;top:41.7361%;width:38.5938%;height:11.1111%">
+    <img class="acc" id="lyrAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">
+  </div>
+
+  <div id="controls">
+    <div class="readout"><span id="clock">6:40 PM</span><span class="phase" id="phaseName">Golden Hour</span></div>
+    <div class="sliderRow">
+      <input type="range" id="hourSlider" min="360" max="1440" step="1" value="1120"
+             aria-label="Hour of day, 6 AM to midnight">
+      <div class="ticks"><span>6 AM</span><span>Noon</span><span>6 PM</span><span>Midnight</span></div>
+    </div>
+    <div class="toggleRow">
+      <div class="toggle">
+        <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+      </div>
+    </div>
+    <div class="hint">Slide the hour — the light travels, the view never moves. Tap the photo for full screen.</div>
+  </div>
+</main>
+
+<div id="fs"><img id="fsBg" src="gold.jpg" alt=""><div class="wrap" id="fsWrap">
+    <img id="fsDay" src="still.jpg" alt="The Big View">
+    <img id="fsGold" src="gold.jpg" alt="" style="opacity:0">
+    <img id="fsDusk" src="dusk.jpg" alt="" style="opacity:0">
+    <img id="fsDeep" src="deep.jpg" alt="" style="opacity:0">
+    <img class="acc" id="fsAccGuitar" src="acc-guitar.png" alt="" style="opacity:0;left:32.1875%;top:19.5833%;width:8.2812%;height:18.6806%">
+    <img class="acc" id="fsAccLaser" src="acc-laser.png" alt="" style="opacity:0;left:35.2734%;top:2.7083%;width:2.6953%;height:20.3472%">
+    <img class="acc" id="fsAccStrip" src="acc-strip.png" alt="" style="opacity:0;left:0.0781%;top:0.7639%;width:98.8672%;height:56.2500%">
+    <img class="acc" id="fsAccMonitors" src="acc-monitors.png" alt="" style="opacity:0;left:0.0000%;top:37.4306%;width:15.5469%;height:14.9306%">
+    <img class="acc" id="fsAccLampA" src="acc-lampa.png" alt="" style="opacity:0;left:16.6016%;top:38.4028%;width:8.5156%;height:12.9167%">
+    <img class="acc" id="fsAccLampB" src="acc-lampb.png" alt="" style="opacity:0;left:88.9844%;top:39.9306%;width:9.5312%;height:11.8750%">
+    <img class="acc" id="fsAccCandles" src="acc-candles.png" alt="" style="opacity:0;left:42.8125%;top:85.9028%;width:8.1641%;height:12.5000%">
+    <img class="acc" id="fsAccMoon" src="acc-moon.png" alt="" style="opacity:0;left:70.9766%;top:7.7083%;width:2.4219%;height:4.3056%">
+    <img class="acc" id="fsAccFireworks" src="acc-fireworks.png" alt="" style="opacity:0;left:68.2031%;top:21.1806%;width:8.5938%;height:9.0278%">
+    <img class="acc" id="fsAccStars" src="acc-stars.png" alt="" style="opacity:0;left:55.6641%;top:4.3056%;width:34.0234%;height:26.1806%">
+    <img class="acc" id="fsAccCityA" src="acc-citya.png" alt="" style="opacity:0;left:17.6172%;top:33.4028%;width:68.6719%;height:13.7500%">
+    <img class="acc" id="fsAccCityB" src="acc-cityb.png" alt="" style="opacity:0;left:18.5156%;top:33.2639%;width:69.1016%;height:14.0972%">
+    <img class="acc" id="fsAccCityC" src="acc-cityc.png" alt="" style="opacity:0;left:13.7500%;top:33.4028%;width:74.8047%;height:13.8889%">
+    <img class="acc" id="fsAccLakeA" src="acc-lakea.png" alt="" style="opacity:0;left:38.0469%;top:41.7361%;width:35.1953%;height:11.1111%">
+    <img class="acc" id="fsAccLakeB" src="acc-lakeb.png" alt="" style="opacity:0;left:35.3906%;top:41.7361%;width:38.5938%;height:11.1111%">
+    <img class="acc" id="fsAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var state = 'living';       // 'still' | 'living' — opens LIVING, per the piece
+  var minutes = 1120;         // 6:40 PM — opens at golden hour
+  var phase = 0;              // twinkle clock, seconds; advances only while LIVING
+  var lastNow = null;
+  var forcedAcc = null;       // QA hook
+
+  function stack(p){
+    return {
+             day: document.getElementById(p+'Day'),
+             gold: document.getElementById(p+'Gold'),
+             dusk: document.getElementById(p+'Dusk'),
+             deep: document.getElementById(p+'Deep'),
+             accGuitar: document.getElementById(p+'AccGuitar'),
+             accLaser: document.getElementById(p+'AccLaser'),
+             accStrip: document.getElementById(p+'AccStrip'),
+             accMonitors: document.getElementById(p+'AccMonitors'),
+             accLampA: document.getElementById(p+'AccLampA'),
+             accLampB: document.getElementById(p+'AccLampB'),
+             accCandles: document.getElementById(p+'AccCandles'),
+             accMoon: document.getElementById(p+'AccMoon'),
+             accFireworks: document.getElementById(p+'AccFireworks'),
+             accStars: document.getElementById(p+'AccStars'),
+             accCityA: document.getElementById(p+'AccCityA'),
+             accCityB: document.getElementById(p+'AccCityB'),
+             accCityC: document.getElementById(p+'AccCityC'),
+             accLakeA: document.getElementById(p+'AccLakeA'),
+             accLakeB: document.getElementById(p+'AccLakeB'),
+             accLakeC: document.getElementById(p+'AccLakeC')
+    };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsWrap = document.getElementById('fsWrap');
+  var fsBg = document.getElementById('fsBg');
+  var fsOpen = false;
+
+  // Fullscreen: the wrap is sized to the whole picture fitted inside the
+  // screen (contain), centred, over the picture's own blurred extension —
+  // so the cropped accent layers (positioned in % of the picture) line up
+  // at any screen shape, and the photo is always whole, never cropped.
+  function fitFs(){
+    var vw = window.innerWidth, vh = window.innerHeight, ar = 2560 / 1440;
+    var w = vw, h = vw / ar;
+    if (h > vh) { h = vh; w = vh * ar; }
+    fsWrap.style.left = ((vw - w) / 2) + 'px';
+    fsWrap.style.top = ((vh - h) / 2) + 'px';
+    fsWrap.style.width = w + 'px';
+    fsWrap.style.height = h + 'px';
+  }
+  window.addEventListener('resize', function(){ if (fsOpen) fitFs(); });
+
+  // THE HOUR SLIDER. The four frames are keyframes of one view, anchored to
+  // the hours they belong to: the day frame holds the morning, the golden
+  // frame belongs to 6:30 PM, dusk to 7:15 PM, deep night from 9:30 PM to
+  // midnight. Between anchors the frames crossfade by position — stacked
+  // plates (day under gold under dusk under deep), opacities cumulative so
+  // any blend sums exactly to the two neighbouring frames. The painting
+  // never moves; only the light travels.
+  var STOPS = [ [360, 0], [1110, 1], [1155, 2], [1290, 3], [1440, 3] ]; // [minutes, frameIdx]
+  var FRAME_SRC = ['still.jpg', 'gold.jpg', 'dusk.jpg', 'deep.jpg'];
+  function weights(m){
+    var w = [0, 0, 0, 0];
+    if (m <= STOPS[0][0]) { w[0] = 1; return w; }
+    for (var i = 0; i < STOPS.length - 1; i++){
+      var a = STOPS[i], b = STOPS[i + 1];
+      if (m <= b[0]){
+        if (a[1] === b[1]) { w[a[1]] = 1; return w; }
+        var f = (m - a[0]) / (b[0] - a[0]);
+        w[a[1]] = 1 - f; w[b[1]] = f;
+        return w;
+      }
+    }
+    w[3] = 1; return w;
+  }
+  function plateOpacities(w){
+    return { day: 1, gold: w[1] + w[2] + w[3], dusk: w[2] + w[3], deep: w[3] };
+  }
+
+  // Accents — the shipped Big View engine, unchanged: each accent in its
+  // own colour on its own slow rhythm, gated by envelopes keyed to the
+  // frame mix (the slider's position plays the role the 60s loop played).
+  // 'night' wakes as the view deepens (the guitar is the signature swell);
+  // 'lamp' the room's warm lights; 'room' the monitor bank; 'strip' the LED
+  // strip; 'city' the towers waking in offset groups from dusk; 'deep2' the
+  // star-dose gate — stars, lake flecks and fireworks gain nothing until
+  // deep night (deep^2); point size never changes.
+  // [key, period, phase, max, envelope, pulse floor]
+  var ACC = [ ['accGuitar',   15, 0.0, 0.95, 'night', 0.35],
+              ['accLaser',    17, 3.0, 0.75, 'night', 0.50],
+              ['accStrip',    13, 0.0, 0.95, 'strip', 0.50],
+              ['accMonitors', 11, 2.0, 0.85, 'room',  0.72],
+              ['accLampA',    10, 1.0, 0.90, 'lamp',  0.50],
+              ['accLampB',    12, 5.0, 0.90, 'lamp',  0.50],
+              ['accCandles',   9, 0.0, 0.90, 'lamp',  0.55],
+              ['accMoon',     14, 4.0, 0.85, 'night', 0.40],
+              ['accFireworks',16, 6.0, 0.85, 'deep2', 0.30],
+              ['accStars',    13, 0.0, 0.90, 'deep2', 0.55],
+              ['accCityA',     9, 0.0, 0.95, 'city',  0.30],
+              ['accCityB',    13, 4.2, 0.95, 'city',  0.30],
+              ['accCityC',    17, 8.9, 0.95, 'city',  0.30],
+              ['accLakeA',     9, 1.0, 0.95, 'deep2', 0.30],
+              ['accLakeB',    13, 5.0, 0.95, 'deep2', 0.30],
+              ['accLakeC',    17, 9.5, 0.95, 'deep2', 0.30] ];
+  function accOpacities(w, t){
+    var env = { night: 0.15 + 0.85 * Math.max(0.5 * w[2], w[3]),
+                lamp: 0.20 + 0.80 * Math.max(0.55 * w[1], 0.8 * w[2], w[3]),
+                room: 0.45 + 0.55 * Math.max(w[2], w[3]),
+                strip: 0.25 + 0.75 * Math.max(w[2], w[3]),
+                city: Math.max(w[2], w[3]),
+                deep2: w[3] * w[3] };
+    var o = {};
+    for (var i = 0; i < ACC.length; i++){
+      var a = ACC[i];
+      var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t + a[2]) / a[1]);
+      p = p * p * (3 - 2 * p);
+      o[a[0]] = a[3] * env[a[4]] * (a[5] + (1 - a[5]) * p);
+    }
+    if (forcedAcc !== null){ for (var k in o) o[k] = forcedAcc; }
+    return o;
+  }
+  function apply(st, so, ao){
+    st.day.style.opacity = so.day;
+    st.gold.style.opacity = so.gold;
+    st.dusk.style.opacity = so.dusk;
+    st.deep.style.opacity = so.deep;
+    for (var i = 0; i < ACC.length; i++){
+      var k = ACC[i][0];
+      st[k].style.opacity = ao[k];
+    }
+  }
+  function render(){
+    var w = weights(minutes);
+    var so = plateOpacities(w), ao = accOpacities(w, phase);
+    apply(page, so, ao);
+    if (fsOpen) apply(fs, so, ao);
+    var dom = 0;
+    for (var i = 1; i < 4; i++) if (w[i] > w[dom]) dom = i;
+    if (fsBg.getAttribute('src') !== FRAME_SRC[dom]) fsBg.src = FRAME_SRC[dom];
+  }
+  function frame(now){
+    // The twinkle clock advances only while LIVING. In STILL the accents
+    // hold mid-flicker — frozen, not extinguished — while the slider (the
+    // visitor's own control) keeps travelling the light.
+    if (lastNow !== null && state === 'living') phase += (now - lastNow) / 1000;
+    lastNow = now;
+    render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // Readout
+  var clockEl = document.getElementById('clock');
+  var phaseEl = document.getElementById('phaseName');
+  function fmt(m){
+    var h24 = Math.floor(m / 60), mm = m % 60;
+    var ap = h24 >= 12 ? 'PM' : 'AM';
+    var h = h24 % 12; if (h === 0) h = 12;
+    return h + ':' + (mm < 10 ? '0' : '') + mm + ' ' + ap;
+  }
+  function phaseName(m){
+    if (m < 660) return 'Morning';
+    if (m < 1020) return 'Day';
+    if (m < 1140) return 'Golden Hour';
+    if (m < 1215) return 'Dusk';
+    return 'Night';
+  }
+  function syncReadout(){
+    clockEl.textContent = fmt(minutes);
+    phaseEl.textContent = phaseName(minutes);
+  }
+  var slider = document.getElementById('hourSlider');
+  slider.addEventListener('input', function(){
+    minutes = parseInt(slider.value, 10);
+    syncReadout();
+    render();
+  });
+  syncReadout();
+
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  // Fullscreen changes size, never state: the same hour, the same mode,
+  // the same twinkle phase — only bigger. Exit restores the page exactly.
+  function openFs(){
+    fsOpen = true; fitFs(); fsEl.style.display = 'block'; render();
+    if (fsEl.requestFullscreen) { try { fsEl.requestFullscreen(); } catch(e){} }
+  }
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (document.fullscreenElement) { try { document.exitFullscreen(); } catch(e){} }
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && e.key === 'Escape') closeFs();
+  });
+  document.addEventListener('fullscreenchange', function(){
+    if (!document.fullscreenElement && fsOpen) fsEl.style.display = 'block';
+    if (fsOpen) fitFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.HS = {
+    setHour: function(m){ minutes = m; slider.value = m; syncReadout(); render(); },
+    setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    forceAccents: function(v){ forcedAcc = v; },
+    weights: function(){ return weights(minutes); },
+    accOpacities: function(){ return accOpacities(weights(minutes), phase); },
+    state: function(){ return { state: state, minutes: minutes, fsOpen: fsOpen, phase: phase }; }
+  };
+})();
+</script>
+
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
