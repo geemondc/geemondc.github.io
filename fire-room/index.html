@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Fire Room — Future Ready Living Photos</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* Blurred, darkened backdrop of the same painting */
+  #backdrop{
+    position:fixed;
+    inset:0;
+    background-image:url('fire.jpg');
+    background-size:cover;
+    background-position:center;
+    filter:blur(40px) brightness(0.45);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — exactly the painting's box */
+  #stage{
+    position:relative;
+    width:min(100vw, 177.78vh);
+    aspect-ratio:16/9;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#000;
+  }
+  #stage img.painting{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+
+  .layer{
+    position:absolute;
+    pointer-events:none;
+  }
+
+  /* Title — quiet, small caps, fades with the controls */
+  #titlebar{
+    position:fixed;
+    top:22px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:10;
+    text-align:center;
+    pointer-events:none;
+    transition:opacity 0.8s ease;
+    text-shadow:0 1px 10px rgba(0,0,0,0.85), 0 0 26px rgba(0,0,0,0.6);
+  }
+  #titlebar.faded{opacity:0;}
+  #titlebar h1{
+    font-size:15px;
+    font-weight:normal;
+    letter-spacing:0.42em;
+    padding-left:0.42em;
+    color:rgba(255,240,210,0.88);
+  }
+  #titlebar p{
+    margin-top:5px;
+    font-size:12px;
+    font-style:italic;
+    letter-spacing:0.18em;
+    padding-left:0.18em;
+    color:rgba(255,240,210,0.55);
+  }
+
+  /* the living layer: flame glow, embers, snow, moon, cabin — one canvas */
+  #fx{
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:3;
+  }
+
+  /* mantel candle glows — the Rain Room's irregular candle rhythm */
+  .candle{
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,196,110,0.95) 0%, rgba(255,158,54,0.42) 38%, transparent 70%);
+    mix-blend-mode:screen;
+    transform:translate(-50%,-50%);
+    z-index:4;
+  }
+  #candle1{left:13.5%; top:6.8%;  width:3.3%; aspect-ratio:1/1; animation:flickA 1.15s ease-in-out infinite;}
+  #candle2{left:41.6%; top:18.2%; width:2.9%; aspect-ratio:1/1; animation:flickB 1.7s ease-in-out infinite;}
+  @keyframes flickA{
+    0%,100%{opacity:0.75; transform:translate(-50%,-50%) scale(1);}
+    30%{opacity:1; transform:translate(-50%,-52%) scale(1.12);}
+    55%{opacity:0.6; transform:translate(-51%,-50%) scale(0.92);}
+    80%{opacity:0.9; transform:translate(-49%,-51%) scale(1.05);}
+  }
+  @keyframes flickB{
+    0%,100%{opacity:0.85; transform:translate(-50%,-50%) scale(1.02);}
+    25%{opacity:0.55; transform:translate(-50%,-49%) scale(0.9);}
+    50%{opacity:1; transform:translate(-49%,-52%) scale(1.15);}
+    75%{opacity:0.7; transform:translate(-51%,-50%) scale(0.96);}
+  }
+  /* STILL: the candle flames hold their frame, mid-flicker */
+  body.still .candle{animation-play-state:paused;}
+
+  /* Controls */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 18px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    flex-wrap:wrap;
+    justify-content:center;
+    max-width:96vw;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+  }
+  #modeBtn,#soundBtn,#fsBtn{
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  #modeBtn:hover,#soundBtn:hover,#fsBtn:hover{background:rgba(255,255,255,0.10);}
+  #fsBtn{font-size:14px; padding:4px 10px;}
+</style>
+</head>
+<body>
+
+<div id="backdrop"></div>
+
+<div id="titlebar">
+  <h1>THE FIRE ROOM</h1>
+  <p>a living photo</p>
+</div>
+
+<div id="stage" title="Tap for full screen">
+  <img class="painting" src="fire.jpg" alt="The Fire Room">
+  <canvas class="layer" id="fx"></canvas>
+  <div class="layer candle" id="candle1"></div>
+  <div class="layer candle" id="candle2"></div>
+</div>
+
+<div id="controls">
+  <button id="modeBtn">STILL</button>
+  <button id="soundBtn">Sound: Off</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var body = document.body;
+  var stage = document.getElementById('stage');
+  var living = true;
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+  function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+
+  /* ---------- The painting's real geography ----------
+     All coordinates are % of the stage, measured off the painting itself
+     (pixel sampling + grounding pass, Nov 4):
+       firebox opening  x 12.6–36.0, y 37.0–70.3 — flames center ~(24, 54)
+       candle flames    (13.5, 6.8) and (41.6, 18.2)
+       distant cabin's lit window (80.1, 51.0); moon core (79.7, 9.5)
+       window panes     left x 54.0–66.3, y 2.0–65.5 · right x 69.0–95.2, y 1.0–68.0 */
+  var FIREBOX = { x0: 13.2, y0: 37.2, x1: 35.8, y1: 70.0 };
+  var PANES = [
+    { x0: 54.0, y0: 2.0, x1: 66.3, y1: 65.5 },
+    { x0: 69.0, y0: 1.0, x1: 95.2, y1: 68.0 }
+  ];
+  var CABIN = { x: 80.1, y: 51.0 };
+  var MOON  = { x: 79.7, y: 9.3 };
+
+  var canvas = document.getElementById('fx');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, rafId = null, lastT = 0;
+
+  function sizeCanvas(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /* ---------- The flame's breathing ----------
+     Irregular by construction: three incommensurate sines plus a slow
+     random walk. One value drives the core, the cast and the sheen
+     together, the way one fire lights a whole room. */
+  var walk = 0, walkTarget = 0;
+  function flicker(t){
+    if (Math.random() < 0.02) walkTarget = rand(-1, 1);
+    walk += (walkTarget - walk) * 0.03;
+    var s = Math.sin(t * 0.0113 + 1.7) * 0.45
+          + Math.sin(t * 0.0049 + 0.4) * 0.30
+          + Math.sin(t * 0.0271 + 3.1) * 0.25;
+    return clamp(0.92 + s * 0.10 + walk * 0.09, 0.74, 1.10);
+  }
+
+  /* ---------- Embers — tiny points low in the firebox ---------- */
+  var EMBERS = [];
+  (function seedEmbers(){
+    for (var i = 0; i < 16; i++){
+      EMBERS.push({
+        x: rand(16.5, 31.5),
+        y: rand(59.5, 66.5),
+        r: rand(0.55, 1.25),            /* px at seed scale, scaled by H at draw */
+        phase: rand(0, Math.PI * 2),
+        speed: rand(0.0006, 0.0016),    /* per ms */
+        base: rand(0.35, 0.8)
+      });
+    }
+  })();
+
+  /* ---------- Snow — outside the glass only ----------
+     Each flake belongs to one pane and respawns inside it. Two depths:
+     far (small, slow) and near (larger, faster). A seasoning fall. */
+  var FLAKES = [];
+  function newFlake(anywhere){
+    var pane = PANES[Math.floor(Math.random() * PANES.length)];
+    var near = Math.random() < 0.3;
+    return {
+      pane: pane,
+      x: rand(pane.x0 + 0.4, pane.x1 - 0.4),
+      y: anywhere ? rand(pane.y0, pane.y1) : pane.y0 + rand(0, 2),
+      r: near ? rand(0.30, 0.48) : rand(0.14, 0.26),   /* % of H */
+      speed: near ? rand(5.0, 8.5) : rand(2.2, 4.6),   /* % of H per second */
+      phase: rand(0, Math.PI * 2),
+      swayAmp: rand(0.25, 0.7),                        /* % of W */
+      swayFreq: rand(0.0004, 0.0011),                  /* per ms */
+      a: near ? rand(0.5, 0.85) : rand(0.3, 0.6)
+    };
+  }
+  (function seedSnow(){
+    for (var i = 0; i < 110; i++) FLAKES.push(newFlake(true));
+  })();
+
+  /* ---------- Drawing ---------- */
+  function glow(cx, cy, r, rScaleY, inner, mid, alpha){
+    /* radial warm/cool glow, elliptical via a squashed save/restore */
+    var x = cx / 100 * W, y = cy / 100 * H, rad = r / 100 * W;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, rScaleY);
+    var g = ctx.createRadialGradient(0, 0, 0, 0, 0, rad);
+    g.addColorStop(0, inner.replace('A', alpha.toFixed(3)));
+    g.addColorStop(0.45, mid.replace('A', (alpha * 0.45).toFixed(3)));
+    g.addColorStop(1, mid.replace('A', '0'));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  var WARM_IN = 'rgba(255,166,66,A)', WARM_MID = 'rgba(255,120,30,A)';
+  var CORE_IN = 'rgba(255,196,96,A)', CORE_MID = 'rgba(255,138,36,A)';
+  var COOL_IN = 'rgba(206,226,255,A)', COOL_MID = 'rgba(170,200,250,A)';
+
+  function draw(t){
+    if (!living){ rafId = null; return; }
+    rafId = requestAnimationFrame(draw);
+    var dt = Math.min((t - lastT) / 1000, 0.05);
+    lastT = t;
+    var f = flicker(t);
+    ctx.clearRect(0, 0, W, H);
+
+    /* 5 — moon halo: a faint cool breath around the painted moon */
+    var moonA = 0.055 + 0.030 * (0.5 + 0.5 * Math.sin(t * 0.00055 + 1.0));
+    ctx.globalCompositeOperation = 'lighter';
+    glow(MOON.x, MOON.y, 6.5, 1, COOL_IN, COOL_MID, moonA);
+
+    /* 1b — the cast: one soft warm light over the stones around the
+       hearth, and its sheen on the floorboards — both breathe with f */
+    glow(24, 50, 30, 1.35, WARM_IN, WARM_MID, 0.15 * f);
+    glow(25, 85.5, 24, 0.44, WARM_IN, WARM_MID, 0.12 * f);
+
+    /* 1 — flame core, masked strictly to the firebox interior */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(FIREBOX.x0 / 100 * W, FIREBOX.y0 / 100 * H,
+             (FIREBOX.x1 - FIREBOX.x0) / 100 * W, (FIREBOX.y1 - FIREBOX.y0) / 100 * H);
+    ctx.clip();
+    glow(24.0, 54.5, 15.5, 0.92, CORE_IN, CORE_MID, 0.34 * f);
+    glow(23.8, 56.5, 8.5, 0.95, 'rgba(255,224,150,A)', CORE_MID, 0.30 * f);
+    /* embers */
+    for (var i = 0; i < EMBERS.length; i++){
+      var e = EMBERS[i];
+      var pulse = 0.5 + 0.5 * Math.sin(t * e.speed * 6.28 + e.phase);
+      var a = e.base * (0.25 + 0.75 * pulse * pulse * pulse);
+      var ex = e.x / 100 * W, ey = e.y / 100 * H, er = e.r * H / 500;
+      var eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, er * 2.6);
+      eg.addColorStop(0, 'rgba(255,178,84,' + (a * 0.85).toFixed(3) + ')');
+      eg.addColorStop(1, 'rgba(255,120,30,0)');
+      ctx.fillStyle = eg;
+      ctx.beginPath();
+      ctx.arc(ex, ey, er * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,206,120,' + a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(ex, ey, er, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* 4 — the distant cabin's lit window, a slow warm pulse */
+    ctx.globalCompositeOperation = 'lighter';
+    var cabA = 0.30 + 0.20 * (0.5 + 0.5 * Math.sin(t * 0.0014));
+    glow(CABIN.x, CABIN.y, 1.15, 1, 'rgba(255,206,130,A)', 'rgba(255,170,80,A)', cabA);
+    ctx.globalCompositeOperation = 'source-over';
+
+    /* 3 — snow, clipped to the two panes; never over the room */
+    ctx.save();
+    ctx.beginPath();
+    for (var p = 0; p < PANES.length; p++){
+      var pn = PANES[p];
+      ctx.rect(pn.x0 / 100 * W, pn.y0 / 100 * H,
+               (pn.x1 - pn.x0) / 100 * W, (pn.y1 - pn.y0) / 100 * H);
+    }
+    ctx.clip();
+    for (var j = 0; j < FLAKES.length; j++){
+      var fl = FLAKES[j];
+      fl.y += fl.speed * dt;
+      if (fl.y > fl.pane.y1){ FLAKES[j] = newFlake(false); continue; }
+      var fx = fl.x + Math.sin(t * fl.swayFreq + fl.phase) * fl.swayAmp;
+      var x = fx / 100 * W, y = fl.y / 100 * H, r = fl.r / 100 * H;
+      ctx.fillStyle = 'rgba(255,255,255,' + (fl.a * 0.30).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,' + fl.a.toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  function startFx(){
+    if (rafId === null && living){
+      lastT = performance.now();
+      rafId = requestAnimationFrame(draw);
+    }
+  }
+  function stopFx(){
+    /* STILL means frozen, not cleared: stop the loop, keep the frame —
+       snow hangs mid-fall, the flame holds its glow. */
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) stopFx();
+    else if (living) startFx();
+  });
+
+  /* ---------- Sound — a fire, synthesized (Web Audio) ----------
+     A very low filtered-noise bed for the fire's body, tiny random
+     pops and crackles over it, and a faint muffled wind underneath. */
+  var audioCtx = null, master = null, noiseBuf = null;
+  var soundOn = false, popTimer = null;
+  var soundBtn = document.getElementById('soundBtn');
+
+  function buildAudio(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    master = audioCtx.createGain();
+    master.gain.value = 0;
+    master.connect(audioCtx.destination);
+
+    var len = 2 * audioCtx.sampleRate;
+    noiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    var data = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+    function loopNoise(){
+      var src = audioCtx.createBufferSource();
+      src.buffer = noiseBuf;
+      src.loop = true;
+      return src;
+    }
+    /* the fire's body — low hush of the burn */
+    var bedFilter = audioCtx.createBiquadFilter();
+    bedFilter.type = 'lowpass'; bedFilter.frequency.value = 380;
+    var bedGain = audioCtx.createGain(); bedGain.gain.value = 0.045;
+    var s1 = loopNoise();
+    s1.connect(bedFilter); bedFilter.connect(bedGain); bedGain.connect(master);
+    s1.start();
+    /* the body breathes a little, slowly, like the flame value */
+    var lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.07;
+    var lfoGain = audioCtx.createGain(); lfoGain.gain.value = 0.012;
+    lfo.connect(lfoGain); lfoGain.connect(bedGain.gain);
+    lfo.start();
+
+    /* the wind — fainter, lower, slower still */
+    var windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = 'lowpass'; windFilter.frequency.value = 190;
+    var windGain = audioCtx.createGain(); windGain.gain.value = 0.016;
+    var s2 = loopNoise();
+    s2.connect(windFilter); windFilter.connect(windGain); windGain.connect(master);
+    s2.start(0.61);
+    var wlfo = audioCtx.createOscillator(); wlfo.frequency.value = 0.045;
+    var wlfoGain = audioCtx.createGain(); wlfoGain.gain.value = 0.007;
+    wlfo.connect(wlfoGain); wlfoGain.connect(windGain.gain);
+    wlfo.start();
+  }
+
+  function pop(vol, when){
+    var t0 = (when || audioCtx.currentTime);
+    var src = audioCtx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.playbackRate.value = rand(0.7, 1.4);
+    var bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = rand(800, 2800);
+    bp.Q.value = 7;
+    var g = audioCtx.createGain();
+    var dur = rand(0.03, 0.12);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(t0, rand(0, 1.8));
+    src.stop(t0 + dur + 0.05);
+  }
+  function schedulePop(){
+    clearTimeout(popTimer);
+    if (soundOn && living && audioCtx){
+      popTimer = setTimeout(function(){
+        pop(rand(0.05, 0.20));
+        if (Math.random() < 0.22) pop(rand(0.03, 0.09), audioCtx.currentTime + rand(0.06, 0.15));
+        schedulePop();
+      }, rand(300, 2200));
+    }
+  }
+  function updateMaster(){
+    if (!audioCtx) return;
+    var t = audioCtx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(soundOn && living ? 0.9 : 0, t + 1.2);
+  }
+  soundBtn.addEventListener('click', function(){
+    if (!audioCtx) buildAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? 'Sound: On' : 'Sound: Off';
+    updateMaster();
+    schedulePop();
+  });
+
+  /* ---------- Mode toggle ---------- */
+  var modeBtn = document.getElementById('modeBtn');
+  modeBtn.addEventListener('click', function(){
+    living = !living;
+    body.classList.toggle('still', !living);
+    modeBtn.textContent = living ? 'STILL' : 'LIVING';
+    if (living){ startFx(); schedulePop(); }
+    else { stopFx(); clearTimeout(popTimer); }
+    updateMaster();
+  });
+
+  /* ---------- Fullscreen on stage tap ---------- */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+  stage.addEventListener('click', toggleFS);
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+
+  /* ---------- Controls + title auto-fade ---------- */
+  var controls = document.getElementById('controls');
+  var titlebar = document.getElementById('titlebar');
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    titlebar.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){
+      controls.classList.add('faded');
+      titlebar.classList.add('faded');
+    }, 3500);
+  }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, {passive:true});
+  wake();
+
+  /* ---------- Init ---------- */
+  function init(){
+    sizeCanvas();
+    startFx();
+  }
+  window.addEventListener('resize', function(){ sizeCanvas(); });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
