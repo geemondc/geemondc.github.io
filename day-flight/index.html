@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Day Flight — a living window seat</title>
+<meta name="description" content="A living painting: a window seat on a noon flight over farmland, a turquoise coast, desert canyons and a bright city.">
+<meta property="og:title" content="Day Flight — a living window seat">
+<meta property="og:description" content="A living painting of a sunlit flight seen through the airplane window.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#0d1420;
+    overflow:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  /* ambient blurred backdrop: a downscaled copy of the live scene, as in the original */
+  #bg{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    filter:blur(24px);
+    transform:scale(1.25);
+    opacity:.8;
+    z-index:0;
+  }
+  #view{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    display:block;
+    cursor:pointer;
+    z-index:1;
+  }
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    display:flex;
+    gap:8px;
+    z-index:2;
+    transition:opacity .7s ease;
+  }
+  #controls.hidden{opacity:0;pointer-events:none;}
+  #controls button{
+    appearance:none;
+    border:1px solid rgba(255,255,255,.38);
+    background:rgba(14,20,32,.45);
+    color:rgba(240,244,248,.88);
+    border-radius:999px;
+    padding:8px 18px;
+    font-size:12px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    cursor:pointer;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  #controls button:hover{color:#fff;}
+</style>
+</head>
+<body>
+<canvas id="bg" width="160" height="100" aria-hidden="true"></canvas>
+<canvas id="view" role="img" aria-label="Day flight: the view from an airplane window over farmland, a turquoise coast, desert mountains and a bright city"></canvas>
+<div id="controls">
+  <button id="btnLiving" type="button">Still</button>
+  <button id="btnSound" type="button">Sound off</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* =====================================================================
+   Day Flight — engine ported faithfully from the Lovable source
+   (engine.ts / NightFlight.tsx), with three rebuild fixes:
+   1) PHONE WINDOW SIZE — portrait phones get a window-first framing:
+      the scene is scaled so its height fills the screen and the view is
+      centred on a focus point that keeps the full wing + wingtip in
+      frame; the glass then covers ~85% of the screen instead of ~21%.
+      Landscape/desktop keep the original full-scene letterbox.
+   2) NEAR-GROUND SHARPNESS — (a) the strip is now built at native
+      resolution: the original drew each 1024px painting into a 1244px
+      slot (a 21.5% horizontal stretch); segments now sit 1:1 with a
+      true crossfade at the seams. (b) Ground rows sample the actual
+      perspective band of texture each row covers, instead of a 1px
+      source row stretched over every 2.2px screen row.
+   3) PAINTERLIER REGISTER — warm sunlit wing shading with a soft cast
+      shadow, warmed sky/horizon, warm ivory frame with a soft inner
+      shadow inside the glass. The four segment paintings are untouched.
+   ===================================================================== */
+const W = 1600, H = 1000;
+const HOR = 340;          // horizon line (canvas px)
+const F = 820;            // focal length
+const S = 4000;           // world units per journey segment
+const L = S * 4;          // loop length
+const V = 22;             // cruise speed (world units / sim second)
+const DMIN = 380, DMAX = 5200, DFAR = 9000;
+const WIN = { x: 150, y: 60, w: 1300, h: 880, r: 340 };
+const TILE = 1024;
+const OV = 220;           // crossfade between journey segments (texture px)
+
+function rng(seed) {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const smooth = (e0, e1, x) => {
+  const k = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return k * k * (3 - 2 * k);
+};
+const wrap = (x) => ((x % L) + L) % L;
+
+function buildClouds() {
+  const r = rng(42);
+  const out = [];
+  for (let k = 0; k < 8; k++) {
+    const ca = (k + 0.3 + r() * 0.5) * (L / 8);
+    const cd = 600 + r() * 1600;
+    for (let i = 0; i < 16; i++)
+      out.push({ a: ca + (r() - 0.5) * 1000, d: cd + (r() - 0.5) * 600, r: 120 + r() * 240, o: 0.55 + r() * 0.4 });
+  }
+  return out;
+}
+function buildShadows() {
+  const r = rng(9);
+  return Array.from({ length: 70 }, () => ({
+    a: r() * L, d: DMIN + 200 + r() * (DMAX - DMIN), r: 220 + r() * 420, o: 0.18 + r() * 0.14,
+  }));
+}
+const altitude = (a) => {
+  const x = wrap(a) / S; // 0..4
+  if (x >= 3) return 640 - 260 * smooth(3.05, 3.85, x);
+  if (x < 0.7) return 380 + 260 * smooth(0, 0.7, x);
+  return 640;
+};
+
+/* ---- journey strip: segments at NATIVE resolution (fix 2a) ----
+   Strip index i holds segment 3-i, exactly as the source. Each painting
+   is drawn 1:1 at i*TILE; the incoming segment's first OV columns are
+   then faded in over the previous segment's tail — including across the
+   loop seam — so boundaries stay invisible without stretching art. */
+const SRCS = [
+  'farmland--gGVp22A.jpg',
+  'coast-zMnrGEYU.jpg',
+  'mountains-ExOH924J.jpg',
+  'city-Br_CqNvi.jpg',
+];
+const imgs = SRCS.map((s) => { const im = new Image(); im.src = s; return im; });
+const loaded = [false, false, false, false];
+let strip = null;
+let onStripDirty = () => {};
+function buildStrip() {
+  const c = document.createElement('canvas');
+  c.width = TILE * 4;
+  c.height = TILE;
+  const x = c.getContext('2d');
+  // neutral terrain placeholder for segments still in flight (progressive delivery)
+  const pg = x.createLinearGradient(0, 0, 0, TILE);
+  pg.addColorStop(0, '#a7b8a2');
+  pg.addColorStop(1, '#7e916c');
+  x.fillStyle = pg;
+  x.fillRect(0, 0, TILE * 4, TILE);
+  const order = [3, 2, 1, 0].map((s) => imgs[s]);
+  const has = [3, 2, 1, 0].map((s) => loaded[s]);
+  for (let i = 0; i < 4; i++) if (has[i]) x.drawImage(order[i], i * TILE, 0);
+  const tmp = document.createElement('canvas');
+  tmp.width = OV;
+  tmp.height = TILE;
+  const tx = tmp.getContext('2d');
+  for (let i = 0; i < 4; i++) {
+    if (!has[i]) continue;
+    tx.globalCompositeOperation = 'source-over';
+    tx.clearRect(0, 0, OV, TILE);
+    tx.drawImage(order[i], 0, 0, OV, TILE, 0, 0, OV, TILE);
+    tx.globalCompositeOperation = 'destination-in';
+    const g = tx.createLinearGradient(0, 0, OV, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    tx.fillStyle = g;
+    tx.fillRect(0, 0, OV, TILE);
+    x.drawImage(tmp, i === 0 ? TILE * 4 - OV : i * TILE - OV, 0);
+  }
+  strip = c;
+}
+buildStrip();
+imgs.forEach((im, i) => {
+  const mark = () => {
+    if (loaded[i]) return;
+    loaded[i] = true;
+    buildStrip();
+    onStripDirty();
+  };
+  im.addEventListener('load', mark);
+  if (im.complete && im.naturalWidth) mark();
+  if (im.decode) im.decode().then(mark).catch(() => {});
+});
+
+const clouds = buildClouds();
+const shadows = buildShadows();
+const winPath = new Path2D();
+winPath.roundRect(WIN.x, WIN.y, WIN.w, WIN.h, WIN.r);
+const start = S * 0.2;
+const kTex = (TILE * 4) / L; // texture px per world unit
+const uOf = (a) => (L - wrap(a)) * kTex;
+
+function drawScene(ctx, t) {
+  const camA = start + t * V;
+  const h = altitude(camA);
+  const cx = W / 2;
+  const bottom = WIN.y + WIN.h;
+
+  ctx.save();
+  ctx.clip(winPath);
+
+  // sky — noon blue overhead warming to a pale sunlit haze at the horizon (fix 3)
+  const sky = ctx.createLinearGradient(0, WIN.y, 0, HOR + 10);
+  sky.addColorStop(0, '#2b65ba');
+  sky.addColorStop(0.52, '#5f94d8');
+  sky.addColorStop(0.85, '#b9d4ee');
+  sky.addColorStop(1, '#f4e9c9');
+  ctx.fillStyle = sky;
+  ctx.fillRect(WIN.x, WIN.y, WIN.w, HOR + 10 - WIN.y);
+  // sun high above — glare spilling in from the top
+  const sg = ctx.createRadialGradient(420, WIN.y - 80, 10, 420, WIN.y - 80, 520);
+  sg.addColorStop(0, 'rgba(255,252,235,0.9)');
+  sg.addColorStop(0.25, 'rgba(255,245,215,0.35)');
+  sg.addColorStop(1, 'rgba(255,245,215,0)');
+  ctx.fillStyle = sg;
+  ctx.fillRect(WIN.x, WIN.y, WIN.w, 600);
+
+  // ground — painted terrain, one perspective row at a time.
+  // Fix 2b: each 2px screen row now samples the true band of texture it
+  // covers (v at the row's top and bottom edges), instead of the source's
+  // single 1px row stretched to 2.2px — no more streaks or blocky smear
+  // in the near ground under the wing.
+  ctx.fillStyle = '#a8b9b8';
+  ctx.fillRect(WIN.x, HOR, WIN.w, bottom - HOR);
+  if (strip) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    const vRaw = (y) => ((DMAX - (F * h) / (y - HOR)) / (DMAX - DMIN)) * TILE;
+    for (let y = HOR + 1; y < bottom; y += 2) {
+      const d = (F * h) / (y - HOR);
+      if (d > DFAR) continue;
+      let vs = ((Math.min(vRaw(y), vRaw(y + 2)) % TILE) + TILE) % TILE;
+      let sh = Math.abs(vRaw(y + 2) - vRaw(y));
+      if (sh < 0.35) sh = 0.35;
+      if (vs + sh > TILE) sh = TILE - vs;
+      const aL = camA + ((cx - WIN.x) * d) / F;
+      const uw = ((WIN.w * d) / F) * kTex;
+      const u0 = uOf(aL);
+      const first = Math.min(uw, TILE * 4 - u0);
+      const dw = (first / uw) * WIN.w;
+      ctx.drawImage(strip, u0, vs, first, sh, WIN.x, y, dw + 0.5, 2.3);
+      if (first < uw) ctx.drawImage(strip, 0, vs, uw - first, sh, WIN.x + dw, y, WIN.w - dw, 2.3);
+    }
+  }
+
+  // cloud shadows drifting slowly across the ground
+  const half = L / 2;
+  const proj = (a, d, alt) => {
+    let da = wrap(a) - wrap(camA);
+    if (da > half) da -= L; else if (da < -half) da += L;
+    return { x: cx - (F * da) / d, y: HOR + (F * alt) / d };
+  };
+  for (const s of shadows) {
+    const p = proj(s.a + t * 3.5, s.d, h);
+    const rr = (s.r * F) / s.d;
+    if (p.x + rr < WIN.x || p.x - rr > WIN.x + WIN.w || p.y - rr > bottom) continue;
+    const sq = Math.max(0.12, h / s.d) * 1.6;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1, sq);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rr);
+    g.addColorStop(0, `rgba(18,32,48,${s.o})`);
+    g.addColorStop(0.6, `rgba(18,32,48,${s.o * 0.6})`);
+    g.addColorStop(1, 'rgba(18,32,48,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, rr, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  // sun sparkling on the coastal water
+  const coastW = 1 - smooth(0.35, 0.85, Math.min(Math.abs(wrap(camA) / S - 1.5), 4 - Math.abs(wrap(camA) / S - 1.5)));
+  if (coastW > 0.01) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 420; i++) {
+      const sx = WIN.x + ((Math.sin(i * 91.7) * 0.5 + 0.5) * WIN.w);
+      const sy = HOR + 30 + Math.pow((Math.sin(i * 12.9898) * 0.5 + 0.5), 0.7) * 520;
+      const d = (F * h) / (sy - HOR);
+      if (d > 2700) continue; // the sea lies on the near side
+      const a = camA - ((sx - cx) * d) / F;
+      const seg = Math.floor(wrap(a) / S);
+      if (seg !== 1) continue;
+      const fl = Math.pow(Math.max(0, Math.sin(t * (1.6 + (i % 9) * 0.35) + i * 2.3)), 6);
+      if (fl < 0.05) continue;
+      const near = 1 - Math.abs(sx - 900) / 900;
+      const al = fl * coastW * (0.35 + 0.65 * near);
+      const z = 1.2 + (sy - HOR) / 180;
+      ctx.fillStyle = `rgba(255,250,230,${al})`;
+      ctx.fillRect(sx - z * 1.5, sy, z * 3, 1);
+      ctx.fillRect(sx, sy - z * 0.6, 1, z * 1.3);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // atmospheric haze toward the horizon
+  const hz = ctx.createLinearGradient(0, HOR, 0, HOR + 260);
+  hz.addColorStop(0, 'rgba(228,230,222,1)');
+  hz.addColorStop(0.08, 'rgba(210,224,236,0.85)');
+  hz.addColorStop(0.2, 'rgba(200,218,232,0.55)');
+  hz.addColorStop(0.5, 'rgba(190,210,228,0.25)');
+  hz.addColorStop(1, 'rgba(190,210,228,0)');
+  ctx.fillStyle = hz;
+  ctx.fillRect(WIN.x, HOR, WIN.w, 260);
+
+  // white cloud passing between us and the earth
+  for (const c of clouds) {
+    const p = proj(c.a, c.d, h - 200);
+    const rr = (c.r * F) / c.d;
+    if (p.x + rr < WIN.x || p.x - rr > WIN.x + WIN.w) continue;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.scale(1, 0.45);
+    const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, rr);
+    cg.addColorStop(0, `rgba(238,242,248,${c.o * 0.85})`);
+    cg.addColorStop(0.5, `rgba(216,226,238,${c.o * 0.5})`);
+    cg.addColorStop(1, 'rgba(205,218,232,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.arc(0, 0, rr, 0, 6.283); ctx.fill();
+    const tg = ctx.createRadialGradient(0, -rr * 0.25, 0, 0, -rr * 0.25, rr * 0.6);
+    tg.addColorStop(0, `rgba(255,255,252,${c.o * 0.7})`);
+    tg.addColorStop(1, 'rgba(255,255,252,0)');
+    ctx.fillStyle = tg;
+    ctx.beginPath(); ctx.arc(0, -rr * 0.25, rr * 0.6, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  drawWing(ctx, t);
+
+  // glass: soft brightening and a faint sheen
+  const vg = ctx.createRadialGradient(cx, 500, 320, cx, 500, 820);
+  vg.addColorStop(0, 'rgba(255,255,255,0)');
+  vg.addColorStop(1, 'rgba(40,55,75,0.35)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(WIN.x, WIN.y, WIN.w, WIN.h);
+  const rf = ctx.createLinearGradient(WIN.x, WIN.y, WIN.x + 700, WIN.y + 600);
+  rf.addColorStop(0, 'rgba(255,255,255,0.10)');
+  rf.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = rf;
+  ctx.fillRect(WIN.x, WIN.y, WIN.w, WIN.h);
+  // soft inner shadow inside the glass — depth against the frame (fix 3)
+  const ishT = ctx.createLinearGradient(0, WIN.y, 0, WIN.y + 170);
+  ishT.addColorStop(0, 'rgba(24,30,46,0.20)');
+  ishT.addColorStop(1, 'rgba(24,30,46,0)');
+  ctx.fillStyle = ishT;
+  ctx.fillRect(WIN.x, WIN.y, WIN.w, 170);
+  const ishB = ctx.createLinearGradient(0, WIN.y + WIN.h - 190, 0, WIN.y + WIN.h);
+  ishB.addColorStop(0, 'rgba(24,30,46,0)');
+  ishB.addColorStop(1, 'rgba(24,30,46,0.24)');
+  ctx.fillStyle = ishB;
+  ctx.fillRect(WIN.x, WIN.y + WIN.h - 190, WIN.w, 190);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(22,28,42,0.30)';
+  ctx.stroke(winPath);
+  ctx.restore();
+
+  drawFrame(ctx);
+}
+
+function drawWing(ctx, t) {
+  const tipX = 1265, tipY = 610;
+  const body = new Path2D();
+  body.moveTo(60, 820);
+  body.bezierCurveTo(500, 700, 900, 640, tipX, tipY);
+  body.lineTo(tipX + 18, tipY + 10);
+  body.bezierCurveTo(1000, 700, 600, 860, 300, 1020);
+  body.lineTo(60, 1020);
+  body.closePath();
+  // soft shadow the wing casts on the world below — grounds it (fix 3)
+  ctx.save();
+  ctx.shadowColor = 'rgba(13,24,44,0.38)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 18;
+  // warm sunlit metal: ivory in the sun, cool blue-grey in shade (fix 3)
+  const wg = ctx.createLinearGradient(0, 600, 0, 1020);
+  wg.addColorStop(0, '#f6f2e4');
+  wg.addColorStop(0.25, '#e8e9e2');
+  wg.addColorStop(0.6, '#bcc5cc');
+  wg.addColorStop(1, '#808e9b');
+  ctx.fillStyle = wg;
+  ctx.fill(body);
+  ctx.restore();
+  ctx.save();
+  ctx.clip(body);
+  // warm sunlight washing in from the sun side
+  const sun = ctx.createRadialGradient(340, 630, 40, 340, 630, 880);
+  sun.addColorStop(0, 'rgba(255,240,200,0.42)');
+  sun.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.fillStyle = sun;
+  ctx.fillRect(0, 580, 1400, 460);
+  // sky reflected along the top surface
+  const sk = ctx.createLinearGradient(0, 620, 600, 1000);
+  sk.addColorStop(0, 'rgba(140,180,225,0.30)');
+  sk.addColorStop(1, 'rgba(140,180,225,0)');
+  ctx.fillStyle = sk;
+  ctx.fillRect(0, 600, 1400, 420);
+  // gentle shading pooling along the underside
+  const oc = ctx.createLinearGradient(0, 870, 0, 1020);
+  oc.addColorStop(0, 'rgba(43,40,36,0)');
+  oc.addColorStop(1, 'rgba(43,40,36,0.20)');
+  ctx.fillStyle = oc;
+  ctx.fillRect(0, 860, 1400, 170);
+  // sunlight glint on the wing — gently breathing
+  const gx = 760 + 30 * Math.sin(t * 0.07), gy = 705;
+  const gl = ctx.createRadialGradient(gx, gy, 0, gx, gy, 260);
+  const gi = 0.75 + 0.2 * Math.sin(t * 0.31);
+  gl.addColorStop(0, `rgba(255,253,240,${gi})`);
+  gl.addColorStop(0.2, `rgba(255,250,232,${gi * 0.45})`);
+  gl.addColorStop(1, 'rgba(255,250,232,0)');
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = gl;
+  ctx.fillRect(gx - 260, gy - 260, 520, 520);
+  ctx.globalCompositeOperation = 'source-over';
+  // panel lines
+  ctx.strokeStyle = 'rgba(56,62,76,0.26)';
+  ctx.lineWidth = 1;
+  for (let k = 1; k < 5; k++) {
+    ctx.beginPath();
+    ctx.moveTo(60 + k * 40, 840 + k * 30);
+    ctx.bezierCurveTo(500, 730 + k * 25, 900, 665 + k * 10, tipX - 20 * k, tipY + 8 + k * 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // sunlit leading edge
+  ctx.beginPath();
+  ctx.moveTo(60, 820);
+  ctx.bezierCurveTo(500, 700, 900, 640, tipX, tipY);
+  ctx.strokeStyle = 'rgba(255,253,240,0.92)';
+  ctx.lineWidth = 2.6;
+  ctx.stroke();
+  // winglet
+  ctx.beginPath();
+  ctx.moveTo(tipX - 6, tipY + 4);
+  ctx.lineTo(tipX + 8, tipY - 70);
+  ctx.lineTo(tipX + 26, tipY - 74);
+  ctx.lineTo(tipX + 20, tipY + 12);
+  ctx.closePath();
+  const wl = ctx.createLinearGradient(tipX, tipY - 74, tipX + 20, tipY + 10);
+  wl.addColorStop(0, '#f8f4e8');
+  wl.addColorStop(1, '#a3adb8');
+  ctx.fillStyle = wl;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(84,92,104,0.45)';
+  ctx.stroke();
+  // red nav light — slow, steady blink (on sim clock)
+  const p = (t % 2.6) / 2.6;
+  const on = p < 0.45 ? smooth(0, 0.06, p) * (1 - smooth(0.36, 0.45, p)) : 0;
+  const lx = tipX + 14, ly = tipY + 2;
+  ctx.globalCompositeOperation = 'lighter';
+  const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, 46);
+  lg.addColorStop(0, `rgba(255,70,55,${0.95 * on})`);
+  lg.addColorStop(0.25, `rgba(255,50,40,${0.3 * on})`);
+  lg.addColorStop(1, 'rgba(255,40,30,0)');
+  ctx.fillStyle = lg;
+  ctx.fillRect(lx - 46, ly - 46, 92, 92);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = `rgb(${180 + 75 * on},${40 + 60 * on},${40 + 50 * on})`;
+  ctx.beginPath(); ctx.arc(lx, ly, 3.4, 0, 6.283); ctx.fill();
+}
+
+function drawFrame(ctx) {
+  ctx.save();
+  const outer = new Path2D();
+  outer.rect(0, 0, W, H);
+  outer.addPath(winPath);
+  // warm ivory fuselage, softly shaded (fix 3)
+  const fg = ctx.createRadialGradient(W / 2, H / 2, 300, W / 2, H / 2, 1000);
+  fg.addColorStop(0, '#e4dfd3');
+  fg.addColorStop(0.6, '#c0bbae');
+  fg.addColorStop(1, '#7d776c');
+  ctx.fillStyle = fg;
+  ctx.fill(outer, 'evenodd');
+  // inner bevel rings
+  for (let i = 0; i < 4; i++) {
+    const p = new Path2D();
+    const o = 6 + i * 14;
+    p.roundRect(WIN.x - o, WIN.y - o, WIN.w + o * 2, WIN.h + o * 2, WIN.r + o);
+    ctx.strokeStyle = i === 0 ? 'rgba(58,54,48,0.7)' : `rgba(255,252,244,${0.35 - i * 0.07})`;
+    ctx.lineWidth = i === 0 ? 10 : 3;
+    ctx.stroke(p);
+  }
+  // seat-back hint
+  const sb = ctx.createLinearGradient(0, 955, 0, H);
+  sb.addColorStop(0, 'rgba(52,56,72,0)');
+  sb.addColorStop(0.4, 'rgba(48,52,66,0.9)');
+  sb.addColorStop(1, '#2b303e');
+  ctx.fillStyle = sb;
+  ctx.beginPath();
+  ctx.moveTo(1050, H);
+  ctx.bezierCurveTo(1060, 960, 1120, 950, 1260, 950);
+  ctx.bezierCurveTo(1450, 950, 1560, 960, W, 975);
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ---- sound: the source's procedural cabin (brown-noise rush + hum) ---- */
+function startSound() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  const master = ac.createGain();
+  master.gain.value = 0;
+  master.gain.linearRampToValueAtTime(0.5, ac.currentTime + 2.5);
+  master.connect(ac.destination);
+  const len = ac.sampleRate * 4;
+  const buf = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+      d[i] = last * 3.2;
+    }
+  }
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 700;
+  const ng = ac.createGain();
+  ng.gain.value = 0.55;
+  src.connect(lp).connect(ng).connect(master);
+  src.start();
+  for (const [f, g] of [[82, 0.05], [123, 0.025], [164.5, 0.012]]) {
+    const o = ac.createOscillator();
+    o.frequency.value = f;
+    const og = ac.createGain();
+    og.gain.value = g;
+    o.connect(og).connect(master);
+    o.start();
+  }
+  return () => {
+    master.gain.linearRampToValueAtTime(0, ac.currentTime + 0.6);
+    setTimeout(() => ac.close(), 700);
+  };
+}
+
+/* ---- player: offscreen scene canvas + responsive view transform ---- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const bg = document.getElementById('bg');
+const bctx = bg.getContext('2d');
+const SS = 1.5; // scene render scale, as in the source
+const scene = document.createElement('canvas');
+scene.width = W * SS;
+scene.height = H * SS;
+const sctx = scene.getContext('2d');
+
+let living = true;
+let t = 0, speed = 1, last = performance.now(), frame = 0, dirty = 3;
+onStripDirty = () => { dirty = Math.max(dirty, 3); };
+
+/* Fix 1: framing per breakpoint.
+   Landscape / wide: the original composition, whole scene contained.
+   Portrait: scale so the scene's height fills the screen, centred on a
+   focus point (x=1070) chosen so the wing — root sweep, tip and winglet —
+   stays in frame; the glass then dominates the phone screen. */
+function computeView() {
+  const cw = view.clientWidth, ch = view.clientHeight;
+  let s, dx, dy;
+  if (cw / ch >= 0.95) {
+    s = Math.min(cw / W, ch / H);
+    dx = (cw - W * s) / 2;
+    dy = (ch - H * s) / 2;
+  } else {
+    s = ch / H;
+    dx = cw / 2 - 1070 * s;
+    dx = Math.min(dx, cw - 1300 * s);   // keep the wingtip (x<=1300) on screen
+    dx = Math.max(dx, cw - W * s);      // never scroll past the scene's right edge
+    dy = (ch - H * s) / 2;
+  }
+  return { s, dx, dy, cw, ch };
+}
+let viewInfo = null;
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.width = Math.max(1, Math.round(view.clientWidth * dpr));
+  view.height = Math.max(1, Math.round(view.clientHeight * dpr));
+  viewInfo = computeView();
+  dirty = Math.max(dirty, 3);
+}
+window.addEventListener('resize', resize);
+resize();
+
+function render() {
+  sctx.setTransform(SS, 0, 0, SS, 0, 0);
+  drawScene(sctx, t);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  vctx.clearRect(0, 0, viewInfo.cw, viewInfo.ch);
+  vctx.drawImage(scene, viewInfo.dx, viewInfo.dy, W * viewInfo.s, H * viewInfo.s);
+  if (frame % 6 === 0) bctx.drawImage(scene, 0, 0, bg.width, bg.height);
+}
+function loop(now) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  const target = living ? 1 : 0;
+  speed += (target - speed) * Math.min(1, dt * 1.1);
+  if (!living && speed < 0.002) speed = 0;
+  t += dt * speed;
+  if (speed > 0 || frame < 2 || dirty > 0) {
+    render();
+    if (dirty > 0) dirty--;
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---- controls (source behavior: action label for STILL/LIVING,
+        state label for sound, chrome auto-hides after 3.5s idle) ---- */
+const controls = document.getElementById('controls');
+const btnLiving = document.getElementById('btnLiving');
+const btnSound = document.getElementById('btnSound');
+let stopSoundFn = null;
+let hideTimer = 0;
+function wake() {
+  controls.classList.remove('hidden');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => controls.classList.add('hidden'), 3500);
+}
+wake();
+window.addEventListener('pointermove', wake);
+window.addEventListener('pointerdown', wake);
+btnLiving.addEventListener('click', (e) => {
+  e.stopPropagation();
+  living = !living;
+  btnLiving.textContent = living ? 'Still' : 'Living';
+  wake();
+});
+btnSound.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (stopSoundFn) {
+    stopSoundFn();
+    stopSoundFn = null;
+    btnSound.textContent = 'Sound off';
+  } else {
+    stopSoundFn = startSound();
+    btnSound.textContent = 'Sound on';
+  }
+  wake();
+});
+view.addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
+});
+
+/* verification hooks */
+window.__df = {
+  get t() { return t; },
+  get speed() { return speed; },
+  get living() { return living; },
+  loaded: () => loaded.slice(),
+  view: () => viewInfo,
+  glassShare: () => {
+    // fraction of the screen covered by the window glass (grid-sampled
+    // point-in-rounded-rect against the live view transform)
+    const { s, dx, dy, cw, ch } = viewInfo;
+    const step = 4;
+    let hit = 0, total = 0;
+    const inRound = (px, py) => {
+      const lx = px - WIN.x, ly = py - WIN.y;
+      if (lx < 0 || ly < 0 || lx > WIN.w || ly > WIN.h) return false;
+      const qx = Math.max(WIN.r - lx, lx - (WIN.w - WIN.r), 0);
+      const qy = Math.max(WIN.r - ly, ly - (WIN.h - WIN.r), 0);
+      return qx * qx + qy * qy <= WIN.r * WIN.r;
+    };
+    for (let y = step / 2; y < ch; y += step) {
+      for (let x = step / 2; x < cw; x += step) {
+        total++;
+        if (inRound((x - dx) / s, (y - dy) / s)) hit++;
+      }
+    }
+    return hit / total;
+  },
+};
+})();
+</script>
+
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
