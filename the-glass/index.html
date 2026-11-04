@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Glass — a living rainy window</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#060a14;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#060a14;}
+  #view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation;}
+  body.ui-hidden{cursor:none;}
+  /* Controls: family pill chrome. pointer-events:auto is explicit and always
+     on for the container; when auto-hidden it fades out and stops taking
+     events, and the stage click handler additionally swallows any click
+     that lands inside the controls' rect (click-trap hardening: a tap aimed
+     at a faded pill wakes the chrome instead of toggling fullscreen). */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:calc(24px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    z-index:3;
+    pointer-events:auto;
+    transition:opacity .7s ease;
+  }
+  #controls.hidden{opacity:0;pointer-events:none;}
+  .grp{
+    display:flex;gap:4px;
+    background:rgba(8,12,22,.42);
+    border-radius:999px;
+    padding:4px;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+  }
+  .grp button{
+    appearance:none;border:0;cursor:pointer;
+    padding:6px 12px;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    border-radius:999px;
+    color:rgba(240,244,248,.72);
+    background:transparent;
+    transition:background .25s,color .25s;
+  }
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="view" role="img" aria-label="A living rain-soaked window at night, looking out over a sharp city skyline, a lit bridge and water. Tap for full screen."></canvas>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnRain" type="button" class="on">Rain</button>
+      <button id="btnMist" type="button">Mist</button>
+    </div>
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+    <div class="grp">
+      <button id="btnSound" type="button">Sound Off</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* The Glass — in-house port of Lovable's Futurereadywindow (RainWindow.tsx).
+   The rain system (drop physics, wet trails, mist, orb light-breathing,
+   synthesized sound) is ported faithfully from the harvested source.
+   Retrofits vs the original:
+   1) The backdrop is a NEW razor-sharp photograph (city.jpg). The original
+      asset was itself a photo of a wet window with the city baked in as
+      bokeh — soft at the source, unfixable by removing filters. Here the
+      view stays crisp and ALL the water lives on the glass (canvas drops).
+   2) Layout is always one cover-fit pane, edge to edge — the original's
+      portrait mode pasted the photo as a band over a blurred copy of itself
+      (three stacked bands, hard seams). One continuous image, no seams.
+   3) Click-trap hardening from birth (see #controls note above). */
+
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------------- Sound (Web Audio, synthesized — ported) ---------------- */
+function createSound() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+  const len = ctx.sampleRate * 4;
+  const white = ctx.createBuffer(1, len, ctx.sampleRate);
+  const brown = ctx.createBuffer(1, len, ctx.sampleRate);
+  const w = white.getChannelData(0), b = brown.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const v = Math.random() * 2 - 1; w[i] = v;
+    last = (last + 0.02 * v) / 1.02;
+    b[i] = last * 3.5;
+  }
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  master.connect(ctx.destination);
+
+  const rainSrc = ctx.createBufferSource(); rainSrc.buffer = white; rainSrc.loop = true;
+  const rainBp = ctx.createBiquadFilter(); rainBp.type = "bandpass"; rainBp.frequency.value = 2600; rainBp.Q.value = 0.6;
+  const rainGain = ctx.createGain(); rainGain.gain.value = 0;
+  rainSrc.connect(rainBp); rainGain.connect(master); rainBp.connect(rainGain); rainSrc.start();
+
+  const hushSrc = ctx.createBufferSource(); hushSrc.buffer = brown; hushSrc.loop = true;
+  const hushLp = ctx.createBiquadFilter(); hushLp.type = "lowpass"; hushLp.frequency.value = 380;
+  const hushGain = ctx.createGain(); hushGain.gain.value = 0;
+  hushSrc.connect(hushLp); hushGain.connect(master); hushLp.connect(hushGain); hushSrc.start();
+
+  const tapBus = ctx.createGain(); tapBus.gain.value = 0; tapBus.connect(master);
+  let weather = "rain";
+  const tap = () => {
+    const t = ctx.currentTime;
+    const s = ctx.createBufferSource(); s.buffer = white;
+    const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = rand(2500, 7000); f.Q.value = rand(2, 6);
+    const g = ctx.createGain(); const v = rand(0.05, 0.35);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + rand(0.015, 0.05));
+    let out = g;
+    if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = rand(-0.9, 0.9); g.connect(p); out = p; }
+    s.connect(f); f.connect(g); out.connect(tapBus);
+    s.start(t, Math.random() * 3, 0.08);
+  };
+  let timer = 0;
+  const loop = () => {
+    if (weather === "rain") { const n = 1 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) tap(); }
+    timer = window.setTimeout(loop, weather === "rain" ? rand(15, 70) : 400);
+  };
+  loop();
+
+  const set = (wth, on) => {
+    weather = wth;
+    const t = ctx.currentTime;
+    if (ctx.state === "suspended" && on) ctx.resume();
+    master.gain.setTargetAtTime(on ? 1 : 0, t, 0.6);
+    rainGain.gain.setTargetAtTime(wth === "rain" ? 0.12 : 0, t, 1.2);
+    tapBus.gain.setTargetAtTime(wth === "rain" ? 0.5 : 0, t, 1.2);
+    hushGain.gain.setTargetAtTime(wth === "mist" ? 0.06 : 0, t, 1.5);
+  };
+  return { ctx, set, stop: () => { clearTimeout(timer); ctx.close(); } };
+}
+
+/* ---------------- State ---------------- */
+const state = { weather: "rain", living: true, sound: false };
+let soundEng = null;
+function applySound() {
+  if (state.sound && !soundEng) soundEng = createSound();
+  if (soundEng) soundEng.set(state.weather, state.sound && state.living);
+}
+
+/* ---------------- Scene (ported engine) ---------------- */
+const canvas = document.getElementById("view");
+const ctx = canvas.getContext("2d");
+const img = new Image();
+img.src = "city.jpg";
+let W = 0, H = 0, dpr = 1;
+const base = document.createElement("canvas");
+const trail = document.createElement("canvas");
+const mist = document.createElement("canvas");
+const micro = document.createElement("canvas");
+const microTex = document.createElement("canvas");
+let rect = { x: 0, y: 0, w: 0, h: 0 };
+let orbsN = [];
+let orbs = [];
+let drops = [];
+const blobs = [];
+const clears = [];
+let mistAmt = 0;
+let t = 0, lastBig = 0;
+
+/* Cover-fit focus: keep the tower cluster + bridge tower in the slice a
+   portrait phone shows; bias slightly upward so the view (skyline, bridge,
+   water) dominates and foreground shore crops away first. */
+const FOCUS_X = 0.60, FOCUS_Y = 0.40;
+
+function detectOrbs() {
+  const gw = 192, gh = Math.round((192 * img.height) / img.width);
+  const c = document.createElement("canvas"); c.width = gw; c.height = gh;
+  const g = c.getContext("2d"); g.filter = "blur(1px)"; g.drawImage(img, 0, 0, gw, gh);
+  const d = g.getImageData(0, 0, gw, gh).data;
+  const L = (x, y) => { const i = (y * gw + x) * 4; return 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]; };
+  const found = [];
+  for (let y = 2; y < gh - 2; y++) for (let x = 2; x < gw - 2; x++) {
+    const l = L(x, y); if (l < 175) continue;
+    let max = true;
+    for (let j = -2; j <= 2 && max; j++) for (let i = -2; i <= 2; i++) if ((i || j) && L(x + i, y + j) > l) { max = false; break; }
+    if (!max) continue;
+    const k = (y * gw + x) * 4;
+    found.push({ u: x / gw, v: y / gh, r: 0.012 + Math.random() * 0.01, c: d[k] + "," + d[k + 1] + "," + d[k + 2], ph: rand(0, 6.28), sp: rand(0.15, 0.7) });
+  }
+  orbsN = found.sort(() => Math.random() - 0.5).slice(0, 70);
+}
+
+function newDrop(r) {
+  return { x: Math.random() * W, y: Math.random() * H, r: r * dpr, vy: 0, slide: false, wob: rand(0, 6) };
+}
+
+function layout() {
+  dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  W = Math.floor(window.innerWidth * dpr); H = Math.floor(window.innerHeight * dpr);
+  for (const c of [canvas, base, trail]) { c.width = W; c.height = H; }
+  mist.width = micro.width = Math.ceil(W / 4); mist.height = micro.height = Math.ceil(H / 4);
+  microTex.width = mist.width; microTex.height = mist.height;
+  const mt = microTex.getContext("2d");
+  for (let i = 0; i < (microTex.width * microTex.height) / 18; i++) {
+    mt.fillStyle = "rgba(225,232,245," + rand(0.25, 0.8) + ")";
+    mt.beginPath(); mt.arc(Math.random() * microTex.width, Math.random() * microTex.height, rand(0.25, 0.8), 0, 7); mt.fill();
+  }
+  if (!img.complete || !img.width) return;
+  // ONE continuous pane: cover-fit at every aspect. No bands, no surround.
+  const iw = img.width, ih = img.height;
+  const s = Math.max(W / iw, H / ih);
+  const w = iw * s, h = ih * s;
+  let x = W * 0.5 - FOCUS_X * w;
+  let y = H * 0.46 - FOCUS_Y * h;
+  x = Math.min(0, Math.max(W - w, x));
+  y = Math.min(0, Math.max(H - h, y));
+  rect = { x, y, w, h };
+  const b = base.getContext("2d");
+  b.drawImage(img, rect.x, rect.y, w, h);
+  orbs = orbsN.map((o) => ({ x: rect.x + o.u * rect.w, y: rect.y + o.v * rect.h, r: o.r * rect.w, c: o.c, ph: o.ph, sp: o.sp }));
+  drops = []; for (let i = 0; i < 160; i++) drops.push(newDrop(rand(1, 4)));
+}
+
+for (let i = 0; i < 9; i++) blobs.push({ x: Math.random(), y: Math.random(), r: rand(0.18, 0.38), ph: rand(0, 6.28), sp: rand(0.08, 0.2), dx: rand(-0.004, 0.004), dy: rand(-0.003, 0.003) });
+for (let i = 0; i < 4; i++) clears.push({ x: Math.random(), y: Math.random(), r: rand(0.12, 0.22), ph: rand(0, 6.28), sp: rand(0.05, 0.12), dx: rand(-0.003, 0.003), dy: rand(-0.002, 0.002) });
+
+function drawDrop(d) {
+  const r = d.r;
+  if (r < 2.2 * dpr) {
+    ctx.fillStyle = "rgba(10,16,30,0.35)"; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = "rgba(255,240,220,0.35)"; ctx.beginPath(); ctx.arc(d.x - r * 0.3, d.y - r * 0.3, r * 0.35, 0, 7); ctx.fill();
+    return;
+  }
+  const ry = d.slide ? r * 1.25 : r;
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(d.x, d.y, r, ry, 0, 0, 7); ctx.clip();
+  // refraction: inverted, wide-angle sample of the (crisp) view behind
+  ctx.translate(d.x, d.y); ctx.scale(1, -1);
+  const s = r * 5;
+  ctx.drawImage(base, d.x - s, d.y - s, s * 2, s * 2, -r * 1.1, -ry * 1.1, r * 2.2, ry * 2.2);
+  ctx.restore();
+  const g = ctx.createRadialGradient(d.x, d.y, r * 0.5, d.x, d.y, r);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(5,8,20,0.55)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(d.x, d.y, r, ry, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = "rgba(255,250,240,0.55)";
+  ctx.beginPath(); ctx.ellipse(d.x - r * 0.35, d.y - ry * 0.45, r * 0.18, r * 0.11, -0.6, 0, 7); ctx.fill();
+}
+
+function step(dt) {
+  mistAmt += ((state.weather === "mist" ? 1 : 0) - mistAmt) * Math.min(1, dt * 0.4);
+  const rainK = 1 - mistAmt;
+  const births = (state.weather === "rain" ? 40 : 6) * dt;
+  for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.6, state.weather === "rain" ? 2.6 : 1.2)));
+  if (rainK > 0.5 && t - lastBig > rand(6, 14)) {
+    lastBig = t;
+    drops.push({ x: Math.random() * W, y: -10 * dpr, r: rand(7, 10) * dpr, vy: 120 * dpr, slide: true, big: true, wob: 0 });
+  }
+  const tc = trail.getContext("2d");
+  for (const d of drops) {
+    if (!d.slide) {
+      d.r += 0.04 * dpr * dt * rainK * Math.random();
+      if (d.r > 5.5 * dpr && Math.random() < dt * 0.6) { d.slide = true; d.vy = 10 * dpr; }
+    } else {
+      d.vy = Math.min(d.vy + 300 * dpr * dt * (d.r / (8 * dpr)), (d.big ? 520 : 320) * dpr);
+      if (Math.random() < dt * 3) d.vy *= 0.4; // stick-slip
+      const py = d.y, px = d.x;
+      d.wob += dt * 3; d.x += Math.sin(d.wob) * 0.3 * dpr;
+      d.y += d.vy * dt;
+      tc.strokeStyle = "rgba(150,170,200,0.10)"; tc.lineWidth = d.r * 1.3; tc.lineCap = "round";
+      tc.beginPath(); tc.moveTo(px, py); tc.lineTo(d.x, d.y); tc.stroke();
+      /* Retrofit: the source's big-racer "glow smear" (an offset copy of the
+         base pasted down the trail canvas every frame) read as a ruler-
+         straight translucent column against this bright sky backdrop, so the
+         racer keeps only its normal wet-trail stroke. */
+      d.r -= dt * 0.25 * dpr;
+      if (Math.random() < dt * 4) drops.push({ x: d.x, y: py, r: rand(0.8, 1.6) * dpr, vy: 0, slide: false, wob: 0 });
+    }
+  }
+  drops.sort((a, b) => a.x - b.x);
+  for (let i = 0; i < drops.length; i++) {
+    const a = drops[i]; if (a.r <= 0) continue;
+    for (let j = i + 1; j < drops.length; j++) {
+      const b = drops[j]; if (b.x - a.x > 30 * dpr) break; if (b.r <= 0) continue;
+      const dx = a.x - b.x, dy = a.y - b.y, rr = (a.r + b.r) * 0.8;
+      if (dx * dx + dy * dy < rr * rr) {
+        const big = a.r >= b.r ? a : b; const small = big === a ? b : a;
+        big.r = Math.sqrt(big.r * big.r + small.r * small.r);
+        big.slide = big.slide || small.slide; big.big = !!(big.big || small.big); big.vy = Math.max(big.vy, small.vy);
+        small.r = 0;
+      }
+    }
+  }
+  drops = drops.filter((d) => d.r > 0.4 * dpr && d.y < H + 30 * dpr);
+  if (drops.length > 900) drops.splice(0, drops.length - 900);
+  tc.globalCompositeOperation = "destination-out";
+  tc.fillStyle = "rgba(0,0,0," + Math.min(1, dt * 0.25) + ")"; tc.fillRect(0, 0, W, H);
+  tc.globalCompositeOperation = "source-over";
+  for (const b of blobs.concat(clears)) {
+    b.x += b.dx * dt; b.y += b.dy * dt;
+    if (b.x < -0.2 || b.x > 1.2) b.dx *= -1; if (b.y < -0.2 || b.y > 1.2) b.dy *= -1;
+  }
+}
+
+function render() {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(base, 0, 0);
+  // lights: only the mapped orbs breathe, each in its own color & rhythm
+  for (const o of orbs) {
+    const k = Math.sin(t * o.sp + o.ph);
+    const a = k * 0.28;
+    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+    if (a >= 0) {
+      ctx.globalCompositeOperation = "lighter";
+      g.addColorStop(0, "rgba(" + o.c + "," + a + ")"); g.addColorStop(0.6, "rgba(" + o.c + "," + (a * 0.5) + ")"); g.addColorStop(1, "rgba(" + o.c + ",0)");
+    } else {
+      ctx.globalCompositeOperation = "multiply";
+      const m = Math.round(255 * (1 + a));
+      g.addColorStop(0, "rgb(" + m + "," + m + "," + m + ")"); g.addColorStop(1, "rgb(255,255,255)");
+    }
+    ctx.fillStyle = g; ctx.fillRect(o.x - o.r, o.y - o.r, o.r * 2, o.r * 2);
+  }
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(trail, 0, 0);
+  for (const d of drops) drawDrop(d);
+  // mist patches with clearings (weather ON the glass, never a flat wash)
+  if (mistAmt > 0.01) {
+    const mc = mist.getContext("2d"), mw = mist.width, mh = mist.height;
+    mc.clearRect(0, 0, mw, mh);
+    for (const b of blobs) {
+      const breath = 0.55 + 0.45 * Math.sin(t * b.sp + b.ph);
+      const R = b.r * Math.max(mw, mh) * (0.85 + 0.25 * breath);
+      const g = mc.createRadialGradient(b.x * mw, b.y * mh, R * 0.15, b.x * mw, b.y * mh, R);
+      g.addColorStop(0, "rgba(200,210,225," + (0.55 * breath) + ")"); g.addColorStop(0.7, "rgba(190,200,220," + (0.3 * breath) + ")"); g.addColorStop(1, "rgba(190,200,220,0)");
+      mc.fillStyle = g; mc.beginPath(); mc.ellipse(b.x * mw, b.y * mh, R * 1.3, R * 0.8, b.ph, 0, 7); mc.fill();
+    }
+    mc.globalCompositeOperation = "destination-out";
+    for (const c of clears) {
+      const R = c.r * Math.max(mw, mh) * (0.9 + 0.2 * Math.sin(t * c.sp + c.ph));
+      const g = mc.createRadialGradient(c.x * mw, c.y * mh, 0, c.x * mw, c.y * mh, R);
+      g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(0.6, "rgba(0,0,0,0.85)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      mc.fillStyle = g; mc.fillRect(0, 0, mw, mh);
+    }
+    mc.globalCompositeOperation = "source-over";
+    const mi = micro.getContext("2d");
+    mi.clearRect(0, 0, mw, mh);
+    mi.drawImage(microTex, 0, 0);
+    mi.globalCompositeOperation = "destination-in"; mi.drawImage(mist, 0, 0); mi.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = mistAmt * 0.8;
+    ctx.filter = "blur(" + (4 * dpr) + "px)"; ctx.drawImage(mist, 0, 0, W, H); ctx.filter = "none";
+    ctx.globalAlpha = mistAmt; ctx.drawImage(micro, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (state.living && W) { t += dt; step(dt); }
+  if (W && rect.w) render();
+  requestAnimationFrame(frame);
+}
+img.onload = () => { detectOrbs(); layout(); };
+if (img.complete && img.width) detectOrbs();
+layout();
+window.addEventListener("resize", layout);
+requestAnimationFrame(frame);
+
+/* ---------------- Controls ---------------- */
+const controls = document.getElementById("controls");
+const btnRain = document.getElementById("btnRain");
+const btnMist = document.getElementById("btnMist");
+const btnStill = document.getElementById("btnStill");
+const btnLiving = document.getElementById("btnLiving");
+const btnSound = document.getElementById("btnSound");
+let hideTimer = 0;
+function wake() {
+  controls.classList.remove("hidden");
+  document.body.classList.remove("ui-hidden");
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => { controls.classList.add("hidden"); document.body.classList.add("ui-hidden"); }, 3500);
+}
+wake();
+window.addEventListener("pointermove", wake);
+window.addEventListener("pointerdown", wake);
+window.addEventListener("keydown", wake);
+
+function setWeather(wth) {
+  state.weather = wth;
+  btnRain.classList.toggle("on", wth === "rain");
+  btnMist.classList.toggle("on", wth === "mist");
+  applySound();
+}
+function setLiving(v) {
+  state.living = v;
+  btnStill.classList.toggle("on", !v);
+  btnLiving.classList.toggle("on", v);
+  applySound();
+}
+btnRain.addEventListener("click", (e) => { e.stopPropagation(); setWeather("rain"); wake(); });
+btnMist.addEventListener("click", (e) => { e.stopPropagation(); setWeather("mist"); wake(); });
+btnStill.addEventListener("click", (e) => { e.stopPropagation(); setLiving(false); wake(); });
+btnLiving.addEventListener("click", (e) => { e.stopPropagation(); setLiving(true); wake(); });
+btnSound.addEventListener("click", (e) => {
+  e.stopPropagation();
+  state.sound = !state.sound;
+  btnSound.textContent = state.sound ? "Sound On" : "Sound Off";
+  btnSound.classList.toggle("on", state.sound);
+  applySound();
+  wake();
+});
+controls.addEventListener("click", (e) => e.stopPropagation());
+
+canvas.addEventListener("click", (e) => {
+  // Click-trap guard: a click aimed at the controls (e.g. at a pill while
+  // the chrome is faded out, so the event fell through to the canvas) is
+  // never a scene click — the pointerdown already woke the chrome; swallow
+  // it instead of toggling fullscreen or eating the click meant for a pill.
+  const r = controls.getBoundingClientRect();
+  if (r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {});
+});
+
+/* verification hooks */
+window.__glass = {
+  get living() { return state.living; },
+  get weather() { return state.weather; },
+  get t() { return t; },
+  drops: () => drops.length,
+  rect: () => rect,
+  orbs: () => orbs.length,
+};
+})();
+</script>
+
+<script>
+/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+if (location.hash === '#wall') {
+  var lpWallStyle = document.createElement('style');
+  lpWallStyle.textContent = '#controls{display:none !important}';
+  document.head.appendChild(lpWallStyle);
+}
+</script>
+</body>
+</html>
