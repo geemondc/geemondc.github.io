@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Rain Room — Future Ready Living Photos</title>
+<style>
+  :root{
+    --led:#ff2a1a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:#000;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* Blurred, darkened backdrop of the same painting */
+  #backdrop{
+    position:fixed;
+    inset:0;
+    background-image:url('rain-room.jpg');
+    background-size:cover;
+    background-position:center;
+    filter:blur(40px) brightness(0.45);
+    transform:scale(1.15);
+    z-index:0;
+  }
+
+  /* Center stage — exactly the painting's box */
+  #stage{
+    position:relative;
+    width:min(100vw, 177.78vh);
+    aspect-ratio:16/9;
+    height:auto;
+    z-index:1;
+    cursor:pointer;
+    overflow:hidden;
+    background:#000;
+  }
+  #stage img.painting{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:fill;
+    display:block;
+  }
+
+  .layer{
+    position:absolute;
+    pointer-events:none;
+  }
+  body.still .layer{display:none !important;}
+
+  /* 1 — LED cove glow */
+  #ledGlow{
+    inset:0;
+    background:
+      radial-gradient(120% 55% at 50% 0%, var(--led), transparent 70%),
+      linear-gradient(to bottom, var(--led) 0%, transparent 34%);
+    mix-blend-mode:screen;
+    opacity:0.5;
+    animation:ledBreathe 7s ease-in-out infinite alternate;
+    z-index:2;
+  }
+  @keyframes ledBreathe{
+    from{opacity:0.5;}
+    to{opacity:0.78;}
+  }
+  /* LED floor spill */
+  #ledSpill{
+    inset:0;
+    background:radial-gradient(60% 22% at 50% 102%, var(--led), transparent 70%);
+    mix-blend-mode:screen;
+    opacity:0.16;
+    z-index:3;
+  }
+
+  /* 4 — water shimmer band */
+  #shimmer{
+    left:0;
+    top:50%;
+    width:100%;
+    height:19%;
+    background:repeating-linear-gradient(to bottom,
+      rgba(255,255,255,0.55) 0px, rgba(255,255,255,0) 2px,
+      rgba(255,255,255,0) 7px, rgba(255,255,255,0.35) 9px,
+      rgba(255,255,255,0) 13px);
+    background-size:100% 26px;
+    mix-blend-mode:overlay;
+    opacity:0.05;
+    animation:shimmerSlide 20s linear infinite;
+    z-index:1;
+  }
+  @keyframes shimmerSlide{
+    from{background-position:0 0;}
+    to{background-position:0 260px;}
+  }
+
+  /* 5 — lightning bloom */
+  #lightning{
+    inset:0;
+    background:radial-gradient(45% 30% at 71% 21%, rgba(200,215,255,0.9), transparent 70%);
+    mix-blend-mode:screen;
+    opacity:0;
+    z-index:4;
+  }
+
+  /* 3 — candle glows */
+  .candle{
+    width:3.2%;
+    aspect-ratio:1/1;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,180,94,0.95) 0%, rgba(255,150,50,0.45) 38%, transparent 70%);
+    mix-blend-mode:screen;
+    transform:translate(-50%,-50%);
+    z-index:5;
+  }
+  #candle1{left:44.5%; top:79.5%; animation:flickA 1.1s ease-in-out infinite;}
+  #candle2{left:46.3%; top:81%;   animation:flickB 1.6s ease-in-out infinite;}
+  #candle3{left:48%;   top:79.8%; animation:flickC 0.9s ease-in-out infinite;}
+  @keyframes flickA{
+    0%,100%{opacity:0.75; transform:translate(-50%,-50%) scale(1);}
+    30%{opacity:1; transform:translate(-50%,-52%) scale(1.12);}
+    55%{opacity:0.6; transform:translate(-51%,-50%) scale(0.92);}
+    80%{opacity:0.9; transform:translate(-49%,-51%) scale(1.05);}
+  }
+  @keyframes flickB{
+    0%,100%{opacity:0.85; transform:translate(-50%,-50%) scale(1.02);}
+    25%{opacity:0.55; transform:translate(-50%,-49%) scale(0.9);}
+    50%{opacity:1; transform:translate(-49%,-52%) scale(1.15);}
+    75%{opacity:0.7; transform:translate(-51%,-50%) scale(0.96);}
+  }
+  @keyframes flickC{
+    0%,100%{opacity:0.65; transform:translate(-50%,-51%) scale(0.95);}
+    35%{opacity:1; transform:translate(-50%,-50%) scale(1.14);}
+    65%{opacity:0.8; transform:translate(-52%,-50%) scale(1);}
+  }
+
+  /* 2 — rain canvas */
+  #rain{
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:6;
+  }
+
+  /* Controls */
+  #controls{
+    position:fixed;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    z-index:10;
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 18px;
+    background:rgba(8,8,12,0.62);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:999px;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    transition:opacity 0.8s ease;
+    white-space:nowrap;
+  }
+  #controls.faded{opacity:0; pointer-events:none;}
+  #controls .caption{
+    color:rgba(255,255,255,0.75);
+    font-size:11px;
+    letter-spacing:0.32em;
+    padding-left:0.32em;
+  }
+  #controls button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    background:transparent;
+    color:rgba(255,255,255,0.85);
+  }
+  #modeBtn,#soundBtn,#fsBtn{
+    font-size:11px;
+    letter-spacing:0.14em;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18) !important;
+  }
+  #modeBtn:hover,#soundBtn:hover,#fsBtn:hover{background:rgba(255,255,255,0.10);}
+  #fsBtn{font-size:14px; padding:4px 10px;}
+  .chips{display:flex; align-items:center; gap:8px;}
+  .chip{
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    padding:0;
+    border:1px solid rgba(255,255,255,0.25) !important;
+    transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .chip:hover{transform:scale(1.15);}
+  .chip.active{
+    box-shadow:0 0 0 2px rgba(0,0,0,0.7), 0 0 0 4px rgba(255,255,255,0.9);
+  }
+</style>
+</head>
+<body>
+
+<div id="backdrop"></div>
+
+<div id="stage" title="Tap for full screen">
+  <img class="painting" src="rain-room.jpg" alt="The Rain Room">
+  <div class="layer" id="shimmer"></div>
+  <div class="layer" id="ledGlow"></div>
+  <div class="layer" id="ledSpill"></div>
+  <div class="layer" id="lightning"></div>
+  <div class="layer candle" id="candle1"></div>
+  <div class="layer candle" id="candle2"></div>
+  <div class="layer candle" id="candle3"></div>
+  <canvas class="layer" id="rain"></canvas>
+</div>
+
+<div id="controls">
+  <span class="caption">THE RAIN ROOM</span>
+  <button id="modeBtn">STILL</button>
+  <div class="chips">
+    <button class="chip active" data-color="#ff2a1a" style="background:#ff2a1a" aria-label="Red"></button>
+    <button class="chip" data-color="#ffb340" style="background:#ffb340" aria-label="Gold"></button>
+    <button class="chip" data-color="#2eff7a" style="background:#2eff7a" aria-label="Green"></button>
+    <button class="chip" data-color="#22d3ee" style="background:#22d3ee" aria-label="Cyan"></button>
+    <button class="chip" data-color="#3b82f6" style="background:#3b82f6" aria-label="Blue"></button>
+    <button class="chip" data-color="#a855f7" style="background:#a855f7" aria-label="Violet"></button>
+    <button class="chip" data-color="#ffd9a0" style="background:#ffd9a0" aria-label="Warm White"></button>
+  </div>
+  <button id="soundBtn">Rain: Off</button>
+  <button id="fsBtn" aria-label="Full screen">⛶</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var body = document.body;
+  var stage = document.getElementById('stage');
+  var living = true;
+
+  /* ---------- Rain canvas ---------- */
+  var canvas = document.getElementById('rain');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, rafId = null;
+  var SLANT = Math.tan(1.5 * Math.PI / 180); /* ~0.0262 */
+
+  function sizeCanvas(){
+    var r = stage.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function rand(a, b){ return a + Math.random() * (b - a); }
+
+  var streaks = [], racers = [], beads = [];
+
+  function newStreak(anywhere){
+    return {
+      x: rand(0, W),
+      y: anywhere ? rand(H * 0.03, H * 0.72) : rand(H * 0.03, H * 0.10),
+      len: rand(20, 70),
+      speed: rand(260, 640),
+      w: rand(1, 2),
+      a: rand(0.08, 0.30)
+    };
+  }
+  function newRacer(){
+    return {
+      x: rand(0, W),
+      y: rand(H * 0.03, H * 0.30),
+      len: rand(10, 22),
+      speed: rand(90, 170),
+      w: rand(2.6, 3.6),
+      a: rand(0.22, 0.4)
+    };
+  }
+  function newBead(){
+    return {
+      x: rand(0, W),
+      y: rand(H * 0.03, H * 0.72),
+      r: rand(0.8, 2.1),
+      life: 0,
+      max: rand(900, 2600)
+    };
+  }
+  function seed(){
+    streaks = []; racers = []; beads = [];
+    for (var i = 0; i < 80; i++) streaks.push(newStreak(true));
+    for (var j = 0; j < 5; j++) racers.push(newRacer());
+    for (var k = 0; k < 26; k++){ var b = newBead(); b.life = rand(0, b.max); beads.push(b); }
+  }
+
+  var lastT = 0;
+  function drawRain(t){
+    if (!living) { rafId = null; return; }
+    rafId = requestAnimationFrame(drawRain);
+    var dt = Math.min((t - lastT) / 1000, 0.05);
+    lastT = t;
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+
+    var i, d;
+    /* streaks */
+    for (i = 0; i < streaks.length; i++){
+      d = streaks[i];
+      d.y += d.speed * dt;
+      d.x += d.speed * SLANT * dt;
+      if (d.y - d.len > H * 0.74 || d.x > W + 10){
+        streaks[i] = newStreak(false);
+        continue;
+      }
+      ctx.strokeStyle = 'rgba(190,215,255,' + d.a + ')';
+      ctx.lineWidth = d.w;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x - d.len * SLANT, d.y - d.len);
+      ctx.stroke();
+    }
+    /* fat slow racers */
+    for (i = 0; i < racers.length; i++){
+      d = racers[i];
+      d.y += d.speed * dt;
+      d.x += d.speed * SLANT * dt * 0.4;
+      if (d.y > H * 0.74){
+        racers[i] = newRacer();
+        continue;
+      }
+      var g = ctx.createLinearGradient(d.x, d.y - d.len, d.x, d.y);
+      g.addColorStop(0, 'rgba(200,225,255,0)');
+      g.addColorStop(1, 'rgba(210,230,255,' + d.a + ')');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = d.w;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y - d.len);
+      ctx.lineTo(d.x, d.y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(215,235,255,' + Math.min(d.a + 0.15, 0.6) + ')';
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.w * 0.62, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    /* static beads that twinkle out */
+    for (i = 0; i < beads.length; i++){
+      var b = beads[i];
+      b.life += dt * 1000;
+      if (b.life >= b.max){ beads[i] = newBead(); continue; }
+      var p = b.life / b.max;
+      var tw = Math.sin(p * Math.PI);          /* fade in, twinkle out */
+      var a2 = 0.38 * tw * (0.6 + 0.4 * Math.sin(t / 130 + b.x));
+      ctx.fillStyle = 'rgba(205,228,255,' + Math.max(a2, 0) + ')';
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  function startRain(){
+    if (rafId === null && living){
+      lastT = performance.now();
+      rafId = requestAnimationFrame(drawRain);
+    }
+  }
+  function stopRain(){
+    if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; }
+    ctx.clearRect(0, 0, W, H);
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden) stopRain();
+    else if (living) startRain();
+  });
+
+  /* ---------- Lightning ---------- */
+  var bolt = document.getElementById('lightning');
+  var boltTimer = null, boltSteps = [];
+  function clearBoltSteps(){
+    for (var i = 0; i < boltSteps.length; i++) clearTimeout(boltSteps[i]);
+    boltSteps = [];
+  }
+  function setBolt(op, ms){
+    bolt.style.transition = 'opacity ' + ms + 'ms ease-out';
+    bolt.style.opacity = op;
+  }
+  function flash(){
+    if (!living) return;
+    setBolt(0.5, 90);                                        /* rise */
+    boltSteps.push(setTimeout(function(){ setBolt(0.12, 80); }, 110));
+    boltSteps.push(setTimeout(function(){ setBolt(0.35, 70); }, 210));
+    boltSteps.push(setTimeout(function(){ setBolt(0, 700); }, 300));
+    scheduleBolt();
+  }
+  function scheduleBolt(){
+    clearTimeout(boltTimer);
+    boltTimer = setTimeout(flash, rand(13000, 30000));
+  }
+  function stopBolt(){
+    clearTimeout(boltTimer);
+    clearBoltSteps();
+    bolt.style.opacity = 0;
+  }
+
+  /* ---------- Mode toggle ---------- */
+  var modeBtn = document.getElementById('modeBtn');
+  modeBtn.addEventListener('click', function(){
+    living = !living;
+    body.classList.toggle('still', !living);
+    modeBtn.textContent = living ? 'STILL' : 'LIVING';
+    if (living){ startRain(); scheduleBolt(); }
+    else { stopRain(); stopBolt(); }
+  });
+
+  /* ---------- LED chips ---------- */
+  var chips = document.querySelectorAll('.chip');
+  for (var c = 0; c < chips.length; c++){
+    chips[c].addEventListener('click', function(){
+      document.documentElement.style.setProperty('--led', this.getAttribute('data-color'));
+      for (var j = 0; j < chips.length; j++) chips[j].classList.remove('active');
+      this.classList.add('active');
+    });
+  }
+
+  /* ---------- Rain sound (Web Audio, procedural) ---------- */
+  var audioCtx = null, masterGain = null, soundOn = false;
+  var soundBtn = document.getElementById('soundBtn');
+  function buildAudio(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0;
+    masterGain.connect(audioCtx.destination);
+
+    var len = 2 * audioCtx.sampleRate;
+    var buffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+    function noiseSource(){
+      var src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      return src;
+    }
+    /* low body of rain */
+    var low = audioCtx.createBiquadFilter();
+    low.type = 'lowpass'; low.frequency.value = 480;
+    var lowGain = audioCtx.createGain(); lowGain.gain.value = 0.35;
+    var s1 = noiseSource();
+    s1.connect(low); low.connect(lowGain); lowGain.connect(masterGain);
+    s1.start();
+
+    /* bright patter */
+    var band = audioCtx.createBiquadFilter();
+    band.type = 'bandpass'; band.frequency.value = 1600; band.Q.value = 0.6;
+    var bandGain = audioCtx.createGain(); bandGain.gain.value = 0.10;
+    var s2 = noiseSource();
+    s2.connect(band); band.connect(bandGain); bandGain.connect(masterGain);
+    s2.start(0.37);
+
+    /* slow gusts: LFO on master gain ±20% */
+    var base = 0.85;
+    masterGain.gain.value = 0;
+    var lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.07;
+    var lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = base * 0.2;
+    lfo.connect(lfoGain); lfoGain.connect(masterGain.gain);
+    lfo.start();
+    masterGain._base = base;
+  }
+  soundBtn.addEventListener('click', function(){
+    if (!audioCtx) buildAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    soundOn = !soundOn;
+    var t = audioCtx.currentTime;
+    masterGain.gain.cancelScheduledValues(t);
+    masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+    masterGain.gain.linearRampToValueAtTime(soundOn ? masterGain._base : 0, t + 1.2);
+    soundBtn.textContent = soundOn ? 'Rain: On' : 'Rain: Off';
+  });
+
+  /* ---------- Fullscreen on stage tap ---------- */
+  function toggleFS(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+  }
+  stage.addEventListener('click', toggleFS);
+  document.getElementById('fsBtn').addEventListener('click', toggleFS);
+
+  /* ---------- Controls auto-fade ---------- */
+  var controls = document.getElementById('controls');
+  var idleTimer = null;
+  function wake(){
+    controls.classList.remove('faded');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ controls.classList.add('faded'); }, 3500);
+  }
+  document.addEventListener('mousemove', wake);
+  document.addEventListener('touchstart', wake, {passive:true});
+  wake();
+
+  /* ---------- Init ---------- */
+  function init(){
+    sizeCanvas();
+    seed();
+    startRain();
+    scheduleBolt();
+  }
+  window.addEventListener('resize', function(){ sizeCanvas(); seed(); });
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
