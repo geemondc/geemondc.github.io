@@ -21,6 +21,8 @@
   .stage img { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; }
   .stage img.acc { inset:auto; object-fit:fill; }
+  .stage canvas.fw { position:absolute; inset:0; width:100%; height:100%;
+                     display:block; pointer-events:none; }
   #controls { margin-top:24px; width:min(680px, 100%); display:flex;
               flex-direction:column; align-items:center; }
   .readout { font-size:clamp(22px, 3.4vw, 30px); letter-spacing:.1em; color:#f2ead6;
@@ -59,6 +61,8 @@
   #fs .wrap { position:absolute; }
   #fs .wrap img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
   #fs .wrap img.acc { inset:auto; object-fit:fill; }
+  #fs .wrap canvas.fw { position:absolute; inset:0; width:100%; height:100%;
+                        display:block; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -87,6 +91,7 @@
     <img class="acc" id="lyrAccLakeA" src="acc-lakea.png" alt="" style="opacity:0;left:38.0469%;top:41.7361%;width:35.1953%;height:11.1111%">
     <img class="acc" id="lyrAccLakeB" src="acc-lakeb.png" alt="" style="opacity:0;left:35.3906%;top:41.7361%;width:38.5938%;height:11.1111%">
     <img class="acc" id="lyrAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">
+    <canvas class="fw" id="lyrFw"></canvas>
   </div>
 
   <div id="controls">
@@ -126,6 +131,7 @@
     <img class="acc" id="fsAccLakeA" src="acc-lakea.png" alt="" style="opacity:0;left:38.0469%;top:41.7361%;width:35.1953%;height:11.1111%">
     <img class="acc" id="fsAccLakeB" src="acc-lakeb.png" alt="" style="opacity:0;left:35.3906%;top:41.7361%;width:38.5938%;height:11.1111%">
     <img class="acc" id="fsAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">
+    <canvas class="fw" id="fsFw"></canvas>
 </div></div>
 
 <script>
@@ -158,7 +164,8 @@
              accCityC: document.getElementById(p+'AccCityC'),
              accLakeA: document.getElementById(p+'AccLakeA'),
              accLakeB: document.getElementById(p+'AccLakeB'),
-             accLakeC: document.getElementById(p+'AccLakeC')
+             accLakeC: document.getElementById(p+'AccLakeC'),
+             fw: document.getElementById(p+'Fw')
     };
   }
   var page = stack('lyr'), fs = stack('fs');
@@ -189,6 +196,12 @@
   // plates (day under gold under dusk under deep), opacities cumulative so
   // any blend sums exactly to the two neighbouring frames. The painting
   // never moves; only the light travels.
+  // RE-BASE (Nov 4): the frames are full-frame grades of the ONE keeper
+  // master (friends_magic_hour_condo.jpg — the fireworks + lasers Big
+  // View): still = day grade, gold = golden-hour grade, dusk = sunset
+  // grade, deep = the master itself untouched. Grades of a single array,
+  // so alignment is exact by construction. (The earlier wave-2 window-mask
+  // plates are backed up as *.bak-wrongview-1104.)
   var STOPS = [ [360, 0], [1110, 1], [1155, 2], [1290, 3], [1440, 3] ]; // [minutes, frameIdx]
   var FRAME_SRC = ['still.jpg', 'gold.jpg', 'dusk.jpg', 'deep.jpg'];
   function weights(m){
@@ -219,7 +232,7 @@
   // deep night (deep^2); point size never changes.
   // [key, period, phase, max, envelope, pulse floor]
   var ACC = [ ['accGuitar',   15, 0.0, 0.95, 'night', 0.35],
-              ['accLaser',    17, 3.0, 0.75, 'night', 0.50],
+              ['accLaser',    17, 3.0, 0.92, 'night', 0.62],
               ['accStrip',    13, 0.0, 0.95, 'strip', 0.50],
               ['accMonitors', 11, 2.0, 0.85, 'room',  0.72],
               ['accLampA',    10, 1.0, 0.90, 'lamp',  0.50],
@@ -261,6 +274,113 @@
       st[k].style.opacity = ao[k];
     }
   }
+
+  // ---- Fireworks: the keeper Big View runs a real show — starbursts
+  // with rising trails, in pulsing waves over the right-hand skyline and
+  // the guitar, procedural so it never repeats (ported from the in-house
+  // Big View player, which cloned Gary's build). Here the show is GATED
+  // BY THE SLIDER: it wakes as the mix deepens into night (deep weight),
+  // and is in full swing at deep night. In STILL the show holds frozen
+  // mid-burst, like every other accent in this piece; scrubbing back
+  // toward day clears the sky.
+  var FW_COLORS = ['#ff5da2','#ffffff','#7fe7ff','#ffd166','#b388ff','#ff8a5c'];
+  function fwGate(w){ var g = (w[3] - 0.10) / 0.70; return g < 0 ? 0 : (g > 1 ? 1 : g); }
+  function makeFw(canvas){
+    return { cv: canvas, cx: canvas.getContext('2d'), rockets: [], parts: [],
+             nextIn: 0.3, seeded: false };
+  }
+  var fwPage = makeFw(page.fw), fwFs = makeFw(fs.fw);
+  function fwSize(f){
+    var w = f.cv.clientWidth, h = f.cv.clientHeight;
+    if (!w || !h) return false;
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    var W = Math.round(w * dpr), H = Math.round(h * dpr);
+    if (f.cv.width !== W || f.cv.height !== H){ f.cv.width = W; f.cv.height = H; }
+    return true;
+  }
+  function fwBurst(f, fx, fy, big){
+    var W = f.cv.width, H = f.cv.height;
+    var n = Math.round((big ? 64 : 42) + Math.random() * 26);
+    var col = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)];
+    var col2 = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)];
+    var power = (big ? 0.155 : 0.115) * W * (0.8 + Math.random() * 0.45);
+    for (var i = 0; i < n; i++){
+      var a = (i / n) * Math.PI * 2 + Math.random() * 0.22;
+      var sp = power * (0.32 + 0.68 * Math.pow(Math.random(), 0.6));
+      f.parts.push({ x: fx * W, y: fy * H, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - power * 0.08,
+                     life: 1.15 + Math.random() * 0.85, age: 0,
+                     col: Math.random() < 0.72 ? col : col2, r: 1.1 + Math.random() * 1.5 });
+    }
+  }
+  function fwLaunch(f){
+    var W = f.cv.width, H = f.cv.height;
+    var zone = Math.random();
+    var fx = zone < 0.58 ? 0.55 + Math.random() * 0.41
+           : zone < 0.83 ? 0.33 + Math.random() * 0.13
+           : 0.45 + Math.random() * 0.12;
+    var fy = 0.07 + Math.random() * 0.24;
+    f.rockets.push({ x: fx * W, y: 0.46 * H, tx: fx, ty: fy,
+                     vy: -(0.46 - fy) * H / (0.72 + Math.random() * 0.38), age: 0,
+                     big: Math.random() < 0.30 });
+  }
+  function fwTick(f, dt, t, gate){
+    if (!fwSize(f)) return;
+    var W = f.cv.width, H = f.cv.height, cx = f.cx;
+    // pulsing waves: two slow sines summed — busy stretches, quiet ones
+    var wave = 0.55 + 0.45 * Math.sin(t * 0.241) + 0.25 * Math.sin(t * 0.377 + 2.0);
+    wave = wave < 0.05 ? 0.05 : (wave > 1 ? 1 : wave);
+    f.nextIn -= dt;
+    if (f.nextIn <= 0 && f.parts.length < Math.round(90 + 340 * gate)){
+      fwLaunch(f);
+      f.nextIn = (0.24 + Math.random() * (1.65 - 1.25 * wave)) / (0.25 + 0.75 * gate);
+    }
+    cx.clearRect(0, 0, W, H);
+    cx.globalCompositeOperation = 'lighter';
+    var i, p, r;
+    for (i = f.rockets.length - 1; i >= 0; i--){
+      r = f.rockets[i]; r.age += dt; r.y += r.vy * dt;
+      cx.globalAlpha = 0.9; cx.fillStyle = '#ffe9b8';
+      cx.beginPath(); cx.arc(r.x, r.y, Math.max(1.4, W * 0.0016), 0, 6.2832); cx.fill();
+      if (Math.random() < 0.75) f.parts.push({ x: r.x + (Math.random() - 0.5) * 3, y: r.y + 4,
+        vx: (Math.random() - 0.5) * 8, vy: 14 + Math.random() * 16, life: 0.38, age: 0, col: '#ffca7a', r: 0.9 });
+      if (r.y <= r.ty * H){ fwBurst(f, r.tx, r.ty, r.big); f.rockets.splice(i, 1); }
+    }
+    for (i = f.parts.length - 1; i >= 0; i--){
+      p = f.parts[i]; p.age += dt;
+      if (p.age >= p.life){ f.parts.splice(i, 1); continue; }
+      p.vy += H * 0.055 * dt; p.vx *= (1 - 0.55 * dt); p.vy *= (1 - 0.18 * dt);
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      var u = 1 - p.age / p.life;
+      cx.globalAlpha = u < 0.65 ? u / 0.65 : 1;
+      cx.fillStyle = p.col;
+      cx.beginPath(); cx.arc(p.x, p.y, p.r * (window.devicePixelRatio > 1 ? 1.3 : 1), 0, 6.2832); cx.fill();
+    }
+    cx.globalAlpha = 1;
+    cx.globalCompositeOperation = 'source-over';
+  }
+  function fwClear(f){ if (f.cv.width) f.cx.clearRect(0, 0, f.cv.width, f.cv.height); f.rockets.length = 0; f.parts.length = 0; }
+  function fwSeed(f){
+    // the show is already on when night arrives — first bursts land fast
+    fwBurst(f, 0.70 + Math.random() * 0.2, 0.13 + Math.random() * 0.1, true);
+    fwBurst(f, 0.38 + Math.random() * 0.06, 0.16 + Math.random() * 0.08, false);
+    f.seeded = true;
+  }
+  function fwStep(dt){
+    var g = fwGate(weights(minutes));
+    if (g <= 0){
+      if (fwPage.parts.length || fwPage.rockets.length) fwClear(fwPage);
+      if (fwFs.parts.length || fwFs.rockets.length) fwClear(fwFs);
+      fwPage.seeded = false; fwFs.seeded = false;
+      return;
+    }
+    if (state !== 'living' || dt <= 0) return;  // STILL: frozen mid-burst
+    if (!fwPage.seeded && fwSize(fwPage)) fwSeed(fwPage);
+    fwTick(fwPage, dt, phase, g);
+    if (fsOpen){
+      if (!fwFs.seeded && fwSize(fwFs)) fwSeed(fwFs);
+      fwTick(fwFs, dt, phase, g);
+    }
+  }
   function render(){
     var w = weights(minutes);
     var so = plateOpacities(w), ao = accOpacities(w, phase);
@@ -274,9 +394,12 @@
     // The twinkle clock advances only while LIVING. In STILL the accents
     // hold mid-flicker — frozen, not extinguished — while the slider (the
     // visitor's own control) keeps travelling the light.
-    if (lastNow !== null && state === 'living') phase += (now - lastNow) / 1000;
+    var dt = 0;
+    if (lastNow !== null) dt = Math.min(0.05, (now - lastNow) / 1000);
+    if (state === 'living') phase += dt;
     lastNow = now;
     render();
+    fwStep(dt);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -350,7 +473,10 @@
     forceAccents: function(v){ forcedAcc = v; },
     weights: function(){ return weights(minutes); },
     accOpacities: function(){ return accOpacities(weights(minutes), phase); },
-    state: function(){ return { state: state, minutes: minutes, fsOpen: fsOpen, phase: phase }; }
+    state: function(){ return { state: state, minutes: minutes, fsOpen: fsOpen, phase: phase,
+                                fwGate: fwGate(weights(minutes)),
+                                fwPage: fwPage.parts.length + fwPage.rockets.length,
+                                fwFs: fwFs.parts.length + fwFs.rockets.length }; }
   };
 })();
 </script>
