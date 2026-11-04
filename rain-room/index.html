@@ -315,6 +315,33 @@
 
   function rand(a, b){ return a + Math.random() * (b - a); }
 
+  /* ---------- The window glass — measured from rain-room.jpg ----------
+     We sit IN the room, so weather may only ever appear ON the glass,
+     never falling through the room. The glass wall runs in perspective,
+     so the glass is a polygon (fractions of the painting), not a rect:
+       left jamb x = 0.085 · top edge (0.085, 0.096) rising to y = 0 at
+       x = 0.73, then along the top to the right edge · bottom edge
+       (0.085, 0.662) sloping down to (1, 0.735).
+     Both canvases are sized to the stage (= the painting's box), so
+     these image fractions are canvas fractions at any aspect. */
+  var GLASS = [[0.085, 0.096], [0.73, 0], [1, 0], [1, 0.735], [0.085, 0.662]];
+  function clipToGlass(c){
+    c.beginPath();
+    for (var i = 0; i < GLASS.length; i++){
+      var px = GLASS[i][0] * W, py = GLASS[i][1] * H;
+      if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+    }
+    c.closePath();
+    c.clip();
+  }
+  function glassTop(xf){          /* glass top edge (y fraction) at x fraction xf */
+    if (xf >= 0.73) return 0;
+    return 0.096 * (1 - (xf - 0.085) / (0.73 - 0.085));
+  }
+  function glassBottom(xf){       /* glass bottom edge (y fraction) at x fraction xf */
+    return 0.662 + (0.735 - 0.662) * (xf - 0.085) / (1 - 0.085);
+  }
+
   var streaks = [], racers = [], beads = [], flakes = [];
 
   function newStreak(anywhere){
@@ -347,17 +374,18 @@
     };
   }
   function newFlake(anywhere){
-    var full = Math.random() < 0.14;   /* a few drift across the whole stage */
+    var xf = rand(0.085, 1);           /* born over the glass, never over the room */
+    var top = glassTop(xf), bot = glassBottom(xf);
     return {
-      x: rand(0, W),
-      y: anywhere ? rand(H * 0.03, full ? H * 0.97 : H * 0.72) : H * 0.03,
+      x: xf * W,
+      y: anywhere ? rand(top, bot) * H : top * H - rand(0, H * 0.03),
       r: rand(1.5, 4),
       speed: rand(11, 38),             /* slow fall — nothing like rain */
       phase: rand(0, Math.PI * 2),
       swayAmp: rand(8, 26),
       swayFreq: rand(0.4, 1.1),
       a: rand(0.35, 0.8),
-      full: full
+      bottom: bot * H                  /* this flake's own sill line */
     };
   }
   function seed(){
@@ -372,8 +400,7 @@
     for (var i = 0; i < flakes.length; i++){
       var f = flakes[i];
       f.y += f.speed * dt;
-      var limit = f.full ? H * 1.02 : H * 0.74;
-      if (f.y - f.r > limit){ flakes[i] = newFlake(false); continue; }
+      if (f.y - f.r > f.bottom){ flakes[i] = newFlake(false); continue; }
       var x = f.x + Math.sin(t / 1000 * f.swayFreq + f.phase) * f.swayAmp;
       /* soft halo, then the flake itself */
       ctx.fillStyle = 'rgba(255,255,255,' + (f.a * 0.30) + ')';
@@ -395,7 +422,13 @@
     lastT = t;
     ctx.clearRect(0, 0, W, H);
     ctx.lineCap = 'round';
-    if (weather === 'SNOW'){ drawSnow(t, dt); return; }
+    if (weather === 'SNOW'){
+      ctx.save();
+      clipToGlass(ctx);              /* snow lives on the glass only */
+      drawSnow(t, dt);
+      ctx.restore();
+      return;
+    }
 
     var i, d;
     /* streaks */
@@ -638,9 +671,7 @@
     fogRaf = requestAnimationFrame(drawFog);
     fctx.clearRect(0, 0, W, H);
     fctx.save();
-    fctx.beginPath();
-    fctx.rect(0, H * 0.04, W, H * 0.66);                    /* the glass band only */
-    fctx.clip();
+    clipToGlass(fctx);                                      /* mist on the glass only */
     for (var i = 0; i < fogBanks.length; i++){
       var bk = fogBanks[i];
       bk.x += bk.dir * (W + bk.w) / bk.cross * dt;
