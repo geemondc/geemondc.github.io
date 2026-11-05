@@ -164,6 +164,7 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
 
   <button class="updbtn" id="refreshTop" type="button">↻ &nbsp;Check for an Update</button>
   <div class="stamp" id="stamp">Showing the last market close (Wednesday, Nov 4).</div>
+  <button class="updbtn" id="refreshPage" type="button" style="margin-top:10px">↻ &nbsp;Refresh Page</button>
 
   <!-- ============ HER POSITION ============ -->
   <section class="card" id="edCard">
@@ -378,35 +379,76 @@ function loadSym(stooqSym){
   });
 }
 
-var liveCount = 0;
 var refreshing = false;
+var LIVE = null;
+function fetchLive(){
+  return fetch('live.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
+    if (!j || !j.ed || !j.date) return false;
+    if (DATA && j.date < DATA.date) return false;
+    var t = new Date(), pad = function(n){ return (n<10?'0':'') + n; };
+    var todayStr = t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate());
+    if (j.date !== todayStr) return false;
+    LIVE = j; return true;
+  }).catch(function(){ return false; });
+}
+function applyLive(){
+  if (!LIVE) return false;
+  var applied = false;
+  if (LIVE.ed && LIVE.ed.price > 0){
+    var rec = (DATA && DATA.symbols) ? DATA.symbols['ED'] : null;
+    ed = { price:LIVE.ed.price, prev:LIVE.ed.prev,
+      wk: rec && rec.w ? (LIVE.ed.price/rec.w - 1) * 100 : ed.wk,
+      mo: rec && rec.m ? (LIVE.ed.price/rec.m - 1) * 100 : ed.mo,
+      yr: rec && rec.y ? (LIVE.ed.price/rec.y - 1) * 100 : ed.yr,
+      live:true };
+    renderED(); applied = true;
+  }
+  if (LIVE.board){
+    var b = LIVE.board;
+    ['dow','spx','ndq'].forEach(function(k){ if (b[k]){ mkt[k].val = b[k].val; mkt[k].prev = b[k].prev; } });
+    if (b.vix) mkt.vix.val = b.vix.val;
+    if (b.tnx) mkt.tnx.val = b.tnx.val;
+    renderMkt(); applied = true;
+  }
+  if (LIVE.quotes){
+    watch.forEach(function(w){
+      var q = LIVE.quotes[w.sym]; if (!q) return;
+      var rec2 = (DATA && DATA.symbols) ? DATA.symbols[w.sym] : null;
+      var old = watchData[w.sym];
+      watchData[w.sym] = { price:q.price, prev:q.prev,
+        wk: rec2 && rec2.w ? (q.price/rec2.w - 1) * 100 : (old ? old.wk : 0),
+        mo: rec2 && rec2.m ? (q.price/rec2.m - 1) * 100 : (old ? old.mo : 0),
+        yr: rec2 && rec2.y ? (q.price/rec2.y - 1) * 100 : (old ? old.yr : 0) };
+      w.failed = false;
+    });
+    renderWatch();
+  }
+  return applied;
+}
 function refresh(){
   if (refreshing) return; refreshing = true;
-  var st0 = document.getElementById('stamp'); if (st0) st0.textContent = 'Updating prices…';
-  liveCount = 0;
-  var jobs = [];
-  jobs.push(loadRows('ed.us').then(function(rows){ edRows = rows; var st = statsFromRows(rows); ed = {price:st.price, prev:st.prev, wk:st.wk, mo:st.mo, yr:st.yr, live:true}; intraRows = null; liveCount++; renderED(); }).catch(function(){}));
-  [['^dji','dow'],['^spx','spx'],['^ndq','ndq'],['^vix','vix']].forEach(function(pair){
-    jobs.push(loadSym(pair[0]).then(function(s){ mkt[pair[1]].val = s.price; mkt[pair[1]].prev = s.prev; liveCount++; renderMkt(); }).catch(function(){}));
-  });
-  jobs.push(fetchText('https://stooq.com/q/l/?s=10usy.b&f=c&e=csv', 5000).then(function(tx){
-    var v = parseFloat(tx.trim().split(/\r?\n/).pop());
-    if (v>1 && v<12){ mkt.tnx.val = v; liveCount++; renderMkt(); }
-  }).catch(function(){}));
-  // watch list live refresh
-  watch.forEach(function(w){ jobs.push(refreshWatchRow(w, true)); });
-  Promise.all(jobs).then(function(){
+  var st0 = document.getElementById('stamp'); if (st0) st0.textContent = 'Updating prices\u2026';
+  fetch('data.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(j){
+    if (j && j.symbols && (!DATA || j.date >= DATA.date)){ DATA = j; applyData(); }
+  }).catch(function(){}).then(function(){
+    return fetchLive();
+  }).then(function(ok){
     refreshing = false;
+    var applied = ok && applyLive();
     var st = document.getElementById('stamp');
-    if (liveCount>0){
-      st.textContent = 'Prices updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' today.';
+    if (!st) return;
+    if (applied && LIVE){
+      st.textContent = 'Prices updated ' + LIVE.t + ' today.';
+    } else if (DATA) {
+      st.textContent = 'You have the latest update \u2014 prices from ' + DATA.asof + '.';
     } else {
-      st.textContent = DATA ? ('You have the latest update \u2014 prices from ' + DATA.asof + '.') : 'Couldn\u2019t reach the market just now \u2014 showing the last close (Wednesday, Nov 4). Try checking again in a bit.';
+      st.textContent = 'Couldn\u2019t reach the market just now \u2014 showing the last close (Wednesday, Nov 4). Try checking again in a bit.';
     }
   });
 }
 document.getElementById('refreshTop').addEventListener('click', refresh);
 document.getElementById('refreshBottom').addEventListener('click', refresh);
+document.getElementById('refreshPage').addEventListener('click', function(){ location.href = location.pathname + '?v=' + Date.now(); });
 
 function loadRows(stooqSym){
   return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 6000).then(function(csv){
@@ -493,9 +535,6 @@ document.getElementById('chartBtns').addEventListener('click', function(e){
   var r = b.getAttribute('data-r');
   if (r==='1D' && !intraRows){
     drawChart('1D');
-    fetchText('https://stooq.com/q/d/l/?s=ed.us&i=60', 6000).then(function(csv){
-      var rows = parseDaily(csv); if (rows && rows.length>=3){ intraRows = rows; if (curRange==='1D') drawChart('1D'); }
-    }).catch(function(){});
     return;
   }
   drawChart(r);
@@ -556,15 +595,23 @@ function ownTxt(w, d){
   return '= ' + fmt$(val) + ' · ' + pct.toFixed(1) + '% of everything' + word;
 }
 function refreshWatchRow(w, quiet){
+  if (LIVE && LIVE.quotes && LIVE.quotes[w.sym]){
+    var q = LIVE.quotes[w.sym];
+    var rec = (DATA && DATA.symbols) ? DATA.symbols[w.sym] : null;
+    var old = watchData[w.sym];
+    watchData[w.sym] = { price:q.price, prev:q.prev,
+      wk: rec && rec.w ? (q.price/rec.w - 1) * 100 : (old ? old.wk : 0),
+      mo: rec && rec.m ? (q.price/rec.m - 1) * 100 : (old ? old.mo : 0),
+      yr: rec && rec.y ? (q.price/rec.y - 1) * 100 : (old ? old.yr : 0) };
+    w.failed = false; renderWatch();
+    return Promise.resolve();
+  }
   if (DATA && DATA.symbols && DATA.symbols[w.sym]){
     watchData[w.sym] = statsFromData(DATA.symbols[w.sym]); w.failed = false; renderWatch();
     return Promise.resolve();
   }
-  return loadSym(w.sym.toLowerCase() + '.us').then(function(s){
-    watchData[w.sym] = s; w.failed = false; renderWatch();
-  }).catch(function(){
-    w.failed = true; renderWatch();
-  });
+  w.failed = true; renderWatch();
+  return Promise.resolve();
 }
 document.getElementById('addBtn').addEventListener('click', function(){
   var inp = document.getElementById('addSym');
@@ -577,15 +624,15 @@ document.getElementById('addBtn').addEventListener('click', function(){
 document.getElementById('addSym').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('addBtn').click(); } });
 
 /* ---------- text size (hers to adjust; starts BIG) ---------- */
-var ZSTEPS = [0.9, 1, 1.12, 1.25, 1.4], zIdx = 1;
-try{ var zi = parseInt(localStorage.getItem('carolZoomIdx')); if (zi>=0 && zi<ZSTEPS.length) zIdx = zi; }catch(e){}
+var ZSTEPS = [0.7, 0.8, 0.9, 1, 1.12, 1.25, 1.4, 1.55, 1.7], zIdx = 3;
+try{ var zi = parseInt(localStorage.getItem('carolZoomIdx2')); if (zi>=0 && zi<ZSTEPS.length) zIdx = zi; }catch(e){}
 function applyZoom(){
   var w = document.querySelector('.wrap');
   if (w) w.style.zoom = ZSTEPS[zIdx];
-  try{ localStorage.setItem('carolZoomIdx', zIdx); }catch(e){}
+  try{ localStorage.setItem('carolZoomIdx2', zIdx); }catch(e){}
   drawChart(curRange);
 }
-document.getElementById('zPlus').addEventListener('click', function(){ if (zIdx < ZSTEPS.length-1){ zIdx++; applyZoom();
+document.getElementById('zPlus').addEventListener('click', function(){ if (zIdx < ZSTEPS.length-1){ zIdx++; applyZoom(); } });
 
 /* ---------- page background (her pick, remembered) ---------- */
 function markBg(){
@@ -603,7 +650,7 @@ document.querySelectorAll('[data-bgset]').forEach(function(b){
     markBg();
   });
 });
-markBg(); } });
+markBg();
 document.getElementById('zMinus').addEventListener('click', function(){ if (zIdx > 0){ zIdx--; applyZoom(); } });
 applyZoom();
 
@@ -633,7 +680,7 @@ function applyData(){
   var st2 = document.getElementById('stamp');
   if (st2 && !refreshing) st2.textContent = 'Prices from ' + DATA.asof + ' \u2014 this page updates every weekday morning.';
 }
-fetch('data.json', {cache:'no-cache'}).then(function(resp){ return resp.json(); }).then(function(j){ DATA = j; applyData(); }).catch(function(){});
+fetch('data.json?t=' + Date.now(), {cache:'no-store'}).then(function(resp){ return resp.json(); }).then(function(j){ DATA = j; applyData(); }).catch(function(){});
 
 renderED(); renderMkt(); renderWatch();
 watch.forEach(function(w){ refreshWatchRow(w, true); });
