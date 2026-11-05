@@ -169,6 +169,48 @@
 
 </div>
 <script>
+  /* ---------- personalization via URL params: ?to=&from=&line=&scene=bigview|chilling ----------
+     No params at all renders the original Sofia & James sample, untouched. */
+  (function(){
+    var q = new URLSearchParams(window.location.search);
+    function clean(v, cap){
+      if (v == null) return '';
+      return String(v).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, cap);
+    }
+    var hasParams = ['to','from','line','scene'].some(function(k){ return q.has(k); });
+    if (!hasParams) return;
+    var scene = clean(q.get('scene'), 20).toLowerCase() === 'chilling' ? 'chilling' : 'bigview';
+    var to = clean(q.get('to'), 60) || 'Sofia';
+    var from = clean(q.get('from'), 60) || 'James';
+    var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
+    var DEF_LINE = 'Another year, same favorite view — you, right next to me.';
+    var line = rawLine !== null ? rawLine : (scene === 'bigview' ? DEF_LINE : '');
+    var headline = scene === 'chilling' ? ('For ' + to + ', with love.') : ('Happy New Year, ' + to + '.');
+    var greeting = scene === 'chilling' ? 'Thinking of you' : 'Happy New Year';
+    function setText(sel, txt){ var el = document.querySelector(sel); if (el) el.textContent = txt; }
+    setText('#front .f-for', 'For ' + to);
+    setText('#front .f-name', to);
+    setText('#front .f-from', greeting + ', from ' + from);
+    var sealL = document.querySelector('#seal .half.l'), sealR = document.querySelector('#seal .half.r');
+    if (sealL) sealL.textContent = (to.charAt(0) || '•').toUpperCase();
+    if (sealR) sealR.textContent = (from.charAt(0) || '•').toUpperCase();
+    var frontEl = document.getElementById('front');
+    if (frontEl) frontEl.setAttribute('aria-label', 'Sealed card for ' + to + ', from ' + from + '. Tap the seal to open.');
+    var cardEl = document.getElementById('card');
+    if (cardEl) cardEl.setAttribute('aria-label', 'The opened card for ' + to);
+    var msg = document.querySelector('#card .message');
+    if (msg){ if (line){ msg.textContent = line; } else { msg.style.display = 'none'; } }
+    setText('#card .closing', headline);
+    setText('#card .signature', 'With love, ' + from);
+    document.title = 'A Living Card — for ' + to;
+    if (scene === 'chilling'){
+      var fr = document.querySelector('.frame iframe');
+      if (fr){ fr.src = 'https://chillingathome.lovable.app'; fr.title = 'Living photo — golden hour at home'; }
+      var st = document.querySelector('.frame img.still');
+      if (st){ st.src = 'https://thelivingphotos.com/img/p-84bd458431.jpg'; st.alt = 'Golden hour at home, at rest'; }
+    }
+  })();
+
   var front = document.getElementById('front');
   var settleTimer = null;
   var MIDDLE_MS = 11300; /* living middle, a firework finale, then the scene settles to rest */
