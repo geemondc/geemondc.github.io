@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>A Living Card — For Sofia, from James (sample)</title>
+<title>A Living Card — Happy New Year, Sofia (sample)</title>
 <meta name="description" content="A Living Card: a sealed greeting that opens onto a living photo — a beginning, a middle, and an end. Personalized, sendable, one link.">
 <style>
   :root{
@@ -22,15 +22,16 @@
 
   /* ---------- the inside card (sits beneath the envelope front) ---------- */
   #card{
-    position:relative; width:min(430px, 94vw); max-height:94dvh; overflow:auto;
+    position:relative; width:min(430px, 94vw); max-height:94dvh; overflow:auto; scrollbar-width:none;
     background:var(--ivory);
     border-radius:6px;
     box-shadow:0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
     padding:26px 22px 18px;
     text-align:center;
-    opacity:0; transform:translateY(14px) scale(.985);
-    transition:opacity .7s ease .45s, transform .7s ease .45s;
+    opacity:0; transform:translateY(26px) scale(.93);
+    transition:opacity .8s ease .5s, transform .8s cubic-bezier(.22,.9,.3,1) .5s;
   }
+  #card::-webkit-scrollbar{display:none}
   #card::before{
     content:""; position:absolute; inset:9px; border:1px solid var(--gold);
     border-radius:3px; pointer-events:none; opacity:.75;
@@ -42,7 +43,12 @@
     box-shadow:0 10px 26px rgba(60,30,10,.25); background:#101018;
     aspect-ratio:4/3.4; margin:14px 4px 0;
   }
-  .frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0; display:block}
+  .frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0; display:block; overflow:hidden}
+  .frame canvas#fx{position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none}
+  #burst{position:fixed; inset:0; pointer-events:none; opacity:0; z-index:4;
+    background:radial-gradient(60% 50% at 50% 46%, rgba(255,236,170,.95) 0%, rgba(236,210,138,.45) 42%, transparent 72%)}
+  body.opening #burst{animation:burstflash 1s ease .3s}
+  @keyframes burstflash{0%{opacity:0}22%{opacity:.85}100%{opacity:0}}
   /* The photo is HELD STILL — no push-in, no zoom, no pan.
      The living light inside the photo is the only motion. */
   .frame img.still{
@@ -135,16 +141,18 @@
 </head>
 <body>
 <div id="scene">
+  <div id="burst" aria-hidden="true"></div>
 
-  <main id="card" aria-label="The opened card for Sofia">
+  <main id="card" aria-label="The opened New Year card for Sofia">
     <div class="over">A Living Card</div>
     <div class="frame">
-      <iframe src="https://geemondc.github.io/falls-moonlit/#wall" title="Living photo — the moonlit falls" allow="autoplay" loading="eager"></iframe>
-      <img class="still" src="https://geemondc.github.io/falls-moonlit/still.jpg" alt="The moonlit falls, at rest">
+      <iframe src="https://geemondc.github.io/big-view/#wall" title="Living photo — fireworks over the water" allow="autoplay" loading="eager" scrolling="no"></iframe>
+      <canvas id="fx" aria-hidden="true"></canvas>
+      <img class="still" src="https://geemondc.github.io/big-view/still.jpg" alt="Fireworks over the water, at rest">
     </div>
-    <p class="message">The afternoon we got lost and found our favorite place.</p>
-    <p class="closing">Still my favorite picture of us.</p>
-    <p class="signature">With love, James</p>
+    <p class="message">Another year, same favorite view — you, right next to me.</p>
+    <p class="closing">Happy New Year, Sofia.</p>
+    <p class="signature">With love, James — here&rsquo;s to 2027</p>
     <div class="flourish">✦ ✦ ✦</div>
     <div class="brand">A Living Card · Living Photos</div>
     <button id="replay" type="button">Replay</button>
@@ -154,7 +162,7 @@
     <div id="flap" aria-hidden="true"></div>
     <div class="f-for">For Sofia</div>
     <div class="f-name">Sofia</div>
-    <div class="f-from">A little something from James</div>
+    <div class="f-from">Happy New Year, from James</div>
     <div id="seal" aria-hidden="true"><span class="half l">S</span><span class="half r">J</span></div>
     <div class="tap">Tap the seal to open</div>
   </button>
@@ -163,24 +171,68 @@
 <script>
   var front = document.getElementById('front');
   var settleTimer = null;
-  var MIDDLE_MS = 10000; /* living middle runs ~10s, then the scene settles to rest */
+  var MIDDLE_MS = 11300; /* living middle, a firework finale, then the scene settles to rest */
+  var finaleTimer = null;
 
   function open(){
     if (document.body.classList.contains('open')) return;
     /* registers immediately: crack + flap + lift begin on this tap */
     document.body.classList.add('opening');
     document.body.classList.add('open');
-    clearTimeout(settleTimer);
+    clearTimeout(settleTimer); clearTimeout(finaleTimer);
+    finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
     settleTimer = setTimeout(function(){
       document.body.classList.add('settled');
     }, MIDDLE_MS);
   }
   function reseal(){
-    clearTimeout(settleTimer);
+    clearTimeout(settleTimer); clearTimeout(finaleTimer);
+    var cv = document.getElementById('fx');
+    if (cv) { var cx = cv.getContext('2d'); if (cx) cx.clearRect(0, 0, cv.width, cv.height); }
     document.body.classList.remove('settled');
     document.body.classList.remove('open');
     document.body.classList.remove('opening');
     window.scrollTo(0,0);
+  }
+  /* the finale: three bursts over the living fireworks, then the photo comes to rest */
+  function finale(){
+    var cv = document.getElementById('fx'); if (!cv) return;
+    var frame = cv.parentElement;
+    var W = frame.clientWidth, H = frame.clientHeight; if (!W || !H) return;
+    cv.width = W; cv.height = H;
+    var cx = cv.getContext('2d'); if (!cx) return;
+    var COLORS = ['#ecd28a', '#fff6dd', '#e88ca0', '#c9a24d'];
+    var parts = [];
+    function burst(bx, by, delay){
+      setTimeout(function(){
+        var col = COLORS[Math.floor(Math.random() * COLORS.length)];
+        for (var i = 0; i < 46; i++){
+          var a = (i / 46) * Math.PI * 2 + Math.random() * 0.2;
+          var sp = 1.1 + Math.random() * 2.3;
+          parts.push({x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.4, life: 1, col: col, r: 1 + Math.random() * 1.6});
+        }
+      }, delay);
+    }
+    burst(W * 0.30, H * 0.34, 0);
+    burst(W * 0.68, H * 0.26, 380);
+    burst(W * 0.50, H * 0.46, 760);
+    var t0 = null;
+    function tick(ts){
+      if (!t0) t0 = ts;
+      var el = ts - t0;
+      cx.clearRect(0, 0, W, H);
+      parts = parts.filter(function(p){ return p.life > 0; });
+      parts.forEach(function(p){
+        p.x += p.vx; p.y += p.vy; p.vy += 0.016; p.vx *= 0.985; p.vy *= 0.99; p.life -= 0.011;
+        cx.globalAlpha = Math.max(p.life, 0);
+        cx.fillStyle = p.col;
+        cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2); cx.fill();
+      });
+      cx.globalAlpha = 1;
+      if (el < 2100) requestAnimationFrame(tick);
+      else cx.clearRect(0, 0, W, H);
+    }
+    requestAnimationFrame(tick);
   }
   front.addEventListener('click', open);
   document.getElementById('replay').addEventListener('click', reseal);
