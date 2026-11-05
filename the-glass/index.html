@@ -368,7 +368,7 @@ function layout() {
   b.drawImage(img, rect.x, rect.y, w, h);
   orbs = orbsN.map((o) => ({ x: rect.x + o.u * rect.w, y: rect.y + o.v * rect.h, r: o.r * rect.w, c: o.c, ph: o.ph, sp: o.sp }));
   candles = candlesN.map((c) => ({ x: rect.x + c.u * rect.w, y: rect.y + c.v * rect.h, r: c.r * rect.w, f1: c.f1, f2: c.f2, f3: c.f3, p1: c.p1, p2: c.p2, p3: c.p3 }));
-  drops = []; for (let i = 0; i < 347; i++) drops.push(newDrop(rand(0.60, 2.00)));
+  drops = []; for (let i = 0; i < 347; i++) drops.push(newDrop(rand(0.45, 1.50)));
 }
 
 for (let i = 0; i < 9; i++) blobs.push({ x: Math.random(), y: Math.random(), r: rand(0.18, 0.38), ph: rand(0, 6.28), sp: rand(0.08, 0.2), dx: rand(-0.004, 0.004), dy: rand(-0.003, 0.003) });
@@ -376,7 +376,7 @@ for (let i = 0; i < 4; i++) clears.push({ x: Math.random(), y: Math.random(), r:
 
 function drawDrop(d) {
   const r = d.r;
-  if (r < 2.2 * dpr) {
+  if (r < 1.65 * dpr) {
     ctx.fillStyle = "rgba(140,170,220,0.40)"; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, 7); ctx.fill();
     ctx.fillStyle = "rgba(255,240,220,0.65)"; ctx.beginPath(); ctx.arc(d.x - r * 0.3, d.y - r * 0.3, r * 0.38, 0, 7); ctx.fill();
     return;
@@ -412,13 +412,13 @@ function step(dt) {
   mistAmt += ((state.weather === "mist" ? 1 : 0) - mistAmt) * Math.min(1, dt * 0.4);
   const rainK = 1 - mistAmt;
   const births = (state.weather === "rain" ? 80 : 6) * dt;
-  for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.40, state.weather === "rain" ? 1.50 : 0.8)));
+  for (let i = 0; i < births; i++) if (Math.random() < births - i) drops.push(newDrop(rand(0.30, state.weather === "rain" ? 1.13 : 0.6)));
   if (rainK > 0.5 && t - lastBig > rand(1.8, 4.2)) {
     lastBig = t;
     const fx = rand(0.08, 0.95);
     const span = spanAt(GLASS_IN, fx);
     const fy = span ? span[0] + 0.01 : 0.2;
-    drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(3.0, 4.5) * dpr, vy: 160 * dpr, slide: true, big: true, wob: 0 });
+    drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(2.25, 3.38) * dpr, vy: 160 * dpr, slide: true, big: true, wob: 0 });
   }
   /* Runners: drips born already running, all over the panes — Gary's
      downpour signature is water DRIPPING, constantly, everywhere; a
@@ -434,7 +434,7 @@ function step(dt) {
         const span = spanAt(GLASS_IN, fx);
         if (!span) continue;
         const fy = span[0] + Math.random() * (span[1] - span[0]) * 0.55;
-        drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(1.75, 2.75) * dpr, vy: rand(40, 90) * dpr, slide: true, wob: rand(0, 6) });
+        drops.push({ x: rect.x + fx * rect.w, y: rect.y + fy * rect.h, r: rand(1.31, 2.06) * dpr, vy: rand(40, 90) * dpr, slide: true, wob: rand(0, 6) });
         break;
       }
     }
@@ -443,7 +443,7 @@ function step(dt) {
   for (const d of drops) {
     if (!d.slide) {
       d.r += 0.10 * dpr * dt * rainK * Math.random();
-      if (d.r > 1.70 * dpr && Math.random() < dt * 1.6) { d.slide = true; d.vy = 10 * dpr; }
+      if (d.r > 1.28 * dpr && Math.random() < dt * 1.6) { d.slide = true; d.vy = 10 * dpr; }
     } else {
       d.vy = Math.min(d.vy + 300 * dpr * dt * (d.r / (8 * dpr)), (d.big ? 680 : 420) * dpr);
       if (Math.random() < dt * 3) d.vy *= 0.4; // stick-slip
@@ -454,7 +454,7 @@ function step(dt) {
       tc.beginPath(); tc.moveTo(px, py); tc.lineTo(d.x, d.y); tc.stroke();
       d.r -= dt * 0.10 * dpr;
       if (Math.random() < dt * 7) {
-        const nd = { x: d.x, y: py, r: rand(0.60, 1.20) * dpr, vy: 0, slide: false, wob: 0 };
+        const nd = { x: d.x, y: py, r: rand(0.45, 0.90) * dpr, vy: 0, slide: false, wob: 0 };
         drops.push(nd);
       }
     }
@@ -467,7 +467,7 @@ function step(dt) {
       const dx = a.x - b.x, dy = a.y - b.y, rr = (a.r + b.r) * 0.8;
       if (dx * dx + dy * dy < rr * rr) {
         const big = a.r >= b.r ? a : b; const small = big === a ? b : a;
-        big.r = Math.min(4.5 * dpr, Math.sqrt(big.r * big.r + small.r * small.r));
+        big.r = Math.min(3.38 * dpr, Math.sqrt(big.r * big.r + small.r * small.r));
         big.slide = big.slide || small.slide; big.big = !!(big.big || small.big); big.vy = Math.max(big.vy, small.vy);
         small.r = 0;
       }
@@ -475,7 +475,7 @@ function step(dt) {
   }
   // a drop that leaves the glass is gone (it is never drawn outside anyway —
   // the render clips — this just keeps the population honest)
-  drops = drops.filter((d) => d.r > 0.4 * dpr && d.y < H + 30 * dpr &&
+  drops = drops.filter((d) => d.r > 0.3 * dpr && d.y < H + 30 * dpr &&
     inPoly(GLASS, toFracX(d.x), toFracY(d.y) + (d.slide ? 0.004 : 0)));
   if (drops.length > 1870) drops.splice(0, drops.length - 1870);
   tc.globalCompositeOperation = "destination-out";
@@ -505,10 +505,12 @@ function render() {
   // screenshot pair 1.5s apart cannot miss.
   ctx.globalCompositeOperation = "lighter";
   for (const o of orbs) {
-    const a = 0.18 + 0.62 * (0.5 + 0.5 * Math.sin(t * o.sp * 2.2 + o.ph));
-    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
-    g.addColorStop(0, "rgba(" + o.c + "," + a + ")"); g.addColorStop(0.6, "rgba(" + o.c + "," + (a * 0.5) + ")"); g.addColorStop(1, "rgba(" + o.c + ",0)");
-    ctx.fillStyle = g; ctx.fillRect(o.x - o.r, o.y - o.r, o.r * 2, o.r * 2);
+    const fl = 0.5 + 0.28 * Math.sin(t * o.sp * 7.3 + o.ph) + 0.22 * Math.sin(t * o.sp * 13.7 + o.ph * 2.7);
+    const a = Math.max(0.10, Math.min(1, fl)) * 0.9;
+    const R = Math.max(2 * dpr, o.r * 0.10);
+    const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, R);
+    g.addColorStop(0, "rgba(" + o.c + "," + a + ")"); g.addColorStop(1, "rgba(" + o.c + ",0)");
+    ctx.fillStyle = g; ctx.fillRect(o.x - R, o.y - R, R * 2, R * 2);
   }
   ctx.globalCompositeOperation = "source-over";
   ctx.drawImage(trail, 0, 0);
