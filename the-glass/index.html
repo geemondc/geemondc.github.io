@@ -356,15 +356,33 @@ function layout() {
   if (!img.complete || !img.width) return;
   // ONE continuous room: cover-fit at every aspect. No bands, no surround.
   const iw = img.width, ih = img.height;
-  const s = Math.max(W / iw, H / ih);
+  /* Wall mode (on the Living Photos store) fits the WHOLE room, matching
+     the still's framing — standalone keeps its full-bleed cover pane. */
+  const WALLFIT = location.hash === "#wall";
+  const s = WALLFIT ? Math.min(W / iw, H / ih) : Math.max(W / iw, H / ih);
   const w = iw * s, h = ih * s;
-  let x = W * 0.5 - FOCUS_X * w;
-  let y = H * 0.46 - FOCUS_Y * h;
-  x = Math.min(0, Math.max(W - w, x));
-  y = Math.min(0, Math.max(H - h, y));
+  let x, y;
+  if (WALLFIT) { x = (W - w) / 2; y = (H - h) / 2; }
+  else {
+    x = W * 0.5 - FOCUS_X * w;
+    y = H * 0.46 - FOCUS_Y * h;
+    x = Math.min(0, Math.max(W - w, x));
+    y = Math.min(0, Math.max(H - h, y));
+  }
   rect = { x, y, w, h };
   glassPts = GLASS_IN.map((p) => [rect.x + p[0] * rect.w, rect.y + p[1] * rect.h]);
   const b = base.getContext("2d");
+  if (WALLFIT) {
+    const cs = Math.max(W / iw, H / ih), cw = iw * cs, ch = ih * cs;
+    const tmp = document.createElement("canvas");
+    tmp.width = Math.max(2, W >> 4); tmp.height = Math.max(2, H >> 4);
+    const tg = tmp.getContext("2d");
+    const ts = Math.max(tmp.width / iw, tmp.height / ih);
+    tg.drawImage(img, (tmp.width - iw * ts) / 2, (tmp.height - ih * ts) / 2, iw * ts, ih * ts);
+    tg.fillStyle = "rgba(2,4,12,0.45)"; tg.fillRect(0, 0, tmp.width, tmp.height);
+    b.imageSmoothingEnabled = true;
+    b.drawImage(tmp, 0, 0, W, H);
+  }
   b.drawImage(img, rect.x, rect.y, w, h);
   orbs = orbsN.map((o) => ({ x: rect.x + o.u * rect.w, y: rect.y + o.v * rect.h, r: o.r * rect.w, c: o.c, ph: o.ph, sp: o.sp }));
   candles = candlesN.map((c) => ({ x: rect.x + c.u * rect.w, y: rect.y + c.v * rect.h, r: c.r * rect.w, f1: c.f1, f2: c.f2, f3: c.f3, p1: c.p1, p2: c.p2, p3: c.p3 }));
@@ -667,11 +685,12 @@ window.__glass = {
 </script>
 
 <script>
-/* Wall mode: embedded in the Living Photos wall via #wall, this page's own title/controls stay hidden — the scene and its interactions stay live. */
+/* Wall mode: embedded in the Living Photos wall via #wall. The piece keeps
+   its own controls here — weather (Rain/Mist), cove color, sound — with the
+   same tap-to-wake, fade-after-3.5s behavior as standalone (Gary, Nov 4:
+   the options must be there when it plays on the store too). */
 if (location.hash === '#wall') {
-  var lpWallStyle = document.createElement('style');
-  lpWallStyle.textContent = '#controls{display:none !important}';
-  document.head.appendChild(lpWallStyle);
+  document.body.classList.add('wall');
 }
 </script>
 </body>
