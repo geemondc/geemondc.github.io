@@ -92,6 +92,11 @@
   .dot{display:inline-block; width:18px; height:18px; border-radius:50%; margin-right:8px; vertical-align:-2px}
   .dotED{background:var(--teal)} .dotCD{background:#D9C98F}
   .plNote{margin-top:10px; color:var(--soft); font-size:19px}
+
+  .zoomrow{display:flex; align-items:center; justify-content:center; gap:10px; margin:12px 0 2px; flex-wrap:wrap}
+  .zoomrow span{font-size:20px; color:var(--soft); font-weight:600}
+  .zoomrow button{font-size:21px; font-weight:800; padding:12px 18px; border-radius:12px; border:2px solid var(--teal); background:#fff; color:var(--teal); cursor:pointer}
+  .zoomrow button:active{background:var(--tealsoft)}
   @media (max-width:520px){ .price{font-size:54px} h1{font-size:34px} }
 </style>
 </head>
@@ -101,6 +106,8 @@
     <h1>Carol's Stock Page</h1>
     <div class="sub" id="dateline">Your stocks, in one simple place.</div>
   </header>
+
+  <div class="zoomrow"><span>Text size:</span><button type="button" id="zMinus">− Smaller</button><button type="button" id="zPlus">+ Bigger</button></div>
 
   <button class="bigbtn" id="refreshTop" type="button">↻ &nbsp;Update Prices</button>
   <div class="stamp" id="stamp">Showing the last market close (Wednesday, Nov 4).</div>
@@ -509,6 +516,19 @@ document.getElementById('addBtn').addEventListener('click', function(){
   refreshWatchRow(w, false);
 });
 document.getElementById('addSym').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('addBtn').click(); } });
+
+/* ---------- text size (hers to adjust; starts BIG) ---------- */
+var ZSTEPS = [0.9, 1, 1.12, 1.25, 1.4], zIdx = 1;
+try{ var zi = parseInt(localStorage.getItem('carolZoomIdx')); if (zi>=0 && zi<ZSTEPS.length) zIdx = zi; }catch(e){}
+function applyZoom(){
+  var w = document.querySelector('.wrap');
+  if (w) w.style.zoom = ZSTEPS[zIdx];
+  try{ localStorage.setItem('carolZoomIdx', zIdx); }catch(e){}
+  drawChart(curRange);
+}
+document.getElementById('zPlus').addEventListener('click', function(){ if (zIdx < ZSTEPS.length-1){ zIdx++; applyZoom(); } });
+document.getElementById('zMinus').addEventListener('click', function(){ if (zIdx > 0){ zIdx--; applyZoom(); } });
+applyZoom();
 
 renderED(); renderMkt(); renderWatch();
 watch.forEach(function(w){ refreshWatchRow(w, true); });
