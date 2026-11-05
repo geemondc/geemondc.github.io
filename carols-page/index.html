@@ -53,9 +53,9 @@
   .mrow:last-child{border-bottom:none}
   .mname{font-size:25px; font-weight:700}
   .mnote{display:block; font-size:17px; font-weight:400; color:var(--soft)}
-  .mvals{text-align:right; white-space:nowrap}
-  .mval{font-size:27px; font-weight:800}
-  .mmove{font-size:20px; font-weight:700}
+  .mvals{text-align:right; min-width:0}
+  .mval{font-size:27px; font-weight:800; white-space:nowrap}
+  .mmove{font-size:20px; font-weight:700; overflow-wrap:break-word}
   .bigbtn{display:block; width:100%; background:var(--teal); color:#fff; border:none; border-radius:16px;
     font-size:27px; font-weight:800; padding:18px 10px; cursor:pointer; margin:14px 0 4px}
   .bigbtn:active{transform:scale(.99)}
@@ -265,7 +265,7 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
   <!-- ============ THE MARKET ============ -->
   <section class="card teal">
     <h2>The Latest Market Close</h2>
-    <p style="font-size:19px; color:var(--soft); margin:2px 0 10px">From Wednesday, Nov 4 &mdash; the last market close.</p>
+    <p id="boardCap" style="font-size:19px; color:var(--soft); margin:2px 0 10px">From Wednesday, Nov 4 &mdash; the last market close.</p>
     <div class="mrow"><div><span class="mname">Dow</span><span class="mnote">30 big companies</span></div>
       <div class="mvals"><span class="mval" id="dowVal">53,356</span><br><span class="mmove up" id="dowMove">▲ +3.03%</span></div></div>
     <div class="mrow"><div><span class="mname">S&amp;P 500</span><span class="mnote">the whole market in one number</span></div>
@@ -711,6 +711,15 @@ function applyData(){
     if (a) a.textContent = 'Last close: ' + DATA.asof;
     var dl = document.getElementById('dateline');
     if (dl) dl.textContent = 'Your stocks, in one simple place. Prices from ' + DATA.asof + '.';
+  }
+  if (DATA.board && DATA.date >= BAKED_DATE){
+    var bd = DATA.board;
+    ['dow','spx','ndq'].forEach(function(k){ if (bd[k]){ mkt[k].val = bd[k].val; mkt[k].prev = bd[k].prev; } });
+    if (bd.vix){ mkt.vix.val = bd.vix.val; if (bd.vix.prev) mkt.vix.prev = bd.vix.prev; }
+    if (bd.tnx){ mkt.tnx.val = bd.tnx.val; if (bd.tnx.prev) mkt.tnx.prev = bd.tnx.prev; }
+    renderMkt();
+    var bc = document.getElementById('boardCap');
+    if (bc) bc.textContent = 'From ' + DATA.asof + ' \u2014 the last market close.';
   }
   watch.forEach(function(w){
     var rec = DATA.symbols[w.sym];
