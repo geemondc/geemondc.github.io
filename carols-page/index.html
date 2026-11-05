@@ -97,6 +97,13 @@
   .zoomrow span{font-size:20px; color:var(--soft); font-weight:600}
   .zoomrow button{font-size:21px; font-weight:800; padding:12px 18px; border-radius:12px; border:2px solid var(--teal); background:#fff; color:var(--teal); cursor:pointer}
   .zoomrow button:active{background:var(--tealsoft)}
+
+  .helpbtn{display:block; text-align:center; background:#B02A1E; color:#fff; font-size:31px; font-weight:800; padding:24px 14px; border-radius:16px; text-decoration:none; margin:8px 0 4px}
+  .helpsub{text-align:center; font-size:18px; color:var(--soft); margin:2px 0 10px}
+  .frow{display:flex; gap:10px; margin:10px 0}
+  .fbtn{flex:1; display:block; text-align:center; background:#fff; border:3px solid #0E6B6B; color:#0E6B6B; font-size:22px; font-weight:800; padding:16px 6px; border-radius:14px; text-decoration:none}
+  .musebtn{display:block; text-align:center; background:#0E6B6B; color:#fff; font-size:24px; font-weight:800; padding:19px 12px; border-radius:14px; text-decoration:none; margin-top:14px}
+  .updbtn{display:block; width:100%; font-size:21px; font-weight:800; padding:13px; border-radius:12px; border:2px solid #0E6B6B; background:#fff; color:#0E6B6B; cursor:pointer; margin:10px 0}
   @media (max-width:520px){ .price{font-size:54px} h1{font-size:34px} }
 </style>
 </head>
@@ -109,7 +116,28 @@
 
   <div class="zoomrow"><span>Text size:</span><button type="button" id="zMinus">− Smaller</button><button type="button" id="zPlus">+ Bigger</button></div>
 
-  <button class="bigbtn" id="refreshTop" type="button">↻ &nbsp;Update Prices</button>
+  <!-- ============ FAMILY CONTACT ============ -->
+  <section class="card" style="border:3px solid #D9C98F">
+    <h2>Reach Your Family</h2>
+    <a class="helpbtn" href="sms:9542617831,5108726328,7542443155&body=It%27s%20Mom%2C%20Carol.%20I%20need%20help.%20Please%20call%20Sunscape%20Boca%20right%20away.">&#x1F198; I NEED HELP</a>
+    <p class="helpsub">Tap this, then tap Send &mdash; it texts Gary, Andrew and Neil together. The message is already written for you.</p>
+    <div class="frow">
+      <a class="fbtn" href="sms:9542617831&body=Hi%20Gary%2C%20it%27s%20Mom.">&#x1F4AC; Text Gary</a>
+      <a class="fbtn" href="mailto:geemondc@gmail.com?subject=From%20Mom&body=Hi%20Gary%2C%20it%27s%20Mom.">&#x2709;&#xFE0F; Email Gary</a>
+    </div>
+    <div class="frow">
+      <a class="fbtn" href="sms:5108726328&body=Hi%20Andrew%2C%20it%27s%20Mom.">&#x1F4AC; Text Andrew</a>
+      <a class="fbtn" href="mailto:aspan1@yahoo.com?subject=From%20Mom&body=Hi%20Andrew%2C%20it%27s%20Mom.">&#x2709;&#xFE0F; Email Andrew</a>
+    </div>
+    <div class="frow">
+      <a class="fbtn" href="sms:7542443155&body=Hi%20Neil%2C%20it%27s%20Mom.">&#x1F4AC; Text Neil</a>
+      <a class="fbtn" href="mailto:chironelly@gmail.com?subject=From%20Mom&body=Hi%20Neil%2C%20it%27s%20Mom.">&#x2709;&#xFE0F; Email Neil</a>
+    </div>
+    <a class="musebtn" href="https://muse.ai">&#x2728; Ask Muse for Help</a>
+    <p class="helpsub" style="margin-top:8px">Muse is your helper for questions and decisions. You can talk to it out loud &mdash; no typing needed.</p>
+  </section>
+
+  <button class="updbtn" id="refreshTop" type="button">↻ &nbsp;Update Prices</button>
   <div class="stamp" id="stamp">Showing the last market close (Wednesday, Nov 4).</div>
 
   <!-- ============ HER POSITION ============ -->
@@ -197,7 +225,7 @@
     <div class="hint" id="watchEmpty">Nothing here yet. Your Con Edison is always at the top of the page.</div>
   </section>
 
-  <button class="bigbtn" id="refreshBottom" type="button">↻ &nbsp;Update Prices</button>
+  <button class="updbtn" id="refreshBottom" type="button">↻ &nbsp;Update Prices</button>
 
   <footer>
     Gary set this page up for you. 💛<br>
@@ -319,29 +347,30 @@ function statsFromRows(rows){
     wk:(last/ago(5)-1)*100, mo:(last/ago(21)-1)*100, yr:(last/ago(Math.min(252,n-1))-1)*100 };
 }
 function loadSym(stooqSym){
-  return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 9000).then(function(csv){
+  return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 6000).then(function(csv){
     var rows = parseDaily(csv); if(!rows) throw new Error('no rows'); return statsFromRows(rows);
   });
 }
 
 var liveCount = 0;
+var refreshing = false;
 function refresh(){
-  var btns = [document.getElementById('refreshTop'), document.getElementById('refreshBottom')];
-  btns.forEach(function(b){ b.disabled = true; b.textContent = 'Updating…'; });
+  if (refreshing) return; refreshing = true;
+  var st0 = document.getElementById('stamp'); if (st0) st0.textContent = 'Updating prices…';
   liveCount = 0;
   var jobs = [];
   jobs.push(loadRows('ed.us').then(function(rows){ edRows = rows; var st = statsFromRows(rows); ed = {price:st.price, prev:st.prev, wk:st.wk, mo:st.mo, yr:st.yr, live:true}; intraRows = null; liveCount++; renderED(); }).catch(function(){}));
   [['^dji','dow'],['^spx','spx'],['^ndq','ndq'],['^vix','vix']].forEach(function(pair){
     jobs.push(loadSym(pair[0]).then(function(s){ mkt[pair[1]].val = s.price; mkt[pair[1]].prev = s.prev; liveCount++; renderMkt(); }).catch(function(){}));
   });
-  jobs.push(fetchText('https://stooq.com/q/l/?s=10usy.b&f=c&e=csv', 7000).then(function(tx){
+  jobs.push(fetchText('https://stooq.com/q/l/?s=10usy.b&f=c&e=csv', 5000).then(function(tx){
     var v = parseFloat(tx.trim().split(/\r?\n/).pop());
     if (v>1 && v<12){ mkt.tnx.val = v; liveCount++; renderMkt(); }
   }).catch(function(){}));
   // watch list live refresh
   watch.forEach(function(w){ jobs.push(refreshWatchRow(w, true)); });
   Promise.all(jobs).then(function(){
-    btns.forEach(function(b){ b.disabled = false; b.innerHTML = '↻ &nbsp;Update Prices'; });
+    refreshing = false;
     var st = document.getElementById('stamp');
     if (liveCount>0){
       st.textContent = 'Prices updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' today.';
@@ -354,7 +383,7 @@ document.getElementById('refreshTop').addEventListener('click', refresh);
 document.getElementById('refreshBottom').addEventListener('click', refresh);
 
 function loadRows(stooqSym){
-  return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 9000).then(function(csv){
+  return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 6000).then(function(csv){
     var rows = parseDaily(csv); if(!rows) throw new Error('no rows'); return rows;
   });
 }
@@ -438,7 +467,7 @@ document.getElementById('chartBtns').addEventListener('click', function(e){
   var r = b.getAttribute('data-r');
   if (r==='1D' && !intraRows){
     drawChart('1D');
-    fetchText('https://stooq.com/q/d/l/?s=ed.us&i=60', 8000).then(function(csv){
+    fetchText('https://stooq.com/q/d/l/?s=ed.us&i=60', 6000).then(function(csv){
       var rows = parseDaily(csv); if (rows && rows.length>=3){ intraRows = rows; if (curRange==='1D') drawChart('1D'); }
     }).catch(function(){});
     return;
@@ -455,7 +484,7 @@ var watchData = {}; // sym -> stats
 
 function saveWatch(){ try{ localStorage.setItem(LS, JSON.stringify(watch)); }catch(e){} }
 function sizingTxt(price){
-  if(!price) return 'Tap Update Prices to load this stock.';
+  if(!price) return '';
   var s1 = Math.floor(TOTAL*0.01/price), s2 = Math.floor(TOTAL*0.02/price), s5 = Math.floor(TOTAL*0.05/price);
   return 'A small start: <b>1% ≈ ' + s1 + ' shares</b> (' + fmt$(TOTAL*0.01) + ') · <b>2% ≈ ' + s2 + ' shares</b> · the most (5%) ≈ <b>' + s5 + ' shares</b>';
 }
@@ -473,10 +502,10 @@ function renderWatch(){
       '<div class="wperiod"><div class="plabel">Week</div><div class="pval ' + (d?cls(d.wk):'flat') + '">' + (d? pctTxt(d.wk):'—') + '</div></div>' +
       '<div class="wperiod"><div class="plabel">Month</div><div class="pval ' + (d?cls(d.mo):'flat') + '">' + (d? pctTxt(d.mo):'—') + '</div></div>' +
       '<div class="wperiod"><div class="plabel">Year</div><div class="pval ' + (d?cls(d.yr):'flat') + '">' + (d? pctTxt(d.yr):'—') + '</div></div></div>';
-    var sizing = '<div class="sizing">' + sizingTxt(d? d.price : null) + '</div>';
+    var sizing = d? '<div class="sizing">' + sizingTxt(d.price) + '</div>' : '';
     var own = '<div class="ownrow"><label>If you buy some, type how many shares: <input type="number" min="0" step="1" inputmode="numeric" data-own="' + w.sym + '" value="' + (w.shares? w.shares : '') + '" placeholder="0"></label>' +
       '<span class="ownmath" id="own-' + w.sym + '">' + ownTxt(w, d) + '</span></div>';
-    var note = (w.failed && !d) ? '<div class="hint" style="color:var(--red);font-weight:600">Couldn\u2019t load this one right now \u2014 it\u2019s saved on your list. Tap Update Prices to try again.</div>' : '';
+    var note = (w.failed && !d) ? '<div class="hint" style="font-weight:600">Not in today\u2019s list yet \u2014 it stays saved here.</div>' : '';
     row.innerHTML = head + per + sizing + own + note;
     box.appendChild(row);
   });
