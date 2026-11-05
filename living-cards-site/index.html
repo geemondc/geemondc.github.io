@@ -1058,6 +1058,115 @@ snapTo(null);
   </div>
 </section>
 
+<!-- ============ SEND A LIVING CARD ============ -->
+<style>
+.lc-form{max-width:640px;margin:26px auto 0;text-align:left}
+.lc-label{font-weight:700;font-size:17px;margin:22px 0 10px;color:var(--ink)}
+.lc-scenes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lc-scene{border:2px solid var(--gold-b);background:#fff;border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink)}
+.lc-scene.on{border-color:var(--teal);background:#eef6f5;box-shadow:0 4px 14px rgba(20,90,85,.14)}
+.lc-scene-t{display:block;font-weight:700;font-size:16.5px}
+.lc-scene-s{display:block;font-size:14.5px;color:var(--ink2);margin-top:3px}
+.lc-field{display:block;margin:12px 0}
+.lc-field>span{display:block;font-weight:600;font-size:15.5px;margin-bottom:6px}
+.lc-field input{width:100%;padding:13px 14px;font-size:16.5px;font-family:inherit;border:1.5px solid var(--gold-b);border-radius:12px;background:#fff;color:var(--ink)}
+.lc-field.bad input{border-color:#c0392b;background:#fdf1f0}
+.lc-make{margin-top:16px;width:100%}
+.lc-result{margin-top:24px}
+.lc-linkrow{word-break:break-all;text-align:center;margin:14px 0 4px;font-size:15px}
+.lc-share{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:12px}
+.lc-copied{text-align:center;color:var(--teal);font-weight:700;margin-top:12px}
+.lc-sample{text-align:center;margin-top:20px}
+@media (max-width:560px){.lc-scenes{grid-template-columns:1fr}}
+</style>
+<section id="sendcard">
+  <div class="sec-head">
+    <h2 data-en="Send a Living Card" data-es="Envía una tarjeta viva">Send a Living Card</h2>
+    <p data-en="Pick a living scene, write who it&#8217;s for, add one line from you — we&#8217;ll make the card and give you a link to send. Your words on our pictures: free, always." data-es="Elige una escena viva, escribe para quién es, añade una línea tuya — haremos la tarjeta y te daremos un enlace para enviarla. Tus palabras en nuestras fotos: gratis, siempre.">Pick a living scene, write who it&#8217;s for, add one line from you — we&#8217;ll make the card and give you a link to send. Your words on our pictures: free, always.</p>
+  </div>
+  <div class="goldrule"></div>
+  <div class="lc-form">
+    <p class="lc-label" data-en="1 · Pick a scene" data-es="1 · Elige una escena">1 · Pick a scene</p>
+    <div class="lc-scenes" role="radiogroup" aria-label="Card scene">
+      <button type="button" class="lc-scene on" data-scene="bigview" aria-pressed="true">
+        <span class="lc-scene-t" data-en="Fireworks over the bay" data-es="Fuegos artificiales sobre la bahía">Fireworks over the bay</span>
+        <span class="lc-scene-s" data-en="For celebrations" data-es="Para celebrar">For celebrations</span>
+      </button>
+      <button type="button" class="lc-scene" data-scene="chilling" aria-pressed="false">
+        <span class="lc-scene-t" data-en="Golden hour at home" data-es="La hora dorada en casa">Golden hour at home</span>
+        <span class="lc-scene-s" data-en="For someone you love" data-es="Para alguien que quieres">For someone you love</span>
+      </button>
+    </div>
+    <p class="lc-label" data-en="2 · Write your card" data-es="2 · Escribe tu tarjeta">2 · Write your card</p>
+    <label class="lc-field"><span data-en="Who is it for?" data-es="¿Para quién es?">Who is it for?</span>
+      <input id="lcTo" type="text" maxlength="60" autocomplete="off"></label>
+    <label class="lc-field"><span data-en="Your line (optional)" data-es="Tu línea (opcional)">Your line (optional)</span>
+      <input id="lcLine" type="text" maxlength="140" autocomplete="off"></label>
+    <label class="lc-field"><span data-en="From" data-es="De">From</span>
+      <input id="lcFrom" type="text" maxlength="60" autocomplete="off"></label>
+    <button type="button" class="cta teal lc-make" id="lcMake" data-en="Make my card" data-es="Haz mi tarjeta">Make my card</button>
+    <div class="lc-result" id="lcResult" hidden>
+      <iframe id="lcPreview" title="Your Living Card preview" loading="lazy" scrolling="no" style="border:0;width:100%;height:540px;border-radius:14px;background:#221016"></iframe>
+      <p class="lc-linkrow"><a id="lcLink" href="#" target="_blank" rel="noopener"></a></p>
+      <div class="lc-share">
+        <button type="button" class="cta ghost" id="lcCopy" data-en="Copy link" data-es="Copiar enlace">Copy link</button>
+        <a class="cta ghost" id="lcSms" href="#" data-en="Text message" data-es="Mensaje de texto">Text message</a>
+        <a class="cta ghost" id="lcWa" href="#" target="_blank" rel="noopener" data-en="WhatsApp" data-es="WhatsApp">WhatsApp</a>
+        <a class="cta ghost" id="lcMail" href="#" data-en="Email" data-es="Correo">Email</a>
+      </div>
+      <p class="lc-copied" id="lcCopied" hidden data-en="Link copied ✓" data-es="Enlace copiado ✓">Link copied ✓</p>
+    </div>
+    <p class="lc-sample"><a href="https://geemondc.github.io/living-card-sample/" target="_blank" rel="noopener" data-en="See a sample card" data-es="Mira una tarjeta de muestra">See a sample card</a></p>
+  </div>
+</section>
+<script>
+(function(){
+  var CARD = 'https://geemondc.github.io/living-card-sample/';
+  var scene = 'bigview';
+  var sceneBtns = document.querySelectorAll('.lc-scene');
+  sceneBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      sceneBtns.forEach(function(x){ x.classList.remove('on'); x.setAttribute('aria-pressed','false'); });
+      b.classList.add('on'); b.setAttribute('aria-pressed','true');
+      scene = b.getAttribute('data-scene') || 'bigview';
+    });
+  });
+  function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+  document.getElementById('lcMake').addEventListener('click', function(){
+    var to = val('lcTo'), from = val('lcFrom'), line = val('lcLine'), ok = true;
+    [['lcTo', to], ['lcFrom', from]].forEach(function(pair){
+      var f = document.getElementById(pair[0]).closest('.lc-field');
+      if (f){ if (!pair[1]){ f.classList.add('bad'); ok = false; } else { f.classList.remove('bad'); } }
+    });
+    if (!ok) return;
+    var url = CARD + '?to=' + encodeURIComponent(to) + '&from=' + encodeURIComponent(from) +
+      (line ? '&line=' + encodeURIComponent(line) : '') + '&scene=' + scene;
+    var res = document.getElementById('lcResult');
+    res.hidden = false;
+    document.getElementById('lcPreview').src = url;
+    var link = document.getElementById('lcLink');
+    link.href = url; link.textContent = url;
+    var enc = encodeURIComponent(url);
+    document.getElementById('lcSms').href = 'sms:?&body=' + enc;
+    document.getElementById('lcWa').href = 'https://wa.me/?text=' + enc;
+    document.getElementById('lcMail').href = 'mailto:?subject=' + encodeURIComponent('A Living Card for ' + to) + '&body=' + enc;
+    document.getElementById('lcCopied').hidden = true;
+    if (res.scrollIntoView) res.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+  document.getElementById('lcCopy').addEventListener('click', function(){
+    var url = document.getElementById('lcLink').href;
+    function done(){ document.getElementById('lcCopied').hidden = false; }
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done, done); }
+    else {
+      var ta = document.createElement('textarea');
+      ta.value = url; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+})();
+</script>
+
 <!-- ============ FUTURE READY ============ -->
 <section id="mission">
   <div class="sec-head">
