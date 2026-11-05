@@ -394,7 +394,7 @@ function refresh(){
     if (liveCount>0){
       st.textContent = 'Prices updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' today.';
     } else {
-      st.textContent = 'Couldn\u2019t reach the market just now — showing the last close (Wednesday, Nov 4). Try Update again in a bit.';
+      st.textContent = DATA ? ('Couldn\u2019t get a fresher check just now \u2014 showing prices from ' + DATA.asof + '.') : 'Couldn\u2019t reach the market just now \u2014 showing the last close (Wednesday, Nov 4). Try Update again in a bit.';
     }
   });
 }
@@ -549,6 +549,10 @@ function ownTxt(w, d){
   return '= ' + fmt$(val) + ' · ' + pct.toFixed(1) + '% of everything' + word;
 }
 function refreshWatchRow(w, quiet){
+  if (DATA && DATA.symbols && DATA.symbols[w.sym]){
+    watchData[w.sym] = statsFromData(DATA.symbols[w.sym]); w.failed = false; renderWatch();
+    return Promise.resolve();
+  }
   return loadSym(w.sym.toLowerCase() + '.us').then(function(s){
     watchData[w.sym] = s; w.failed = false; renderWatch();
   }).catch(function(){
@@ -595,6 +599,34 @@ document.querySelectorAll('[data-bgset]').forEach(function(b){
 markBg(); } });
 document.getElementById('zMinus').addEventListener('click', function(){ if (zIdx > 0){ zIdx--; applyZoom(); } });
 applyZoom();
+
+/* ---------- morning data file (rebaked every weekday by Muse) ---------- */
+var DATA = null, BAKED_DATE = '2026-11-04';
+function statsFromData(r){
+  return { price:r.c, prev:r.p,
+    wk:(r.c/r.w - 1) * 100, mo:(r.c/r.m - 1) * 100, yr:(r.c/r.y - 1) * 100 };
+}
+function applyData(){
+  if (!DATA || !DATA.symbols) return;
+  var r = DATA.symbols['ED'];
+  if (r && DATA.date >= BAKED_DATE){
+    var st = statsFromData(r);
+    ed = { price:st.price, prev:st.prev, wk:st.wk, mo:st.mo, yr:st.yr, live:false };
+    renderED();
+    var a = document.getElementById('edAsof');
+    if (a) a.textContent = 'Last close: ' + DATA.asof;
+    var dl = document.getElementById('dateline');
+    if (dl) dl.textContent = 'Your stocks, in one simple place. Prices from ' + DATA.asof + '.';
+  }
+  watch.forEach(function(w){
+    var rec = DATA.symbols[w.sym];
+    if (rec){ watchData[w.sym] = statsFromData(rec); w.failed = false; }
+  });
+  renderWatch();
+  var st2 = document.getElementById('stamp');
+  if (st2 && !refreshing) st2.textContent = 'Prices from ' + DATA.asof + ' \u2014 this morning\u2019s update. Tap Update Prices for a fresh check.';
+}
+fetch('data.json', {cache:'no-cache'}).then(function(resp){ return resp.json(); }).then(function(j){ DATA = j; applyData(); }).catch(function(){});
 
 renderED(); renderMkt(); renderWatch();
 watch.forEach(function(w){ refreshWatchRow(w, true); });
