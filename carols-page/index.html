@@ -331,19 +331,21 @@ function renderED(){
 
 function renderMkt(){
   ['dow','spx','ndq'].forEach(function(k){
-    var m = mkt[k], chgPct = (m.val-m.prev)/m.prev*100;
+    var m = mkt[k], chg = m.val-m.prev, chgPct = (m.val-m.prev)/m.prev*100;
     document.getElementById(m.el+'Val').textContent = fmtN(m.val, k==='dow'?0:2);
     var el = document.getElementById(m.el+'Move');
-    el.textContent = arrow(chgPct) + ' ' + pctTxt(chgPct) + ' today';
+    el.textContent = arrow(chgPct) + ' ' + fmtN(Math.abs(chg), k==='dow'?0:2) + ' points (' + pctTxt(chgPct) + ') today';
     el.className = 'mmove ' + cls(chgPct);
   });
   document.getElementById('vixVal').textContent = fmtN(mkt.vix.val,2);
   var vm = document.getElementById('vixMove');
-  vm.textContent = mkt.vix.val < 20 ? 'calm' : (mkt.vix.val < 30 ? 'a little nervous' : 'worried');
+  var vchg = mkt.vix.val - mkt.vix.prev, vpct = mkt.vix.prev? (vchg/mkt.vix.prev*100):0;
+  vm.textContent = arrow(vpct) + ' ' + fmtN(Math.abs(vchg),2) + ' points (' + pctTxt(vpct) + ') today \u00b7 ' + (mkt.vix.val < 20 ? 'calm' : (mkt.vix.val < 30 ? 'a little nervous' : 'worried'));
   vm.className = 'mmove ' + (mkt.vix.val < 20 ? 'up' : 'down');
   document.getElementById('tnxVal').textContent = fmtN(mkt.tnx.val,2) + '%';
   var tm = document.getElementById('tnxMove');
-  tm.textContent = mkt.tnx.val < 5 ? 'under 5%' : 'over 5% — pricier borrowing';
+  var tchg = mkt.tnx.val - mkt.tnx.prev;
+  tm.textContent = (tchg>0.005?'\u25b2':(tchg<-0.005?'\u25bc':'\u2022')) + ' ' + Math.abs(tchg).toFixed(2) + ' today \u00b7 ' + (mkt.tnx.val < 5 ? 'under 5%' : 'over 5% \u2014 pricier borrowing');
   tm.className = 'mmove ' + (mkt.tnx.val < 5 ? 'up' : 'down');
 }
 
@@ -407,8 +409,8 @@ function applyLive(){
   if (LIVE.board){
     var b = LIVE.board;
     ['dow','spx','ndq'].forEach(function(k){ if (b[k]){ mkt[k].val = b[k].val; mkt[k].prev = b[k].prev; } });
-    if (b.vix) mkt.vix.val = b.vix.val;
-    if (b.tnx) mkt.tnx.val = b.tnx.val;
+    if (b.vix){ mkt.vix.val = b.vix.val; if (b.vix.prev) mkt.vix.prev = b.vix.prev; }
+    if (b.tnx){ mkt.tnx.val = b.tnx.val; if (b.tnx.prev) mkt.tnx.prev = b.tnx.prev; }
     renderMkt(); applied = true;
   }
   if (LIVE.quotes){
@@ -564,7 +566,7 @@ function renderWatch(){
       '<span class="wprice">' + (d? '$'+fmtN(d.price,2) : '…') + '</span>' +
       '<button class="wdel" data-del="' + w.sym + '" type="button">Remove ✕</button></div>';
     var per = '<div class="wperiods">' +
-      '<div class="wperiod"><div class="plabel">Day</div><div class="pval ' + (d?cls((d.price-d.prev)/d.prev*100):'flat') + '">' + (d? pctTxt((d.price-d.prev)/d.prev*100):'—') + '</div></div>' +
+      '<div class="wperiod"><div class="plabel">Day</div><div class="pval ' + (d?cls((d.price-d.prev)/d.prev*100):'flat') + '">' + (d? pctTxt((d.price-d.prev)/d.prev*100):'—') + '</div>' + (d? '<div class=\"pval ' + cls((d.price-d.prev)/d.prev*100) + '\" style=\"font-size:14px\">' + arrow((d.price-d.prev)/d.prev*100) + ' $' + Math.abs(d.price-d.prev).toFixed(2) + '</div>' : '') + '</div>' +
       '<div class="wperiod"><div class="plabel">Week</div><div class="pval ' + (d?cls(d.wk):'flat') + '">' + (d? pctTxt(d.wk):'—') + '</div></div>' +
       '<div class="wperiod"><div class="plabel">Month</div><div class="pval ' + (d?cls(d.mo):'flat') + '">' + (d? pctTxt(d.mo):'—') + '</div></div>' +
       '<div class="wperiod"><div class="plabel">Year</div><div class="pval ' + (d?cls(d.yr):'flat') + '">' + (d? pctTxt(d.yr):'—') + '</div></div></div>';
