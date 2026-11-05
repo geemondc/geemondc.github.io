@@ -79,6 +79,19 @@
   .hint{color:var(--soft); font-size:17px; margin-top:6px}
   footer{text-align:center; color:var(--soft); font-size:17px; margin-top:22px}
   .stamp{text-align:center; color:var(--soft); font-size:17px; margin-top:8px}
+
+  .chartbtns{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 8px}
+  .chartbtns button{flex:1 1 70px; font-size:20px; font-weight:700; padding:12px 4px; border-radius:12px; border:2px solid var(--line); background:#FBF7EC; color:var(--ink); cursor:pointer}
+  .chartbtns button.on{background:var(--teal); color:#fff; border-color:var(--teal)}
+  #edChart{width:100%; height:230px; display:block; background:#FFFefa; border:1.5px solid var(--line); border-radius:12px}
+  .chartcap{font-size:19px; color:var(--soft); margin-top:8px; text-align:center}
+  .pieWrap{display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin:14px 0 4px; background:#FBF7EC; border:1.5px solid var(--line); border-radius:14px; padding:14px}
+  #pieCv{width:210px; height:210px; flex:0 0 auto; margin:0 auto}
+  .pieLegend{flex:1 1 240px; font-size:21px}
+  .plRow{margin:8px 0}
+  .dot{display:inline-block; width:18px; height:18px; border-radius:50%; margin-right:8px; vertical-align:-2px}
+  .dotED{background:var(--teal)} .dotCD{background:#D9C98F}
+  .plNote{margin-top:10px; color:var(--soft); font-size:19px}
   @media (max-width:520px){ .price{font-size:54px} h1{font-size:34px} }
 </style>
 </head>
@@ -107,9 +120,27 @@
       <div class="period"><div class="plabel">This year</div><div class="pval up" id="edYr">+25.2%</div></div>
     </div>
 
+    <div class="chartbtns" id="chartBtns">
+      <button type="button" data-r="1D">1 Day</button>
+      <button type="button" data-r="1M">1 Month</button>
+      <button type="button" data-r="1Y" class="on">1 Year</button>
+      <button type="button" data-r="MAX">Max</button>
+    </div>
+    <canvas id="edChart"></canvas>
+    <div class="chartcap" id="chartCap">Con Edison over the last year.</div>
+
     <div class="math" id="edMath">
       You own <b>500 shares</b> × <b>$120.30</b> = <b>$60,150</b><br>
       That is <span class="pctBig">6.4%</span> of all your money (about $945,000).
+    </div>
+
+    <div class="pieWrap">
+      <canvas id="pieCv" width="210" height="210"></canvas>
+      <div class="pieLegend">
+        <div class="plRow"><span class="dot dotED"></span>Con Edison — <b id="pieEDVal">$60,150</b> (<span id="pieEDPct">6.4%</span>)</div>
+        <div class="plRow"><span class="dot dotCD"></span>CDs and everything else — <b id="pieRestVal">$884,850</b></div>
+        <div class="plNote">All your money together: <b id="pieTotal">$945,000</b>. The Con Edison slice is the small one — Gary's rule keeps it at 5% or less.</div>
+      </div>
     </div>
 
     <div class="gauge" aria-hidden="true">
@@ -124,8 +155,12 @@
       Over the safe line right now — the stock went up, so your Con Edison grew bigger than 5% of everything. That's the time to think about selling some. Selling about <b>108 shares</b> would bring it back to 5%.
     </div>
 
-    <p class="story">You used to own 700 shares. Gary trimmed it to 500, so one company is never too big a piece of everything you have. The rule is simple: <b>5% or less in any one stock.</b> Under the line, you may add if you like. Over the line, think about trimming.</p>
-    <p class="story" style="border-left-color:var(--teal)">Con Edison also pays you a dividend — about <b>$1,775 a year</b> (roughly $445 every three months) just for owning it.</p>
+    <p class="story">You used to own 700 shares. When Con Edison reached $110, you and Gary sold 100 shares. When it reached $115, you sold 100 more — down to 500 — so less of everything rides on one company. And the stock kept rising, so even now it sits a little over the line. <b>The rule is simple: 5% or less in any one stock.</b> Under the line, you may add if you like. Over the line, think about trimming.</p>
+    <div class="math" style="background:var(--goldsoft)">
+      <b>The dividend — money Con Edison pays you just for owning it:</b><br>
+      $0.89 a share every three months. Your 500 shares pay <b id="divQtr">$443.75</b> every three months — <b id="divYear">$1,775</b> a year.<br>
+      At today's price, that's <b id="divYield">2.95%</b> a year. The dollars stay the same: when the price goes <i>down</i>, the percentage goes <i>up</i> — when the price goes up, the percentage goes down.
+    </div>
   </section>
 
   <!-- ============ THE MARKET ============ -->
@@ -171,6 +206,11 @@ var TOTAL = parseFloat(params.get('total')) || 945000;
 var ED_SHARES = parseFloat(params.get('shares')) || 500;
 var LINE = 0.05, SCALE = 8; // gauge shows 0..8%
 var DIV_PER_SHARE_YEAR = 3.55; // approx, from ~2.95% yield at $120
+var DIV_PER_SHARE_QTR = 0.8875; // Con Edison's declared quarterly dividend, Oct 15 2026
+var BAKED_ED_HISTORY = [100.77, 100.04, 100.22, 98.55, 97, 98.19, 97.41, 96.64, 97.96, 96.11, 96.99, 98.52, 98.24, 99.59, 100.19, 100.95, 101.66, 103.85, 102.91, 100.38, 100.95, 100.16, 98.92, 98.85, 100.14, 100.36, 97.88, 96.87, 96.45, 96.22, 96.6, 95.45, 95.82, 95.41, 95.64, 97.53, 99.39, 98.9, 100.21, 99.99, 98.06, 98.57, 98.95, 99.53, 99.3, 99.54, 99.89, 99.32, 99.99, 98.5, 99.32, 99.37, 100.18, 99.21, 98.83, 100.21, 101.47, 102.58, 103.81, 105.05, 103.84, 103.18, 103.87, 104.59, 105.35, 105.18, 105.96, 106.63, 105.42, 107.45, 108.38, 108.87, 107.34, 106.68, 108.43, 109.87, 111.72, 113.72, 113.92, 111.61, 111.92, 109.81, 112.14, 111.01, 111, 110.76, 112.52, 112.06, 112.36, 112.49, 110.71, 112.28, 111.8, 111.3, 111.74, 113.13, 114.88, 115.46, 114.9, 113.53, 111.69, 109.45, 109.11, 109.88, 110.03, 111.52, 111.68, 113.39, 113.18, 113.91, 115.43, 114.61, 114.46, 113.57, 114.98, 113.56, 111.89, 111.66, 110.28, 110.52, 110.15, 109.67, 108.19, 108.13, 110.25, 109.06, 108.83, 109.62, 108.88, 111.49, 110.49, 109.63, 109.15, 106.87, 106.39, 106.31, 106.21, 106.9, 106.16, 107.13, 105.36, 106.51, 108.14, 106.3, 107.4, 108.54, 107.7, 108.01, 106.3, 105.63, 103.6, 103.79, 103.48, 104.08, 106.26, 104.31, 106.4, 107.6, 106.84, 107.74, 107.72, 108.37, 107.04, 106.36, 106.92, 108.75, 110.72, 110.76, 112.06, 112.29, 110.63, 110.95, 113.99, 111.94, 112.99, 112.09, 110.27, 111.12, 111.82, 111.96, 110.31, 112.39, 112.37, 111.05, 109.81, 112.09, 112.79, 113.01, 111.5, 111.98, 112.25, 109.66, 108.85, 107.95, 108.41, 108.32, 108.95, 107.98, 106.3, 107.5, 107.78, 108.39, 108.8, 108.99, 109.16, 108, 108.31, 106.35, 107.71, 107.09, 108.05, 106.69, 107.49, 107.02, 107.7, 107.67, 108.75, 107.29, 108.27, 107.49, 106.73, 106.46, 105.78, 105.24, 105.42, 107.08, 105.43, 103.86, 103.84, 102.61, 102.71, 103.1, 102.83, 103.33, 102.21, 103.5, 103.39, 103.38, 105.12, 104.64, 105.99, 106.1, 107.2, 107.82, 109.6, 109.86, 112.26, 109.69, 111.98, 111.82, 116.26, 115.74, 115.42, 115.03, 114.15, 115.49, 116.64, 118.48, 116.81, 120.3]; // daily closes to Nov 4 2026
+var edRows = BAKED_ED_HISTORY.map(function(c){ return {c:c}; });
+var curRange = '1Y';
+var intraRows = null;
 
 function fmt$(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
 function fmtN(n, d){ return n.toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d}); }
@@ -223,6 +263,7 @@ function renderED(){
     var add = Math.max(0, maxShares - ED_SHARES);
     v.innerHTML = 'Under the safe line — comfortably sized. If you wanted, you could add about <b>' + add + ' shares</b> and still be at the 5% line.';
   }
+  drawPie(); renderDiv(); drawChart(curRange);
 }
 
 function renderMkt(){
@@ -244,10 +285,18 @@ function renderMkt(){
 }
 
 /* ---------- live fetching (stooq, free, no key) ---------- */
-function fetchText(url, ms){
+function fetchDirect(url, ms){
   return new Promise(function(res, rej){
     var c = new AbortController(); var t = setTimeout(function(){ c.abort(); rej(new Error('timeout')); }, ms||9000);
     fetch(url, {signal:c.signal}).then(function(r){ return r.text(); }).then(function(tx){ clearTimeout(t); res(tx); }, function(e){ clearTimeout(t); rej(e); });
+  });
+}
+function fetchText(url, ms){
+  return fetchDirect(url, ms).catch(function(e){
+    if (url.indexOf('stooq.com') >= 0){
+      return fetchDirect('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), (ms||9000) + 5000);
+    }
+    throw e;
   });
 }
 function parseDaily(csv){
@@ -274,7 +323,7 @@ function refresh(){
   btns.forEach(function(b){ b.disabled = true; b.textContent = 'Updating…'; });
   liveCount = 0;
   var jobs = [];
-  jobs.push(loadSym('ed.us').then(function(s){ ed = {price:s.price, prev:s.prev, wk:s.wk, mo:s.mo, yr:s.yr, live:true}; liveCount++; renderED(); }).catch(function(){}));
+  jobs.push(loadRows('ed.us').then(function(rows){ edRows = rows; var st = statsFromRows(rows); ed = {price:st.price, prev:st.prev, wk:st.wk, mo:st.mo, yr:st.yr, live:true}; intraRows = null; liveCount++; renderED(); }).catch(function(){}));
   [['^dji','dow'],['^spx','spx'],['^ndq','ndq'],['^vix','vix']].forEach(function(pair){
     jobs.push(loadSym(pair[0]).then(function(s){ mkt[pair[1]].val = s.price; mkt[pair[1]].prev = s.prev; liveCount++; renderMkt(); }).catch(function(){}));
   });
@@ -296,6 +345,100 @@ function refresh(){
 }
 document.getElementById('refreshTop').addEventListener('click', refresh);
 document.getElementById('refreshBottom').addEventListener('click', refresh);
+
+function loadRows(stooqSym){
+  return fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(stooqSym) + '&i=d', 9000).then(function(csv){
+    var rows = parseDaily(csv); if(!rows) throw new Error('no rows'); return rows;
+  });
+}
+function fmt$2(n){ return '$' + n.toLocaleString('en-US',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function renderDiv(){
+  var q = document.getElementById('divQtr'), y = document.getElementById('divYear'), pc = document.getElementById('divYield');
+  if(!q) return;
+  q.textContent = fmt$2(DIV_PER_SHARE_QTR * ED_SHARES);
+  y.textContent = fmt$(DIV_PER_SHARE_YEAR * ED_SHARES);
+  pc.textContent = (DIV_PER_SHARE_YEAR / ed.price * 100).toFixed(2) + '%';
+}
+function drawPie(){
+  var cv = document.getElementById('pieCv'); if(!cv) return;
+  var dpr = window.devicePixelRatio || 1, W = 210;
+  if (cv.width !== W*dpr){ cv.width = W*dpr; cv.height = W*dpr; }
+  var ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,W);
+  var val = ed.price * ED_SHARES, frac = Math.max(0.005, Math.min(0.5, val/TOTAL));
+  var cx = W/2, cy = W/2, R = 96;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,-Math.PI/2, -Math.PI/2 + Math.PI*2*frac); ctx.closePath(); ctx.fillStyle = '#0E6B6B'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,-Math.PI/2 + Math.PI*2*frac, -Math.PI/2 + Math.PI*2); ctx.closePath(); ctx.fillStyle = '#D9C98F'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,58,0,Math.PI*2); ctx.fillStyle = '#FBF7EC'; ctx.fill();
+  ctx.fillStyle = '#22333B'; ctx.textAlign = 'center';
+  ctx.font = '800 30px -apple-system, Arial'; ctx.fillText((val/TOTAL*100).toFixed(1)+'%', cx, cy+2);
+  ctx.font = '600 15px -apple-system, Arial'; ctx.fillStyle = '#5A6B72'; ctx.fillText('is Con Edison', cx, cy+24);
+  var e1=document.getElementById('pieEDVal'), e2=document.getElementById('pieEDPct'), e3=document.getElementById('pieRestVal'), e4=document.getElementById('pieTotal');
+  if(e1) e1.textContent = fmt$(val);
+  if(e2) e2.textContent = (val/TOTAL*100).toFixed(1)+'%';
+  if(e3) e3.textContent = fmt$(TOTAL - val);
+  if(e4) e4.textContent = fmt$(TOTAL);
+}
+function sliceRows(rows, range){
+  var n = rows.length;
+  if (range==='1M') return rows.slice(Math.max(0, n-21));
+  if (range==='1Y') return rows.slice(Math.max(0, n-252));
+  return rows;
+}
+function downsample(rows, maxPts){
+  if (rows.length <= maxPts) return rows;
+  var step = Math.ceil(rows.length/maxPts), out = [];
+  for (var i=0;i<rows.length;i+=step) out.push(rows[i]);
+  if (out[out.length-1] !== rows[rows.length-1]) out.push(rows[rows.length-1]);
+  return out;
+}
+function drawChart(range){
+  range = range || curRange; curRange = range;
+  var btns = document.querySelectorAll('#chartBtns button');
+  btns.forEach(function(b){ b.className = (b.getAttribute('data-r')===range)? 'on':''; });
+  var cv = document.getElementById('edChart'); if(!cv) return;
+  var cap = document.getElementById('chartCap');
+  var pts, capTxt;
+  if (range==='1D'){
+    if (intraRows && intraRows.length>=3){ pts = intraRows.map(function(r){return r.c;}); capTxt = 'Con Edison today, hour by hour. Now $' + fmtN(ed.price,2) + '.'; }
+    else { pts = [ed.prev, ed.price]; capTxt = 'Yesterday’s close $' + fmtN(ed.prev,2) + ' → now $' + fmtN(ed.price,2) + '.'; }
+  } else {
+    var rows = downsample(sliceRows(edRows, range), 400);
+    pts = rows.map(function(r){ return r.c; });
+    var first = pts[0], last = pts[pts.length-1], chg = (last/first-1)*100;
+    var lbl = range==='1M' ? 'the last month' : range==='1Y' ? 'the last year' : 'all the years we can get';
+    capTxt = 'Con Edison over ' + lbl + ': $' + fmtN(first,2) + ' → $' + fmtN(last,2) + ' (' + pctTxt(chg) + ').';
+  }
+  if (cap) cap.textContent = capTxt;
+  var W = cv.clientWidth || 680, H = 230, dpr = window.devicePixelRatio || 1;
+  cv.width = W*dpr; cv.height = H*dpr;
+  var ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  if (pts.length < 2) return;
+  var mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts), pad = (mx-mn)*0.12 || 1; mn -= pad; mx += pad;
+  var X = function(i){ return 14 + (W-28) * i/(pts.length-1); };
+  var Y = function(v){ return 16 + (H-40) * (1 - (v-mn)/(mx-mn)); };
+  ctx.beginPath(); pts.forEach(function(v,i){ i? ctx.lineTo(X(i),Y(v)) : ctx.moveTo(X(i),Y(v)); });
+  ctx.strokeStyle = '#0E6B6B'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.lineTo(X(pts.length-1), H-8); ctx.lineTo(X(0), H-8); ctx.closePath();
+  ctx.fillStyle = 'rgba(14,107,107,0.13)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(X(pts.length-1), Y(pts[pts.length-1]), 6, 0, Math.PI*2); ctx.fillStyle = '#C9A227'; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.fillStyle = '#5A6B72'; ctx.font = '600 15px -apple-system, Arial';
+  ctx.textAlign = 'left'; ctx.fillText('$'+fmtN(mx-pad,0), 14, 14);
+  ctx.fillText('$'+fmtN(mn+pad,0), 14, H-10);
+}
+document.getElementById('chartBtns').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  var r = b.getAttribute('data-r');
+  if (r==='1D' && !intraRows){
+    drawChart('1D');
+    fetchText('https://stooq.com/q/d/l/?s=ed.us&i=60', 8000).then(function(csv){
+      var rows = parseDaily(csv); if (rows && rows.length>=3){ intraRows = rows; if (curRange==='1D') drawChart('1D'); }
+    }).catch(function(){});
+    return;
+  }
+  drawChart(r);
+});
+window.addEventListener('resize', function(){ drawChart(curRange); });
 
 /* ---------- watch list ---------- */
 var LS = 'carolWatchV1';
@@ -326,7 +469,8 @@ function renderWatch(){
     var sizing = '<div class="sizing">' + sizingTxt(d? d.price : null) + '</div>';
     var own = '<div class="ownrow"><label>If you buy some, type how many shares: <input type="number" min="0" step="1" inputmode="numeric" data-own="' + w.sym + '" value="' + (w.shares? w.shares : '') + '" placeholder="0"></label>' +
       '<span class="ownmath" id="own-' + w.sym + '">' + ownTxt(w, d) + '</span></div>';
-    row.innerHTML = head + per + sizing + own;
+    var note = (w.failed && !d) ? '<div class="hint" style="color:var(--red);font-weight:600">Couldn\u2019t load this one right now \u2014 it\u2019s saved on your list. Tap Update Prices to try again.</div>' : '';
+    row.innerHTML = head + per + sizing + own + note;
     box.appendChild(row);
   });
   box.querySelectorAll('[data-del]').forEach(function(b){
@@ -351,9 +495,9 @@ function ownTxt(w, d){
 }
 function refreshWatchRow(w, quiet){
   return loadSym(w.sym.toLowerCase() + '.us').then(function(s){
-    watchData[w.sym] = s; renderWatch();
+    watchData[w.sym] = s; w.failed = false; renderWatch();
   }).catch(function(){
-    if(!quiet) alert('Couldn\u2019t find "' + w.sym + '". Check the letters and try again.');
+    w.failed = true; renderWatch();
   });
 }
 document.getElementById('addBtn').addEventListener('click', function(){
