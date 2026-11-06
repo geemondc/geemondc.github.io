@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adriana — Living Cover</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#000; height:100%; }
+  body { overflow:hidden; }
+  .stage { position:fixed; inset:0; background:#000; }
+  .frame { position:absolute; overflow:hidden; }
+  .frame img.plate { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .frame img.held { position:absolute; display:block; pointer-events:none;
+               left:26.83%; top:3.73%; width:48.17%; }
+  .sunflare { position:absolute; left:6.8%; top:30.2%; width:34%; aspect-ratio:1;
+    transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(255,236,190,.85) 0%, rgba(255,205,120,.38) 34%, rgba(255,190,100,0) 68%);
+    mix-blend-mode:screen; }
+  .halo { position:absolute; left:50.6%; top:9.5%; width:27%; aspect-ratio:1;
+    transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(255,248,220,.55) 0%, rgba(255,240,200,.16) 45%, rgba(255,240,200,0) 70%);
+    mix-blend-mode:screen; }
+  .frame img.acc { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; pointer-events:none;
+               mix-blend-mode:screen; opacity:0; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <img class="plate lyrStill" src="still.jpg" alt="Adriana — Pura Vida Movimiento cover">
+    <img class="plate lyrGolden" src="sunset.jpg" alt="" style="opacity:0">
+    <img class="plate lyrGlow" src="night.jpg" alt="" style="opacity:0">
+    <img class="held lyrHeld" src="held.png" alt="" style="opacity:0">
+    <div class="sunflare"></div>
+    <div class="halo"></div>
+    <img class="acc lyrAcc" src="acc-sparkle.png" alt="">
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 24;                  // scene loop, seconds
+  var frozen = null;           // QA: freeze the clock at this many seconds
+  var anchor = 0, anchorNow = performance.now(), rate = 1;
+  var SWEEP_END = 10.5;        // scene time where the ignition sweep hands over
+  var clock = 0;
+  anchor = 0; rate = 7;        // opening sweep: day -> sunset -> dusk, fast, then real time
+
+  var stage = document.getElementById('stage');
+  var frame = document.getElementById('frame');
+  // Plates are object-fit:contain — work out the rect the picture actually
+  // occupies and size the frame div to it; every layer inside (world, held,
+  // flare, halo, sparkles) then seats by the same percentages.
+  function seat(){
+    var w = stage.clientWidth, h = stage.clientHeight, ar = 928 / 1152;
+    var rw, rh;
+    if (w / h > ar) { rh = h; rw = h * ar; } else { rw = w; rh = w / ar; }
+    frame.style.left = ((w - rw) / 2) + 'px';
+    frame.style.top = ((h - rh) / 2) + 'px';
+    frame.style.width = rw + 'px';
+    frame.style.height = rh + 'px';
+  }
+  window.addEventListener('resize', seat);
+  seat();
+
+  var st = {
+    still: frame.querySelector('.lyrStill'),
+    golden: frame.querySelector('.lyrGolden'),
+    glow: frame.querySelector('.lyrGlow'),
+    held: frame.querySelector('.lyrHeld'),
+    sun: frame.querySelector('.sunflare'),
+    halo: frame.querySelector('.halo'),
+    acc: frame.querySelector('.lyrAcc')
+  };
+
+  // World loop (24s): the room + outside travel day -> sunset -> true night
+  // and back. Adriana is cut out of her own art (held) and pinned on top of
+  // the traveling world, always her original full-bright pixels — she fades
+  // IN over the day world the moment the light starts to travel, so her
+  // pixels never change, only the world behind her does. t=24 wraps to t=0.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    function heldOp(g, n){
+      var w = Math.max(g, n);
+      return w <= 0.02 ? 0 : Math.min(1, w * 8);
+    }
+    var o;
+    if (t < 3)        o = { still:1, golden:0, glow:0, sun:.12, halo:.05 };
+    else if (t < 7)   { var k=(t-3)/4;  o = { still:1, golden:k, glow:0, sun:.12+.5*k, halo:.05+.1*k }; }
+    else if (t < 10)  o = { still:1, golden:1, glow:0, sun:.62, halo:.15 };
+    else if (t < 14)  { var k2=(t-10)/4; o = { still:1, golden:1, glow:k2, sun:.62-.3*k2, halo:.15+.75*k2 }; }
+    else if (t < 17)  o = { still:1, golden:1, glow:1, sun:.32, halo:.9 };
+    else if (t < 20)  { var k3=(t-17)/3; o = { still:1, golden:1, glow:1-k3, sun:.32+.3*k3, halo:.9-.75*k3 }; }
+    else if (t < 23)  { var k4=(t-20)/3; o = { still:1, golden:1-k4, glow:0, sun:.62-.5*k4, halo:.15-.1*k4 }; }
+    else              o = { still:1, golden:0, glow:0, sun:.12, halo:.05 };
+    o.held = heldOp(o.golden, o.glow);
+    return o;
+  }
+  function apply(so, t){
+    st.still.style.opacity = so.still;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.held.style.opacity = so.held;
+    st.sun.style.opacity = so.sun;
+    st.halo.style.opacity = so.halo;
+    var tw = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / 3.4);
+    tw = tw * tw * (3 - 2 * tw);
+    var boost = 0.45 + 0.55 * so.halo;      // twinkles crown her at the dusk peak
+    st.acc.style.opacity = (0.35 + 0.65 * tw) * boost;
+  }
+  function frameLoop(now){
+    if (frozen === null){
+      var tNow = anchor + rate * (now - anchorNow) / 1000;
+      if (rate === 7 && tNow >= SWEEP_END){ anchor = tNow; anchorNow = now; rate = 1; }
+      clock = tNow;
+    }
+    var t = frozen !== null ? frozen : clock;
+    apply(opacities(t), t);
+    requestAnimationFrame(frameLoop);
+  }
+  requestAnimationFrame(frameLoop);
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
+    state: function(){ return { clock: clock }; },
+    opacities: opacities
+  };
+})();
+</script>
+</body>
+</html>
