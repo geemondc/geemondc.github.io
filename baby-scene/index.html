@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Nursery Cottage — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#131a36;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#131a36;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#182144;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: ONE master timeline (JS-driven). The night plate blends in
+     across the arc while every light wakes at its own threshold — the
+     lantern formula: start = per-light, ramp = a short window. This is
+     the QUIET scene: a longer delay, a slower arc, slower clocks. */
+  #night{opacity:0;}
+  /* Ignition anchors: JS sets opacity from the master timeline; the light
+     inside keeps its own slow twinkle animation on transform+filter. */
+  .ig{position:absolute;transform:translate(-50%,-50%);opacity:0;pointer-events:none;}
+  .glow{position:absolute;left:0;top:0;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  /* Path paper lanterns — warm apricot-pink glows, the slowest warm
+     clocks on the page. Three sizes: far, mid, and the two big near
+     globes that frame the gate. */
+  .paperFar{width:2.1%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,216,165,.95), rgba(255,175,110,.32) 55%, rgba(255,175,110,0) 78%);animation:twk ease-in-out infinite alternate;}
+  .paperMid{width:2.9%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,218,170,.95), rgba(255,178,112,.33) 55%, rgba(255,178,112,0) 78%);animation:twk ease-in-out infinite alternate;}
+  .paperNear{width:4.4%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,222,178,.95), rgba(255,182,118,.34) 55%, rgba(255,182,118,0) 78%);animation:twk ease-in-out infinite alternate;}
+  /* House lanterns — the wall lantern by the door, the porch lantern. */
+  .lampSm{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,228,165,.92), rgba(255,195,95,.3) 55%, rgba(255,195,95,0) 78%);animation:twk ease-in-out infinite alternate;}
+  /* Tree fairy lights — small warm dots strung through the branches. */
+  .fairy{width:.85%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,230,160,.95), rgba(255,190,90,.32) 55%, rgba(255,190,90,0) 78%);animation:twk ease-in-out infinite alternate;}
+  /* Distant village lights across the lake — tiny, barely breathing. */
+  .lake{width:.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,208,135,.85), rgba(255,180,95,.25) 55%, rgba(255,180,95,0) 75%);animation:twk ease-in-out infinite alternate;}
+  /* Stars — the slowest clocks of all. */
+  .star{width:.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(240,246,255,.95), rgba(200,220,255,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{transform:translate(-50%,-50%) scale(.82);filter:brightness(.78)}to{transform:translate(-50%,-50%) scale(1.18);filter:brightness(1.28)}}
+  /* The crescent moon hangs in BOTH paintings — its halo is there from
+     the first frame and DEEPENS as dusk lets go (it never switches on,
+     it was always on). The slowest breath on the page. */
+  #moonWrap{position:absolute;inset:0;opacity:.35;pointer-events:none;}
+  #moonGlow{position:absolute;left:11.6%;top:15.9%;width:7%;height:12.5%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(216,229,255,.40), rgba(170,195,255,.14) 55%, rgba(170,195,255,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:breathe 8s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.45}to{opacity:.85}}
+  /* The nursery window — the heart of the piece. Its apricot glow is
+     lit at dusk, gathers slowly across the first half of the arc, and
+     then BREATHES on a long slow clock for the rest of the piece: the
+     nursery's heartbeat, rocking-chair slow. One soft halo over the
+     whole pane — the crib, the chair and the little moon mobile stay
+     exactly the silhouettes the painter painted. */
+  #winWrap{position:absolute;inset:0;opacity:.22;pointer-events:none;}
+  #winGlow{position:absolute;left:58.9%;top:33.3%;width:27%;height:31%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,196,110,.34), rgba(255,170,90,.12) 55%, rgba(255,170,90,0) 78%);
+    mix-blend-mode:screen;pointer-events:none;animation:breatheSoft 7s ease-in-out infinite alternate;}
+  @keyframes breatheSoft{from{opacity:.55}to{opacity:1}}
+  /* The cottage door's glass — dim panes at dusk, warm glass at night.
+     It catches at its OWN moment, mid-arc, after the window is already
+     breathing and before the path lights begin their walk. */
+  #doorWrap{position:absolute;inset:0;opacity:0;pointer-events:none;}
+  #doorGlow{position:absolute;left:39.4%;top:30.2%;width:8%;height:16%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,205,130,.38), rgba(255,180,95,.13) 55%, rgba(255,180,95,0) 78%);
+    mix-blend-mode:screen;pointer-events:none;animation:breatheSoft 5.5s ease-in-out infinite alternate;}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(10,13,34,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(10,13,34,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the dusk painting itself, untouched — glows off, dusk plate full. */
+  body.still .ig, body.still #moonWrap, body.still #winWrap, body.still #doorWrap{opacity:0 !important;}
+  body.still #night{opacity:0 !important;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living nursery cottage settling from dusk into night: the crescent moon's halo deepens over the lake, the nursery window gathers its apricot glow and breathes slow as a heartbeat behind the crib and rocking-chair silhouettes, the cottage door's glass catches warm, seven paper lanterns light one by one down the stone path toward the gate, fairy lights twinkle awake in the great tree, and the far village lights and first stars come out last.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="night" src="night.jpg" alt="">
+    <div id="moonWrap"><div id="moonGlow"></div></div>
+    <div id="winWrap"><div id="winGlow"></div></div>
+    <div id="doorWrap"><div id="doorGlow"></div></div>
+  </div>
+  <div id="capPill"><b>The Nursery Cottage</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+const night = document.getElementById('night');
+const moonWrap = document.getElementById('moonWrap');
+const winWrap = document.getElementById('winWrap');
+const doorWrap = document.getElementById('doorWrap');
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+/* ---- The lights. Every point below sits on a real light in the night
+   master, grounded by viewing the painting and measuring its crops:
+   2 house lanterns, 7 path paper lanterns, 41 tree fairy lights,
+   10 distant lake lights, 14 stars — plus three soft wraps: the moon's
+   halo, the nursery window's breathing glow, the door glass. Each light
+   gets a start threshold on ONE master timeline; the order tells the
+   story: the moon deepens → the window gathers and breathes → the
+   house lanterns warm → the door glass catches → the path lanterns
+   light one by one, cottage to gate, like someone coming home → the
+   tree fairies twinkle in → the lake lights and stars arrive last. ---- */
+const lights = []; // {el, start}
+function dot(cls, x, y, dur, dl, start){
+  const a = document.createElement('span');
+  a.className = 'ig'; a.style.left = x + '%'; a.style.top = y + '%';
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  a.appendChild(s); frame.appendChild(a);
+  lights.push({ el: a, start });
+}
+
+/* House lanterns — the wall lantern beside the door, then the little
+   porch lantern on the steps. Slow warm clocks. */
+const house = [
+  [32.6,28.3,0.30],[34.9,46.9,0.35]
+];
+house.forEach((p, i) => dot('lampSm', p[0], p[1], 3.4 + i * 0.6, -1.1 * i, p[2]));
+
+/* Path paper lanterns — ONE BY ONE from the cottage toward the viewer:
+   the lantern at the foot of the steps, then alternating down the two
+   rows, far to near, ending with the two big globes at the gate. */
+const path = [
+  [46.0,54.6,'paperFar',0.52],[30.9,54.3,'paperFar',0.575],
+  [50.8,59.5,'paperMid',0.63],[31.0,61.8,'paperMid',0.685],
+  [57.1,66.1,'paperMid',0.74],[29.7,70.3,'paperNear',0.795],
+  [67.1,73.1,'paperNear',0.85]
+];
+path.forEach((p, i) => dot(p[2], p[0], p[1], 3.8 + (i % 3) * 0.7, -1.4 * i, p[3]));
+
+/* Tree fairy lights — strung along the branches and spiralling down
+   the trunk, twinkling awake in no hurry. */
+const fairies = [
+  [62.9,1.8],[66.7,0.4],[70.8,1.5],[72.3,2.9],[73.9,4.4],[74.9,8.4],[78.3,7.2],[80.0,3.9],
+  [82.1,2.0],[86.9,6.0],[87.5,1.5],[89.8,5.9],[91.4,4.0],[93.9,8.8],[97.2,12.5],[98.0,6.2],
+  [99.0,11.6],[81.0,10.2],[83.0,14.0],[85.2,16.0],[88.7,11.8],[90.1,15.8],[91.2,15.3],[92.8,22.3],
+  [93.4,24.7],[95.7,17.0],[98.9,19.9],[97.6,21.9],[96.9,23.6],[98.9,29.8],[87.9,22.3],[89.5,28.0],
+  [90.5,30.5],[92.3,31.6],[94.1,35.0],[97.2,35.2],[98.4,37.4],[91.7,41.4],[92.7,44.3],[94.6,46.7],
+  [91.7,49.0]
+];
+fairies.forEach((p, i) => dot('fairy', p[0], p[1], 3.8 + (i % 5) * 0.7, -0.9 * i,
+  0.78 + (i / (fairies.length - 1)) * 0.13));
+
+/* The far village across the lake — its windows were lit all along;
+   they only become the story once the garden is dark. */
+const lake = [
+  [5.3,34.4],[6.7,34.5],[8.3,34.2],[10.8,34.1],[12.3,34.6],
+  [14.0,34.5],[15.7,33.9],[18.4,34.5],[19.3,33.8],[22.5,34.5]
+];
+lake.forEach((p, i) => dot('lake', p[0], p[1], 4.6 + (i % 3) * 0.8, -1.2 * i,
+  0.85 + (i / (lake.length - 1)) * 0.09));
+
+/* Stars — sparse, and the last to arrive. The slowest clocks. */
+const stars = [
+  [2.7,1.3],[6.6,0.9],[9.5,0.8],[14.4,0.8],[26.1,0.6],[11.2,1.3],[17.7,1.5],
+  [22.8,2.3],[8.3,3.2],[12.7,3.3],[21.1,3.0],[4.4,3.9],[3.4,6.1],[12.5,7.7]
+];
+stars.forEach((p, i) => dot('star', p[0], p[1], 5.2 + (i % 4) * 1.1, -1.5 * i,
+  0.87 + (i / (stars.length - 1)) * 0.10));
+
+/* ---- The master timeline. ---- */
+const RAMP = 0.09;          // each light's ignition window on the timeline
+const DELAY = 2000;         // ms before the arc begins — this scene takes its time
+const DURATION = 34000;     // ms, dusk → night, slower than its sisters
+let raf = null, t0 = 0;
+function applyT(T){
+  night.style.opacity = sstep(0.02, 0.94, T).toFixed(3);
+  moonWrap.style.opacity = (0.35 + 0.65 * sstep(0.02, 0.30, T)).toFixed(3);
+  winWrap.style.opacity = (0.22 + 0.78 * sstep(0.06, 0.50, T)).toFixed(3);
+  doorWrap.style.opacity = sstep(0.44, 0.62, T).toFixed(3);
+  for (const L of lights) L.el.style.opacity = sstep(L.start, L.start + RAMP, T).toFixed(3);
+}
+function tick(now){
+  const T = clamp01((now - t0) / DURATION);
+  applyT(T);
+  raf = T < 1 ? requestAnimationFrame(tick) : null;
+}
+function startArc(){
+  cancelArc();
+  t0 = performance.now() + DELAY;
+  raf = requestAnimationFrame(tick);
+}
+function cancelArc(){ if (raf) cancelAnimationFrame(raf); raf = null; }
+function finishArc(){ cancelArc(); applyT(1); }
+
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Still / Living, tap-fullscreen, idle chrome: the family pattern. ---- */
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+  if (!on) { cancelArc(); }
+  else if (reduced) { finishArc(); }
+  else { startArc(); } // entering Living replays the settling
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (reduced) finishArc(); else startArc();
+})();
+</script>
+</body>
+</html>
