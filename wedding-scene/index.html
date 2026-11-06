@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Wedding Garden — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0a0d24;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#0a0d24;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#0d1130;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: ONE master timeline (JS-driven). The night plate blends in across
+     the arc while every light ignites at its own threshold — the lantern
+     formula: start = per-light, ramp = a short window. */
+  #night{opacity:0;}
+  /* Ignition anchors: JS sets opacity from the master timeline; the light
+     inside keeps its own twinkle/flicker animation on transform+filter. */
+  .ig{position:absolute;transform:translate(-50%,-50%);opacity:0;pointer-events:none;}
+  .glow{position:absolute;left:0;top:0;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  /* Candle FLAMES — quick, varied clocks (they are flames, not bulbs). */
+  .flame{width:1.15%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,230,160,.95), rgba(255,180,80,.35) 55%, rgba(255,180,80,0) 78%);animation:flk ease-in-out infinite alternate;}
+  .flameBig{width:2.1%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,234,170,.95), rgba(255,190,90,.35) 55%, rgba(255,190,90,0) 78%);animation:flk ease-in-out infinite alternate;}
+  @keyframes flk{from{transform:translate(-50%,-50%) scale(.86) skewX(-2deg);filter:brightness(.8)}to{transform:translate(-50%,-50%) scale(1.14) skewX(2.5deg);filter:brightness(1.3)}}
+  /* String bulbs — gentle breathing clocks. */
+  .bulb{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,222,150,.95), rgba(255,180,80,.3) 55%, rgba(255,180,80,0) 75%);animation:twk ease-in-out infinite alternate;}
+  /* Distant village windows — tiny, slow. */
+  .hill{width:.62%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,226,170,.9), rgba(255,200,110,0) 70%);animation:twk ease-in-out infinite alternate;}
+  /* Stars — the slowest clocks of all. */
+  .star{width:.55%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(240,246,255,.95), rgba(200,220,255,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{transform:translate(-50%,-50%) scale(.82);filter:brightness(.78)}to{transform:translate(-50%,-50%) scale(1.18);filter:brightness(1.28)}}
+  /* The fountain's own glow breathes from inside the arch. */
+  #fountainWrap{position:absolute;inset:0;opacity:0;pointer-events:none;}
+  #fountainGlow{position:absolute;left:50.9%;top:37%;width:13%;height:19%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,205,110,.38), rgba(255,175,80,.13) 55%, rgba(255,175,80,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:breathe 5.4s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.4}to{opacity:.8}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(8,10,26,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(8,10,26,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the dusk painting itself, untouched — glows off, dusk plate full. */
+  body.still .ig, body.still #fountainWrap{opacity:0 !important;}
+  body.still #night{opacity:0 !important;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living wedding garden at dusk settling into night: a flower arch over a stone altar, white chairs along a petal-strewn aisle lit by candle lanterns that catch one after another, string lights overhead between two olive trees, a glowing fountain through the arch, village lights on the far hills and stars coming out.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="night" src="night.jpg" alt="">
+    <div id="fountainWrap"><div id="fountainGlow"></div></div>
+  </div>
+  <div id="capPill"><b>The Wedding Garden</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+const night = document.getElementById('night');
+const fountainWrap = document.getElementById('fountainWrap');
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+/* ---- The lights. Every point below sits on a real light in the night
+   master, grounded by viewing the painting: 10 aisle candle lanterns,
+   33 string bulbs on the two festoon rows, 8 far hillside village lights,
+   8 stars, and the fountain's glow. Each light gets a start threshold on
+   ONE master timeline; ignition order tells the story:
+   aisle candles (walking toward the altar) → the string bulbs sweep
+   overhead → the fountain wakes → the village lights come on → stars. ---- */
+const lights = []; // {el, start}
+function dot(cls, x, y, dur, dl, start){
+  const a = document.createElement('span');
+  a.className = 'ig'; a.style.left = x + '%'; a.style.top = y + '%';
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  a.appendChild(s); frame.appendChild(a);
+  lights.push({ el: a, start });
+}
+
+/* Aisle candles — the flame inside each lantern, front pair first, then
+   walking up the aisle to the altar. Flames flicker: quick varied clocks. */
+const aisle = [
+  [6,86,'flameBig'],[95,87,'flameBig'],
+  [26.2,85.5,'flameBig'],[73.8,86,'flameBig'],
+  [33,73.5,'flame'],[67.2,73.5,'flame'],
+  [37.3,66.5,'flame'],[64.7,66.5,'flame'],
+  [40.3,63.8,'flame'],[62.2,63.8,'flame']
+];
+aisle.forEach((p, i) => dot(p[2], p[0], p[1], 0.55 + (i % 4) * 0.17, -0.31 * i,
+  0.12 + (i / (aisle.length - 1)) * 0.20));
+
+/* String bulbs — upper festoon row left-to-right, then the lower row. */
+const bulbs = [
+  [7.4,5.1],[13,6.7],[16,9.3],[21.8,7.9],[27.3,5.2],[34.1,6.7],[38.8,5.1],[47.1,8],[54.9,7.9],[61.6,6.7],[67,5.1],[72.5,5.3],[80.3,7.6],[85.4,5.2],[91.9,5.4],[95.5,8],
+  [26.6,12.5],[33,13.9],[38.6,13.6],[44.2,13.9],[50,13.9],[55.8,13.6],[59.7,13.6],[65.2,12.6],[70.3,11.4],[74.9,9.8],[80.3,12.2],[85.4,10.1],[91.9,7.9]
+];
+bulbs.forEach((p, i) => dot('bulb', p[0], p[1], 2.4 + (i % 5) * 0.5, -0.7 * i,
+  0.38 + (i / (bulbs.length - 1)) * 0.20));
+
+/* Far hillside village lights — across the valley, right of the arch. */
+const hills = [[68.5,31.5],[72,30.5],[75.5,31.8],[78.5,30.2],[81.5,31.2],[76.8,34.5],[71.5,35],[80,34]];
+hills.forEach((p, i) => dot('hill', p[0], p[1], 3.2 + (i % 3) * 0.7, -1.1 * i,
+  0.66 + (i / (hills.length - 1)) * 0.08));
+
+/* Stars — out last, slowest clocks. */
+const stars = [[50.9,19.6],[66.3,20.8],[45,12],[58,8],[36,17],[70,13],[55,23],[42,22]];
+stars.forEach((p, i) => dot('star', p[0], p[1], 3.4 + (i % 4) * 0.8, -0.9 * i,
+  0.78 + (i / (stars.length - 1)) * 0.12));
+
+/* ---- The master timeline. ---- */
+const RAMP = 0.09;          // each light's ignition window on the timeline
+const DELAY = 1500;         // ms before the arc begins
+const DURATION = 30000;     // ms, dusk → night
+let raf = null, t0 = 0;
+function applyT(T){
+  night.style.opacity = sstep(0.02, 0.92, T).toFixed(3);
+  fountainWrap.style.opacity = sstep(0.56, 0.72, T).toFixed(3);
+  for (const L of lights) L.el.style.opacity = sstep(L.start, L.start + RAMP, T).toFixed(3);
+}
+function tick(now){
+  const T = clamp01((now - t0) / DURATION);
+  applyT(T);
+  raf = T < 1 ? requestAnimationFrame(tick) : null;
+}
+function startArc(){
+  cancelArc();
+  t0 = performance.now() + DELAY;
+  raf = requestAnimationFrame(tick);
+}
+function cancelArc(){ if (raf) cancelAnimationFrame(raf); raf = null; }
+function finishArc(){ cancelArc(); applyT(1); }
+
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Still / Living, tap-fullscreen, idle chrome: the family pattern. ---- */
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+  if (!on) { cancelArc(); }
+  else if (reduced) { finishArc(); }
+  else { startArc(); } // entering Living replays the waking
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (reduced) finishArc(); else startArc();
+})();
+</script>
+</body>
+</html>
