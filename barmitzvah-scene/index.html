@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Bar Mitzvah Hall — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#16102a;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#16102a;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#1b1433;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: ONE master timeline (JS-driven). The lit plate blends in across
+     the arc while every light ignites at its own threshold — the lantern
+     formula: start = per-light, ramp = a short window. This hall is
+     UNLIT → LIT, not dusk → night. */
+  #night{opacity:0;}
+  /* Ignition anchors: JS sets opacity from the master timeline; the light
+     inside keeps its own twinkle/flicker animation on transform+filter. */
+  .ig{position:absolute;transform:translate(-50%,-50%);opacity:0;pointer-events:none;}
+  .glow{position:absolute;left:0;top:0;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  /* Candle FLAMES — quick, varied clocks (they are flames, not bulbs). */
+  .flame{width:1.15%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,230,160,.95), rgba(255,180,80,.35) 55%, rgba(255,180,80,0) 78%);animation:flk ease-in-out infinite alternate;}
+  .flameBig{width:2.1%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,234,170,.95), rgba(255,190,90,.35) 55%, rgba(255,190,90,0) 78%);animation:flk ease-in-out infinite alternate;}
+  @keyframes flk{from{transform:translate(-50%,-50%) scale(.86) skewX(-2deg);filter:brightness(.8)}to{transform:translate(-50%,-50%) scale(1.14) skewX(2.5deg);filter:brightness(1.3)}}
+  /* String bulbs — gentle breathing clocks. */
+  .bulb{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,222,150,.95), rgba(255,180,80,.3) 55%, rgba(255,180,80,0) 75%);animation:twk ease-in-out infinite alternate;}
+  /* Wall sconces — bigger warm lantern glows, the slowest warm clocks. */
+  .sconce{width:2.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,214,140,.9), rgba(255,170,70,.32) 55%, rgba(255,170,70,0) 78%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{transform:translate(-50%,-50%) scale(.82);filter:brightness(.78)}to{transform:translate(-50%,-50%) scale(1.18);filter:brightness(1.28)}}
+  /* The Star of David is already lit in the before painting — its halo
+     DEEPENS as the hall wakes (it never switches on, it was always on). */
+  #starWrap{position:absolute;inset:0;opacity:.3;pointer-events:none;}
+  #starGlow{position:absolute;left:51.9%;top:38.5%;width:16%;height:29%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(110,175,255,.42), rgba(70,130,255,.15) 55%, rgba(70,130,255,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:breathe 6s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.45}to{opacity:.85}}
+  /* The dance floor's gold shine lands only with the final state. */
+  #floorWrap{position:absolute;inset:0;opacity:0;pointer-events:none;}
+  #floorGlow{position:absolute;inset:0;
+    background:radial-gradient(60% 45% at 50% 79%, rgba(255,196,95,.20), rgba(255,170,70,.07) 55%, rgba(255,170,70,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(10,8,26,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(10,8,26,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the before painting itself, untouched — glows off, before plate full. */
+  body.still .ig, body.still #starWrap, body.still #floorWrap{opacity:0 !important;}
+  body.still #night{opacity:0 !important;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living bar mitzvah hall lighting up: the blue Star of David already glowing on the back wall deepens first, then three wires of string bulbs sweep on across the ceiling beams, the wall lanterns catch, and the tall table candles flame table by table until the dance floor shines gold under a blue and gold balloon arch.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="night" src="night.jpg" alt="">
+    <div id="starWrap"><div id="starGlow"></div></div>
+    <div id="floorWrap"><div id="floorGlow"></div></div>
+  </div>
+  <div id="capPill"><b>The Bar Mitzvah Hall</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+const night = document.getElementById('night');
+const starWrap = document.getElementById('starWrap');
+const floorWrap = document.getElementById('floorWrap');
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+/* ---- The lights. Every point below sits on a real light in the evening
+   master, grounded by viewing the painting tile by tile: 48 string bulbs
+   on three festoon wires, 4 wall sconces, 25 table candle flames, and the
+   Star of David's halo. Each light gets a start threshold on ONE master
+   timeline; ignition order tells the story: the Star's glow deepens (it
+   was never off) → the three bulb wires sweep across the beams → the
+   sconces catch → the candles flame, left tables then right → the dance
+   floor takes its shine. ---- */
+const lights = []; // {el, start}
+function dot(cls, x, y, dur, dl, start){
+  const a = document.createElement('span');
+  a.className = 'ig'; a.style.left = x + '%'; a.style.top = y + '%';
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  a.appendChild(s); frame.appendChild(a);
+  lights.push({ el: a, start });
+}
+
+/* String bulbs, wire by wire, each sweeping left to right. The middle
+   wire passes behind the balloon arch (the gap in its run is the arch). */
+const wireA = [ // the front wire, sagging across the whole hall — 17
+  [21.1,1.2],[25.2,3.5],[27.1,4.3],[29.2,5.3],[32,6.7],[36,8.5],[39.9,10],[44,10.6],[47.8,10.8],[51.4,10.8],[55.1,10.2],[59,9.7],[62.8,8.2],[66.7,6.7],[70.6,5.1],[74,3.6],[78,1.4]
+];
+wireA.forEach((p, i) => dot('bulb', p[0], p[1], 2.4 + (i % 5) * 0.5, -0.7 * i,
+  0.10 + (i / (wireA.length - 1)) * 0.24));
+const wireB = [ // the middle wire, wall to wall behind the arch — 19
+  [14.4,6.2],[18,9],[21.2,10.8],[24.1,12.6],[27.4,14.8],[29.9,15.7],[32.8,16.7],[35.4,18],[38,18.5],[40.8,18.7],[61.1,18.8],[63.6,18],[66.2,16.9],[68.8,15.5],[71.4,14.3],[74.7,12.7],[78,11.2],[81,9.4],[84.8,6.4]
+];
+wireB.forEach((p, i) => dot('bulb', p[0], p[1], 2.6 + (i % 4) * 0.5, -0.6 * i,
+  0.26 + (i / (wireB.length - 1)) * 0.22));
+const wireC = [ // the back wire, receding to the rear wall — 12
+  [23.3,17.6],[25.5,19.1],[27.8,20.1],[30.5,21.2],[32.9,22.2],[35.2,22.5],[63.9,22.5],[66.3,22.1],[68.5,21.2],[71.2,20.2],[73.7,19.1],[76.2,17.3]
+];
+wireC.forEach((p, i) => dot('bulb', p[0], p[1], 2.8 + (i % 3) * 0.6, -0.8 * i,
+  0.40 + (i / (wireC.length - 1)) * 0.16));
+
+/* Wall sconces — the four lanterns, alternating walls as they catch. */
+const sconces = [[8,28.7],[92,28.7],[20,34.4],[79.9,34.4]];
+sconces.forEach((p, i) => dot('sconce', p[0], p[1], 3.4 + (i % 2) * 0.7, -1.3 * i,
+  0.50 + i * 0.035));
+
+/* Table candles — flames flicker: quick varied clocks. The left tables
+   light first, nearest candles first, walking away down the table;
+   then the right tables answer, nearest first. */
+const candlesL = [
+  [0.6,48.1,'flame'],[2.9,50.7,'flame'],[3.8,44.5,'flameBig'],[5.4,48.6,'flame'],[7.5,47,'flameBig'],
+  [9.9,47.4,'flame'],[12.2,46.4,'flame'],[15.3,46.1,'flame'],[16,51,'flame'],[17.3,48.7,'flame'],
+  [19.9,50.5,'flame'],[20.6,47.1,'flame'],[21.6,47.6,'flame'],[25.9,48.7,'flame'],[26.8,48.8,'flame']
+];
+candlesL.forEach((p, i) => dot(p[2], p[0], p[1], 0.55 + (i % 4) * 0.17, -0.31 * i,
+  0.58 + (i / (candlesL.length - 1)) * 0.155));
+const candlesR = [
+  [99.1,48.5,'flame'],[97.7,44.5,'flameBig'],[93.8,49.3,'flame'],[92.9,47,'flameBig'],[88.3,47,'flame'],
+  [86.4,46,'flame'],[84,48.6,'flame'],[82.9,47,'flame'],[81,49.2,'flame'],[79.8,47.1,'flame']
+];
+candlesR.forEach((p, i) => dot(p[2], p[0], p[1], 0.6 + (i % 3) * 0.19, -0.37 * i,
+  0.66 + (i / (candlesR.length - 1)) * 0.155));
+
+/* ---- The master timeline. ---- */
+const RAMP = 0.09;          // each light's ignition window on the timeline
+const DELAY = 1500;         // ms before the arc begins
+const DURATION = 30000;     // ms, unlit → lit
+let raf = null, t0 = 0;
+function applyT(T){
+  night.style.opacity = sstep(0.02, 0.92, T).toFixed(3);
+  starWrap.style.opacity = (0.30 + 0.70 * sstep(0.02, 0.30, T)).toFixed(3);
+  floorWrap.style.opacity = sstep(0.78, 0.97, T).toFixed(3);
+  for (const L of lights) L.el.style.opacity = sstep(L.start, L.start + RAMP, T).toFixed(3);
+}
+function tick(now){
+  const T = clamp01((now - t0) / DURATION);
+  applyT(T);
+  raf = T < 1 ? requestAnimationFrame(tick) : null;
+}
+function startArc(){
+  cancelArc();
+  t0 = performance.now() + DELAY;
+  raf = requestAnimationFrame(tick);
+}
+function cancelArc(){ if (raf) cancelAnimationFrame(raf); raf = null; }
+function finishArc(){ cancelArc(); applyT(1); }
+
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Still / Living, tap-fullscreen, idle chrome: the family pattern. ---- */
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+  if (!on) { cancelArc(); }
+  else if (reduced) { finishArc(); }
+  else { startArc(); } // entering Living replays the lighting
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (reduced) finishArc(); else startArc();
+})();
+</script>
+</body>
+</html>
