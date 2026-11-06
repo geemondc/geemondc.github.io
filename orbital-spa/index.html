@@ -46,12 +46,16 @@
   .hint { position:fixed; right:16px; bottom:74px; color:#D8C9A8; font-size:13.5px; opacity:.85; pointer-events:none;
     transition:opacity 1.2s; }
   body.idle .hint { opacity:0; }
+
+  body.expanded .top, body.expanded .bar { display:none; }
+  body.expanded .frame { left:0 !important; top:0 !important; width:100vw !important; height:100vh !important; }
+  body.expanded .frame img.base, body.expanded .frame canvas.pool, body.expanded .frame canvas.fx { object-fit:cover; }
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
   <div class="frame" id="frame">
-    <img class="base" src="still9.jpg" alt="Space Café — a quiet lounge above the Earth">
+    <img class="base" src="still10.jpg" alt="Space Café — a quiet lounge above the Earth">
     <div class="earthcap"></div>
     <canvas class="pool" id="poolCv" width="960" height="640"></canvas>
     <div class="vig"></div>
@@ -76,7 +80,7 @@
   function seat(){
     var w = stage.clientWidth, h = stage.clientHeight;
     var rw, rh;
-    if (w / h > AR) { rw = w; rh = w / AR; } else { rh = h; rw = h * AR; }
+    if (w / h > AR) { rh = h; rw = h * AR; } else { rw = w; rh = w / AR; } // cover-fit (Gary: maximize)
     frame.style.left = ((w - rw) / 2) + 'px';
     frame.style.top = ((h - rh) / 2) + 'px';
     frame.style.width = rw + 'px';
@@ -92,9 +96,9 @@
   var DISC = 72.8, TURN = 2.4;                        // apparent disc px; deg/sec
   var tex = new Image(), clouds = new Image(), poolMask = new Image();
   var nTex = 0, nPool = 0;
-  tex.onload = function(){ nTex++; }; tex.src = 'earth9.png';
-  clouds.onload = function(){ nTex++; }; clouds.src = 'clouds9.png';
-  poolMask.onload = function(){ nPool++; }; poolMask.src = 'poolmask9.png';
+  tex.onload = function(){ nTex++; }; tex.src = 'earth10.png';
+  clouds.onload = function(){ nTex++; }; clouds.src = 'clouds10.png';
+  poolMask.onload = function(){ nPool++; }; poolMask.src = 'poolmask10.png';
   var cv = document.createElement('canvas');
   cv.width = cv.height = 460;
   var c2 = cv.getContext('2d');
@@ -164,7 +168,7 @@
   var base = new Image();
   var poolReady = false;
   base.onload = function(){ poolReady = true; };
-  base.src = 'still9.jpg';
+  base.src = 'still10.jpg';
   function drawPool(now){
     if (!poolReady || nPool < 1) return;
     var t = now / 1000;
@@ -260,10 +264,18 @@
     if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
     else { audio.pause(); btnM.textContent = '🎵 Play the music'; }
   };
+  var expanded = false;
   window.toggleFull = function(){
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen().catch(function(){});
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(function(){ expandFallback(); });
+    } else { expandFallback(); }
   };
+  function expandFallback(){
+    expanded = !expanded;
+    document.body.classList.toggle('expanded', expanded);
+    seat();
+  }
 
   // Furniture fades away when the room goes still — atmosphere first.
   var idleTimer = null;

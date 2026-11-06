@@ -34,12 +34,16 @@
   .hint { position:fixed; right:16px; bottom:74px; color:#9DB9DE; font-size:13.5px; opacity:.85; pointer-events:none;
     transition:opacity 1.2s; }
   body.idle .hint { opacity:0; }
+
+  body.expanded .top, body.expanded .bar { display:none; }
+  body.expanded .frame { left:0 !important; top:0 !important; width:100vw !important; height:100vh !important; }
+  body.expanded .frame img.base, body.expanded .frame canvas.pool, body.expanded .frame canvas.fx { object-fit:cover; }
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
   <div class="frame" id="frame">
-    <img class="base" src="still1.jpg" alt="Space Café — a quiet lounge in the blue dark above the Earth">
+    <img class="base" src="still2.jpg" alt="Space Café — a quiet lounge in the blue dark above the Earth">
     <canvas class="fx" id="fx" width="1432" height="747"></canvas>
     <div class="vig"></div>
   </div>
@@ -55,9 +59,10 @@
   var stage = document.getElementById('stage'), frame = document.getElementById('frame');
   var IW = 1432, IH = 747;
   function seat(){
-    var w = stage.clientWidth, h = stage.clientHeight;
-    var rw, rh;
-    if (w / h > IW / IH) { rh = h; rw = h * IW / IH; } else { rw = w; rh = w * IH / IW; }
+    // MAXIMIZE (Gary): the picture fills the screen — cover-fit, whole
+    // photo still reachable in the Museum Frame view via the frame chip.
+    var w = stage.clientWidth, h = stage.clientHeight, rw, rh;
+    if (w / h > IW / IH) { rw = w; rh = w * IH / IW; } else { rh = h; rw = h * IW / IH; }
     frame.style.left = ((w - rw) / 2) + 'px'; frame.style.top = ((h - rh) / 2) + 'px';
     frame.style.width = rw + 'px'; frame.style.height = rh + 'px';
   }
@@ -69,25 +74,65 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
   // The still's own warm city dots, enhanced — each breathes on its own
   // clock; the whole field slides very slowly sideways (the turn), wrapping.
   var cv = document.getElementById('fx'), cx = cv.getContext('2d');
+  var GLOBE = { cx: 0.688, cy: 0.695, r: 0.335 };   // globe circle in the glass, image fractions
+  var gc = document.createElement('canvas'); gc.width = 2048; gc.height = 1024;
+  var gx = gc.getContext('2d');
+  var ready = false;
+  (function buildGlobe(){
+    var im = new Image();
+    im.onload = function(){
+      var W2 = 2048, H2 = 1024, sx = 1432, sy = 747;
+      var cxI = GLOBE.cx * sx, cyI = GLOBE.cy * sy, rI = GLOBE.r * sy;
+      gx.drawImage(im, 0, 0);
+      // Night side = Gary's own lit continent, pre-rotated so the face
+      // the café sees carries its cities; terminator glow at the seam.
+      var tmp = document.createElement('canvas'); tmp.width = 2048; tmp.height = 1024;
+      var tx = tmp.getContext('2d');
+      tx.drawImage(gc, 0, 0);
+      gx.clearRect(0, 0, 2048, 1024);
+      gx.drawImage(tmp, 1024, 0, 1024, 1024, 0, 0, 1024, 1024);
+      gx.drawImage(tmp, 0, 0, 1024, 1024, 1024, 0, 1024, 1024);
+      ready = true;
+    };
+    im.src = 'still2.jpg';
+  })();
   function drawFx(t){
     cx.clearRect(0, 0, IW, IH);
-    var drift = (t * 6.5) % IW;               // ~6.5 px/s — the turn you can SEE (Gary: not enough motion)
+    if (!ready) return;
+    var cxp = GLOBE.cx * IW, cyp = GLOBE.cy * IH, rp = GLOBE.r * IH;
+    cx.save();
+    cx.beginPath(); cx.arc(cxp, cyp, rp * 1.35, 0, Math.PI * 2); cx.clip();
+    // draw the turning sphere: sample the wrap texture through a
+    // spherical projection — the disc region of the glass only
+    var steps = 46, lon0 = (t * 2.2) % 360;   // ~2.2 deg/s: the turn you can SEE
+    var img = gx.canvas;
+    for (var i2 = 0; i2 < steps; i2++){
+      var th0 = -Math.PI / 2 + (i2 / steps) * Math.PI;
+      var th1 = -Math.PI / 2 + ((i2 + 1) / steps) * Math.PI;
+      var xA = cxp + Math.sin(th0) * rp * 1.35, xB = cxp + Math.sin(th1) * rp * 1.35;
+      var u = ((lon0 + (th0 + Math.PI / 2) * 180 / Math.PI * 0.5) % 360) / 360;
+      var sw = 2048 / 360 * ((th1 - th0) * 180 / Math.PI * 0.5);
+      var shade = 0.35 + 0.65 * Math.pow(Math.cos(th0), 1.4);   // night falls to the left limb
+      cx.globalAlpha = 1;
+      cx.drawImage(img, u * 2048, 0, Math.max(1, sw), 1024, xA, cyp - rp * 1.35, Math.max(1, xB - xA + 1), rp * 2.7);
+      if (shade < 0.999){ cx.fillStyle = 'rgba(2,6,20,' + (1 - shade).toFixed(3) + ')'; cx.fillRect(xA, cyp - rp * 1.35, xB - xA + 1, rp * 2.7); }
+    }
+    // terminator glow + the flickering cities ride the turning face
     for (var i = 0; i < CITY.length; i++){
       var d = CITY[i];
-      var x = (d[0] / 100 * IW + drift); if (x > IW) x -= IW;
-      // keep the drift inside the planet band: dots that slide past the
-      // limb region fade out rather than crossing into the room
-      var y = d[1] / 100 * IH;
+      var fx3 = d[0] / 100, fy3 = d[1] / 100;
+      var dx = (fx3 - GLOBE.cx) * IW, dy = (fy3 - GLOBE.cy) * IH;
+      if (dx * dx + dy * dy > rp * rp * 1.82) continue;    // outside the globe: skip
       var shim = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / (1.6 + (i * 37 % 13) * 0.31) + i * 1.93);
       shim = shim * shim * (3 - 2 * shim);
-      var a = 0.2 + 0.62 * shim;
-      var r = 1.1 + 1.3 * shim;
-      var g = cx.createRadialGradient(x, y, 0, x, y, r * 3.2);
-      g.addColorStop(0, 'rgba(255,220,160,' + a.toFixed(3) + ')');
-      g.addColorStop(1, 'rgba(255,220,160,0)');
-      cx.fillStyle = g;
-      cx.beginPath(); cx.arc(x, y, r * 3.2, 0, Math.PI * 2); cx.fill();
+      var a = 0.2 + 0.6 * shim;
+      var g2 = cx.createRadialGradient(d[0] / 100 * IW, d[1] / 100 * IH, 0, d[0] / 100 * IW, d[1] / 100 * IH, 4.6);
+      g2.addColorStop(0, 'rgba(255,220,160,' + a.toFixed(3) + ')');
+      g2.addColorStop(1, 'rgba(255,220,160,0)');
+      cx.fillStyle = g2;
+      cx.beginPath(); cx.arc(d[0] / 100 * IW, d[1] / 100 * IH, 4.6, 0, Math.PI * 2); cx.fill();
     }
+    cx.restore();
   }
   // ---- Candles & lanterns inside: each flickering on its own clock -------
   var glints = GLINTS.map(function(s, i){
@@ -119,10 +164,18 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
     if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
     else { audio.pause(); btnM.textContent = '🎵 Play the music'; }
   };
+  var expanded = false;
   window.toggleFull = function(){
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen().catch(function(){});
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(function(){ expandFallback(); });
+    } else { expandFallback(); }
   };
+  function expandFallback(){
+    expanded = !expanded;
+    document.body.classList.toggle('expanded', expanded);
+    seat();
+  }
   var idleTimer = null;
   function wake(){
     document.body.classList.remove('idle');
