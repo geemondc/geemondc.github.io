@@ -246,7 +246,6 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
         <div class="plRow"><span class="dot dotED"></span>Con Edison — <b id="pieEDVal">$60,150</b> (<span id="pieEDPct">6.4%</span>)</div>
         <div class="plRow"><span class="dot dotCD"></span>Your CDs — <b id="pieCDVal">$480,404</b></div>
         <div class="plRow"><span class="dot dotDep"></span>Money in the bank, ready — <b id="pieDepVal">$187,327</b></div>
-        <div class="plRow"><span class="dot dotNew"></span>A new CD being set up for you — <b id="pieNewVal">$230,000</b></div>
         <div class="plNote">All your money together: <b id="pieTotal">$945,000</b>. The Con Edison slice is the small one — Gary's rule keeps it at 5% or less.</div>
         <div class="plNote" id="payNote" style="display:none">&#11088; Your assisted living payment went through this month — so your CDs went down by $5,000 for the month.</div>
       </div>
@@ -312,23 +311,22 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
 (function(){
 "use strict";
 var params = new URLSearchParams(location.search);
-var TOTAL = parseFloat(params.get('total')) || 953420.70;
-// TRUE ANCHOR (Gary, Nov 6, 2026): the trust's real balance was $953,420.70
-// as of Nov 6, 2026 — AFTER the Nov 5 assisted-living payment was taken.
-// A $230,000 CD purchase was PENDING that morning (cash leaving the deposit
-// side, same $230,000 arriving on the CD side) — money moving INSIDE the
-// account, so it never changes her total; the page does not step for it.
-var CD_COMING = 230000;   // the pending CD: part of her "CDs" below
+var TOTAL = parseFloat(params.get('total')) || 937420.70;
+// TRUE ANCHOR (Gary, Nov 6, 2026): Carol's page carries the NET number from
+// the top of her Merrill statement — $937,420.70 as of Nov 6, 2026, AFTER the
+// Nov 5 assisted-living payment. The $230,000 Gary moved into a new CD today
+// stays INSIDE her account (cash side out, CD side in) — the net never moves
+// for it, so the page does not step for it.
 var MONTHLY_PAY = 5000;
 var PAID_MONTHS = 1;   // the Nov 5, 2026 payment is already inside the anchor
 (function(){
   if (params.get('total')) return; // an explicit total wins
   var now = new Date();
-  // Assisted living is paid from her CDs: on the 5th of each month the total
-  // steps down $5,000 (Dec 5, 2026 → $948,420.70; Jan 5 → $943,420.70, ...).
+  // Assisted living is paid from her money: on the 5th of each month the
+  // total steps down $5,000 (Dec 5, 2026 → $932,420.70; Jan 5 → $927,420.70).
   var months = (now.getFullYear() - 2026) * 12 + (now.getMonth() - 11); // Dec 2026 = 0
   if (now.getDate() >= 5) months += 1;
-  if (months > 0){ PAID_MONTHS = 1 + months; TOTAL -= MONTHLY_PAY * months; CD_COMING = Math.max(0, CD_COMING - MONTHLY_PAY * months); }
+  if (months > 0){ PAID_MONTHS = 1 + months; TOTAL -= MONTHLY_PAY * months; }
 })();
 var ED_SHARES = parseFloat(params.get('shares')) || 500;
 var LINE = 0.05, SCALE = 8; // gauge shows 0..8%
@@ -536,9 +534,9 @@ function drawPie(){
   if (cv.width !== W*dpr){ cv.width = W*dpr; cv.height = W*dpr; }
   var ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,W);
   var val = ed.price * ED_SHARES;
-  var cd = Math.max(0, TOTAL - val - 187327 - CD_COMING); // her CDs, from the Nov 6 statement
+  var cd = Math.max(0, TOTAL - val - 187327); // her CDs (incl. the new $230,000 CD), from the Nov 6 statement
   var dep = TOTAL - val - cd - CD_COMING;                      // bank deposits + cash, ready
-  var slices = [ [val,'#0E6B6B'], [cd,'#D9C98F'], [dep,'#8FB8DE'], [CD_COMING,'#E8A0BF'] ];
+  var slices = [ [val,'#0E6B6B'], [cd,'#D9C98F'], [dep,'#8FB8DE'] ];
   var cx = W/2, cy = W/2, R = 96, a0 = -Math.PI/2;
   slices.forEach(function(s){
     if (s[0] <= 0) return;
@@ -551,13 +549,13 @@ function drawPie(){
   ctx.font = '800 30px -apple-system, Arial'; ctx.fillText((val/TOTAL*100).toFixed(1)+'%', cx, cy+2);
   ctx.font = '600 15px -apple-system, Arial'; ctx.fillStyle = '#5A6B72'; ctx.fillText('is Con Edison', cx, cy+24);
   var e1=document.getElementById('pieEDVal'), e2=document.getElementById('pieEDPct'), e3=document.getElementById('pieCDVal'), e4=document.getElementById('pieTotal');
-  var e5=document.getElementById('pieDepVal'), e6=document.getElementById('pieNewVal');
+  var e5=document.getElementById('pieDepVal');
   if(e1) e1.textContent = fmt$(val);
   if(e2) e2.textContent = (val/TOTAL*100).toFixed(1)+'%';
   if(e3) e3.textContent = fmt$(cd);
   if(e4) e4.textContent = fmt$(TOTAL);
   if(e5) e5.textContent = fmt$(dep);
-  if(e6) e6.textContent = fmt$(CD_COMING);
+
   var pn = document.getElementById('payNote');
   if (pn && PAID_MONTHS > 0) pn.style.display = 'block';
 }
