@@ -179,14 +179,21 @@
     }
     var hasParams = ['to','from','line','scene'].some(function(k){ return q.has(k); });
     if (!hasParams) return;
-    var scene = clean(q.get('scene'), 20).toLowerCase() === 'chilling' ? 'chilling' : 'bigview';
+    var sc = clean(q.get('scene'), 20).toLowerCase();
+    var scene = (sc === 'chilling' || sc === 'birthday' || sc === 'heart') ? sc : 'bigview';
+    window.__lcScene = scene;
     var to = clean(q.get('to'), 60) || 'Sofia';
     var from = clean(q.get('from'), 60) || 'James';
     var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
     var DEF_LINE = 'Another year, same favorite view — you, right next to me.';
     var line = rawLine !== null ? rawLine : (scene === 'bigview' ? DEF_LINE : '');
-    var headline = scene === 'chilling' ? ('For ' + to + ', with love.') : ('Happy New Year, ' + to + '.');
-    var greeting = scene === 'chilling' ? 'Thinking of you' : 'Happy New Year';
+    var headline = scene === 'chilling' || scene === 'heart' ? ('For ' + to + ', with love.')
+      : scene === 'birthday' ? ('Happy Birthday, ' + to + '.')
+      : ('Happy New Year, ' + to + '.');
+    var greeting = scene === 'chilling' ? 'Thinking of you'
+      : scene === 'heart' ? 'With love'
+      : scene === 'birthday' ? 'Happy Birthday'
+      : 'Happy New Year';
     function setText(sel, txt){ var el = document.querySelector(sel); if (el) el.textContent = txt; }
     setText('#front .f-for', 'For ' + to);
     setText('#front .f-name', to);
@@ -209,6 +216,18 @@
       var st = document.querySelector('.frame img.still');
       if (st){ st.src = 'https://thelivingphotos.com/img/p-84bd458431.jpg'; st.alt = 'Golden hour at home, at rest'; }
     }
+    if (scene === 'birthday'){
+      var fr2 = document.querySelector('.frame iframe');
+      if (fr2){ fr2.src = 'https://geemondc.github.io/birthday-scene/#wall'; fr2.title = 'Living photo — the Birthday Room'; }
+      var st2 = document.querySelector('.frame img.still');
+      if (st2){ st2.src = 'https://geemondc.github.io/birthday-scene/still.jpg'; st2.alt = 'The Birthday Room, at rest'; }
+    }
+    if (scene === 'heart'){
+      var fr3 = document.querySelector('.frame iframe');
+      if (fr3){ fr3.src = 'https://geemondc.github.io/loved-one-scene/#wall'; fr3.title = 'Living photo — the Heart Garden'; }
+      var st3 = document.querySelector('.frame img.still');
+      if (st3){ st3.src = 'https://geemondc.github.io/loved-one-scene/still.jpg'; st3.alt = 'The Heart Garden, at rest'; }
+    }
   })();
 
   var front = document.getElementById('front');
@@ -222,7 +241,7 @@
     document.body.classList.add('opening');
     document.body.classList.add('open');
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
-    finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
+    if (window.__lcScene !== 'heart') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
     settleTimer = setTimeout(function(){
       document.body.classList.add('settled');
     }, MIDDLE_MS);
