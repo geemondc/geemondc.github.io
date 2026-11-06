@@ -20,6 +20,8 @@
            box-shadow: 0 18px 60px rgba(0,0,0,.65); }
   .stage img.plate { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; }
+  .stage img.held { position:absolute; display:block; pointer-events:none;
+               left:26.83%; top:3.73%; width:48.17%; }
   .stage img.acc { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; pointer-events:none;
                mix-blend-mode:screen; opacity:0; }
@@ -27,7 +29,7 @@
     transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
     background:radial-gradient(circle, rgba(255,236,190,.85) 0%, rgba(255,205,120,.38) 34%, rgba(255,190,100,0) 68%);
     mix-blend-mode:screen; }
-  .halo { position:absolute; left:50%; top:9%; width:30%; aspect-ratio:1;
+  .halo { position:absolute; left:50.6%; top:9.5%; width:27%; aspect-ratio:1;
     transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
     background:radial-gradient(circle, rgba(255,248,220,.55) 0%, rgba(255,240,200,.16) 45%, rgba(255,240,200,0) 70%);
     mix-blend-mode:screen; }
@@ -47,6 +49,18 @@
   #fs .fsstage { position:absolute; inset:0; }
   #fs img.plate { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; }
+  #fs .fsstage { overflow:hidden; }
+  #fs .fsframe { position:absolute; overflow:hidden; }
+  #fs img.held { position:absolute; display:block; pointer-events:none;
+               left:26.83%; top:3.73%; width:48.17%; }
+  #fs .sunflare { position:absolute; left:6.8%; top:30.2%; width:34%; aspect-ratio:1;
+    transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(255,236,190,.85) 0%, rgba(255,205,120,.38) 34%, rgba(255,190,100,0) 68%);
+    mix-blend-mode:screen; }
+  #fs .halo { position:absolute; left:50.6%; top:9.5%; width:27%; aspect-ratio:1;
+    transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, rgba(255,248,220,.55) 0%, rgba(255,240,200,.16) 45%, rgba(255,240,200,0) 70%);
+    mix-blend-mode:screen; }
   #fs img.acc { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; pointer-events:none;
                mix-blend-mode:screen; opacity:0; }
@@ -63,8 +77,9 @@
 
   <div class="stage" id="stage" title="Tap for full screen">
     <img class="plate lyrStill" src="still.jpg" alt="Adriana — the original art, untouched">
-    <img class="plate lyrGolden" src="golden.jpg" alt="" style="opacity:0">
-    <img class="plate lyrGlow" src="glow.jpg" alt="" style="opacity:0">
+    <img class="plate lyrGolden" src="sunset.jpg" alt="" style="opacity:0">
+    <img class="plate lyrGlow" src="night.jpg" alt="" style="opacity:0">
+    <img class="held lyrHeld" src="held.png" alt="" style="opacity:0">
     <div class="sunflare"></div>
     <div class="halo"></div>
     <img class="acc lyrAcc" src="acc-sparkle.png" alt="">
@@ -85,12 +100,15 @@
 
 <div id="fs">
   <div class="fsstage" id="fsStage">
-    <img class="plate lyrStill" src="still.jpg" alt="">
-    <img class="plate lyrGolden" src="golden.jpg" alt="" style="opacity:0">
-    <img class="plate lyrGlow" src="glow.jpg" alt="" style="opacity:0">
-    <div class="sunflare"></div>
-    <div class="halo"></div>
-    <img class="acc lyrAcc" src="acc-sparkle.png" alt="">
+    <div class="fsframe" id="fsFrame">
+      <img class="plate lyrStill" src="still.jpg" alt="">
+      <img class="plate lyrGolden" src="sunset.jpg" alt="" style="opacity:0">
+      <img class="plate lyrGlow" src="night.jpg" alt="" style="opacity:0">
+      <img class="held lyrHeld" src="held.png" alt="" style="opacity:0">
+      <div class="sunflare"></div>
+      <div class="halo"></div>
+      <img class="acc lyrAcc" src="acc-sparkle.png" alt="">
+    </div>
   </div>
 </div>
 <button id="fsClose">&#10005; Close</button>
@@ -114,6 +132,7 @@
       still: root.querySelector('.lyrStill'),
       golden: root.querySelector('.lyrGolden'),
       glow: root.querySelector('.lyrGlow'),
+      held: root.querySelector('.lyrHeld'),
       sun: root.querySelector('.sunflare'),
       halo: root.querySelector('.halo'),
       acc: root.querySelector('.lyrAcc')
@@ -122,26 +141,51 @@
   var page = makeStack(document.getElementById('stage'));
   var fsEl = document.getElementById('fs');
   var fs = makeStack(document.getElementById('fsStage'));
+  // In fullscreen the plates are object-fit:contain — work out the rect the
+  // picture actually occupies and size the frame div to it; every layer
+  // inside (world, held, flare, halo, sparkles) then seats by percentage.
+  var fsFrame = document.getElementById('fsFrame');
+  function seatFsHeld(){
+    var w = fsEl.clientWidth, h = fsEl.clientHeight, ar = 928 / 1152;
+    var rw, rh;
+    if (w / h > ar) { rh = h; rw = h * ar; } else { rw = w; rh = w / ar; }
+    fsFrame.style.left = ((w - rw) / 2) + 'px';
+    fsFrame.style.top = ((h - rh) / 2) + 'px';
+    fsFrame.style.width = rw + 'px';
+    fsFrame.style.height = rh + 'px';
+  }
+  window.addEventListener('resize', function(){ if (fsOpen) seatFsHeld(); });
   var fsClose = document.getElementById('fsClose');
   var fsOpen = false, priorState = 'still';
 
-  // Golden-hour loop (24s): still hold -> golden -> dusk glow with the halo
-  // high -> back through golden -> still. t=24 wraps exactly to t=0.
+  // World loop (24s): the room + outside travel day -> sunset -> true night
+  // and back. Adriana is cut out of her own art (held) and pinned on top of
+  // the traveling world, always her original full-bright pixels — she fades
+  // IN over the day world the moment the light starts to travel, so her
+  // pixels never change, only the world behind her does. t=24 wraps to t=0.
   function opacities(t){
     t = ((t % T) + T) % T;
-    if (t < 3)   return { still:1, golden:0, glow:0, sun:.12, halo:.05 };
-    if (t < 7)   { var k=(t-3)/4; return { still:1, golden:k, glow:0, sun:.12+.5*k, halo:.05+.1*k }; }
-    if (t < 10)  return { still:1, golden:1, glow:0, sun:.62, halo:.15 };
-    if (t < 14)  { var k2=(t-10)/4; return { still:1, golden:1, glow:k2, sun:.62-.3*k2, halo:.15+.75*k2 }; }
-    if (t < 17)  return { still:1, golden:1, glow:1, sun:.32, halo:.9 };
-    if (t < 20)  { var k3=(t-17)/3; return { still:1, golden:1, glow:1-k3, sun:.32+.3*k3, halo:.9-.75*k3 }; }
-    if (t < 23)  { var k4=(t-20)/3; return { still:1, golden:1-k4, glow:0, sun:.62-.5*k4, halo:.15-.1*k4 }; }
-    return { still:1, golden:0, glow:0, sun:.12, halo:.05 };
+    function heldOp(g, n){
+      var w = Math.max(g, n);
+      return w <= 0.02 ? 0 : Math.min(1, w * 8);
+    }
+    var o;
+    if (t < 3)        o = { still:1, golden:0, glow:0, sun:.12, halo:.05 };
+    else if (t < 7)   { var k=(t-3)/4;  o = { still:1, golden:k, glow:0, sun:.12+.5*k, halo:.05+.1*k }; }
+    else if (t < 10)  o = { still:1, golden:1, glow:0, sun:.62, halo:.15 };
+    else if (t < 14)  { var k2=(t-10)/4; o = { still:1, golden:1, glow:k2, sun:.62-.3*k2, halo:.15+.75*k2 }; }
+    else if (t < 17)  o = { still:1, golden:1, glow:1, sun:.32, halo:.9 };
+    else if (t < 20)  { var k3=(t-17)/3; o = { still:1, golden:1, glow:1-k3, sun:.32+.3*k3, halo:.9-.75*k3 }; }
+    else if (t < 23)  { var k4=(t-20)/3; o = { still:1, golden:1-k4, glow:0, sun:.62-.5*k4, halo:.15-.1*k4 }; }
+    else              o = { still:1, golden:0, glow:0, sun:.12, halo:.05 };
+    o.held = heldOp(o.golden, o.glow);
+    return o;
   }
   function apply(st, so, t, living){
     st.still.style.opacity = so.still;
     st.golden.style.opacity = living ? so.golden : 0;
     st.glow.style.opacity = living ? so.glow : 0;
+    st.held.style.opacity = living ? so.held : 0;
     st.sun.style.opacity = living ? so.sun : 0;
     st.halo.style.opacity = living ? so.halo : 0;
     var tw = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / 3.4);
@@ -190,6 +234,7 @@
     priorState = state;
     if (!ignited) ignite();
     fsOpen = true; fsEl.style.display = 'block'; fsClose.style.display = 'block';
+    seatFsHeld();
   }
   function closeFs(){
     fsOpen = false; fsEl.style.display = 'none'; fsClose.style.display = 'none';
