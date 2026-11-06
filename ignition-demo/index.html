@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Heart Garden — Staggered Ignition (demo)</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#070a18;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#070a18;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#0a0d20;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: ONE master timeline (JS-driven). The night plate blends in across
+     most of the timeline while every light ignites at its own threshold —
+     Nathan's lantern formula: start = per-light, ramp = a short window. */
+  #night{opacity:0;}
+  /* Ignition anchors: JS sets opacity from the master timeline; the light
+     inside keeps its own twinkle/breathe animation on transform+filter. */
+  .ig{position:absolute;transform:translate(-50%,-50%);opacity:0;pointer-events:none;}
+  .glow{position:absolute;left:0;top:0;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  .bulb{width:1.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,222,150,.95), rgba(255,180,80,.3) 55%, rgba(255,180,80,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .arch{width:1.35%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,214,130,.95), rgba(255,170,70,.3) 55%, rgba(255,170,70,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .shore{width:.8%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,226,170,.9), rgba(255,200,110,0) 70%);animation:twk ease-in-out infinite alternate;}
+  .star{width:.55%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(240,246,255,.95), rgba(200,220,255,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{transform:translate(-50%,-50%) scale(.82);filter:brightness(.78)}to{transform:translate(-50%,-50%) scale(1.18);filter:brightness(1.28)}}
+  /* The heart of lights breathes — a slow, gentle heartbeat. */
+  #heartWrap{position:absolute;inset:0;opacity:0;pointer-events:none;}
+  #heartGlow{position:absolute;left:51%;top:42%;width:52%;height:62%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,178,84,.34), rgba(255,150,60,.12) 55%, rgba(255,150,60,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:heartbeat 4.6s ease-in-out infinite;}
+  @keyframes heartbeat{0%,100%{opacity:.45;transform:translate(-50%,-50%) scale(1)}10%{opacity:.85;transform:translate(-50%,-50%) scale(1.025)}22%{opacity:.6;transform:translate(-50%,-50%) scale(1.008)}34%{opacity:.9;transform:translate(-50%,-50%) scale(1.03)}55%{opacity:.5;transform:translate(-50%,-50%) scale(1)}}
+  .lant{position:absolute;inset:0;background:radial-gradient(closest-side, rgba(255,190,96,.5), rgba(255,170,80,0) 70%);mix-blend-mode:screen;pointer-events:none;animation:breathe 4.9s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.38}to{opacity:.75}}
+  /* Fireflies wander in only once the garden is lit. */
+  .fly{position:absolute;width:1%;aspect-ratio:1;border-radius:50%;mix-blend-mode:screen;pointer-events:none;visibility:hidden;
+    background:radial-gradient(closest-side, rgba(255,236,170,.95), rgba(255,210,100,0) 70%);animation-name:wander;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate;}
+  body.lit .fly{visibility:visible;}
+  @keyframes wander{0%{transform:translate(0,0);opacity:.15}25%{opacity:.95}50%{transform:translate(2.2vw,-1.4vh);opacity:.4}75%{opacity:.9}100%{transform:translate(-1.6vw,-2.4vh);opacity:.2}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(8,8,22,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(8,8,22,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the night painting itself, untouched — glows off, plate full. */
+  body.still .ig, body.still #heartWrap{opacity:0 !important;}
+  body.still .fly{visibility:hidden !important;}
+  body.still #night{opacity:1 !important;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living garden at dusk settling into night: a great heart of golden lights woven through a flower arch over a stone path lights up one light after another, lanterns glowing, string lights twinkling in the trees, fireflies over the roses, and a crescent moon above the lake.">
+    <img class="layer" src="dusk.jpg" alt="">
+    <img class="layer" id="night" src="still.jpg" alt="">
+    <div id="heartWrap"><div id="heartGlow"></div></div>
+    <span class="ig" data-start="0.14" style="left:18.8%;top:51%;width:8%;height:12%"><span class="lant"></span></span>
+    <span class="ig" data-start="0.26" style="left:31.3%;top:57%;width:5%;height:8%"><span class="lant" style="animation-duration:5.6s;animation-delay:-2s"></span></span>
+    <span class="ig" data-start="0.22" style="left:75.3%;top:57%;width:5%;height:8%"><span class="lant" style="animation-duration:5.2s;animation-delay:-1s"></span></span>
+    <span class="ig" data-start="0.18" style="left:90.7%;top:51%;width:8%;height:12%"><span class="lant" style="animation-duration:4.6s;animation-delay:-3s"></span></span>
+    <div class="fly" style="left:24%;top:74%;animation-duration:11s"></div>
+    <div class="fly" style="left:70%;top:78%;animation-duration:13s;animation-delay:-5s"></div>
+    <div class="fly" style="left:33%;top:82%;animation-duration:9.5s;animation-delay:-3s"></div>
+    <div class="fly" style="left:80%;top:70%;animation-duration:12s;animation-delay:-7s"></div>
+    <div class="fly" style="left:55%;top:85%;animation-duration:10.5s;animation-delay:-1.5s"></div>
+  </div>
+  <div id="capPill"><b>The Heart Garden</b> · ignition demo</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+const night = document.getElementById('night');
+const heartWrap = document.getElementById('heartWrap');
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+/* ---- The lights. Every point below sits on a real light in the night
+   master (string bulbs, arch lights, shore lights, stars) — the same
+   grounded sets as the shipped scene. Each light gets a start threshold
+   on ONE master timeline; ignition order tells the story:
+   lanterns → the arch climbs bottom-to-top → the string bulbs sweep
+   left-to-right → the far shore wakes → the stars come out last. ---- */
+const lights = []; // {el, start}
+function dot(cls, x, y, dur, dl, start){
+  const a = document.createElement('span');
+  a.className = 'ig'; a.style.left = x + '%'; a.style.top = y + '%';
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  a.appendChild(s); frame.appendChild(a);
+  lights.push({ el: a, start });
+}
+document.querySelectorAll('#frame > .ig').forEach(a =>
+  lights.push({ el: a, start: parseFloat(a.dataset.start) }));
+
+const archPts = [[44,20],[51,26],[58,20.5],[38,24],[64,24],[34.5,32],[68,32],[33.5,42],[69.5,42],[35,52],[68,52],[37.5,61],[66,61],[41,68],[62,68],[46,73],[57,73]]
+  .sort((p, q) => (q[1] - p[1]) || (p[0] - q[0])); // bottom first: the heart climbs
+archPts.forEach((p, i) => dot('arch', p[0], p[1], 1.9 + (i % 4) * 0.45, -0.6 * i,
+  0.28 + (archPts.length > 1 ? i / (archPts.length - 1) : 0) * 0.20));
+
+const bulbPts = [[1.5,10],[4.7,10.5],[10,9],[14.3,8.6],[19,10.3],[22.3,11.4],[27,10.8],[31.3,9.6],[34.7,8.6],[38.7,7.9],[83.5,9.5],[87.5,10.3],[91.8,11.3],[95.3,12.6],[98.3,13.6],[10.3,16.3],[13.8,20.6],[11.7,24.9],[10.3,31.3]]
+  .sort((p, q) => (p[0] - q[0]) || (p[1] - q[1])); // left-to-right sweep
+bulbPts.forEach((p, i) => dot('bulb', p[0], p[1], 2.3 + (i % 5) * 0.5, -0.8 * i,
+  0.46 + (bulbPts.length > 1 ? i / (bulbPts.length - 1) : 0) * 0.16));
+
+const shorePts = [[49,42.8],[55,43.4],[61,42.6],[67,43.2],[73,42.9],[79,43.5],[84,42.7],[58,44]]
+  .sort((p, q) => p[0] - q[0]);
+shorePts.forEach((p, i) => dot('shore', p[0], p[1], 3.1 + (i % 3) * 0.7, -1.1 * i,
+  0.62 + (shorePts.length > 1 ? i / (shorePts.length - 1) : 0) * 0.10));
+
+const starPts = [[46,6],[55,4.2],[63,7.5],[71,4.8],[58,10.5],[42,11],[76,8.8],[67,12.5]];
+starPts.forEach((p, i) => dot('star', p[0], p[1], 2.6 + (i % 4) * 0.6, -0.9 * i,
+  0.74 + (starPts.length > 1 ? i / (starPts.length - 1) : 0) * 0.14));
+
+/* ---- The master timeline. ---- */
+const RAMP = 0.10;          // each light's ignition window on the timeline
+const DELAY = 1500;         // ms before the arc begins
+const DURATION = 27000;     // ms, dusk → night
+let raf = null, t0 = 0;
+function applyT(T){
+  night.style.opacity = sstep(0.02, 0.92, T).toFixed(3);
+  heartWrap.style.opacity = sstep(0.30, 0.60, T).toFixed(3);
+  for (const L of lights) L.el.style.opacity = sstep(L.start, L.start + RAMP, T).toFixed(3);
+  document.body.classList.toggle('lit', T >= 0.85);
+}
+function tick(now){
+  const T = clamp01((now - t0) / DURATION);
+  applyT(T);
+  raf = T < 1 ? requestAnimationFrame(tick) : null;
+}
+function startArc(){
+  cancelArc();
+  t0 = performance.now() + DELAY;
+  raf = requestAnimationFrame(tick);
+}
+function cancelArc(){ if (raf) cancelAnimationFrame(raf); raf = null; }
+function finishArc(){ cancelArc(); applyT(1); }
+
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Still / Living, tap-fullscreen, idle chrome: the family pattern. ---- */
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+  if (!on) { cancelArc(); }
+  else if (reduced) { finishArc(); }
+  else { startArc(); } // entering Living replays the waking
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (reduced) finishArc(); else startArc();
+})();
+</script>
+</body>
+</html>

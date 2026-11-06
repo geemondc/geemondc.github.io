@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Difference — drag the line (demo)</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#070a12;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#070a12;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.45);}
+  /* The plates are 1920x1088 — the frame takes their exact ratio, so the
+     whole photo shows, undistorted, on any screen. */
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,176.47vh);aspect-ratio:1920/1088;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#0a0d16;touch-action:none;cursor:ew-resize;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;}
+  /* Bottom layer: LIVING. Top layer: the original STILL, clipped to the
+     left of the divider line (--pos, percent). */
+  #top{clip-path:inset(0 calc(100% - var(--pos,50%)) 0 0);}
+  /* The divider: a gold line with a gold grip. */
+  #divider{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:0;pointer-events:none;z-index:4;}
+  #divider::before{content:"";position:absolute;top:0;bottom:0;left:-1px;width:2px;
+    background:linear-gradient(180deg, rgba(240,199,106,.0), rgba(240,199,106,.95) 12%, rgba(240,199,106,.95) 88%, rgba(240,199,106,0));
+    box-shadow:0 0 14px rgba(240,199,106,.55);}
+  #grip{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;
+    background:rgba(10,10,20,.72);border:2px solid #f0c76a;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    color:#f0c76a;font-size:19px;line-height:42px;text-align:center;letter-spacing:.05em;
+    box-shadow:0 6px 22px rgba(0,0,0,.55);pointer-events:auto;cursor:ew-resize;outline:none;}
+  #grip:focus-visible{box-shadow:0 0 0 3px rgba(240,199,106,.5),0 6px 22px rgba(0,0,0,.55);}
+  /* Side labels. */
+  .side{position:absolute;top:calc(12px + env(safe-area-inset-top));z-index:3;pointer-events:none;
+    background:rgba(8,8,20,.5);border-radius:999px;padding:6px 13px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    color:rgba(240,240,250,.85);font-size:11px;letter-spacing:.22em;text-transform:uppercase;}
+  #lblStill{left:14px;}
+  #lblLiving{right:14px;color:#f0c76a;}
+  /* The honest label. */
+  #capPill{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;
+    background:rgba(8,8,20,.5);border-radius:999px;padding:8px 16px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.9);font-size:12px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;pointer-events:none;}
+  #capPill b{color:#f0c76a;font-weight:600;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="Chilling at Home, split by a draggable line: the original photo on the left, the living lit version on the right.">
+    <img class="layer" src="living.jpg" alt="">
+    <img class="layer" id="top" src="still.jpg" alt="">
+    <div class="side" id="lblStill">Still</div>
+    <div class="side" id="lblLiving">Living</div>
+    <div id="divider">
+      <div id="grip" tabindex="0" role="slider" aria-label="Compare divider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">&#10229;&#10230;</div>
+    </div>
+  </div>
+  <div id="capPill"><b>The Difference</b> · drag the line</div>
+</div>
+<script>
+(() => {
+"use strict";
+const frame = document.getElementById('frame');
+const grip = document.getElementById('grip');
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let pos = 50, userTouched = false, sway = null;
+
+function setPos(p){
+  pos = Math.max(4, Math.min(96, p));
+  frame.style.setProperty('--pos', pos + '%');
+  grip.setAttribute('aria-valuenow', Math.round(pos));
+}
+function posFromEvent(e){
+  const r = frame.getBoundingClientRect();
+  return (e.clientX - r.left) / r.width * 100;
+}
+frame.addEventListener('pointerdown', e => {
+  userTouched = true;
+  if (sway) { cancelAnimationFrame(sway); sway = null; }
+  frame.setPointerCapture(e.pointerId);
+  setPos(posFromEvent(e));
+});
+frame.addEventListener('pointermove', e => {
+  if (e.buttons) setPos(posFromEvent(e));
+});
+grip.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') { userTouched = true; setPos(pos - 3); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { userTouched = true; setPos(pos + 3); e.preventDefault(); }
+});
+setPos(50);
+/* One gentle invitation sway — 50 → 64 → 50 — unless the visitor has
+   already taken the line, or they prefer reduced motion. */
+if (!reduced) {
+  const t0 = performance.now(), DUR = 2600;
+  const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const step = now => {
+    if (userTouched) { sway = null; return; }
+    const t = Math.min(1, (now - t0) / DUR);
+    setPos(50 + Math.sin(ease(t) * Math.PI) * 14 * (1 - t * 0.15));
+    sway = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  sway = requestAnimationFrame(step);
+}
+})();
+</script>
+</body>
+</html>
