@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Christmas Village — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#0a1024;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#0a1024;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#101736;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: the village opens at dusk and settles into night. */
+  #night{animation:nightfall 30s ease-in-out 2s both;}
+  @keyframes nightfall{from{opacity:0}to{opacity:1}}
+  /* The golden star crowning the tree breathes. */
+  #starGlow{position:absolute;left:49.6%;top:5.4%;width:13%;height:19%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,214,110,.5), rgba(255,180,70,.16) 55%, rgba(255,180,70,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:starbreathe 5.2s ease-in-out infinite;}
+  @keyframes starbreathe{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:.95;transform:translate(-50%,-50%) scale(1.07)}}
+  /* Every real light on its own clock. */
+  .glow{position:absolute;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  .bulb{width:1.15%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,230,160,.95), rgba(255,190,90,.32) 55%, rgba(255,190,90,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .string{width:.8%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,226,170,.9), rgba(255,200,110,0) 70%);animation:twk ease-in-out infinite alternate;}
+  .star{width:.55%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(240,246,255,.95), rgba(200,220,255,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{opacity:.3;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+  .lamp{width:7%;height:11%;background:radial-gradient(closest-side, rgba(255,196,100,.5), rgba(255,170,80,0) 70%);animation:breathe 4.9s ease-in-out infinite alternate;}
+  .win{width:5.5%;height:9%;background:radial-gradient(closest-side, rgba(255,198,105,.42), rgba(255,175,85,0) 70%);animation:breathe 5.4s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.38}to{opacity:.75}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(8,10,26,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(8,10,26,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the dusk painting itself, untouched. */
+  body.still .glow, body.still #starGlow{opacity:0;animation-play-state:paused;}
+  body.still #night{animation:none;opacity:0;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living Christmas village at dusk: a great tree of golden lights crowned with a shining star in a snowy stone plaza, lamps glowing, shop windows warm, garlands strung between the houses, and a church spire across the water under a starry sky.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="night" src="night.jpg" alt="">
+    <div id="starGlow"></div>
+  </div>
+  <div id="capPill"><b>The Christmas Village</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+function dot(cls, x, y, dur, dl){
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.left = x + '%'; s.style.top = y + '%';
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  frame.appendChild(s);
+}
+function halo(cls, x, y, w, h, dur, dl){
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.left = x + '%'; s.style.top = y + '%';
+  s.style.width = w + '%'; s.style.height = h + '%';
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  frame.appendChild(s);
+}
+/* the tree: 102 fairy lights, each on its own clock */
+const tree = [[50.1,9.5],[48.5,11.9],[50.8,12.7],[49.4,14.4],[46.6,16.8],[49.4,17.4],[52,18.1],[54.2,19.1],[47.9,20.4],[50.6,21.3],[52.7,22.4],[45.2,22.9],[47.7,24],[50.6,24.9],[54.4,24.9],[45.3,26.4],[48.2,26.7],[51.5,27.3],[55.1,27.1],[46.6,28.8],[49.6,28.8],[53,29.3],[56.1,29.7],[43.8,30.9],[47,31.3],[50.1,31.6],[53.5,31.8],[56.9,32.9],[44.8,33.2],[48,34],[51.1,34.6],[54.5,34.9],[42.3,35.7],[45.8,36.5],[49,37.1],[52.2,37.4],[55.5,38],[58.5,38.2],[43.4,38.9],[46.7,39.6],[49.8,40],[53,40.3],[56.3,41],[40.9,42],[44.2,42.8],[47.5,43.2],[54,43.6],[57.2,44.2],[41.8,45.2],[45,45.8],[48.3,46.4],[51.6,46.7],[54.8,47.2],[58,47.8],[39.8,48.2],[43,49],[46.1,49.6],[49.4,50],[52.7,50.5],[55.8,51],[59.2,51.7],[41,52.2],[44.2,52.9],[47.5,53.4],[50.7,53.8],[54,54.4],[57.2,55],[60.1,55.8],[38.8,56.2],[42,57],[45.3,57.6],[48.6,58.1],[51.9,58.7],[55.1,59.3],[58.3,59.9],[61.3,60.4],[39.8,60.3],[43,61],[46.3,61.6],[49.6,62.2],[52.9,62.7],[56.1,63.3],[59.3,64],[37.1,63.1],[40.4,63.9],[43.7,64.6],[47,65.1],[50.3,65.6],[53.5,66.2],[56.8,66.8],[60,67.3],[35.3,66.1],[38.5,66.9],[41.8,67.5],[45.1,68.1],[48.4,68.6],[51.7,69.1],[54.9,69.6],[58.2,70.2],[43.6,71.3],[50.5,71.8],[56.5,71.3]];
+tree.forEach((p, i) => dot('bulb', p[0], p[1], 2.1 + (i % 5) * 0.45, -0.55 * i));
+/* the garlands along the shopfronts */
+const stringL = [[0.4,46.2],[1.4,46.6],[2.5,47.1],[3.6,47.5],[4.7,48],[5.8,48.4],[6.9,48.9],[7.9,49.4],[9,49.8],[10,50.3]];
+stringL.forEach((p, i) => dot('string', p[0], p[1], 2.9 + (i % 3) * 0.6, -1.0 * i));
+const stringR = [[71.4,56.8],[72.4,56.5],[73.4,56.2],[74.6,55.9],[75.7,55.6],[76.8,55.3],[78.1,55],[79.3,54.7],[81,54.2],[82.2,53.9],[83.4,53.6],[84.6,53.3],[85.8,53],[87,52.7],[88.3,52.3],[89.6,52],[90.9,51.7],[92.2,51.4],[93.5,51.2],[94.8,50.9],[96.1,50.6],[97.4,50.4],[98.7,50.1],[99.8,49.8]];
+stringR.forEach((p, i) => dot('string', p[0], p[1], 2.9 + (i % 3) * 0.6, -0.9 * i));
+/* stars in the dusk sky + the painted flakes */
+const stars = [[21,7.9],[42.2,6.9],[44.7,8.3],[84.2,4.5],[63.6,9],[4.8,2.8],[19.5,6.7],[69.4,7.4],[36.6,3.9],[76.6,2.9],[58.8,9.6],[15.2,11.4],[89.4,10.8],[30.8,5.2]];
+stars.forEach((p, i) => dot('star', p[0], p[1], 2.6 + (i % 4) * 0.6, -0.85 * i));
+/* street lamps breathing */
+halo('lamp', 13, 31.3, 7, 11, 4.9, 0);
+halo('lamp', 89.2, 34.2, 7, 11, 5.3, -2);
+halo('lamp', 22.5, 49, 4.5, 7.5, 4.6, -1);
+halo('lamp', 34.8, 53.4, 3.5, 6, 5.6, -3);
+halo('lamp', 80.7, 46.4, 4.5, 7.5, 5.0, -1.5);
+/* warm windows breathing */
+halo('win', 3.4, 17.9, 5.5, 9, 5.4, 0);
+halo('win', 20.3, 45.6, 5, 8, 5.9, -2);
+halo('win', 19.6, 59.3, 4.5, 7, 5.1, -3.5);
+halo('win', 29.4, 50.1, 4.5, 7, 6.2, -1);
+halo('win', 31.2, 61.3, 4.5, 7, 5.5, -4);
+halo('win', 66.5, 48.6, 3.6, 7.5, 5.8, -0.5);
+halo('win', 68.5, 37.2, 2.6, 5, 6.4, -2.5);
+halo('win', 96.6, 39.3, 5, 8, 5.2, -1.2);
+halo('win', 94.1, 23.1, 4.5, 7, 6.0, -3.2);
+halo('win', 84.7, 43.4, 4.5, 7, 5.6, -4.4);
+halo('win', 1, 56.8, 6.5, 12, 5.7, -0.8);
+halo('win', 98.8, 56.3, 5.5, 11, 5.3, -2.8);
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) setLiving(false);
+})();
+</script>
+</body>
+</html>
