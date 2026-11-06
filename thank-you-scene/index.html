@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Sunrise Garden — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#171106;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#171106;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.55);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#241a0c;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: the garden opens at sunrise and ripens into full morning, then rests back. */
+  #morning{animation:dayarc 44s ease-in-out 2s infinite alternate both;}
+  @keyframes dayarc{from{opacity:0}to{opacity:1}}
+  /* The young sun breathes over the hills. */
+  #sunGlow{position:absolute;left:69%;top:18%;width:44%;height:52%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,196,96,.36), rgba(255,170,80,.12) 55%, rgba(255,170,80,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:breathe 7s ease-in-out infinite alternate;}
+  /* Every bright point on its own clock — lantern, sun, flower hearts, water. */
+  .glow{position:absolute;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  .lamp{width:4.5%;height:7.5%;background:radial-gradient(closest-side, rgba(255,206,120,.85), rgba(255,170,70,.3) 55%, rgba(255,170,70,0) 75%);animation:flk ease-in-out infinite alternate;}
+  .sun{width:2.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,236,180,.95), rgba(255,200,100,.35) 55%, rgba(255,200,100,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .bloom{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,240,200,.9), rgba(255,215,130,.25) 55%, rgba(255,215,130,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .spark{width:1%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,248,220,.95), rgba(255,230,170,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{opacity:.3;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+  @keyframes flk{from{opacity:.6;transform:translate(-50%,-50%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%) scale(1.08)}}
+  @keyframes breathe{from{opacity:.42}to{opacity:.78}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(24,16,4,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(250,242,224,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(24,16,4,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(250,242,224,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(250,244,228,.92);color:#241a05;}
+  /* Still: the sunrise painting itself, untouched. */
+  body.still .glow, body.still #sunGlow{opacity:0;animation-play-state:paused;}
+  body.still #morning{animation:none;opacity:0;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living garden at sunrise: a flower-filled cottage terrace with a vase of blooms and a steaming cup, the sun rising over misty hills, flower beds and a stone path glowing in the early light.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="morning" src="morning.jpg" alt="">
+    <div id="sunGlow"></div>
+    <div class="glow lamp" style="left:21.2%;top:8%"></div>
+  </div>
+  <div id="capPill"><b>The Sunrise Garden</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+function dot(cls, x, y, dur, dl){
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.left = x + '%'; s.style.top = y + '%';
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  frame.appendChild(s);
+}
+/* The sun's own sparkle, low over the hills. */
+const sunPts = [[69,18],[67.5,16.5],[70.5,19.5],[69,21],[66,20]];
+sunPts.forEach((p, i) => dot('sun', p[0], p[1], 3.4 + (i % 3) * 0.8, -1.2 * i));
+/* Bright hearts of the flowers — each catching the light on its own clock. */
+const blooms = [
+  [10.5,39.5],[16.8,46],[20.2,38.5],[24.8,47],[12,51.5],[16.8,53.5],[21.8,53],
+  [28.5,28.5],[37,28],[28.7,17],[50.5,35.5],[45.5,48],[49.5,50],[52.5,61.5],
+  [56,55.5],[58.5,69.5],[66,67.5],[80.7,36.5],[92.3,36.5],[96.3,52],[95.8,87.5],[94,79.5]
+];
+blooms.forEach((p, i) => dot('bloom', p[0], p[1], 2.6 + (i % 5) * 0.55, -0.8 * i));
+/* Light on the water and the gate pillars, far off. */
+const sparks = [[70,29.5],[74,30],[67,31],[80.7,40.5],[92.3,40.5]];
+sparks.forEach((p, i) => dot('spark', p[0], p[1], 3.2 + (i % 3) * 0.7, -1.4 * i));
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) setLiving(false);
+})();
+</script>
+</body>
+</html>
