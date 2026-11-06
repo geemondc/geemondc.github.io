@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Surprise Room — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#1d1430;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#1d1430;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#241739;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The arc: ONE master timeline (JS-driven) in TWO ACTS. This pair is
+     not a mood — it is a MOMENT. Act 1 (the wait): the held-breath plate
+     deepens into dusk, the glow plate only whispers in (≤ .25), a few
+     window bulbs and the fireplace embers stir. Act 2 (the beat): the
+     glow plate lands FAST (~the last fifth of a second of timeline),
+     every light ignites across a hairline window, and the CSS confetti
+     fades in and flutters. Then everything settles into the family's
+     per-light twinkle life. */
+  #night{opacity:0;}
+  /* Ignition anchors: JS sets opacity from the master timeline; the light
+     inside keeps its own twinkle/flicker animation on transform+filter. */
+  .ig{position:absolute;transform:translate(-50%,-50%);opacity:0;pointer-events:none;}
+  .glow{position:absolute;left:0;top:0;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  /* String bulbs — warm festoon dots framing the bay windows. */
+  .bulb{width:1.05%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,226,155,.95), rgba(255,188,90,.33) 55%, rgba(255,188,90,0) 78%);animation:twk ease-in-out infinite alternate;}
+  /* Cake candles — quick, varied clocks (they are flames, not bulbs). */
+  .flame{width:1.0%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,238,175,.96), rgba(255,186,84,.36) 55%, rgba(255,186,84,0) 78%);animation:flk ease-in-out infinite alternate;}
+  .flameBig{width:1.7%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,240,180,.96), rgba(255,192,90,.36) 55%, rgba(255,192,90,0) 78%);animation:flk ease-in-out infinite alternate;}
+  @keyframes flk{from{transform:translate(-50%,-50%) scale(.86) skewX(-2deg);filter:brightness(.8)}to{transform:translate(-50%,-50%) scale(1.14) skewX(2.5deg);filter:brightness(1.32)}}
+  /* Still small flames: shelf candles, hearth candle, table votives. */
+  .candle{width:.8%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,232,160,.94), rgba(255,180,80,.3) 55%, rgba(255,180,80,0) 78%);animation:flk ease-in-out infinite alternate;}
+  .votive{width:1.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,214,140,.9), rgba(255,170,70,.3) 55%, rgba(255,170,70,0) 78%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{transform:translate(-50%,-50%) scale(.82);filter:brightness(.78)}to{transform:translate(-50%,-50%) scale(1.18);filter:brightness(1.28)}}
+  /* The table lamp — one warm shade glow, the steadiest clock here. */
+  #lampWrap{position:absolute;inset:0;opacity:0;pointer-events:none;}
+  #lampGlow{position:absolute;left:9.5%;top:30.5%;width:8.5%;height:15%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,205,120,.40), rgba(255,180,90,.13) 55%, rgba(255,180,90,0) 78%);
+    mix-blend-mode:screen;pointer-events:none;animation:breatheSoft 6s ease-in-out infinite alternate;}
+  @keyframes breatheSoft{from{opacity:.6}to{opacity:1}}
+  /* The fireplace — embers stir through the wait, then the fire flares
+     at the beat: one broad warm glow over the firebox, slow flame clock. */
+  #fireWrap{position:absolute;inset:0;opacity:.18;pointer-events:none;}
+  #fireGlow{position:absolute;left:99%;top:62%;width:9%;height:19%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,166,60,.55), rgba(255,120,40,.18) 55%, rgba(255,120,40,0) 78%);
+    mix-blend-mode:screen;pointer-events:none;animation:firePulse 2.8s ease-in-out infinite alternate;}
+  @keyframes firePulse{from{opacity:.55; transform:translate(-50%,-50%) scale(.94)}to{opacity:1; transform:translate(-50%,-50%) scale(1.06)}}
+  /* The confetti — the painted confetti lives in the glow plate; these
+     CSS specks are only the drift ON TOP of it: they fade in at the
+     beat and flutter down a short fall, swaying as they go, then rest
+     faint. Sparse on purpose — seasoning, not a snow globe. */
+  .cf{position:absolute;border-radius:1.5px;opacity:0;pointer-events:none;}
+  @keyframes cfall{
+    0%{transform:translate(0,0) rotate(0deg);}
+    30%{transform:translate(.55vw,2.6vh) rotate(130deg);}
+    62%{transform:translate(-.45vw,5.2vh) rotate(245deg);}
+    100%{transform:translate(.25vw,7.6vh) rotate(360deg);}
+  }
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(16,8,32,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(240,240,250,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(16,8,32,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(240,240,250,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(244,246,250,.92);color:#101623;}
+  /* Still: the held-breath painting itself, untouched — glows off,
+     confetti hidden, before plate full. */
+  body.still .ig, body.still #lampWrap, body.still .cf{opacity:0 !important; animation:none !important;}
+  body.still #fireWrap{opacity:.18 !important;}
+  body.still #night{opacity:0 !important;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living surprise-party room at a lake house: the room holds its breath at dusk — table set, tall candles unlit, confetti cannons standing by — the windows cool, a few string bulbs stir, the fireplace embers wake; then the moment lands all at once: candles flame on the cake, the festoon lights sweep around the bay windows, the lamp catches, the fire flares, and confetti drifts down through the warm party glow.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="night" src="night.jpg" alt="">
+    <div id="lampWrap"><div id="lampGlow"></div></div>
+    <div id="fireWrap"><div id="fireGlow"></div></div>
+  </div>
+  <div id="capPill"><b>The Surprise Room</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+const night = document.getElementById('night');
+const lampWrap = document.getElementById('lampWrap');
+const fireWrap = document.getElementById('fireWrap');
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const sstep = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+/* ---- The lights. Every point below sits on a real light in the glow
+   master, grounded by viewing the painting and measuring its crops:
+   31 festoon bulbs (16 across the top, 8 down the left frame, 7 down
+   the right), 6 cake candle flames, 6 small candles (bookshelf pair,
+   mantel pair, hearth + the one by the gifts), 3 table votives, plus
+   two soft wraps: the table lamp's shade and the fireplace's flare.
+   In Act 1 only 8 bulbs near the windows stir, faintly. Everything
+   else waits for THE BEAT (T = .62) and lands across a hairline. ---- */
+const lights = []; // {el, start, peak}
+function dot(cls, x, y, dur, dl, start, peak){
+  const a = document.createElement('span');
+  a.className = 'ig'; a.style.left = x + '%'; a.style.top = y + '%';
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  a.appendChild(s); frame.appendChild(a);
+  lights.push({ el: a, start, peak: peak == null ? 1 : peak });
+}
+
+const BEAT = 0.62;   // the moment, as a point on the master timeline
+const HAIR = 0.012;  // the beat's ignition window — a hairline
+
+/* Festoon bulbs, top row — swept on at the beat, left to right.
+   The six marked (*) are the Act-1 stirrers: they breathe faintly
+   (peak .3) through the wait before the beat takes them to full. */
+const topRow = [
+  [30.9,17.2,0],[33.4,17.7,0],[36.1,17.6,0],[38.8,18.3,1],[41.6,17.9,0],[44.2,17.9,0],
+  [47.2,17.9,1],[50.0,17.9,0],[53.0,17.9,0],[55.8,17.9,0],[58.7,17.7,1],[61.3,17.9,0],
+  [64.0,17.6,0],[66.3,17.3,0],[68.4,17.9,0],[70.9,17.2,0]
+];
+topRow.forEach((p, i) => dot('bulb', p[0], p[1], 2.6 + (i % 4) * 0.5, -0.6 * i,
+  p[2] ? 0.16 + i * 0.008 : BEAT + i * 0.0012, p[2] ? 0.3 : 1));
+
+/* The two side frames, top to bottom — they chase the top row in. */
+const leftCol = [
+  [29.2,20.1],[29.1,22.6],[29.0,25.3],[28.9,27.7],[28.8,30.2],[28.6,32.9],[28.5,35.7],[28.6,38.0]
+];
+leftCol.forEach((p, i) => dot('bulb', p[0], p[1], 2.8 + (i % 3) * 0.5, -0.7 * i,
+  i === 3 || i === 6 ? 0.24 + i * 0.01 : BEAT + 0.006 + i * 0.0012,
+  i === 3 || i === 6 ? 0.3 : 1));
+const rightCol = [
+  [71.4,19.8],[71.5,22.3],[71.6,24.9],[71.7,27.6],[71.8,30.4],[71.9,33.1],[72.0,35.8]
+];
+rightCol.forEach((p, i) => dot('bulb', p[0], p[1], 2.8 + (i % 3) * 0.5, -0.8 * i,
+  i === 2 || i === 5 ? 0.28 + i * 0.01 : BEAT + 0.012 + i * 0.0012,
+  i === 2 || i === 5 ? 0.3 : 1));
+
+/* The cake's six tall candles — the heart of the beat. Quick flames. */
+const cake = [
+  [49.25,43.6],[49.7,43.8],[50.1,43.3],[50.55,43.4],[51.0,43.6],[51.4,43.7]
+];
+cake.forEach((p, i) => dot(i % 2 ? 'flame' : 'flameBig', p[0], p[1],
+  0.55 + (i % 3) * 0.16, -0.29 * i, BEAT - 0.002 + i * 0.0012));
+
+/* Small candles — bookshelf pair, mantel pair, the hearth pillar,
+   and the lone candle standing by the gifts. */
+const candles = [
+  [97.6,26.3],[97.7,30.0],[94.6,45.9],[95.2,47.0],[97.9,71.3],[54.9,51.8]
+];
+candles.forEach((p, i) => dot('candle', p[0], p[1], 0.7 + (i % 3) * 0.2, -0.33 * i,
+  BEAT + 0.004 + i * 0.0012));
+
+/* Table votives — the pierced holders on the sideboard and the coffee
+   table tray, warm dotted glows. */
+const votives = [
+  [7.9,46.5],[34.5,52.3],[55.5,77.4]
+];
+votives.forEach((p, i) => dot('votive', p[0], p[1], 3.0 + i * 0.5, -1.0 * i,
+  BEAT + 0.008 + i * 0.0012));
+
+/* ---- The confetti drift. The painted confetti is in the plate; these
+   specks ride on top: invisible through the wait, they fade in across
+   the beat and flutter down one short fall each, swaying and turning,
+   then rest faint where they land. ---- */
+const specks = [];
+const CF_COLORS = ['#ff2ea6', '#ffd93b', '#39c2d7', '#8b5cf6'];
+for (let i = 0; i < 42; i++){
+  const s = document.createElement('span');
+  s.className = 'cf';
+  const x = 6 + ((i * 37.7) % 88);
+  const y = 4 + ((i * 53.3) % 58);
+  s.style.left = x.toFixed(1) + '%';
+  s.style.top = y.toFixed(1) + '%';
+  s.style.width = (0.55 + (i % 4) * 0.16).toFixed(2) + '%';
+  s.style.aspectRatio = i % 3 === 0 ? '1' : '2.1';
+  s.style.background = CF_COLORS[i % 4];
+  s.style.transform = 'rotate(' + ((i * 67) % 360) + 'deg)';
+  frame.appendChild(s);
+  specks.push({ el: s, dur: 6 + (i % 7) * 1.3, dl: -(i * 0.83) % 7 });
+}
+
+/* ---- The master timeline. Two acts, one clock. ---- */
+const DELAY = 1600;        // ms of pure held breath before anything stirs
+const DURATION = 26000;    // ms total: ~16s of wait, the beat, the settle
+let raf = null, t0 = 0;
+function applyT(T){
+  /* The plate itself: a whisper of glow through the wait (≤ .25),
+     then the moment lands across T .60–.68 and the room is lit. */
+  night.style.opacity = (0.25 * sstep(0.04, 0.58, T) + 0.75 * sstep(0.60, 0.68, T)).toFixed(3);
+  lampWrap.style.opacity = sstep(BEAT, BEAT + 0.03, T).toFixed(3);
+  fireWrap.style.opacity = (0.18 + 0.37 * sstep(0.10, 0.55, T) + 0.45 * sstep(BEAT, BEAT + 0.025, T)).toFixed(3);
+  for (const L of lights){
+    const ramp = L.peak < 1 ? 0.10 : HAIR;
+    const base = sstep(L.start, L.start + ramp, T) * L.peak;
+    /* Act-1 stirrers reach full only when the beat arrives. */
+    L.el.style.opacity = (L.peak < 1 ? Math.max(base, sstep(BEAT, BEAT + HAIR, T)) : base).toFixed(3);
+  }
+  /* Confetti: fades in on the beat; the fall runs once, on CSS clocks
+     started at the beat, then the specks rest faint. */
+  const cfIn = sstep(BEAT, BEAT + 0.03, T);
+  for (const c of specks){
+    c.el.style.opacity = (cfIn * 0.55).toFixed(3);
+    if (cfIn > 0 && !c.el.style.animation){
+      c.el.style.animation = 'cfall ' + c.dur + 's ease-out ' + c.dl + 's 1 both';
+    }
+    if (cfIn === 0 && c.el.style.animation) c.el.style.animation = '';
+  }
+}
+function tick(now){
+  const T = clamp01((now - t0) / DURATION);
+  applyT(T);
+  raf = T < 1 ? requestAnimationFrame(tick) : null;
+}
+function startArc(){
+  cancelArc();
+  t0 = performance.now() + DELAY;
+  raf = requestAnimationFrame(tick);
+}
+function cancelArc(){ if (raf) cancelAnimationFrame(raf); raf = null; }
+function finishArc(){ cancelArc(); applyT(1); }
+
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---- Still / Living, tap-fullscreen, idle chrome: the family pattern. ---- */
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+  if (!on) { cancelArc(); }
+  else if (reduced) { finishArc(); }
+  else { startArc(); } // entering Living replays the surprise
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (reduced) finishArc(); else startArc();
+})();
+</script>
+</body>
+</html>
