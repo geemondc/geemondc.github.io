@@ -90,7 +90,7 @@
   .pieLegend{flex:1 1 240px; font-size:21px}
   .plRow{margin:8px 0}
   .dot{display:inline-block; width:18px; height:18px; border-radius:50%; margin-right:8px; vertical-align:-2px}
-  .dotED{background:var(--teal)} .dotCD{background:#D9C98F}
+  .dotED{background:var(--teal)} .dotCD{background:#D9C98F} .dotDep{background:#8FB8DE} .dotNew{background:#E8A0BF}
   .plNote{margin-top:10px; color:var(--soft); font-size:19px}
 
   html[data-bg="garden"]{--bg:#EDF3E6; --card:#FAFDF6; --line:#D0DCC2}
@@ -244,7 +244,9 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
       <canvas id="pieCv" width="210" height="210"></canvas>
       <div class="pieLegend">
         <div class="plRow"><span class="dot dotED"></span>Con Edison — <b id="pieEDVal">$60,150</b> (<span id="pieEDPct">6.4%</span>)</div>
-        <div class="plRow"><span class="dot dotCD"></span>CDs and everything else — <b id="pieRestVal">$884,850</b></div>
+        <div class="plRow"><span class="dot dotCD"></span>Your CDs — <b id="pieCDVal">$480,404</b></div>
+        <div class="plRow"><span class="dot dotDep"></span>Money in the bank, ready — <b id="pieDepVal">$187,327</b></div>
+        <div class="plRow"><span class="dot dotNew"></span>A new CD being set up for you — <b id="pieNewVal">$230,000</b></div>
         <div class="plNote">All your money together: <b id="pieTotal">$945,000</b>. The Con Edison slice is the small one — Gary's rule keeps it at 5% or less.</div>
         <div class="plNote" id="payNote" style="display:none">&#11088; Your assisted living payment went through this month — so your CDs went down by $5,000 for the month.</div>
       </div>
@@ -313,16 +315,20 @@ var params = new URLSearchParams(location.search);
 var TOTAL = parseFloat(params.get('total')) || 953420.70;
 // TRUE ANCHOR (Gary, Nov 6, 2026): the trust's real balance was $953,420.70
 // as of Nov 6, 2026 — AFTER the Nov 5 assisted-living payment was taken.
-// Assisted living is paid from her CDs: on the 5th of each month the total
-// steps down $5,000 (Dec 5, 2026 → $948,420.70; Jan 5 → $943,420.70, and so on).
+// A $230,000 CD purchase was PENDING that morning (cash leaving the deposit
+// side, same $230,000 arriving on the CD side) — money moving INSIDE the
+// account, so it never changes her total; the page does not step for it.
+var CD_COMING = 230000;   // the pending CD: part of her "CDs" below
 var MONTHLY_PAY = 5000;
 var PAID_MONTHS = 1;   // the Nov 5, 2026 payment is already inside the anchor
 (function(){
   if (params.get('total')) return; // an explicit total wins
   var now = new Date();
+  // Assisted living is paid from her CDs: on the 5th of each month the total
+  // steps down $5,000 (Dec 5, 2026 → $948,420.70; Jan 5 → $943,420.70, ...).
   var months = (now.getFullYear() - 2026) * 12 + (now.getMonth() - 11); // Dec 2026 = 0
   if (now.getDate() >= 5) months += 1;
-  if (months > 0){ PAID_MONTHS = 1 + months; TOTAL -= MONTHLY_PAY * months; }
+  if (months > 0){ PAID_MONTHS = 1 + months; TOTAL -= MONTHLY_PAY * months; CD_COMING = Math.max(0, CD_COMING - MONTHLY_PAY * months); }
 })();
 var ED_SHARES = parseFloat(params.get('shares')) || 500;
 var LINE = 0.05, SCALE = 8; // gauge shows 0..8%
@@ -529,19 +535,29 @@ function drawPie(){
   var dpr = window.devicePixelRatio || 1, W = 210;
   if (cv.width !== W*dpr){ cv.width = W*dpr; cv.height = W*dpr; }
   var ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,W);
-  var val = ed.price * ED_SHARES, frac = Math.max(0.005, Math.min(0.5, val/TOTAL));
-  var cx = W/2, cy = W/2, R = 96;
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,-Math.PI/2, -Math.PI/2 + Math.PI*2*frac); ctx.closePath(); ctx.fillStyle = '#0E6B6B'; ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,-Math.PI/2 + Math.PI*2*frac, -Math.PI/2 + Math.PI*2); ctx.closePath(); ctx.fillStyle = '#D9C98F'; ctx.fill();
+  var val = ed.price * ED_SHARES;
+  var cd = Math.max(0, TOTAL - val - 187327 - CD_COMING); // her CDs, from the Nov 6 statement
+  var dep = TOTAL - val - cd - CD_COMING;                      // bank deposits + cash, ready
+  var slices = [ [val,'#0E6B6B'], [cd,'#D9C98F'], [dep,'#8FB8DE'], [CD_COMING,'#E8A0BF'] ];
+  var cx = W/2, cy = W/2, R = 96, a0 = -Math.PI/2;
+  slices.forEach(function(s){
+    if (s[0] <= 0) return;
+    var a1 = a0 + Math.PI*2*(s[0]/TOTAL);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,a0,a1); ctx.closePath(); ctx.fillStyle = s[1]; ctx.fill();
+    a0 = a1;
+  });
   ctx.beginPath(); ctx.arc(cx,cy,58,0,Math.PI*2); ctx.fillStyle = '#FBF7EC'; ctx.fill();
   ctx.fillStyle = '#22333B'; ctx.textAlign = 'center';
   ctx.font = '800 30px -apple-system, Arial'; ctx.fillText((val/TOTAL*100).toFixed(1)+'%', cx, cy+2);
   ctx.font = '600 15px -apple-system, Arial'; ctx.fillStyle = '#5A6B72'; ctx.fillText('is Con Edison', cx, cy+24);
-  var e1=document.getElementById('pieEDVal'), e2=document.getElementById('pieEDPct'), e3=document.getElementById('pieRestVal'), e4=document.getElementById('pieTotal');
+  var e1=document.getElementById('pieEDVal'), e2=document.getElementById('pieEDPct'), e3=document.getElementById('pieCDVal'), e4=document.getElementById('pieTotal');
+  var e5=document.getElementById('pieDepVal'), e6=document.getElementById('pieNewVal');
   if(e1) e1.textContent = fmt$(val);
   if(e2) e2.textContent = (val/TOTAL*100).toFixed(1)+'%';
-  if(e3) e3.textContent = fmt$(TOTAL - val);
+  if(e3) e3.textContent = fmt$(cd);
   if(e4) e4.textContent = fmt$(TOTAL);
+  if(e5) e5.textContent = fmt$(dep);
+  if(e6) e6.textContent = fmt$(CD_COMING);
   var pn = document.getElementById('payNote');
   if (pn && PAID_MONTHS > 0) pn.style.display = 'block';
 }
