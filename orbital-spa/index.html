@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbital Spa — a Living Atmosphere</title>
+<meta name="description" content="An orbital resort deck above the Earth: the planet turning slow, the pools breathing, spa music underneath. A living atmosphere for focus, calm, and sleep.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#020409; height:100%; }
+  body { overflow:hidden; font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+  .stage { position:fixed; inset:0; background:#020409; }
+  .frame { position:absolute; overflow:hidden; }
+  .frame img.plate { position:absolute; display:block; pointer-events:none;
+               left:-.6%; top:0; width:45.2%; height:100%;
+               object-fit:cover; opacity:0; }
+  .frame img.base { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:cover; display:block; }
+  /* Earth plate: a wide slow pan = the planet turning beneath the station */
+  .frame img.earth { position:absolute; display:block; pointer-events:none;
+               left:-2%; top:-4%; width:50%; height:112%;
+               object-fit:cover; object-position:50% 50%;
+               -webkit-mask-image:radial-gradient(ellipse 92% 88% at 44% 50%, #000 58%, transparent 96%);
+               mask-image:radial-gradient(ellipse 92% 88% at 44% 50%, #000 58%, transparent 96%);
+               animation:earthTurn 240s linear infinite alternate; }
+  @keyframes earthTurn { from { object-position:38% 50%; } to { object-position:66% 50%; } }
+  /* Water plate: the big pool's own pixels, breathing over the pool only */
+  .frame img.water { position:absolute; display:block; pointer-events:none;
+               left:8%; top:60%; width:72%; height:40%;
+               object-fit:cover;
+               -webkit-mask-image:radial-gradient(ellipse 72% 78% at 46% 42%, #000 52%, transparent 94%);
+               mask-image:radial-gradient(ellipse 72% 78% at 46% 42%, #000 52%, transparent 94%);
+               mix-blend-mode:screen; opacity:.3;
+               animation:waterBreathe 9s ease-in-out infinite; transform-origin:46% 42%; }
+  @keyframes waterBreathe {
+    0%,100% { transform:scale(1) translate(0,0); opacity:.24; }
+    50%     { transform:scale(1.022) translate(-.35%, .3%); opacity:.38; } }
+  .glint { position:absolute; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(190,225,255,.35) 42%, rgba(190,225,255,0) 70%);
+    mix-blend-mode:screen; opacity:0; }
+  .shimmer { position:absolute; inset:0; pointer-events:none; opacity:.10;
+    background:linear-gradient(115deg, transparent 30%, rgba(160,210,255,.16) 47%, rgba(255,240,205,.10) 52%, transparent 68%);
+    background-size:280% 100%; animation:shimmerMove 26s ease-in-out infinite alternate; }
+  @keyframes shimmerMove { from { background-position:88% 0; } to { background-position:8% 0; } }
+  .vig { position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 108% 96% at 50% 46%, transparent 62%, rgba(1,3,10,.42) 100%); }
+  /* ---- furniture: quiet, riding on top ---- */
+  .top { position:fixed; top:0; left:0; right:0; padding:20px 22px 30px; pointer-events:none;
+    background:linear-gradient(rgba(1,3,10,.46), transparent); color:#EAF2FF;
+    opacity:1; transition:opacity 1.2s; }
+  .top h1 { font-size:26px; font-weight:700; letter-spacing:.4px; }
+  .top p { font-size:15.5px; color:#BFD2EC; margin-top:3px; max-width:560px; line-height:1.45; }
+  .bar { position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; justify-content:center; align-items:center;
+    padding:16px 12px 20px; background:linear-gradient(transparent, rgba(1,3,10,.55));
+    opacity:1; transition:opacity 1.2s; }
+  .bbtn { font-size:17px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer;
+    border:1.5px solid rgba(210,230,255,.55); background:rgba(6,14,28,.55); color:#EAF2FF; font-family:inherit;
+    backdrop-filter:blur(4px); }
+  .bbtn:hover { background:rgba(20,40,70,.65); }
+  body.idle .top, body.idle .bar { opacity:0; }
+  .hint { position:fixed; right:16px; bottom:74px; color:#9FB8D8; font-size:13.5px; opacity:.85; pointer-events:none;
+    transition:opacity 1.2s; }
+  body.idle .hint { opacity:0; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <img class="base" src="still.jpg" alt="Orbital Spa — a resort deck above the Earth">
+    <img class="plate earthwash" src="earth.jpg" alt="">
+    <img class="water" src="water.jpg" alt="">
+    <div class="shimmer"></div>
+    <div class="vig"></div>
+  </div>
+</div>
+
+<div class="top">
+  <h1>🛰️ Orbital Spa</h1>
+  <p>A resort deck above the Earth. The planet turns slow, the pools breathe, and the spa music plays underneath. Put it full screen and be there.</p>
+</div>
+<div class="hint">Move to bring the controls back</div>
+<div class="bar">
+  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵 Play the spa music</button>
+  <button class="bbtn" id="btnFull" onclick="toggleFull()">⛶ Full screen</button>
+</div>
+<audio id="spa" src="spa.mp3" loop preload="auto"></audio>
+
+<script>
+(function(){
+  "use strict";
+  var W = 1920, H = 1280, AR = W / H;
+  var stage = document.getElementById('stage');
+  var frame = document.getElementById('frame');
+  // Seat the frame to the COVER rect (the rect the still plate actually paints),
+  // so the % layers land where the picture really is, on any screen.
+  function seat(){
+    var w = stage.clientWidth, h = stage.clientHeight;
+    var rw, rh;
+    if (w / h > AR) { rw = w; rh = w / AR; } else { rh = h; rw = h * AR; }
+    frame.style.left = ((w - rw) / 2) + 'px';
+    frame.style.top = ((h - rh) / 2) + 'px';
+    frame.style.width = rw + 'px';
+    frame.style.height = rh + 'px';
+  }
+  window.addEventListener('resize', seat);
+  seat();
+
+  // Lights: 26 glints seeded on the lit deck + the Earth's city side,
+  // each twinkling on its OWN clock (seeded phases — no two alike).
+  var spots = [
+    // x%, y%, size(px), warm?
+    [46.5,66.5,9,0],[52,63,7,0],[60,59.5,8,0],[66,55.5,7,0],[70.5,52,6,0],[76,47,7,0],
+    [82,50,10,1],[88,56,8,1],[91.5,66,9,1],[86.5,72.5,7,1],[79,76,8,0],[71,80,7,0],
+    [63,84,9,0],[55,88,7,0],[40,90,8,0],[30,86,7,0],[22,80,6,0],[48,74,6,0],[58,70,6,0],[68,66,6,0],
+    [12,30,7,1],[20,24,6,1],[8,44,6,1],[26,38,5,1],[15,55,6,1],[33,20,5,1]
+  ];
+  var glints = spots.map(function(s, i){
+    var d = document.createElement('div');
+    d.className = 'glint';
+    d.style.left = s[0] + '%'; d.style.top = s[1] + '%';
+    d.style.width = s[2] + 'px'; d.style.height = s[2] + 'px';
+    d.style.transform = 'translate(-50%,-50%)';
+    if (s[3]) d.style.background = 'radial-gradient(circle, rgba(255,244,214,.95) 0%, rgba(255,214,140,.35) 42%, rgba(255,214,140,0) 70%)';
+    frame.appendChild(d);
+    return { el: d, per: 2.6 + ((i * 37) % 10) * 0.53, ph: ((i * 53) % 17) / 17 * Math.PI * 2, amp: .5 + ((i * 29) % 10) / 22 };
+  });
+  var t0 = performance.now();
+  function tick(now){
+    var t = (now - t0) / 1000;
+    for (var i = 0; i < glints.length; i++){
+      var g = glints[i];
+      var v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / g.per + g.ph);
+      v = v * v * (3 - 2 * v);
+      g.el.style.opacity = (v * g.amp).toFixed(3);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // Music + fullscreen
+  var audio = document.getElementById('spa');
+  var btnM = document.getElementById('btnMusic');
+  window.toggleMusic = function(){
+    if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
+    else { audio.pause(); btnM.textContent = '🎵 Play the spa music'; }
+  };
+  window.toggleFull = function(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function(){});
+  };
+
+  // Furniture fades away when the room goes still — atmosphere first.
+  var idleTimer = null;
+  function wake(){
+    document.body.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ document.body.classList.add('idle'); }, 5000);
+  }
+  ['mousemove','touchstart','keydown','click'].forEach(function(ev){ window.addEventListener(ev, wake, {passive:true}); });
+  wake();
+
+  // QA hooks (invisible in normal use)
+  window.LP = {
+    state: function(){ return { glints: glints.length, musicPaused: audio.paused, idle: document.body.classList.contains('idle') }; }
+  };
+})();
+</script>
+</body>
+</html>
