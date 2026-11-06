@@ -129,6 +129,49 @@
   body.opening #seal, body.open #seal{box-shadow:0 6px 18px rgba(0,0,0,.2)}
   #front .tap{margin-top:36px; font-family:Georgia,serif; font-style:italic; font-size:14px; color:#e9d9ae; animation:pulse 2.2s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+  #pop{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:6}
+  /* ---------- envelope variants: same card soul, different envelope ---------- */
+  body.env-kid #front{
+    background:
+      linear-gradient(155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
+      linear-gradient(-155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
+      radial-gradient(circle at 12% 20%, #ffd93b 0 10px, transparent 11px),
+      radial-gradient(circle at 84% 14%, #ff6b9d 0 8px, transparent 9px),
+      radial-gradient(circle at 90% 78%, #39c2d7 0 11px, transparent 12px),
+      radial-gradient(circle at 8% 84%, #7ed957 0 9px, transparent 10px),
+      radial-gradient(circle at 70% 88%, #ff9f2e 0 7px, transparent 8px),
+      radial-gradient(circle at 30% 8%, #b388ff 0 7px, transparent 8px),
+      linear-gradient(160deg, #fffdf4 0%, #fdf3d8 55%, #fbe8c8 100%);
+    color:#274268;
+  }
+  body.env-kid #flap{background:linear-gradient(180deg, #ffe9a8 0%, #ffd93b 100%)}
+  body.env-kid #front .f-for{color:#e2543e}
+  body.env-kid #front .f-name{color:#274268; text-shadow:0 2px 0 rgba(255,217,59,.55)}
+  body.env-kid #front .f-from{color:#4a6fa5}
+  body.env-kid #front .tap{color:#e2543e}
+  body.env-kid #seal{background:radial-gradient(circle at 35% 30%, #ffb3cd 0%, #ff6b9d 45%, #d6336c 100%); outline-color:rgba(255,107,157,.45)}
+  body.env-kid #seal .half{color:#ffffff}
+  body.env-kid .frame{border-color:#ff9f2e}
+  body.env-kid #card::before{border-color:rgba(255,159,46,.55)}
+  body.env-kid .over{color:#e2543e}
+  body.env-kid #replay{background:#ff6b9d; border-color:#ffd93b; color:#fff}
+  body.env-love #front{
+    background:
+      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
+      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
+      radial-gradient(130% 100% at 50% 0%, #8e2f4f 0%, #6d1f3c 55%, #471126 100%);
+    color:#f9e3ec;
+  }
+  body.env-love #flap{background:linear-gradient(180deg, #a83a5e 0%, #8e2f4f 100%)}
+  body.env-love #front .f-for{color:#f2b8cc}
+  body.env-love #front .f-from{color:#f6d3df}
+  body.env-love #front .tap{color:#f2b8cc}
+  body.env-love #seal{background:radial-gradient(circle at 35% 30%, #f6c9d4 0%, #d77a9b 45%, #9c3d5f 100%); outline-color:rgba(246,201,212,.5)}
+  body.env-love #seal .half{color:#5f1f36}
+  body.env-love .frame{border-color:#d77a9b}
+  body.env-love #card::before{border-color:rgba(215,122,155,.55)}
+  body.env-love .over{color:#a83a5e}
+  body.env-love #replay{background:#8e2f4f; border-color:#d77a9b; color:#f9e3ec}
   @media (prefers-reduced-motion: reduce){
     #front, #card, #seal .half, #flap, .closing, .signature, #replay, .frame img.still{
       transition-duration:.2s; transition-delay:0s;
@@ -142,6 +185,7 @@
 <body>
 <div id="scene">
   <div id="burst" aria-hidden="true"></div>
+  <canvas id="pop" aria-hidden="true"></canvas>
 
   <main id="card" aria-label="The opened New Year card for Sofia">
     <div class="over">A Living Card</div>
@@ -182,6 +226,7 @@
     var sc = clean(q.get('scene'), 20).toLowerCase();
     var scene = (sc === 'chilling' || sc === 'birthday' || sc === 'heart') ? sc : 'bigview';
     window.__lcScene = scene;
+    document.body.classList.add(scene === 'birthday' ? 'env-kid' : scene === 'heart' ? 'env-love' : 'env-formal');
     var to = clean(q.get('to'), 60) || 'Sofia';
     var from = clean(q.get('from'), 60) || 'James';
     var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
@@ -235,13 +280,57 @@
   var MIDDLE_MS = 11300; /* living middle, a firework finale, then the scene settles to rest */
   var finaleTimer = null;
 
+  function popBurst(){
+    var sc = window.__lcScene;
+    if (sc !== 'birthday' && sc !== 'heart') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var cv = document.getElementById('pop'); if (!cv) return;
+    var W = window.innerWidth, H = window.innerHeight; if (!W || !H) return;
+    cv.width = W; cv.height = H;
+    var cx = cv.getContext('2d'); if (!cx) return;
+    var kid = sc === 'birthday';
+    var COLORS = kid ? ['#ff6b9d','#ffd93b','#39c2d7','#7ed957','#ff9f2e','#b388ff'] : ['#f2a7c3','#e77fa2','#f6c9d4','#ecd28a','#d77a9b'];
+    var N = kid ? 120 : 52, parts = [], t0 = performance.now();
+    for (var i = 0; i < N; i++){
+      var a = Math.random() * Math.PI * 2, sp = (kid ? 2.4 : 1.1) + Math.random() * (kid ? 5.2 : 2.0);
+      parts.push({
+        x: W * 0.5, y: H * 0.44,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kid ? 3.4 : 1.6),
+        s: (kid ? 4 : 5) + Math.random() * 6,
+        c: COLORS[i % COLORS.length],
+        r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+        circ: Math.random() < 0.4, ph: Math.random() * Math.PI * 2
+      });
+    }
+    var LIFE = kid ? 2100 : 3000;
+    function tick(now){
+      var t = now - t0, k = t / LIFE;
+      cx.clearRect(0, 0, W, H);
+      if (k >= 1) return;
+      var fade = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
+      parts.forEach(function(p){
+        p.vy += kid ? 0.09 : -0.012;
+        p.vx *= 0.99; p.vy *= kid ? 0.995 : 0.99;
+        p.x += p.vx + Math.sin(t / 260 + p.ph) * (kid ? 0.7 : 1.1);
+        p.y += p.vy; p.r += p.vr;
+        cx.save(); cx.globalAlpha = fade; cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
+        if (p.circ){ cx.beginPath(); cx.arc(0, 0, p.s / 2, 0, Math.PI * 2); cx.fill(); }
+        else if (kid){ cx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); }
+        else { cx.beginPath(); cx.ellipse(0, 0, p.s / 2, p.s / 3.2, 0, 0, Math.PI * 2); cx.fill(); }
+        cx.restore();
+      });
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
   function open(){
     if (document.body.classList.contains('open')) return;
     /* registers immediately: crack + flap + lift begin on this tap */
     document.body.classList.add('opening');
     document.body.classList.add('open');
+    popBurst();
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
-    if (window.__lcScene !== 'heart') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
+    if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
     settleTimer = setTimeout(function(){
       document.body.classList.add('settled');
     }, MIDDLE_MS);
