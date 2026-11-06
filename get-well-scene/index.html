@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Window Seat — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#141207;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#141207;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.55);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#201a0e;}
+  #master{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The morning sun breathes through the window — the room itself never changes. */
+  #sunGlow{position:absolute;left:66%;top:16%;width:46%;height:54%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,206,110,.34), rgba(255,180,90,.11) 55%, rgba(255,180,90,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:breathe 8s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.4}to{opacity:.75}}
+  /* Every bright point on its own clock — flower hearts and sunlit specks only. */
+  .glow{position:absolute;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  .bloom{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,242,205,.9), rgba(255,218,140,.25) 55%, rgba(255,218,140,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .spark{width:.9%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,250,225,.95), rgba(255,235,180,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{opacity:.3;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+  /* Dust motes drifting in the sunbeam — slow, sparse, weightless. */
+  .mote{position:absolute;width:.55%;aspect-ratio:1;border-radius:50%;mix-blend-mode:screen;pointer-events:none;
+    background:radial-gradient(closest-side, rgba(255,244,200,.9), rgba(255,225,160,0) 70%);animation-name:drift;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate;}
+  @keyframes drift{0%{transform:translate(0,0);opacity:.12}30%{opacity:.85}60%{opacity:.35}100%{transform:translate(2.4vw,3.2vh);opacity:.15}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(20,16,4,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(250,244,226,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(20,16,4,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(250,244,226,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(250,244,228,.92);color:#221a05;}
+  /* Still: the painting itself, untouched — the cat sleeps on either way. */
+  body.still .glow, body.still .mote, body.still #sunGlow{opacity:0;animation-play-state:paused;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A living window seat in the morning: a great vase of flowers and a steaming cup on the sill, a garden glowing beyond the glass, and a tabby cat asleep on the cushions in the sun.">
+    <img id="master" src="still.jpg" alt="">
+    <div id="sunGlow"></div>
+    <div class="mote" style="left:52%;top:22%;animation-duration:17s"></div>
+    <div class="mote" style="left:60%;top:34%;animation-duration:21s;animation-delay:-6s"></div>
+    <div class="mote" style="left:70%;top:26%;animation-duration:19s;animation-delay:-11s"></div>
+    <div class="mote" style="left:57%;top:44%;animation-duration:23s;animation-delay:-3s"></div>
+    <div class="mote" style="left:76%;top:38%;animation-duration:18s;animation-delay:-8s"></div>
+    <div class="mote" style="left:47%;top:36%;animation-duration:22s;animation-delay:-14s"></div>
+  </div>
+  <div id="capPill"><b>The Window Seat</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+function dot(cls, x, y, dur, dl){
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.left = x + '%'; s.style.top = y + '%';
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  frame.appendChild(s);
+}
+/* Bright hearts of the bouquet and the garden flowers. */
+const blooms = [
+  [7.7,12],[16.8,17],[10,25.5],[14.8,27],[28,22.5],[21.8,35],[34.5,30.5],[39.5,19],
+  [54,37],[57.5,42],[51.5,47.5],[83.3,19.5],[84.8,26.5],[87.5,36.5]
+];
+blooms.forEach((p, i) => dot('bloom', p[0], p[1], 2.8 + (i % 5) * 0.6, -0.9 * i));
+/* Sunlit specks on the far garden and the gate. */
+const sparks = [[61.5,40.5],[66,44],[45,55],[48.5,58.5],[74.5,37.5]];
+sparks.forEach((p, i) => dot('spark', p[0], p[1], 3.4 + (i % 3) * 0.7, -1.3 * i));
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) setLiving(false);
+})();
+</script>
+</body>
+</html>
