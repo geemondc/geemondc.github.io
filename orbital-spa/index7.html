@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Café — a Living Atmosphere</title>
+<meta name="description" content="A café above the Earth: the planet filling the great window and turning slow, city lights flickering across its night, stars twinkling, soft music underneath. A living atmosphere for a room.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#14100B; height:100%; }
+  body { overflow:hidden; font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+  .stage { position:fixed; inset:0; background:#14100B; }
+  .frame { position:absolute; overflow:hidden; }
+  .frame img.base { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  /* The small dark disc painted over the window: hides the static painted Earth.
+     Its color is sampled from the space around the planet — invisible by construction. */
+  .earthcap { position:absolute; left:49.65%; top:33.95%; width:3.6%; padding-top:3.6%;
+    border-radius:50%; background:#0A1826; }
+  /* The living Earth: cut from the painting itself, turning on a canvas over the window.
+     Circular shape mask — the plate's corner pixels are never shown. */
+  .frame img.earthlive { position:absolute; display:block; pointer-events:none;
+    left:63%; top:55%; transform:translate(-50%,-50%); width:14.3%; height:auto; aspect-ratio:1/1;
+    -webkit-mask-image:radial-gradient(circle, #000 96%, transparent 99.5%);
+    mask-image:radial-gradient(circle, #000 96%, transparent 99.5%); }
+  /* Pool light: the pool's own glowing water, breathing + rippling inside the pool bowl only */
+  .frame canvas.pool { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .glint { position:absolute; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, rgba(255,244,214,.95) 0%, rgba(255,214,140,.35) 42%, rgba(255,214,140,0) 70%);
+    mix-blend-mode:screen; opacity:0; }
+  .vig { position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 108% 96% at 50% 46%, transparent 66%, rgba(10,6,2,.30) 100%); }
+  /* ---- furniture: quiet, riding on top ---- */
+  .top { position:fixed; top:0; left:0; right:0; padding:20px 22px 30px; pointer-events:none;
+    background:linear-gradient(rgba(10,6,2,.42), transparent); color:#FBF3E2;
+    opacity:1; transition:opacity 1.2s; }
+  .top h1 { font-size:26px; font-weight:700; letter-spacing:.4px; }
+  .top p { font-size:15.5px; color:#EADFC6; margin-top:3px; max-width:560px; line-height:1.45; }
+  .bar { position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; justify-content:center; align-items:center;
+    padding:16px 12px 20px; background:linear-gradient(transparent, rgba(10,6,2,.5));
+    opacity:1; transition:opacity 1.2s; }
+  .bbtn { font-size:17px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer;
+    border:1.5px solid rgba(255,236,200,.55); background:rgba(28,20,8,.55); color:#FBF3E2; font-family:inherit;
+    backdrop-filter:blur(4px); }
+  .bbtn:hover { background:rgba(60,44,18,.65); }
+  body.idle .top, body.idle .bar { opacity:0; }
+  .hint { position:fixed; right:16px; bottom:74px; color:#D8C9A8; font-size:13.5px; opacity:.85; pointer-events:none;
+    transition:opacity 1.2s; }
+  body.idle .hint { opacity:0; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <img class="base" src="still8.jpg" alt="Space Café — a quiet lounge above the Earth">
+    <div class="earthcap"></div>
+    <canvas class="pool" id="poolCv" width="960" height="640"></canvas>
+    <div class="vig"></div>
+  </div>
+</div>
+
+<div class="top">
+  <h1>☕ Space Café</h1>
+  <p>A quiet lounge above the Earth. The planet fills the great window and turns slow, pool breathes, and the spa music plays underneath. Put it full screen and be there.</p>
+</div>
+<div class="hint">Move to bring the controls back</div>
+<div class="bar">
+  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵 Play the spa music</button>
+  <button class="bbtn" id="btnFull" onclick="toggleFull()">⛶ Full screen</button>
+</div>
+<audio id="spa" src="spa.mp3" loop preload="auto"></audio>
+
+<script>
+(function(){
+  "use strict";
+  var W = 1920, H = 1280, AR = W / H;
+  var stage = document.getElementById('stage');
+  var frame = document.getElementById('frame');
+  // Seat the frame to the COVER rect (the rect the still plate actually paints),
+  // so the % layers land where the picture really is, on any screen.
+  function seat(){
+    var w = stage.clientWidth, h = stage.clientHeight;
+    var rw, rh;
+    if (w / h > AR) { rw = w; rh = w / AR; } else { rh = h; rw = h * AR; }
+    frame.style.left = ((w - rw) / 2) + 'px';
+    frame.style.top = ((h - rh) / 2) + 'px';
+    frame.style.width = rw + 'px';
+    frame.style.height = rh + 'px';
+  }
+  window.addEventListener('resize', seat);
+  seat();
+
+  // ---- The turning Earth -------------------------------------------------
+  // The painting's own planet, drawn to a canvas: shading terms fixed to the
+  // window (terminator stays put), texture sliding underneath = rotation.
+  var PORT = { cx: 960, cy: 470, r: 316 };           // porthole glass, image px
+  var DISC = 268, TURN = 2.4;                        // apparent disc px; deg/sec
+  var tex = new Image(), clouds = new Image(), poolMask = new Image();
+  var nTex = 0, nPool = 0;
+  tex.onload = function(){ nTex++; }; tex.src = 'earth8.png';
+  clouds.onload = function(){ nTex++; }; clouds.src = 'clouds8.png';
+  poolMask.onload = function(){ nPool++; }; poolMask.src = 'poolmask7.png';
+  var cv = document.createElement('canvas');
+  cv.width = cv.height = 460;
+  var c2 = cv.getContext('2d');
+  function drawEarth(t){
+    var C = 230, R = 224;
+    c2.clearRect(0, 0, 460, 460);
+    c2.save();
+    c2.beginPath(); c2.arc(C, C, R, 0, Math.PI * 2); c2.clip();
+    c2.drawImage(tex, 0, 0, 460, 460);
+    var tw = 420, th = tw * 256 / 1024;              // strip drawn at 420px wide
+    var off = (t * TURN / 360 * tw) % tw;
+    // spherical wrap: the strip is drawn twice — itself, and a copy warped
+    // toward the bottom-right limb (dome depth) — so the clouds read as
+    // lying on a ball, not a flat band stamped across it
+    // spherical wrap: keep the cloud alpha only in a central band of the
+    // disc (destination-out with a gradient mask) so the wrap dies before
+    // the limbs — never a straight cloud edge sitting on the ball
+    var cg = c2.createLinearGradient(C - R * .75, 0, C + R * .75, 0);
+    cg.addColorStop(0, 'rgba(0,0,0,0)'); cg.addColorStop(.5, 'rgba(0,0,0,1)'); cg.addColorStop(1, 'rgba(0,0,0,0)');
+    c2.globalAlpha = .5;
+    c2.globalCompositeOperation = 'destination-out';
+    c2.fillStyle = cg; c2.fillRect(0, 0, 460, 460);
+    c2.globalCompositeOperation = 'source-over';
+    for (var k = -1; k <= 1; k++) c2.drawImage(clouds, C - tw / 2 + off + k * tw, C - th / 2, tw, th);
+    c2.globalAlpha = .35;
+    c2.save();
+    c2.translate(C, C); c2.transform(.88, .18, -.18, .88, R * .12, R * .10); c2.translate(-C, -C);
+    for (var k2 = -1; k2 <= 1; k2++) c2.drawImage(clouds, C - tw / 2 + off + k2 * tw, C - th / 2, tw, th);
+    c2.restore();
+    c2.globalAlpha = 1;
+    // painted cloud mass hugging the upper-left limb (from the source art)
+    var g = c2.createRadialGradient(C - R * .55, C - R * .62, 0, C - R * .55, C - R * .62, R * .75);
+    g.addColorStop(0, 'rgba(235,244,255,.28)'); g.addColorStop(1, 'rgba(235,244,255,0)');
+    c2.fillStyle = g; c2.fillRect(0, 0, 460, 460);
+    // City lights flicker: seeded clusters of warm points ride the
+    // rotation, each shimmering on its own clock (sin hash per cluster).
+    var seed = 987654321;
+    function rnd(){ seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    for (var ci = 0; ci < 130; ci++){
+      var cu = rnd(), cvv = rnd();
+      var cxx = ((cu - .5) * tw + off + tw * 1.5) % tw - tw / 2, cyy = (cvv - .5) * th * 1.9;
+      var rr2 = (cxx / (tw * .62)) * (cxx / (tw * .62)) + (cyy / (R * .92)) * (cyy / (R * .92));
+      if (rr2 > 1) continue;
+      var npts = 2 + Math.floor(rnd() * 4);
+      for (var pi = 0; pi < npts; pi++){
+        var px = C + cxx + (rnd() - .5) * 13, py = C + cyy + (rnd() - .5) * 9;
+        var shim = .45 + .55 * Math.abs(Math.sin(t * (0.9 + rnd() * 1.6) + ci * 1.7 + pi));
+        c2.globalAlpha = .5 * shim;
+        c2.fillStyle = 'rgb(255,214,150)';
+        c2.beginPath(); c2.arc(px, py, .8 + rnd() * 1.1, 0, Math.PI * 2); c2.fill();
+      }
+    }
+    c2.globalAlpha = 1;
+    // terminator + limb shading, fixed to the glass
+    var t1 = c2.createLinearGradient(C - R, C - R * .3, C + R * .9, C + R * .4);
+    t1.addColorStop(0, 'rgba(0,0,0,0)'); t1.addColorStop(.62, 'rgba(0,0,0,0)'); t1.addColorStop(1, 'rgba(2,6,16,.38)');
+    c2.fillStyle = t1; c2.fillRect(0, 0, 460, 460);
+    var t2 = c2.createRadialGradient(C - R * .45, C - R * .5, R * .1, C, C, R * 1.02);
+    t2.addColorStop(.55, 'rgba(0,0,0,0)'); t2.addColorStop(.88, 'rgba(0,0,0,0)'); t2.addColorStop(1, 'rgba(2,6,16,.42)');
+    c2.fillStyle = t2; c2.fillRect(0, 0, 460, 460);
+    var t3 = c2.createRadialGradient(C - R * .55, C - R * .6, 0, C - R * .55, C - R * .6, R * .8);
+    t3.addColorStop(0, 'rgba(255,250,235,.10)'); t3.addColorStop(1, 'rgba(255,250,235,0)');
+    c2.fillStyle = t3; c2.fillRect(0, 0, 460, 460);
+    c2.restore();
+  }
+  var earthImg = null;
+  function placeEarth(){
+    if (nTex < 2 || nPool < 1) return;
+    if (!earthImg){
+      earthImg = document.createElement('img');
+      earthImg.className = 'earthlive'; earthImg.alt = '';
+      frame.insertBefore(earthImg, frame.children[3]);
+    }
+    var t = performance.now() / 1000;
+    drawEarth(t);
+    try { earthImg.src = cv.toDataURL('image/png'); } catch(e) {}
+  }
+
+  // ---- The breathing pool -------------------------------------------------
+  // Pool pixels only (mask), breathing scale + narrow ripple bands sliding
+  // along the pool's length, drawn on the low-res pool canvas.
+  var pcv = document.getElementById('poolCv');
+  var pctx = pcv.getContext('2d');
+  var off = document.createElement('canvas'); off.width = 960; off.height = 640;
+  var octx = off.getContext('2d');
+  var base = new Image();
+  var poolReady = false;
+  base.onload = function(){ poolReady = true; };
+  base.src = 'still8.jpg';
+  function drawPool(now){
+    if (!poolReady || nPool < 1) return;
+    var t = now / 1000;
+    octx.clearRect(0, 0, 960, 640);
+    octx.save();
+    octx.globalAlpha = .30 + .10 * Math.sin(t * .7);
+    var br = 1 + .012 * Math.sin(t * .7);
+    var bx = 480, by = 505;
+    octx.translate(bx, by); octx.scale(br, br); octx.translate(-bx, -by);
+    octx.drawImage(base, 0, 0, 960, 640);
+    octx.restore();
+    octx.globalCompositeOperation = 'source-atop';
+    octx.fillStyle = 'rgba(120,200,235,.10)';
+    for (var i = 0; i < 5; i++){
+      var yy = 405 + ((t * 9 * (1 + i * .17) + i * 47) % 235);
+      var hh = 5 + 3 * Math.sin(t * .8 + i);
+      octx.fillRect(200, yy, 560, Math.max(hh, 2));
+    }
+    octx.globalCompositeOperation = 'destination-in';
+    octx.drawImage(poolMask, 0, 0, 960, 640);
+    octx.globalCompositeOperation = 'source-over';
+    pctx.clearRect(0, 0, 960, 640);
+    pctx.drawImage(off, 0, 0);
+  }
+
+  // ---- Lanterns + candles: each glinting on its OWN clock ------------------
+  var spots = [
+    // x%, y%, size(px)
+    [6.7,32.2,13],[15.9,34.2,9],[29.6,34.4,9],[70.4,34.4,9],[84.1,34.2,9],[93.3,32.2,13],
+    [11.7,56.5,7],[23.4,53.6,7],[29.0,50.2,6],[71.0,50.2,6],[76.6,53.6,7],[88.3,56.5,7]
+  ];
+  var glints = spots.map(function(s, i){
+    var d = document.createElement('div');
+    d.className = 'glint';
+    d.style.left = s[0] + '%'; d.style.top = s[1] + '%';
+    d.style.width = s[2] + 'px'; d.style.height = s[2] + 'px';
+    d.style.transform = 'translate(-50%,-50%)';
+    frame.appendChild(d);
+    return { el: d, per: 2.6 + ((i * 37) % 10) * 0.53, ph: ((i * 53) % 17) / 17 * Math.PI * 2, amp: .5 + ((i * 29) % 10) / 22 };
+  });
+  // Stars through the glass: seeded inside the round window only, each
+  // twinkling on its own clock — the window's sky is alive, not painted still.
+  var starSpots = [];
+  (function(){
+    var seed = 1234567;
+    function rnd(){ seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    var tries = 0;
+    while (starSpots.length < 64 && tries < 600){
+      tries++;
+      var x = 34 + rnd() * 32, y = 13 + rnd() * 47;      // % of frame, window region
+      var dx = (x - 50) / 16.4, dy = (y - 36.8) / 23.6;  // porthole ellipse (image fracs)
+      if (dx * dx + dy * dy > 0.80) continue;
+      var ex = (x - 63) / 7.2, ey = (y - 55) / 7.2; // keep off the Earth
+      if (ex * ex + ey * ey < 2.6) continue;
+      starSpots.push([x, y, 2 + rnd() * 3]);
+    }
+  })();
+  var stars = starSpots.map(function(s, i){
+    var d = document.createElement('div');
+    d.className = 'glint';
+    d.style.left = s[0] + '%'; d.style.top = s[1] + '%';
+    d.style.width = s[2] + 'px'; d.style.height = s[2] + 'px';
+    d.style.transform = 'translate(-50%,-50%)';
+    d.style.background = 'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(200,225,255,.4) 42%, rgba(200,225,255,0) 70%)';
+    frame.appendChild(d);
+    return { el: d, per: 1.8 + ((i * 41) % 12) * 0.47, ph: ((i * 67) % 19) / 19 * Math.PI * 2, amp: .55 + ((i * 31) % 10) / 20 };
+  });
+  var t0 = performance.now(), lastEarth = 0;
+  function tick(now){
+    var t = (now - t0) / 1000;
+    for (var i = 0; i < glints.length; i++){
+      var g = glints[i];
+      var v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / g.per + g.ph);
+      v = v * v * (3 - 2 * v);
+      g.el.style.opacity = (v * g.amp).toFixed(3);
+    }
+    for (var j = 0; j < stars.length; j++){
+      var s2 = stars[j];
+      var v2v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / s2.per + s2.ph);
+      v2v = v2v * v2v * (3 - 2 * v2v);
+      s2.el.style.opacity = (0.15 + v2v * s2.amp).toFixed(3);
+    }
+    drawPool(now);
+    if (now - lastEarth > 900){ lastEarth = now; placeEarth(); }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // Music + fullscreen
+  var audio = document.getElementById('spa');
+  var btnM = document.getElementById('btnMusic');
+  window.toggleMusic = function(){
+    if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
+    else { audio.pause(); btnM.textContent = '🎵 Play the spa music'; }
+  };
+  window.toggleFull = function(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function(){});
+  };
+
+  // Furniture fades away when the room goes still — atmosphere first.
+  var idleTimer = null;
+  function wake(){
+    document.body.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ document.body.classList.add('idle'); }, 5000);
+  }
+  ['mousemove','touchstart','keydown','click'].forEach(function(ev){ window.addEventListener(ev, wake, {passive:true}); });
+  wake();
+
+  // QA hooks (invisible in normal use)
+  window.LP = {
+    state: function(){ return { glints: glints.length, stars: stars.length, plate: nTex, pool: nPool, musicPaused: audio.paused, idle: document.body.classList.contains('idle') }; },
+    snapEarth: function(){ placeEarth(); return earthImg ? earthImg.src.length : 0; }
+  };
+})();
+</script>
+</body>
+</html>
