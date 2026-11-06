@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Orbital Spa — a Living Atmosphere</title>
+<title>Space Spa — a Living Atmosphere</title>
 <meta name="description" content="An orbital spa above the Earth: the planet turning slow in the great round window, the long pool breathing, lanterns glinting, spa music underneath. A living atmosphere for a room.">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -51,7 +51,7 @@
 <body>
 <div class="stage" id="stage">
   <div class="frame" id="frame">
-    <img class="base" src="still5.jpg" alt="Orbital Spa — a quiet spa hall above the Earth">
+    <img class="base" src="still7.jpg" alt="Space Spa — a quiet spa hall above the Earth">
     <div class="earthcap"></div>
     <canvas class="pool" id="poolCv" width="960" height="640"></canvas>
     <div class="vig"></div>
@@ -59,7 +59,7 @@
 </div>
 
 <div class="top">
-  <h1>🛰️ Orbital Spa</h1>
+  <h1>🛰️ Space Spa</h1>
   <p>A quiet hall above the Earth. The planet turns slow in the great window, the long pool breathes, and the spa music plays underneath. Put it full screen and be there.</p>
 </div>
 <div class="hint">Move to bring the controls back</div>
@@ -96,9 +96,9 @@
   var DISC = 72.8, TURN = 2.4;                        // apparent disc px; deg/sec
   var tex = new Image(), clouds = new Image(), poolMask = new Image();
   var nTex = 0, nPool = 0;
-  tex.onload = function(){ nTex++; }; tex.src = 'earth5.png';
-  clouds.onload = function(){ nTex++; }; clouds.src = 'clouds5.png';
-  poolMask.onload = function(){ nPool++; }; poolMask.src = 'poolmask5.png';
+  tex.onload = function(){ nTex++; }; tex.src = 'earth7.png';
+  clouds.onload = function(){ nTex++; }; clouds.src = 'clouds7.png';
+  poolMask.onload = function(){ nPool++; }; poolMask.src = 'poolmask7.png';
   var cv = document.createElement('canvas');
   cv.width = cv.height = 460;
   var c2 = cv.getContext('2d');
@@ -168,7 +168,7 @@
   var base = new Image();
   var poolReady = false;
   base.onload = function(){ poolReady = true; };
-  base.src = 'still5.jpg';
+  base.src = 'still7.jpg';
   function drawPool(now){
     if (!poolReady || nPool < 1) return;
     var t = now / 1000;
@@ -209,6 +209,33 @@
     frame.appendChild(d);
     return { el: d, per: 2.6 + ((i * 37) % 10) * 0.53, ph: ((i * 53) % 17) / 17 * Math.PI * 2, amp: .5 + ((i * 29) % 10) / 22 };
   });
+  // Stars through the glass: seeded inside the round window only, each
+  // twinkling on its own clock — the window's sky is alive, not painted still.
+  var starSpots = [];
+  (function(){
+    var seed = 1234567;
+    function rnd(){ seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    var tries = 0;
+    while (starSpots.length < 46 && tries < 600){
+      tries++;
+      var x = 34 + rnd() * 32, y = 13 + rnd() * 47;      // % of frame, window region
+      var dx = (x - 50) / 16.4, dy = (y - 36.8) / 23.6;  // porthole ellipse (image fracs)
+      if (dx * dx + dy * dy > 0.80) continue;
+      var ex = (x - 51.45) / 1.45, ey = (y - 35.65) / 1.45; // keep off the Earth
+      if (ex * ex + ey * ey < 2.6) continue;
+      starSpots.push([x, y, 2 + rnd() * 3]);
+    }
+  })();
+  var stars = starSpots.map(function(s, i){
+    var d = document.createElement('div');
+    d.className = 'glint';
+    d.style.left = s[0] + '%'; d.style.top = s[1] + '%';
+    d.style.width = s[2] + 'px'; d.style.height = s[2] + 'px';
+    d.style.transform = 'translate(-50%,-50%)';
+    d.style.background = 'radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(200,225,255,.4) 42%, rgba(200,225,255,0) 70%)';
+    frame.appendChild(d);
+    return { el: d, per: 1.8 + ((i * 41) % 12) * 0.47, ph: ((i * 67) % 19) / 19 * Math.PI * 2, amp: .55 + ((i * 31) % 10) / 20 };
+  });
   var t0 = performance.now(), lastEarth = 0;
   function tick(now){
     var t = (now - t0) / 1000;
@@ -217,6 +244,12 @@
       var v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / g.per + g.ph);
       v = v * v * (3 - 2 * v);
       g.el.style.opacity = (v * g.amp).toFixed(3);
+    }
+    for (var j = 0; j < stars.length; j++){
+      var s2 = stars[j];
+      var v2v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / s2.per + s2.ph);
+      v2v = v2v * v2v * (3 - 2 * v2v);
+      s2.el.style.opacity = (0.15 + v2v * s2.amp).toFixed(3);
     }
     drawPool(now);
     if (now - lastEarth > 900){ lastEarth = now; placeEarth(); }
@@ -248,7 +281,7 @@
 
   // QA hooks (invisible in normal use)
   window.LP = {
-    state: function(){ return { glints: glints.length, plate: nTex, pool: nPool, musicPaused: audio.paused, idle: document.body.classList.contains('idle') }; },
+    state: function(){ return { glints: glints.length, stars: stars.length, plate: nTex, pool: nPool, musicPaused: audio.paused, idle: document.body.classList.contains('idle') }; },
     snapEarth: function(){ placeEarth(); return earthImg ? earthImg.src.length : 0; }
   };
 })();
