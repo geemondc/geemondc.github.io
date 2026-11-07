@@ -256,7 +256,8 @@
   // Wall mode: embedded in the Living Photos wall (#wall), open directly
   // on the full-screen living view, framed whole — the wall owns taps
   // and keys, so the usual tap/key exits are disarmed in this mode only.
-  if (!/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
+  var embedMode = /(^|[#&])embed([&#]|$)/.test(location.hash || '');
+  if (!embedMode && !/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
   var fsEl = document.getElementById('fs');
   if (!fsEl || !window.LP) return;
   // Blurred-extension surround: blurred copies of this piece's own
@@ -289,6 +290,18 @@
   if (LP.openFs){ try { LP.openFs(); } catch(e){} }
   document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
   fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+  if (embedMode){
+    // Store-embed mode: the host page owns the frame. No title, no statement,
+    // no controls, no footer — just the living photo, filling the frame whole.
+    var st = document.createElement('style');
+    st.textContent = 'html,body{height:100%;background:#000}'
+      + 'main{display:none !important}'
+      + 'footer{display:none !important}'
+      + '#fs{display:block !important;position:absolute;inset:0}'
+      + '#fs img{object-fit:contain !important}';
+    document.head.appendChild(st);
+    document.body.style.margin = '0';
+  }
 })();
 </script>
 </body>
