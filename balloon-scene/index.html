@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Balloon Room — a living card scene</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#2b1408;overflow:hidden;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#2b1408;}
+  #bgBlur{position:absolute;inset:-40px;background:url('still.jpg') center/cover no-repeat;filter:blur(34px) brightness(.5);}
+  #frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:min(100vw,177.78vh);aspect-ratio:16/9;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.65);background:#3a1c0c;}
+  .layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  /* The bloom: closed heart rests, then blooms open into the burst painting,
+     holds in full glory, and gently closes again. One slow 24s breath. */
+  #burst{opacity:0;animation:bloom 24s ease-in-out infinite;}
+  @keyframes bloom{0%,26%{opacity:0}44%,72%{opacity:1}90%,100%{opacity:0}}
+  #burstGlow{position:absolute;left:46%;top:40%;width:56%;height:78%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,205,110,.5), rgba(255,170,80,.16) 55%, rgba(255,170,80,0) 78%);
+    mix-blend-mode:screen;pointer-events:none;opacity:0;animation:bloomGlow 24s ease-in-out infinite;}
+  @keyframes bloomGlow{0%,30%{opacity:0}46%,70%{opacity:1}88%,100%{opacity:0}}
+  /* The great heart breathes — a slow lub-dub heartbeat of light at its center,
+     plus a warm rim pulse. The painting itself never moves. */
+  #heartGlow{position:absolute;left:46%;top:39%;width:44%;height:66%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,190,110,.38), rgba(255,150,70,.14) 55%, rgba(255,90,110,0) 75%);
+    mix-blend-mode:screen;pointer-events:none;animation:heartbeat 3.4s ease-in-out infinite;}
+  @keyframes heartbeat{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}9%{opacity:.95;transform:translate(-50%,-50%) scale(1.03)}20%{opacity:.65;transform:translate(-50%,-50%) scale(1.01)}31%{opacity:1;transform:translate(-50%,-50%) scale(1.038)}52%{opacity:.55;transform:translate(-50%,-50%) scale(1)}}
+  #rimGlow{position:absolute;left:46%;top:39%;width:52%;height:76%;transform:translate(-50%,-50%);
+    background:radial-gradient(50% 50% at 50% 50%, rgba(255,170,90,0) 58%, rgba(255,170,90,.28) 74%, rgba(255,190,90,0) 92%);
+    mix-blend-mode:screen;pointer-events:none;animation:heartbeat 3.4s ease-in-out infinite;}
+  /* Every real light on its own clock. */
+  .glow{position:absolute;transform:translate(-50%,-50%);mix-blend-mode:screen;pointer-events:none;border-radius:50%;}
+  .lant{width:7%;height:11%;background:radial-gradient(closest-side, rgba(255,196,100,.55), rgba(255,170,80,0) 70%);animation:breathe 4.9s ease-in-out infinite alternate;}
+  @keyframes breathe{from{opacity:.4}to{opacity:.8}}
+  .mini{width:1.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,224,150,.95), rgba(255,190,90,.3) 55%, rgba(255,190,90,0) 75%);animation:twk ease-in-out infinite alternate;}
+  .spk{width:.6%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,240,200,.95), rgba(255,220,150,0) 70%);animation:twk ease-in-out infinite alternate;}
+  @keyframes twk{from{opacity:.3;transform:translate(-50%,-50%) scale(.8)}to{opacity:1;transform:translate(-50%,-50%) scale(1.18)}}
+  /* Fireflies wandering the flower beds. */
+  .fly{position:absolute;width:1%;aspect-ratio:1;border-radius:50%;mix-blend-mode:screen;pointer-events:none;
+    background:radial-gradient(closest-side, rgba(255,236,170,.95), rgba(255,210,100,0) 70%);animation-name:wander;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate;}
+  @keyframes wander{0%{transform:translate(0,0);opacity:.15}25%{opacity:.95}50%{transform:translate(2.2vw,-1.4vh);opacity:.4}75%{opacity:.9}100%{transform:translate(-1.6vw,-2.4vh);opacity:.2}}
+  /* Family chrome. */
+  #capPill{position:fixed;left:18px;top:calc(14px + env(safe-area-inset-top));z-index:3;
+    background:rgba(20,6,26,.45);border-radius:999px;padding:7px 14px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    color:rgba(250,238,244,.85);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:opacity .7s ease;pointer-events:none;}
+  #capPill b{color:#fff;font-weight:600;}
+  #controls{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    display:flex;gap:12px;z-index:3;transition:opacity .7s ease;}
+  body.ui-hidden #controls, body.ui-hidden #capPill{opacity:0;pointer-events:none;}
+  body.ui-hidden{cursor:none;}
+  body.wallmode #controls, body.wallmode #capPill{display:none;}
+  .grp{display:flex;gap:4px;align-items:center;background:rgba(20,6,26,.45);border-radius:999px;padding:4px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+  .grp button{appearance:none;border:0;cursor:pointer;padding:6px 12px;font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;border-radius:999px;color:rgba(250,238,244,.75);background:transparent;transition:background .25s,color .25s;}
+  .grp button:hover{color:#fff;}
+  .grp button.on{background:rgba(250,240,244,.92);color:#2a0e22;}
+  /* Still: the painting itself, untouched. */
+  body.still .glow, body.still .fly, body.still #heartGlow, body.still #rimGlow, body.still #burstGlow{opacity:0;animation-play-state:paused;}
+  body.still #burst{opacity:0;animation:none;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bgBlur"></div>
+  <div id="frame" role="img" aria-label="A storybook living room in the hand-painted style of Pixar's UP, filled with matte painted balloons in coral, teal, mustard and plum. One giant coral balloon floats center frame, swollen to bursting, over a birthday cake, presents and a teddy bear.">
+    <img class="layer" src="still.jpg" alt="">
+    <img class="layer" id="burst" src="burst.jpg" alt="">
+    <div id="burstGlow"></div>
+    <div id="rimGlow"></div>
+    <div id="heartGlow"></div>
+    <div class="glow lant" style="left:14%;top:36%;width:10%;height:16%"></div>
+    <div class="glow lant" style="left:97.5%;top:54%;width:4.5%;height:7%;animation-duration:5.6s;animation-delay:-2s"></div>
+    <div class="fly" style="left:30%;top:84%;animation-duration:11s"></div>
+    <div class="fly" style="left:64%;top:88%;animation-duration:13s;animation-delay:-5s"></div>
+    <div class="fly" style="left:44%;top:92%;animation-duration:9.5s;animation-delay:-3s"></div>
+  </div>
+  <div id="capPill"><b>The Balloon Room</b> · a living card scene</div>
+  <div id="controls">
+    <div class="grp">
+      <button id="btnStill" type="button">Still</button>
+      <button id="btnLiving" type="button" class="on">Living</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+if (location.hash === '#wall') document.body.classList.add('wallmode');
+const frame = document.getElementById('frame');
+function dot(cls, x, y, dur, dl){
+  const s = document.createElement('span');
+  s.className = 'glow ' + cls;
+  s.style.left = x + '%'; s.style.top = y + '%';
+  s.style.animationDuration = dur + 's'; s.style.animationDelay = dl + 's';
+  frame.appendChild(s);
+}
+/* candle flames, lamp and warm painted points, each on its own clock */
+const minis = [[20.75,72.5],[22.2,71.5],[23.6,72.5],[11.5,46],[93,28],[8,30],[56,22],[78,40]];
+minis.forEach((p, i) => dot('mini', p[0], p[1], 2.2 + (i % 5) * 0.5, -0.8 * i));
+/* sparkles across the sky and water */
+const spks = [[30,12],[66,10],[86,16],[24,40],[92,52],[16,62],[72,64],[40,84],[58,90],[96,74]];
+spks.forEach((p, i) => dot('spk', p[0], p[1], 2.8 + (i % 4) * 0.6, -0.9 * i));
+const btnStill = document.getElementById('btnStill');
+const btnLiving = document.getElementById('btnLiving');
+function setLiving(on){
+  document.body.classList.toggle('still', !on);
+  btnStill.classList.toggle('on', !on);
+  btnLiving.classList.toggle('on', on);
+}
+btnStill.addEventListener('click', e => { e.stopPropagation(); setLiving(false); });
+btnLiving.addEventListener('click', e => { e.stopPropagation(); setLiving(true); });
+document.getElementById('stage').addEventListener('click', e => {
+  if (e.target.closest('#controls')) return;
+  if (document.body.classList.contains('wallmode')) return;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+let idleTimer = null;
+function wake(){
+  document.body.classList.remove('ui-hidden');
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => document.body.classList.add('ui-hidden'), 4500);
+}
+window.addEventListener('pointermove', wake);
+window.addEventListener('touchstart', wake, { passive: true });
+wake();
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) setLiving(false);
+})();
+</script>
+</body>
+</html>
