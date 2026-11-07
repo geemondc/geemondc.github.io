@@ -746,7 +746,16 @@
      ALONE on that color -> only then does the living card appear, with
      ALL of its writing already on it. Origami is the reference. */
   body.opening #front{transition:opacity .45s ease, transform .45s ease}
-  body.opening .sigfx, body.opening #origamiFx{
+  /* UNIVERSAL STAGE BACKDROP (Gary, Nov 7): every card — including the canvas-animation
+     cards (Formal, Birthday, Love, Butterfly, Money) — opens on the envelope's own
+     color, the animation plays alone on it, then the card. No more flash-of-light. */
+  #stageBg{position:fixed; inset:0; display:none; pointer-events:none; z-index:5;
+    background:radial-gradient(120% 90% at 50% 38%, var(--fx1, #fdfaf2) 0%, var(--fx2, #f6efdd) 55%, var(--fx3, #ece2cc) 100%)}
+  body.opening #stageBg{display:block; animation:stageHold 3.4s ease forwards}
+  @keyframes stageHold{0%{opacity:0} 6%{opacity:1} 82%{opacity:1} 100%{opacity:0}}
+  body.opening #pop{z-index:8}
+  body.opening.staged #burst{display:none}
+body.opening .sigfx, body.opening #origamiFx{
     background:radial-gradient(120% 90% at 50% 38%, var(--fx1, #fdfaf2) 0%, var(--fx2, #f6efdd) 55%, var(--fx3, #ece2cc) 100%);
   }
 
@@ -1121,6 +1130,7 @@
 <body>
 <div id="scene">
   <div id="burst" aria-hidden="true"></div>
+  <div id="stageBg" aria-hidden="true"></div>
   <canvas id="pop" aria-hidden="true"></canvas>
   <div id="origamiFx" aria-hidden="true">
     <svg viewBox="0 0 200 240" role="presentation">
@@ -1870,6 +1880,7 @@
     if (document.body.classList.contains('open')) return;
     /* registers immediately: crack + flap + lift begin on this tap */
     document.body.classList.add('opening');
+    if (!window.__lcScene || ['bigview','chilling','birthday','heart','butterfly','money','treasure','firefly','race1','race2','possibility','healthcoach','dream1','dream2','healthworks1','healthworks2','healthworks3','dreamsauna','wellness'].indexOf(window.__lcScene) >= 0) document.body.classList.add('staged');
     if (window.__lcScene === 'homerun' || window.__lcScene === 'homer') document.body.classList.add('musical');
     document.body.classList.add('open');
     popBurst();
@@ -1886,6 +1897,7 @@
     document.body.classList.remove('settled');
     document.body.classList.remove('open');
     document.body.classList.remove('opening');
+    document.body.classList.remove('staged');
     window.scrollTo(0,0);
   }
   /* the finale: three bursts over the living fireworks, then the photo comes to rest */
