@@ -32,11 +32,12 @@
      Only the viewer's own hour bar below is interactive. */
   #shield { position:absolute; display:none; }
 
-  /* The hour bar — the piece's own slider, re-homed under the scene where
-     the viewport leaves room for it (portrait / tall screens). It drives
-     the piece through its own HS hooks: same hour, same light. */
+  /* The hour bar — the piece's own slider, re-homed under the scene.
+     The scene fit always reserves a band at the bottom for it, so the
+     bar is present on every screen, landscape included. It drives the
+     piece through its own HS hooks: same hour, same light. */
   #bar { position:absolute; left:0; right:0; bottom:0; display:none;
-         padding:14px 22px calc(58px + env(safe-area-inset-bottom));
+         padding:14px 22px calc(18px + env(safe-area-inset-bottom));
          background:linear-gradient(0deg, rgba(8,6,4,.88), rgba(8,6,4,0)); }
   #bar.on { display:block; }
   .readout { font-size:clamp(19px, 3.2vw, 26px); letter-spacing:.1em; color:#f2ead6;
@@ -106,9 +107,15 @@
     inner.style.height = '1100px';
     var r = stage.getBoundingClientRect();
     if (!r.width) return false;
-    var s = Math.min(vw / r.width, vh / r.height);
+    /* Reserve a bottom band for the hour bar — the slider IS the piece,
+       so the scene never gets the full height (fix, Nov 6, 2026: on a
+       landscape monitor the old fit left ~0px under the scene and the
+       bar's own room-test hid it forever — photo arrived with no slider). */
+    var BAR_BAND = Math.min(190, Math.max(130, vh * 0.22));
+    var availH = Math.max(200, vh - BAR_BAND);
+    var s = Math.min(vw / r.width, availH / r.height);
     var sceneW = r.width * s, sceneH = r.height * s;
-    var sceneX = (vw - sceneW) / 2, sceneY = (vh - sceneH) / 2;
+    var sceneX = (vw - sceneW) / 2, sceneY = Math.max(0, (availH - sceneH) / 2);
     clip.style.left = sceneX + 'px';
     clip.style.top = sceneY + 'px';
     clip.style.width = sceneW + 'px';
@@ -120,8 +127,8 @@
     shield.style.top = sceneY + 'px';
     shield.style.width = sceneW + 'px';
     shield.style.height = sceneH + 'px';
-    /* The hour bar shows only when real room remains under the scene. */
-    bar.classList.toggle('on', (vh - (sceneY + sceneH)) >= 120);
+    /* The fit above now guarantees the band, so the bar always shows. */
+    bar.classList.add('on');
     if (!fitted){ fitted = true; clip.classList.add('on'); }
     return true;
   }
