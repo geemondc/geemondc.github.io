@@ -15,6 +15,7 @@
   /* the journey: dusk warms, then the deep takes the room — light only, the painting never moves */
   .tintDusk { position:absolute; inset:0; pointer-events:none; opacity:0; mix-blend-mode:soft-light; background:linear-gradient(180deg, #ff9a3c 0%, #b84a6e 55%, #2c1e5e 100%); }
   .tintNight { position:absolute; inset:0; pointer-events:none; opacity:0; background:linear-gradient(180deg, rgba(2,6,26,.34) 0%, rgba(3,10,38,.22) 45%, rgba(1,4,18,.38) 100%); }
+  .tintSunset { position:absolute; inset:0; pointer-events:none; opacity:0; z-index:2; background:linear-gradient(180deg, rgba(255,138,42,.46) 0%, rgba(226,84,92,.34) 42%, rgba(94,44,110,.20) 100%); }
   /* sun shafts: soft light columns swaying in place over the painting's own rays */
   .rays { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; }
   .ray { position:absolute; top:-6%; height:72%; pointer-events:none;
@@ -44,6 +45,15 @@
 
   .turtleB { animation:turtleBreathe 9s ease-in-out infinite; transform-origin:50% 60%; }
   @keyframes turtleBreathe { 0%,100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.02); filter:brightness(1.07); } }
+
+  .schoolR { animation:schoolCrossR 170s linear infinite; }
+  @keyframes schoolCrossR {
+    0%,22% { left:104%; top:30%; opacity:0; } 27% { opacity:.5; }
+    55% { top:26%; opacity:.5; } 61%,100% { left:-22%; top:29%; opacity:0; } }
+  .clownSway { animation:clownSway 7s ease-in-out infinite alternate; }
+  @keyframes clownSway { from { transform:translateX(0) rotate(-1deg); } to { transform:translateX(9px) rotate(1.2deg); } }
+  .octoGlow { animation:octoGlow 8s ease-in-out infinite; }
+  @keyframes octoGlow { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.13); } }
   .bub { position:absolute; border-radius:50%; pointer-events:none;
     background:radial-gradient(circle at 34% 32%, rgba(255,255,255,.85) 0%, rgba(255,255,255,.12) 38%, rgba(190,225,255,.05) 70%);
     border:1px solid rgba(220,240,255,.35); animation:bubRise linear infinite; }
@@ -72,10 +82,14 @@
     <img class="critter rayfish" src="ray.png" alt="" style="width:15%">
     <img class="critter dolphins" src="dolphins.png" alt="" style="width:17%">
     <img class="critter turtleB" src="turtle.png" alt="" style="left:14.5%; top:52.5%; width:21.5%">
+    <img class="critter schoolR" src="school.png" alt="" style="width:15%">
+    <img class="critter clownSway" src="clown.png" alt="" style="left:3.5%; top:57.5%; width:16.5%">
+    <img class="critter octoGlow" src="octo.png" alt="" style="left:79.5%; top:33.5%; width:16%">
 
     <div class="rays" id="rays"></div>
     <div class="tintDusk" id="tintDusk"></div>
     <div class="tintNight" id="tintNight"></div>
+    <div class="tintSunset" id="tintSunset"></div>
     <div class="shimmer"></div>
     <div class="vig"></div>
   </div>
@@ -86,7 +100,7 @@
   <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵</button>
   <button class="bbtn" id="btnFull" onclick="toggleFull()">⛶</button>
 </div>
-<audio id="sea" src="https://geemondc.github.io/orbital-spa/deeprest.mp3" loop preload="metadata"></audio>
+<audio id="sea" src="https://geemondc.github.io/music-satori/Dolphin_Heart.mp3" loop preload="metadata"></audio>
 
 <script>
 (function(){
@@ -122,7 +136,7 @@
   bubSpots.forEach(function(s, i){
     var b = document.createElement('div');
     b.className = 'bub';
-    var sz = 5 + (i * 7) % 9;
+    var sz = 17 + (i * 7) % 13;
     b.style.width = sz + 'px'; b.style.height = sz + 'px';
     b.style.left = s[0] + '%'; b.style.top = s[1] + '%';
     b.style.animationDuration = (13 + (i * 5) % 11) + 's';
@@ -150,12 +164,13 @@
 
   // THE JOURNEY — 4 minutes: day → dusk (0–37%) → deep (37–62%) → dawn (62–100%) → day
   var CYCLE = 180, seek = 0, lastT = 0;
-  var duskEl = document.getElementById('tintDusk'), nightEl = document.getElementById('tintNight');
+  var duskEl = document.getElementById('tintDusk'), nightEl = document.getElementById('tintNight'), sunEl = document.getElementById('tintSunset');
   function ss(a, b, x){ var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
   function journey(p){
     var dusk = ss(0.02, 0.30, p) * (1 - ss(0.60, 0.92, p));
     var night = ss(0.16, 0.42, p) * (1 - ss(0.60, 0.95, p));
-    return { dusk: dusk, night: night };
+    var sunset = ss(0.10, 0.30, p) * (1 - ss(0.34, 0.52, p));
+    return { dusk: dusk, night: night, sunset: sunset };
   }
   window.__seek = function(frac){ seek = frac * CYCLE; t0 = performance.now(); };
 
@@ -168,6 +183,7 @@
     var j = journey(p);
     duskEl.style.opacity = (j.dusk * 0.85).toFixed(3);
     nightEl.style.opacity = (j.night * 0.9).toFixed(3);
+    if (sunEl) sunEl.style.opacity = (j.sunset * 0.9).toFixed(3);
     rays.style.opacity = (1 - j.night * 0.88).toFixed(3);
     paintGlints(dayGlints, t, 1 - j.night);
     paintGlints(nightGlints, t, j.night);
