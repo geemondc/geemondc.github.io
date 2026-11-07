@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jellyfish Room — a Living Atmosphere</title>
+<meta name="description" content="A slow bloom of glowing jellyfish beneath the sunlit surface, breathing through a four-minute day into a lantern-lit deep. A living atmosphere for focus, calm, and sleep.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#04101e; height:100%; }
+  body { overflow:hidden; font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
+  .stage { position:fixed; inset:0; background:radial-gradient(ellipse 120% 90% at 50% 30%, #0a2c47 0%, #04101e 70%); }
+  .frame { position:absolute; overflow:hidden; background:#06263f; }
+  .frame img.base { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  /* the journey: dusk warms, then the deep takes the room — light only, the painting never moves */
+  .tintDusk { position:absolute; inset:0; pointer-events:none; opacity:0; mix-blend-mode:soft-light; background:linear-gradient(180deg, #ff9a3c 0%, #b84a6e 55%, #2c1e5e 100%); }
+  .tintNight { position:absolute; inset:0; pointer-events:none; opacity:0; background:linear-gradient(180deg, rgba(2,6,26,.34) 0%, rgba(3,10,38,.22) 45%, rgba(1,4,18,.38) 100%); }
+  /* sun shafts: soft light columns swaying in place over the painting's own rays */
+  .rays { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; }
+  .ray { position:absolute; top:-6%; height:72%; pointer-events:none;
+    background:linear-gradient(180deg, rgba(255,226,160,.34) 0%, rgba(255,226,160,.10) 55%, rgba(255,226,160,0) 100%);
+    filter:blur(9px); transform-origin:50% 0; animation:raySway 11s ease-in-out infinite alternate; }
+  @keyframes raySway { from { transform:rotate(-1.6deg); } to { transform:rotate(1.6deg); } }
+  /* the inhabitants: cut-outs from the painting itself, drifting on very slow crossings */
+  .critter { position:absolute; display:block; pointer-events:none; }
+  .rayfish { animation:rayGlide 170s linear infinite; }
+  @keyframes rayGlide {
+    0%,55% { left:-26%; top:50%; opacity:0; } 59% { opacity:.96; }
+    96% { top:47.5%; opacity:.96; } 100% { left:104%; top:49%; opacity:0; } }
+  .dolphins { animation:dolCross 240s linear infinite; }
+  @keyframes dolCross {
+    0%,8% { left:106%; top:33%; opacity:0; } 12% { opacity:.92; }
+    21% { top:36%; opacity:.92; } 24% { left:-20%; top:35%; opacity:0; }
+    55% { left:106%; top:33%; opacity:0; } 59% { opacity:.92; }
+    88% { top:36%; opacity:.92; } 92%,100% { left:-20%; top:35%; opacity:0; } }
+  .shark { animation:sharkCross 300s linear infinite; }
+  @keyframes sharkCross {
+    0%,18% { left:-24%; top:26%; opacity:0; } 22% { opacity:.55; }
+    40% { top:28%; opacity:.55; } 44% { left:104%; top:27%; opacity:0; }
+    70% { left:-24%; top:26%; opacity:0; } 74% { opacity:.55; }
+    95% { top:28%; opacity:.55; } 99%,100% { left:104%; top:27%; opacity:0; } }
+  .jelly { animation:jellyPulse 6s ease-in-out infinite; }
+  @keyframes jellyPulse { 0%,100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.045); filter:brightness(1.28); } }
+  .bub { position:absolute; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle at 34% 32%, rgba(255,255,255,.85) 0%, rgba(255,255,255,.12) 38%, rgba(190,225,255,.05) 70%);
+    border:1px solid rgba(220,240,255,.35); animation:bubRise linear infinite; }
+  @keyframes bubRise { from { transform:translate(0,0); opacity:0; } 8% { opacity:.75; } 92% { opacity:.6; } to { transform:translate(14px,-46vh); opacity:0; } }
+  .glint { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; opacity:0; }
+  .shimmer { position:absolute; inset:0; pointer-events:none; opacity:.08; mix-blend-mode:screen;
+    background:linear-gradient(115deg, transparent 30%, rgba(170,220,255,.16) 47%, rgba(255,240,205,.10) 52%, transparent 68%);
+    background-size:280% 100%; animation:shimmerMove 26s ease-in-out infinite alternate; }
+  @keyframes shimmerMove { from { background-position:88% 0; } to { background-position:8% 0; } }
+  .vig { position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 108% 96% at 50% 46%, transparent 62%, rgba(1,4,12,.40) 100%); }
+  .bar { position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; justify-content:center; align-items:center;
+    padding:16px 12px 20px; background:linear-gradient(transparent, rgba(1,4,12,.55)); opacity:1; transition:opacity 1.2s; z-index:5; }
+  .bbtn { font-size:17px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer;
+    border:1.5px solid rgba(200,230,255,.55); background:rgba(4,16,30,.55); color:#EAF6FF; font-family:inherit; backdrop-filter:blur(4px); }
+  .bbtn:hover { background:rgba(14,40,66,.65); }
+  body.idle .bar { opacity:0; }
+  body.still .rayfish, body.still .dolphins, body.still .shark, body.still .jelly,
+  body.still .ray, body.still .shimmer, body.still .bub { animation-play-state:paused; }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <img class="base" src="still.jpg" alt="Jellyfish Room">
+    <div class="rays" id="rays"></div>
+    <div class="tintDusk" id="tintDusk"></div>
+    <div class="tintNight" id="tintNight"></div>
+    <div class="shimmer"></div>
+    <div class="vig"></div>
+  </div>
+</div>
+
+<div class="bar">
+  <button class="bbtn" id="btnPlay" onclick="togglePlay()">⏸</button>
+  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵</button>
+  <button class="bbtn" id="btnFull" onclick="toggleFull()">⛶</button>
+</div>
+<audio id="sea" src="https://geemondc.github.io/orbital-spa/deeprest.mp3" loop preload="metadata"></audio>
+
+<script>
+(function(){
+  "use strict";
+  var W = 2560, H = 1440, AR = W / H;
+  var stage = document.getElementById('stage');
+  var frame = document.getElementById('frame');
+  function seat(){
+    var w = stage.clientWidth, h = stage.clientHeight, rw, rh;
+    if (w / h > AR) { rh = h; rw = h * AR; } else { rw = w; rh = w / AR; }   // FIT WHOLE: entire painting visible, never cropped
+    frame.style.left = ((w - rw) / 2) + 'px';
+    frame.style.top = ((h - rh) / 2) + 'px';
+    frame.style.width = rw + 'px';
+    frame.style.height = rh + 'px';
+  }
+  window.addEventListener('resize', seat);
+  seat();
+
+  // sun-shaft columns seated on the painting's own rays
+  var rays = document.getElementById('rays');
+  [[41,22,-3],[50,26,0],[60,18,2]].forEach(function(r, i){
+    var d = document.createElement('div');
+    d.className = 'ray';
+    d.style.left = r[0] + '%'; d.style.width = r[1] + '%';
+    d.style.transform = 'rotate(' + r[2] + 'deg)';
+    d.style.animationDuration = (9 + i * 2.3) + 's';
+    d.style.animationDelay = (-i * 1.7) + 's';
+    rays.appendChild(d);
+  });
+
+  // bubbles: small risers from the reef, each on its own clock
+  var bubSpots = [[30,70],[52,76],[68,64],[44,82],[76,78],[24,58]];
+  bubSpots.forEach(function(s, i){
+    var b = document.createElement('div');
+    b.className = 'bub';
+    var sz = 5 + (i * 7) % 9;
+    b.style.width = sz + 'px'; b.style.height = sz + 'px';
+    b.style.left = s[0] + '%'; b.style.top = s[1] + '%';
+    b.style.animationDuration = (13 + (i * 5) % 11) + 's';
+    b.style.animationDelay = (-(i * 3.1)) + 's';
+    frame.appendChild(b);
+  });
+
+  // glints: warm sun-sparkle by day, cyan plankton by night — the journey crossfades them
+  function mkGlints(list, warm){
+    return list.map(function(s, i){
+      var d = document.createElement('div');
+      d.className = 'glint';
+      d.style.left = s[0] + '%'; d.style.top = s[1] + '%';
+      d.style.width = s[2] + 'px'; d.style.height = s[2] + 'px';
+      d.style.transform = 'translate(-50%,-50%)';
+      d.style.background = warm
+        ? 'radial-gradient(circle, rgba(255,244,200,.95) 0%, rgba(255,214,140,.35) 42%, rgba(255,214,140,0) 70%)'
+        : 'radial-gradient(circle, rgba(190,255,240,.95) 0%, rgba(110,230,255,.35) 42%, rgba(110,230,255,0) 70%)';
+      frame.appendChild(d);
+      return { el: d, per: 2.6 + ((i * 37) % 10) * 0.53, ph: ((i * 53) % 17) / 17 * Math.PI * 2, amp: .45 + ((i * 29) % 10) / 24 };
+    });
+  }
+  var dayGlints = mkGlints([[44,14,8],[52,10,9],[60,16,7],[38,24,6],[66,26,6],[48,28,5]], true);
+  var nightGlints = mkGlints([[16,60,5],[24,72,6],[33,55,5],[41,80,6],[50,62,5],[58,74,6],[66,52,5],[74,68,6],[82,58,5],[90,76,6],[12,84,5],[28,90,5],[47,92,5],[62,88,6],[78,90,5],[88,44,5],[20,40,5],[36,34,5],[70,34,5],[55,44,5]], false);
+
+  // THE JOURNEY — 4 minutes: day → dusk (0–37%) → deep (37–62%) → dawn (62–100%) → day
+  var CYCLE = 240, seek = 0, lastT = 0;
+  var duskEl = document.getElementById('tintDusk'), nightEl = document.getElementById('tintNight');
+  function ss(a, b, x){ var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+  function journey(p){
+    var dusk = ss(0.02, 0.30, p) * (1 - ss(0.60, 0.92, p));
+    var night = ss(0.16, 0.42, p) * (1 - ss(0.60, 0.95, p));
+    return { dusk: dusk, night: night };
+  }
+  window.__seek = function(frac){ seek = frac * CYCLE; t0 = performance.now(); };
+
+  var t0 = performance.now();
+  function tick(now){
+    var frozen = window.__frozen;
+    var t = frozen ? lastT : (now - t0) / 1000 + seek;
+    if (!frozen) lastT = t;
+    var p = (t % CYCLE) / CYCLE;
+    var j = journey(p);
+    duskEl.style.opacity = (j.dusk * 0.85).toFixed(3);
+    nightEl.style.opacity = (j.night * 0.9).toFixed(3);
+    rays.style.opacity = (1 - j.night * 0.88).toFixed(3);
+    paintGlints(dayGlints, t, 1 - j.night);
+    paintGlints(nightGlints, t, j.night);
+    requestAnimationFrame(tick);
+  }
+  function paintGlints(list, t, scale){
+    for (var i = 0; i < list.length; i++){
+      var g = list[i];
+      var v = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / g.per + g.ph);
+      v = v * v * (3 - 2 * v);
+      g.el.style.opacity = (v * g.amp * scale).toFixed(3);
+    }
+  }
+  requestAnimationFrame(tick);
+
+  // music + pause + fullscreen
+  var audio = document.getElementById('sea');
+  var btnM = document.getElementById('btnMusic');
+  window.togglePlay = function(){
+    window.__frozen = !window.__frozen;
+    document.body.classList.toggle('still', window.__frozen);
+    document.getElementById('btnPlay').textContent = window.__frozen ? '▶' : '⏸';
+  };
+  window.toggleMusic = function(){
+    if (audio.paused) { audio.play(); btnM.textContent = '🔇'; }
+    else { audio.pause(); btnM.textContent = '🎵'; }
+  };
+  window.toggleFull = function(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(function(){});
+  };
+
+  // keep the screen awake while the room is open
+  var wl = null;
+  function lock(){ if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function(l){ wl = l; }).catch(function(){}); }
+  lock();
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') lock(); });
+
+  // furniture fades when the room goes still
+  var idleTimer = null;
+  function wake(){
+    document.body.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function(){ document.body.classList.add('idle'); }, 5000);
+  }
+  ['mousemove','touchstart','keydown','click'].forEach(function(ev){ window.addEventListener(ev, wake, {passive:true}); });
+  wake();
+
+  window.LP = { state: function(){
+    var p = (lastT % CYCLE) / CYCLE, j = journey(p);
+    return { phase: +p.toFixed(3), dusk: +j.dusk.toFixed(2), night: +j.night.toFixed(2),
+      musicPaused: audio.paused, idle: document.body.classList.contains('idle'),
+      glints: dayGlints.length + nightGlints.length };
+  } };
+})();
+</script>
+</body>
+</html>
