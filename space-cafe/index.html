@@ -18,24 +18,19 @@
     mix-blend-mode:screen; opacity:0; }
   .vig { position:absolute; inset:0; pointer-events:none;
     background:radial-gradient(ellipse 108% 96% at 50% 46%, transparent 66%, rgba(2,6,16,.32) 100%); }
-  .top { position:fixed; top:0; left:0; right:0; padding:20px 22px 30px; pointer-events:none;
-    background:linear-gradient(rgba(2,6,16,.5), transparent); color:#EAF2FF;
-    opacity:1; transition:opacity 1.2s; }
-  .top h1 { font-size:26px; font-weight:700; letter-spacing:.4px; }
-  .top p { font-size:15.5px; color:#BFD2EE; margin-top:3px; max-width:560px; line-height:1.45; }
   .bar { position:fixed; left:0; right:0; bottom:0; display:flex; gap:10px; justify-content:center; align-items:center;
     padding:16px 12px 20px; background:linear-gradient(transparent, rgba(2,6,16,.55));
     opacity:1; transition:opacity 1.2s; }
-  .bbtn { font-size:17px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer;
+  .bbtn { font-size:19px; font-weight:700; padding:11px 20px; border-radius:999px; cursor:pointer;
     border:1.5px solid rgba(190,215,255,.55); background:rgba(8,16,34,.55); color:#EAF2FF; font-family:inherit;
     backdrop-filter:blur(4px); }
   .bbtn:hover { background:rgba(20,36,66,.65); }
-  body.idle .top, body.idle .bar { opacity:0; }
+  body.idle .bar { opacity:0; }
   .hint { position:fixed; right:16px; bottom:74px; color:#9DB9DE; font-size:13.5px; opacity:.85; pointer-events:none;
     transition:opacity 1.2s; }
   body.idle .hint { opacity:0; }
 
-  body.expanded .top, body.expanded .bar { display:none; }
+  body.expanded .bar { display:none; }
   body.expanded .frame { left:0 !important; top:0 !important; width:100vw !important; height:100vh !important; }
   body.expanded .frame img.base, body.expanded .frame canvas.pool, body.expanded .frame canvas.fx { object-fit:cover; }
 </style>
@@ -48,10 +43,10 @@
     <div class="vig"></div>
   </div>
 </div>
-<div class="top"><h1>Space Café</h1><p>a quiet café in the blue dark above the Earth</p></div>
 <div class="bar">
-  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵 Play the music</button>
-  <button class="bbtn" onclick="toggleFull()">⛶ Full screen</button>
+  <button class="bbtn" id="btnPause" onclick="togglePause()">⏸</button>
+  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵</button>
+  <button class="bbtn" onclick="toggleFull()">⛶</button>
 </div>
 <audio id="cafe" src="relax.mp3" loop preload="auto"></audio>
 <script>
@@ -74,50 +69,48 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
   // The still's own warm city dots, enhanced — each breathes on its own
   // clock; the whole field slides very slowly sideways (the turn), wrapping.
   var cv = document.getElementById('fx'), cx = cv.getContext('2d');
-  // BUILD: band drift -- no invented sphere. The still's own Earth is a
-  // curved horizon band across the whole window. It drifts very slowly
-  // sideways (the station's slow turn), wrapping at the edges; nothing is
-  // drawn over the painting except its own city lights, flickering.
-  var bandImg = new Image();
-  var bandReady = false;
-  bandImg.onload = function(){ bandReady = true; };
-  bandImg.src = 'band1.jpg';
-  var BAND = { x0: 0.415, y0: 0.145, x1: 1.0, y1: 0.475, speed: 0.0035 }; // image fractions; drift in fractions/sec
+  // BUILD: Earth-only drift, confined to the window. The moving texture is
+  // CUT FROM the painting's own planet surface (earthtex.jpg) -- it holds
+  // no interior, no window frame -- and it is drawn ONLY inside the
+  // window's planet area, soft-edged on every side, at low alpha, sliding
+  // a few pixels across the whole visit. Nothing else in the scene moves
+  // except the painting's own candle glints.
+  var tex = new Image();
+  var texReady = false;
+  tex.onload = function(){ texReady = true; };
+  tex.src = 'earthtex.jpg';
+  var WIN = { x0: 0.640, y0: 0.245, x1: 0.995, y1: 0.585, speed: 0.0011, alpha: 0.38 }; // fractions; drift fractions/sec
   function drawFx(t){
     cx.clearRect(0, 0, IW, IH);
-    if (bandReady) {
-      var bx = BAND.x0 * IW, by = BAND.y0 * IH;
-      var bw = (BAND.x1 - BAND.x0) * IW, bh = (BAND.y1 - BAND.y0) * IH;
-      var stripW = bw * 0.55;
-      var off = (t * BAND.speed * IW) % stripW;
-      // Soft-edged drift: the strip's alpha fades to zero at the window's
-      // left and right ends and along its top and bottom, so the moving
-      // lights melt into the still -- no rectangle edges anywhere.
+    if (texReady) {
+      var bx = WIN.x0 * IW, by = WIN.y0 * IH;
+      var bw = (WIN.x1 - WIN.x0) * IW, bh = (WIN.y1 - WIN.y0) * IH;
+      var off = (t * WIN.speed * IW) % (bw * 0.12);
       var mask = document.createElement('canvas'); mask.width = IW; mask.height = IH;
       var mx = mask.getContext('2d');
-      mx.drawImage(bandImg, 0, 0, 1432, 246, bx - off, by, bw, bh);
-      mx.drawImage(bandImg, 0, 0, 1432, 246, bx - off + bw, by, bw, bh);
+      mx.drawImage(tex, bx - off, by, bw, bh);
+      mx.drawImage(tex, bx - off + bw, by, bw, bh);
       mx.globalCompositeOperation = 'destination-in';
       var vg = mx.createLinearGradient(0, by, 0, by + bh);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(0.30, 'rgba(0,0,0,1)');
-      vg.addColorStop(0.72, 'rgba(0,0,0,1)');
+      vg.addColorStop(0.35, 'rgba(0,0,0,1)');
+      vg.addColorStop(0.75, 'rgba(0,0,0,1)');
       vg.addColorStop(1, 'rgba(0,0,0,0)');
       mx.fillStyle = vg; mx.fillRect(bx, by, bw, bh);
       var hg = mx.createLinearGradient(bx, 0, bx + bw, 0);
       hg.addColorStop(0, 'rgba(0,0,0,0)');
-      hg.addColorStop(0.10, 'rgba(0,0,0,1)');
-      hg.addColorStop(0.90, 'rgba(0,0,0,1)');
+      hg.addColorStop(0.22, 'rgba(0,0,0,1)');
+      hg.addColorStop(0.92, 'rgba(0,0,0,1)');
       hg.addColorStop(1, 'rgba(0,0,0,0)');
       mx.fillStyle = hg; mx.fillRect(bx, by, bw, bh);
-      cx.globalAlpha = 0.85;
+      cx.globalAlpha = WIN.alpha;
       cx.drawImage(mask, 0, 0);
       cx.globalAlpha = 1;
     }
-    // the still's own city lights, flickering on their own clocks, inside the band
+    // the still's own city lights inside the window, flickering in place
     for (var i = 0; i < CITY.length; i++){
       var d = CITY[i];
-      if (d[0] / 100 < BAND.x0 || d[1] / 100 < BAND.y0 || d[1] / 100 > BAND.y1) continue;
+      if (d[0] / 100 < WIN.x0 || d[0] / 100 > WIN.x1 || d[1] / 100 < WIN.y0 || d[1] / 100 > WIN.y1) continue;
       var shim = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / (1.6 + (i * 37 % 13) * 0.31) + i * 1.93);
       shim = shim * shim * (3 - 2 * shim);
       var a = 0.2 + 0.6 * shim;
@@ -139,6 +132,12 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
     return { el: d, per: 2.2 + ((i * 37) % 10) * 0.47, ph: ((i * 53) % 17) / 17 * Math.PI * 2, amp: .55 + ((i * 29) % 10) / 22 };
   });
   var t0 = performance.now();
+  var paused = false, pauseAt = 0;
+  window.togglePause = function(){
+    var b = document.getElementById('btnPause');
+    if (!paused) { paused = true; pauseAt = performance.now(); b.textContent = '▶'; }
+    else { paused = false; t0 += performance.now() - pauseAt; b.textContent = '⏸'; }
+  };
   function tick(now){
     var t = (now - t0) / 1000;
     for (var i = 0; i < glints.length; i++){
@@ -147,7 +146,7 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
       v = v * v * (3 - 2 * v);
       g.el.style.opacity = (v * g.amp).toFixed(3);
     }
-    drawFx(t);
+    if (!paused) drawFx(t);
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -155,8 +154,8 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
   var audio = document.getElementById('cafe');
   var btnM = document.getElementById('btnMusic');
   window.toggleMusic = function(){
-    if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
-    else { audio.pause(); btnM.textContent = '🎵 Play the music'; }
+    if (audio.paused) { audio.play(); btnM.textContent = '🔇'; }
+    else { audio.pause(); btnM.textContent = '🎵'; }
   };
   var expanded = false;
   window.toggleFull = function(){
