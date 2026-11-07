@@ -79,6 +79,9 @@
     font-family:Georgia,serif; font-size:14px; letter-spacing:.12em;
     opacity:0; pointer-events:none; transition:opacity .9s ease .5s;
   }
+  #musicBtn{display:none;position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:40;width:52px;height:52px;border-radius:50%;border:1.5px solid #f6b73c;background:rgba(24,12,6,.72);color:#ffd9a0;font-size:24px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.45);}
+  body.musical.settled #musicBtn{display:block}
+  #musicBtn.on{background:#f6b73c;color:#3a2408}
   body.settled #replay{opacity:1; pointer-events:auto}
   #replay:active{transform:scale(.97)}
 
@@ -1050,6 +1053,7 @@
     <div class="flourish">✦ ✦ ✦</div>
     <div class="brand">A Living Card · Living Photos</div>
     <button id="replay" type="button">Replay</button>
+  <button id="musicBtn" type="button" title="Play the ballpark organ" aria-label="Play the ballpark organ">&#127929;</button>
   </main>
 
   <button id="front" type="button" aria-label="Sealed card for Sofia, from James. Tap the seal to open.">
@@ -1326,8 +1330,8 @@
     INSIDE.gameday = ['falls-moonlit', 'the Falls'];
     INSIDE.holes = ['falls-moonlit', 'the Falls'];
     INSIDE.fairway = ['falls-moonlit', 'the Falls'];
-    INSIDE.homerun = ['falls-moonlit', 'the Falls'];
-    INSIDE.homer = ['falls-moonlit', 'the Falls'];
+    INSIDE.homerun = ['ballpark-scene', 'the Ballpark at Sunset'];
+    INSIDE.homer = ['ballpark-scene', 'the Ballpark at Sunset'];
     INSIDE.fishing = ['falls-moonlit', 'the Falls'];
     INSIDE.tightlines = ['falls-moonlit', 'the Falls'];
     INSIDE.tropical = ['falls-moonlit', 'the Falls'];
@@ -1427,6 +1431,11 @@
 
   })();
 
+
+  var mBtn = document.getElementById('musicBtn');
+  if (mBtn) mBtn.addEventListener('click', function(){ setOrgan(!organOn); });
+  var rBtn = document.getElementById('replay');
+  if (rBtn) rBtn.addEventListener('click', function(){ if (organOn) setOrgan(false); document.body.classList.remove('musical'); });
   var front = document.getElementById('front');
   var settleTimer = null;
   var MIDDLE_MS = 11300; /* living middle, a firework finale, then the scene settles to rest */
@@ -1726,10 +1735,11 @@
     if (document.body.classList.contains('open')) return;
     /* registers immediately: crack + flap + lift begin on this tap */
     document.body.classList.add('opening');
+    if (window.__lcScene === 'homerun' || window.__lcScene === 'homer') document.body.classList.add('musical');
     document.body.classList.add('open');
     popBurst();
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
-    if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling' || window.__lcScene === 'biglove' || window.__lcScene === 'balloonburst' || window.__lcScene === 'lantern') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
+    if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling' || window.__lcScene === 'biglove' || window.__lcScene === 'balloonburst' || window.__lcScene === 'lantern' || window.__lcScene === 'homerun' || window.__lcScene === 'homer') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
     settleTimer = setTimeout(function(){
       document.body.classList.add('settled');
     }, MIDDLE_MS);
@@ -1744,6 +1754,74 @@
     window.scrollTo(0,0);
   }
   /* the finale: three bursts over the living fireworks, then the photo comes to rest */
+
+  /* MUSICAL LIVING CARDS — the first tier: the Home Run card carries the ballpark organ.
+     "Take Me Out to the Ball Game" (1908) is public domain; this is our own synthesized
+     performance of it — no recording, nothing borrowed. Gary's originality law. */
+  var organCtx = null, organOn = false, organTimers = [];
+  function organNote(freq, t, dur, gain){
+    var o1 = organCtx.createOscillator(), o2 = organCtx.createOscillator(), o3 = organCtx.createOscillator();
+    var g = organCtx.createGain();
+    o1.type = 'sine'; o1.frequency.value = freq;
+    o2.type = 'triangle'; o2.frequency.value = freq * 2;
+    o3.type = 'sine'; o3.frequency.value = freq * 3;
+    var g2 = organCtx.createGain(); g2.gain.value = 0.35;
+    var g3 = organCtx.createGain(); g3.gain.value = 0.12;
+    o1.connect(g); o2.connect(g2); g2.connect(g); o3.connect(g3); g3.connect(g);
+    g.connect(organCtx.destination);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.05);
+    g.gain.setValueAtTime(gain, t + dur - 0.07);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    o1.start(t); o2.start(t); o3.start(t);
+    o1.stop(t + dur + 0.05); o2.stop(t + dur + 0.05); o3.stop(t + dur + 0.05);
+  }
+  function playOrgan(){
+    if (!organCtx) return;
+    stopOrganTimers();
+    var BEAT = 0.42, t = organCtx.currentTime + 0.15;
+    var SONG = [ /* [midi, beats] — chorus of Take Me Out to the Ball Game, 1908, public domain */
+      [72,1],[72,0.5],[69,0.5],[76,1],[72,1],[64,2],
+      [68,1],[76,1],[79,1],[76,3],
+      [72,1],[72,0.5],[69,0.5],[76,1],[72,1],[64,2],
+      [68,1],[68,1],[69,1],[70,1],[71,1],[68,1],[64,1],[62,2],
+      [62,1],[64,1],[65,1],[69,1],[69,1],[69,1],[71,1],[72,1],[72,2],
+      [72,1],[71,1],[69,1],[71,1],[69,1],[67,1],[64,1],[65,1],[67,2],
+      [72,1],[72,0.5],[69,0.5],[76,1],[72,1],[64,2],
+      [68,1],[68,1],[69,1],[70,1],[71,1],[72,2],[67,3]
+    ];
+    var bassAt = 0, melodyAt = 0, seq = [];
+    SONG.forEach(function(n){ seq.push([n[0], melodyAt]); melodyAt += n[1] * BEAT; });
+    var total = melodyAt;
+    var bassLine = [48, 55, 53, 55];
+    for (var b = 0; bassAt < total - 0.01; b++){
+      seq.push(['B' + bassLine[b % 4], bassAt]); bassAt += 4 * BEAT;
+    }
+    seq.forEach(function(n){
+      if (typeof n[0] === 'string'){
+        var bf = 440 * Math.pow(2, (parseInt(n[0].slice(1), 10) - 69) / 12);
+        organTimers.push(setTimeout(function(){ if (organOn) organNote(bf, organCtx.currentTime + 0.02, BEAT * 3.4, 0.05); }, (0.15 + n[1]) * 1000));
+      } else {
+        var f = 440 * Math.pow(2, (n[0] - 69) / 12);
+        organTimers.push(setTimeout(function(){ if (organOn) organNote(f, organCtx.currentTime + 0.02, BEAT * 0.92, 0.11); }, (0.15 + n[1]) * 1000));
+      }
+    });
+    organTimers.push(setTimeout(function(){ if (organOn) playOrgan(); }, (total + BEAT * 4) * 1000));
+  }
+  function stopOrganTimers(){ organTimers.forEach(clearTimeout); organTimers = []; }
+  function setOrgan(on){
+    var btn = document.getElementById('musicBtn');
+    if (on){
+      if (!organCtx){ try { organCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; } }
+      if (organCtx.state === 'suspended') organCtx.resume();
+      organOn = true; playOrgan();
+      if (btn){ btn.textContent = '\uD83C\uDFB9'; btn.classList.add('on'); btn.title = 'Music on — tap to rest the organ'; }
+    } else {
+      organOn = false; stopOrganTimers();
+      if (organCtx) organCtx.suspend();
+      if (btn){ btn.textContent = '\uD83C\uDFB9'; btn.classList.remove('on'); btn.title = 'Play the ballpark organ'; }
+    }
+  }
   function finale(){
     var cv = document.getElementById('fx'); if (!cv) return;
     var frame = cv.parentElement;
