@@ -1419,7 +1419,7 @@
     document.body.classList.add('open');
     popBurst();
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
-    if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
+    if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling' || window.__lcScene === 'biglove') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
     settleTimer = setTimeout(function(){
       document.body.classList.add('settled');
     }, MIDDLE_MS);
@@ -1440,7 +1440,8 @@
     var W = frame.clientWidth, H = frame.clientHeight; if (!W || !H) return;
     cv.width = W; cv.height = H;
     var cx = cv.getContext('2d'); if (!cx) return;
-    var COLORS = ['#ecd28a', '#fff6dd', '#e88ca0', '#c9a24d'];
+    var bigF = window.__lcScene === 'biglove';
+    var COLORS = bigF ? ['#ff5d7a', '#e8324f', '#ffb3c2', '#f6b73c', '#ff8fa8', '#ffd93b', '#fff0f3'] : ['#ecd28a', '#fff6dd', '#e88ca0', '#c9a24d'];
     var parts = [];
     function burst(bx, by, delay){
       setTimeout(function(){
@@ -1448,7 +1449,7 @@
         for (var i = 0; i < 46; i++){
           var a = (i / 46) * Math.PI * 2 + Math.random() * 0.2;
           var sp = 1.1 + Math.random() * 2.3;
-          parts.push({x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.4, life: 1, col: col, r: 1 + Math.random() * 1.6});
+          parts.push({x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.4, life: 1, col: col, r: 1 + Math.random() * 1.6, heart: bigF, rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 0.06, hs: bigF ? 5 + Math.random() * 5 : 0});
         }
       }, delay);
     }
@@ -1465,7 +1466,17 @@
         p.x += p.vx; p.y += p.vy; p.vy += 0.016; p.vx *= 0.985; p.vy *= 0.99; p.life -= 0.011;
         cx.globalAlpha = Math.max(p.life, 0);
         cx.fillStyle = p.col;
-        cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2); cx.fill();
+        if (p.heart){
+          p.rot += p.vr;
+          var s = p.hs;
+          cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot);
+          cx.beginPath(); cx.moveTo(0, s * 0.85);
+          cx.bezierCurveTo(-s * 1.15, s * 0.1, -s * 0.72, -s * 0.8, 0, -s * 0.28);
+          cx.bezierCurveTo(s * 0.72, -s * 0.8, s * 1.15, s * 0.1, 0, s * 0.85);
+          cx.fill(); cx.restore();
+        } else {
+          cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI * 2); cx.fill();
+        }
       });
       cx.globalAlpha = 1;
       if (el < 2100) requestAnimationFrame(tick);
