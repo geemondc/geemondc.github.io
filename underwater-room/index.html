@@ -58,6 +58,10 @@
     border:1.5px solid rgba(200,230,255,.55); background:rgba(4,16,30,.55); color:#EAF6FF; font-family:inherit; backdrop-filter:blur(4px); }
   .bbtn:hover { background:rgba(14,40,66,.65); }
   body.idle .bar { opacity:0; }
+  /* Gary Nov 7: the control bar must always come back — one tap wakes it,
+     and it never hides at all while the room is full screen. */
+  :fullscreen body .bar, body:fullscreen .bar { opacity:1 !important; }
+  body.fsmode .bar { opacity:1 !important; }
   body.still .rayfish, body.still .dolphins, body.still .shark, body.still .jelly,
   body.still .ray, body.still .shimmer, body.still .bub { animation-play-state:paused; }
 </style>
@@ -198,6 +202,20 @@
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen().catch(function(){});
   };
+  // tapping anywhere while full screen brings the bar (and its exit) back for 6s
+  window.addEventListener('pointerdown', function(){
+    if (document.fullscreenElement || document.body.classList.contains('fsmode')){
+      document.body.classList.add('fsmode');
+      clearTimeout(window.__fsBarT);
+      window.__fsBarT = setTimeout(function(){
+        if (!document.fullscreenElement) document.body.classList.remove('fsmode');
+      }, 6000);
+    }
+  }, {passive:true});
+  document.addEventListener('fullscreenchange', function(){
+    if (document.fullscreenElement) document.body.classList.add('fsmode');
+    else document.body.classList.remove('fsmode');
+  });
 
   // keep the screen awake while the room is open
   var wl = null;
