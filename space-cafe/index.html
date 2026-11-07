@@ -11,7 +11,7 @@
   body { overflow:hidden; font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; }
   .stage { position:fixed; inset:0; background:#060B18; }
   .frame { position:absolute; overflow:hidden; background:#060B18; }
-  .frame img.base { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  .frame img.base { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .frame canvas.fx { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
   .glint { position:absolute; border-radius:50%; pointer-events:none;
     background:radial-gradient(circle, rgba(255,244,214,.95) 0%, rgba(255,214,140,.35) 42%, rgba(255,214,140,0) 70%);
@@ -37,30 +37,21 @@
 
   body.expanded .top, body.expanded .bar { display:none; }
   body.expanded .frame { left:0 !important; top:0 !important; width:100vw !important; height:100vh !important; }
-  body.expanded .frame img.base, body.expanded .frame canvas.pool, body.expanded .frame canvas.fx { object-fit:contain; }
-  .frame img.band { position:absolute; display:block; pointer-events:none;
-               left:24%; top:29.5%; width:78%; height:33%;
-               object-fit:cover; object-position:50% 50%; opacity:.92;
-               -webkit-mask-image:radial-gradient(ellipse 96% 92% at 50% 46%, #000 62%, transparent 97%);
-               mask-image:radial-gradient(ellipse 96% 92% at 50% 46%, #000 62%, transparent 97%);
-               animation:bandDrift 170s ease-in-out infinite alternate; will-change:transform; }
-  @keyframes bandDrift { from { transform:translateX(0); } to { transform:translateX(-4.2%); } }
-  body.still .frame img.band { animation-play-state:paused; }
+  body.expanded .frame img.base, body.expanded .frame canvas.pool, body.expanded .frame canvas.fx { object-fit:cover; }
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
   <div class="frame" id="frame">
-    <img class="base" src="still1.jpg" alt="Space Café — a quiet lounge in the blue dark above the Earth">
-    <img class="band" src="band1.jpg" alt="">
+    <img class="base" src="still2.jpg" alt="Space Café — a quiet lounge in the blue dark above the Earth">
     <canvas class="fx" id="fx" width="1432" height="747"></canvas>
     <div class="vig"></div>
   </div>
 </div>
+<div class="top"><h1>Space Café</h1><p>a quiet café in the blue dark above the Earth</p></div>
 <div class="bar">
-  <button class="bbtn" id="btnPlay" onclick="togglePlay()">⏸</button>
-  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵</button>
-  <button class="bbtn" onclick="toggleFull()">⛶</button>
+  <button class="bbtn" id="btnMusic" onclick="toggleMusic()">🎵 Play the music</button>
+  <button class="bbtn" onclick="toggleFull()">⛶ Full screen</button>
 </div>
 <audio id="cafe" src="relax.mp3" loop preload="auto"></audio>
 <script>
@@ -71,7 +62,7 @@
     // MAXIMIZE (Gary): the picture fills the screen — cover-fit, whole
     // photo still reachable in the Museum Frame view via the frame chip.
     var w = stage.clientWidth, h = stage.clientHeight, rw, rh;
-    if (w / h > IW / IH) { rh = h; rw = h * IW / IH; } else { rw = w; rh = w * IH / IW; }   // FIT WHOLE (Gary): entire painting visible, never cropped
+    if (w / h > IW / IH) { rw = w; rh = w * IH / IW; } else { rh = h; rw = h * IW / IH; }
     frame.style.left = ((w - rw) / 2) + 'px'; frame.style.top = ((h - rh) / 2) + 'px';
     frame.style.width = rw + 'px'; frame.style.height = rh + 'px';
   }
@@ -83,14 +74,55 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
   // The still's own warm city dots, enhanced — each breathes on its own
   // clock; the whole field slides very slowly sideways (the turn), wrapping.
   var cv = document.getElementById('fx'), cx = cv.getContext('2d');
+  var GLOBE = { cx: 0.688, cy: 0.695, r: 0.335 };   // globe circle in the glass, image fractions
   var gc = document.createElement('canvas'); gc.width = 2048; gc.height = 1024;
   var gx = gc.getContext('2d');
+  var ready = false;
+  (function buildGlobe(){
+    var im = new Image();
+    im.onload = function(){
+      var W2 = 2048, H2 = 1024, sx = 1432, sy = 747;
+      var cxI = GLOBE.cx * sx, cyI = GLOBE.cy * sy, rI = GLOBE.r * sy;
+      gx.drawImage(im, 0, 0);
+      // Night side = Gary's own lit continent, pre-rotated so the face
+      // the café sees carries its cities; terminator glow at the seam.
+      var tmp = document.createElement('canvas'); tmp.width = 2048; tmp.height = 1024;
+      var tx = tmp.getContext('2d');
+      tx.drawImage(gc, 0, 0);
+      gx.clearRect(0, 0, 2048, 1024);
+      gx.drawImage(tmp, 1024, 0, 1024, 1024, 0, 0, 1024, 1024);
+      gx.drawImage(tmp, 0, 0, 1024, 1024, 1024, 0, 1024, 1024);
+      ready = true;
+    };
+    im.src = 'still2.jpg';
+  })();
   function drawFx(t){
     cx.clearRect(0, 0, IW, IH);
-    // the Earth's lit cities, flickering on their own clocks — sampled
-    // from the painting's own band, drawn where they already are
+    if (!ready) return;
+    var cxp = GLOBE.cx * IW, cyp = GLOBE.cy * IH, rp = GLOBE.r * IH;
+    cx.save();
+    cx.beginPath(); cx.arc(cxp, cyp, rp * 1.35, 0, Math.PI * 2); cx.clip();
+    // draw the turning sphere: sample the wrap texture through a
+    // spherical projection — the disc region of the glass only
+    var steps = 46, lon0 = (t * 2.2) % 360;   // ~2.2 deg/s: the turn you can SEE
+    var img = gx.canvas;
+    for (var i2 = 0; i2 < steps; i2++){
+      var th0 = -Math.PI / 2 + (i2 / steps) * Math.PI;
+      var th1 = -Math.PI / 2 + ((i2 + 1) / steps) * Math.PI;
+      var xA = cxp + Math.sin(th0) * rp * 1.35, xB = cxp + Math.sin(th1) * rp * 1.35;
+      var u = ((lon0 + (th0 + Math.PI / 2) * 180 / Math.PI * 0.5) % 360) / 360;
+      var sw = 2048 / 360 * ((th1 - th0) * 180 / Math.PI * 0.5);
+      var shade = 0.35 + 0.65 * Math.pow(Math.cos(th0), 1.4);   // night falls to the left limb
+      cx.globalAlpha = 1;
+      cx.drawImage(img, u * 2048, 0, Math.max(1, sw), 1024, xA, cyp - rp * 1.35, Math.max(1, xB - xA + 1), rp * 2.7);
+      if (shade < 0.999){ cx.fillStyle = 'rgba(2,6,20,' + (1 - shade).toFixed(3) + ')'; cx.fillRect(xA, cyp - rp * 1.35, xB - xA + 1, rp * 2.7); }
+    }
+    // terminator glow + the flickering cities ride the turning face
     for (var i = 0; i < CITY.length; i++){
       var d = CITY[i];
+      var fx3 = d[0] / 100, fy3 = d[1] / 100;
+      var dx = (fx3 - GLOBE.cx) * IW, dy = (fy3 - GLOBE.cy) * IH;
+      if (dx * dx + dy * dy > rp * rp * 1.82) continue;    // outside the globe: skip
       var shim = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / (1.6 + (i * 37 % 13) * 0.31) + i * 1.93);
       shim = shim * shim * (3 - 2 * shim);
       var a = 0.2 + 0.6 * shim;
@@ -100,6 +132,7 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
       cx.fillStyle = g2;
       cx.beginPath(); cx.arc(d[0] / 100 * IW, d[1] / 100 * IH, 4.6, 0, Math.PI * 2); cx.fill();
     }
+    cx.restore();
   }
   // ---- Candles & lanterns inside: each flickering on its own clock -------
   var glints = GLINTS.map(function(s, i){
@@ -113,7 +146,6 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
   });
   var t0 = performance.now();
   function tick(now){
-    if (window.__frozen) { requestAnimationFrame(tick); return; }
     var t = (now - t0) / 1000;
     for (var i = 0; i < glints.length; i++){
       var g = glints[i];
@@ -128,14 +160,9 @@ var GLINTS=[[29.7,68.5,5],[47.9,80.7,7],[96.3,79.5,9],[94.6,76.6,5],[51.7,80.7,7
 
   var audio = document.getElementById('cafe');
   var btnM = document.getElementById('btnMusic');
-  window.togglePlay = function(){
-    window.__frozen = !window.__frozen;
-    document.body.classList.toggle('still', window.__frozen);
-    document.getElementById('btnPlay').textContent = window.__frozen ? '▶' : '⏸';
-  };
   window.toggleMusic = function(){
-    if (audio.paused) { audio.play(); btnM.textContent = '🔇'; }
-    else { audio.pause(); btnM.textContent = '🎵'; }
+    if (audio.paused) { audio.play(); btnM.textContent = '🔇 Quiet'; }
+    else { audio.pause(); btnM.textContent = '🎵 Play the music'; }
   };
   var expanded = false;
   window.toggleFull = function(){
