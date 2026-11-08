@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fletch — A Living Photo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%);
+           aspect-ratio: 965 / 682; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:60; cursor:pointer; overflow:hidden; }
+  #fsBg { position:absolute; inset:-48px; filter:blur(30px) brightness(.55) saturate(1.2); pointer-events:none; }
+  #fsBg img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #fs > img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  #fsBar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex;
+           align-items:center; justify-content:center; gap:14px; padding:14px 12px;
+           background:rgba(8,8,10,.72); }
+  #fsBar button { font-size:14px; padding:9px 22px; border-radius:999px; }
+  #fsBar .x { padding:9px 16px; }
+  /* Museum Frame: the framed presentation — black outer frame around the
+     photo, title + subtitle on the frame, bottom strip with a line about
+     the piece and thelivingphotos.com. */
+  .museum { margin-top:26px; width:min(1060px, 100%); background:#060607;
+            border:1px solid #2c2c30; outline:10px solid #101013;
+            box-shadow:0 30px 80px rgba(0,0,0,.8), inset 0 0 0 1px #000;
+            padding:clamp(18px, 3.4vw, 34px) clamp(14px, 3vw, 30px) 0; }
+  .museum .stage { width:100%; margin-top:14px;
+            box-shadow:inset 0 0 0 1px #000, 0 6px 24px rgba(0,0,0,.6); }
+  .m-title { font-size:clamp(24px, 3.8vw, 38px); font-weight:normal;
+             letter-spacing:.14em; text-transform:uppercase; color:#f2ead6;
+             text-align:center; }
+  .m-sub { margin-top:6px; font-style:italic; font-size:clamp(13px, 1.9vw, 17px);
+           color:#b9b09a; text-align:center; }
+  .m-strip { margin:20px calc(-1 * clamp(14px, 3vw, 30px)) 0;
+             border-top:1px solid #26262b; padding:14px 18px 16px;
+             display:flex; flex-wrap:wrap; gap:6px 18px; align-items:baseline;
+             justify-content:space-between; }
+  .m-about { font-size:14px; color:#a89f8a; max-width:62ch; text-align:left; }
+  .m-link { font-size:14px; letter-spacing:.08em; white-space:nowrap; }
+  .m-link a { color:#d8c491; text-decoration:none; border-bottom:1px solid #57503c; }
+</style>
+</head>
+<body>
+<main>
+<div class="museum">
+  <div class="m-title">Fletch</div>
+  <div class="m-sub">September 1996</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrStill"  src="still.jpg" alt="The original photo, untouched">
+    <img id="lyrDay"    src="day.jpg" alt="" style="opacity:0">
+    <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
+    <img id="lyrHeld"   src="held.png" alt="" style="opacity:0">
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+
+  <div class="m-strip">
+    <div class="m-about">Gary and Emily with Glenn's dog Fletch, on the couch, September 1996. The people — and the dog — never change. Only the light in the room travels.</div>
+    <div class="m-link"><a href="https://thelivingphotos.com" target="_blank" rel="noopener">thelivingphotos.com</a></div>
+  </div>
+</div>
+</main>
+
+<div id="fs">
+  <div id="fsBg">
+    <img id="fsBgStill" alt="">
+    <img id="fsBgDay" alt="" style="opacity:0">
+    <img id="fsBgGolden" alt="" style="opacity:0">
+    <img id="fsBgGlow" alt="" style="opacity:0">
+    <img id="fsBgHeld" alt="" style="opacity:0">
+  </div>
+  <img id="fsStill" src="still.jpg" alt="">
+  <img id="fsDay" src="day.jpg" alt="" style="opacity:0">
+  <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
+  <img id="fsGlow" src="glow.jpg" alt="" style="opacity:0">
+  <img id="fsHeld" src="held.png" alt="" style="opacity:0">
+  <div id="fsBar">
+    <button id="fsStillBtn">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&#10005;</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 14;                 // scene loop, seconds: still -> revived day -> golden -> evening -> back
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var frozen = null;          // QA: freeze the phase at this many seconds
+  var forcedAcc = null;       // QA hook parity (this piece has no accent plates)
+  // The phase is driven by WALL-CLOCK time (performance.now), never by
+  // accumulated frame deltas. Anchors: anchorP = phase seconds at anchorT
+  // (ms); rate is 7 during the ignition sweep, then 1.
+  var anchorT = 0, anchorP = 0, rate = 1;
+  var last = performance.now();
+
+  function phaseNow(now){
+    if (!ignited) return 0;
+    if (rate !== 1 && now - anchorT >= 1500){
+      anchorP = anchorP + (now - anchorT) / 1000 * rate;
+      anchorT = now; rate = 1;
+    }
+    return anchorP + (now - anchorT) / 1000 * rate;
+  }
+
+  function stack(p){
+    return { still: document.getElementById(p+'Still'),
+             day: document.getElementById(p+'Day'),
+             golden: document.getElementById(p+'Golden'),
+             glow: document.getElementById(p+'Glow'),
+             held: document.getElementById(p+'Held') };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsOpen = false, priorState = 'still';
+
+  // Interior timeline: faded still -> revived day -> golden hour ->
+  // lamplit evening -> gently back to the faded still. The held three
+  // (Gary, Emily, Fletch) never take any of these grades.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    if (t < 2)     return { day:0, golden:0, glow:0 };
+    if (t < 3.7)   return { day:(t-2)/1.7, golden:0, glow:0 };
+    if (t < 5.4)   return { day:1, golden:0, glow:0 };
+    if (t < 7.1)   return { day:1, golden:(t-5.4)/1.7, glow:0 };
+    if (t < 8.8)   return { day:1, golden:1, glow:0 };
+    if (t < 10.5)  return { day:1, golden:1, glow:(t-8.8)/1.7 };
+    if (t < 12.2)  return { day:1, golden:1, glow:1 };
+    var f = (t-12.2)/1.8;
+    return { day:1-f, golden:1-f, glow:1-f };
+  }
+  function apply(st, so, living){
+    st.day.style.opacity = so.day;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.held.style.opacity = living ? 1 : 0;
+  }
+  function frame(now){
+    last = now;
+    var t = frozen !== null ? frozen : phaseNow(now);
+    var so = opacities(t);
+    var living = state === 'living';
+    if (!living) so = { day:0, golden:0, glow:0 };
+    apply(page, so, living);
+    if (fsOpen){ apply(fs, so, fsSaved !== 'still'); applyBg(so); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){
+      ignited = true;
+      anchorT = performance.now(); anchorP = 0; rate = 7;  // sweep, then 1x
+    }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  function openFs(){
+    priorState = state;
+    if (!ignited) ignite();
+    fsSaved = priorState; applyFsMode();   // full screen opens on the version on stage
+    fsOpen = true; fsEl.style.display = 'block';
+  }
+  // Full-screen controls: STILL shows the untouched photo, LIVING the
+  // living version, X (or Esc) exits — flipping inside full screen never
+  // changes the stage state underneath.
+  var fsSaved = null;
+  document.getElementById('fsStillBtn').addEventListener('click', function(e){
+    e.stopPropagation(); fsSaved = 'still'; applyFsMode();
+  });
+  document.getElementById('fsLiving').addEventListener('click', function(e){
+    e.stopPropagation(); fsSaved = 'living'; applyFsMode();
+  });
+  document.getElementById('fsClose').addEventListener('click', function(e){
+    e.stopPropagation(); closeFs();
+  });
+  function applyFsMode(){
+    var living = fsSaved !== 'still';
+    document.getElementById('fsStillBtn').classList.toggle('on', !living);
+    document.getElementById('fsLiving').classList.toggle('on', living);
+  }
+
+  // Full-screen surround: the photo shows WHOLE (contain); behind it, a
+  // blurred, darkened copy of the same plates fills the frame (whole-photo
+  // hierarchy — size changes, never the fit).
+  var fsBg = { still: document.getElementById('fsBgStill'),
+               day: document.getElementById('fsBgDay'),
+               golden: document.getElementById('fsBgGolden'),
+               glow: document.getElementById('fsBgGlow'),
+               held: document.getElementById('fsBgHeld') };
+  fsBg.still.src = fs.still.src; fsBg.day.src = fs.day.src;
+  fsBg.golden.src = fs.golden.src; fsBg.glow.src = fs.glow.src;
+  fsBg.held.src = fs.held.src;
+  function applyBg(so){
+    fsBg.still.style.opacity = 1;
+    fsBg.day.style.opacity = so.day;
+    fsBg.golden.style.opacity = so.golden;
+    fsBg.glow.style.opacity = so.glow;
+    fsBg.held.style.opacity = 1;    // full screen always shows the living composite
+  }
+
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (priorState === 'still') setStill(); else setLiving();  // exactly the prior state
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ anchorP = frozen; anchorT = performance.now(); frozen = null; } },
+    forceAccents: function(v){ forcedAcc = v; },
+    phase: function(){ return frozen !== null ? frozen : phaseNow(performance.now()); },
+    state: function(){ return { state: state, fsOpen: fsOpen, clock: phaseNow(performance.now()) }; },
+    opacities: opacities
+  };
+})();
+</script>
+<style>
+  /* Wall mode fit (added for the Living Photos wall): whole photo, with
+     the photo's own blurred plates filling any surround. */
+  #fs .lp-wallbg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #fs .lp-wallbg img { position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; filter:blur(26px) brightness(.7) saturate(1.06);
+    transform:scale(1.14); display:block; }
+  #fs.lp-wallfit img:not(.acc):not(.crop):not(.lp-bgimg) { object-fit:contain !important; }
+</style>
+<script>
+(function(){
+  "use strict";
+  // Wall mode: embedded in the Living Photos wall (#wall), open directly
+  // on the full-screen living view, framed whole — the wall owns taps
+  // and keys, so the usual tap/key exits are disarmed in this mode only.
+  if (!/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
+  var fsEl = document.getElementById('fs');
+  if (!fsEl || !window.LP) return;
+  // Blurred-extension surround: blurred copies of this piece's own
+  // photographic plates (the .jpg layers), crossfaded in step with them.
+  var plates = [];
+  fsEl.querySelectorAll('img').forEach(function(im){
+    if (/\.jpe?g($|\?)/i.test(im.getAttribute('src') || '')) plates.push(im);
+  });
+  if (plates.length){
+    var bg = document.createElement('div');
+    bg.className = 'lp-wallbg';
+    var clones = plates.map(function(im){
+      var c = document.createElement('img');
+      c.src = im.src; c.alt = ''; c.className = 'lp-bgimg';
+      c.style.opacity = getComputedStyle(im).opacity;
+      bg.appendChild(c);
+      return [c, im];
+    });
+    fsEl.insertBefore(bg, fsEl.firstChild);
+    (function mirror(){
+      for (var i = 0; i < clones.length; i++){
+        var o = clones[i][1].style.opacity;
+        if (o !== '') clones[i][0].style.opacity = o;
+      }
+      requestAnimationFrame(mirror);
+    })();
+  }
+  fsEl.classList.add('lp-wallfit');
+  if (LP.ignite){ try { LP.ignite(); } catch(e){} }
+  if (LP.openFs){ try { LP.openFs(); } catch(e){} }
+  document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
+  fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+})();
+</script>
+</body>
+</html>
