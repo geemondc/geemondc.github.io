@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hammock — A Living Photo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#0b0b0d; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%);
+           aspect-ratio: 1600 / 1200; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img, .stage canvas { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .stage canvas { pointer-events:none; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:60; cursor:pointer; overflow:hidden; }
+  #fsBg { position:absolute; inset:-48px; filter:blur(30px) brightness(.55) saturate(1.2); pointer-events:none; }
+  #fsBg img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #fs > img, #fs > canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  #fs > canvas { pointer-events:none; }
+  #fsBar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex;
+           align-items:center; justify-content:center; gap:14px; padding:14px 12px;
+           background:rgba(8,8,10,.72); }
+  #fsBar button { font-size:14px; padding:9px 22px; border-radius:999px; }
+  #fsBar .x { padding:9px 16px; }
+  /* Museum Frame: the framed presentation — black outer frame around the
+     photo, title + subtitle on the frame, bottom strip with a line about
+     the piece and thelivingphotos.com. */
+  .museum { margin-top:26px; width:min(1060px, 100%); background:#060607;
+            border:1px solid #2c2c30; outline:10px solid #101013;
+            box-shadow:0 30px 80px rgba(0,0,0,.8), inset 0 0 0 1px #000;
+            padding:clamp(18px, 3.4vw, 34px) clamp(14px, 3vw, 30px) 0; }
+  .museum .stage { width:100%; margin-top:14px;
+            box-shadow:inset 0 0 0 1px #000, 0 6px 24px rgba(0,0,0,.6); }
+  .m-title { font-size:clamp(24px, 3.8vw, 38px); font-weight:normal;
+             letter-spacing:.14em; text-transform:uppercase; color:#f2ead6;
+             text-align:center; }
+  .m-sub { margin-top:6px; font-style:italic; font-size:clamp(13px, 1.9vw, 17px);
+           color:#b9b09a; text-align:center; }
+  .m-strip { margin:20px calc(-1 * clamp(14px, 3vw, 30px)) 0;
+             border-top:1px solid #26262b; padding:14px 18px 16px;
+             display:flex; flex-wrap:wrap; gap:6px 18px; align-items:baseline;
+             justify-content:space-between; }
+  .m-about { font-size:14px; color:#a89f8a; max-width:62ch; text-align:left; }
+  .m-link { font-size:14px; letter-spacing:.08em; white-space:nowrap; }
+  .m-link a { color:#d8c491; text-decoration:none; border-bottom:1px solid #57503c; }
+</style>
+</head>
+<body>
+<main>
+<div class="museum">
+  <div class="m-title">The Hammock</div>
+  <div class="m-sub">Lie back. The day goes by.</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay"    src="still.jpg" alt="A painted view from a hammock by the sea — the original painting">
+    <img id="lyrSunset" src="sunset.jpg" alt="" style="opacity:0">
+    <img id="lyrNight"  src="night.jpg" alt="" style="opacity:0">
+    <canvas id="lyrFx" width="1600" height="1200"></canvas>
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+
+  <div class="m-strip">
+    <div class="m-about">A painted view from a hammock by the sea. The light travels from morning to a colorful night — the place never changes.</div>
+    <div class="m-link"><a href="https://thelivingphotos.com" target="_blank" rel="noopener">thelivingphotos.com</a></div>
+  </div>
+</div>
+</main>
+
+<div id="fs">
+  <div id="fsBg">
+    <img id="fsBgDay" alt="">
+    <img id="fsBgSunset" alt="" style="opacity:0">
+    <img id="fsBgNight" alt="" style="opacity:0">
+  </div>
+  <img id="fsDay" src="still.jpg" alt="">
+  <img id="fsSunset" src="sunset.jpg" alt="" style="opacity:0">
+  <img id="fsNight" src="night.jpg" alt="" style="opacity:0">
+  <canvas id="fsFx" width="1600" height="1200"></canvas>
+  <div id="fsBar">
+    <button id="fsStill">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&#10005;</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 60;                 // scene loop, seconds — the full day: morning -> sunset -> colorful night -> back
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var frozen = null;          // QA: freeze the phase at this many seconds
+  // The phase is driven by WALL-CLOCK time (performance.now), never by
+  // accumulated frame deltas: a delta clamp lets slow rendering stretch
+  // the cycle until it looks stopped. Anchors: anchorP = phase seconds
+  // at anchorT (ms).
+  var anchorT = 0, anchorP = 0;
+  var W = 1600, H = 1200;
+
+  function phaseNow(now){
+    if (!ignited) return 0;
+    return anchorP + (now - anchorT) / 1000;
+  }
+
+  // The day in eight keyframes [cycle fraction, [day, sunset, night]],
+  // smoothstepped between — the same timeline as the approved piece:
+  // day holds to 13.2s, sunset full 21.6-26.4s, night full 33.6-49.2s,
+  // then the light returns through sunset to morning.
+  var KEYS = [[0,[1,0,0]],[.22,[1,0,0]],[.36,[0,1,0]],[.44,[0,1,0]],
+              [.56,[0,0,1]],[.82,[0,0,1]],[.91,[0,1,0]],[1,[1,0,0]]];
+  function smooth(x){ return x * x * (3 - 2 * x); }
+  function weights(t){
+    var r = (((t % T) + T) % T) / T, i, a, b, k;
+    for (i = 0; i < KEYS.length - 1; i++){
+      a = KEYS[i]; b = KEYS[i + 1];
+      if (r >= a[0] && r <= b[0]){
+        k = smooth((r - a[0]) / ((b[0] - a[0]) || 1));
+        return [a[1][0] + (b[1][0] - a[1][0]) * k,
+                a[1][1] + (b[1][1] - a[1][1]) * k,
+                a[1][2] + (b[1][2] - a[1][2]) * k];
+      }
+    }
+    return [1, 0, 0];
+  }
+  // Plate opacities that reproduce the approved crossfade exactly: day is
+  // the base; the sunset plate fades in over it; the night plate fades in
+  // over both in proportion, so the scene itself never shifts.
+  function plateOps(w){
+    var b = w[1] + w[2];
+    return { day: 1,
+             sunset: b > 0 ? Math.min(1, b) : 0,
+             night: b > 0 ? (w[2] / Math.max(b, .001)) * Math.min(1, b) : 0 };
+  }
+
+  /* ---------- the living accents, drawn on canvas over the plates ----
+     Stars live only on the night painting's own sky (sampled from it,
+     never scattered over leaves); the moon crosses the sky and its disc
+     shows only while it is over sky; fireflies drift at the canopy's
+     edges; the sea sparkles; the far shore lights come on one by one. */
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var z = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      z = z + Math.imul(z ^ z >>> 7, 61 | z) ^ z;
+      return ((z ^ z >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rnd = mulberry32(20261108);
+  // 140 sea sparkles: [x, y, phase, speed]
+  var SPARK = [];
+  (function(){
+    for (var i = 0; i < 140; i++){
+      var y = 905 + rnd() * 150, spread = 380 + (y - 900) * .3;
+      SPARK.push([930 + (rnd() * 2 - 1) * spread, y, rnd() * 6.28, .6 + rnd() * 1.5]);
+    }
+  })();
+  // 26 fireflies: [x, y, phase, drift]
+  var FLIES = [];
+  (function(){
+    for (var i = 0; i < 26; i++){
+      var n = i % 3;
+      FLIES.push([n === 0 ? 80 + rnd() * 380 : n === 2 ? 1150 + rnd() * 380 : 300 + rnd() * 1000,
+                  n === 1 ? 60 + rnd() * 300 : 200 + rnd() * 450,
+                  rnd() * 6.28, 20 + rnd() * 50]);
+    }
+  })();
+  // 14 drifting sun-dapple spots for the day: [x, y, radius, phase]
+  var DAP = [];
+  (function(){
+    for (var i = 0; i < 14; i++) DAP.push([rnd() * W, rnd() * 600, 60 + rnd() * 120, rnd() * 6.28]);
+  })();
+  // The far shore lights: [x, y] — pink and amber, alternating.
+  var SHORE = [[850,868],[1058,860],[1160,855],[1365,862],[1300,868],[960,870],[1230,866]];
+
+  var skyData = null;   // the night painting at 160x120, for sky sampling
+  var STARS = null;     // sampled once the night painting is readable
+  function buildSky(){
+    if (skyData) return true;
+    var img = document.getElementById('lyrDay'); // any plate; use night:
+    img = document.getElementById('lyrNight');
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    try {
+      var c = document.createElement('canvas'); c.width = 160; c.height = 120;
+      var x = c.getContext('2d'); x.drawImage(img, 0, 0, 160, 120);
+      skyData = x.getImageData(0, 0, 160, 120).data;
+    } catch(e){ return false; }
+    STARS = [];
+    var tries = 0;
+    while (STARS.length < 220 && tries < 20000){
+      tries++;
+      var sx = Math.random() * W, sy = Math.random() * 820;
+      if (skyAt(sx, sy) && skyAt(sx + 12, sy) && skyAt(sx - 12, sy) &&
+          skyAt(sx, sy + 12) && skyAt(sx, sy - 12))
+        STARS.push([sx, sy, .8 + Math.random() * 1.6, Math.random() * 6.28, .5 + Math.random()]);
+    }
+    return true;
+  }
+  function skyAt(px, py){
+    if (!skyData) return false;
+    var gx = Math.floor(px / 10), gy = Math.floor(py / 10);
+    if (gx < 0 || gx > 159 || gy < 0 || gy > 119) return false;
+    var n = (gy * 160 + gx) * 4, r = skyData[n], g = skyData[n + 1], b = skyData[n + 2];
+    return py < 820 && b > 80 && b > g * 1.6 && r > g * 1.1 && (r + g + b) < 420;
+  }
+
+  function drawFx(cv, w, tsec){
+    var ctx = cv.getContext('2d'), a = w[0], o = w[1], h = w[2], i, e, g;
+    ctx.clearRect(0, 0, W, H);
+    if (a > .01){
+      ctx.globalCompositeOperation = 'soft-light';
+      for (i = 0; i < DAP.length; i++){
+        e = DAP[i];
+        var dx = e[0] + Math.sin(tsec * .07 + e[3]) * 140,
+            dy = e[1] + Math.cos(tsec * .05 + e[3]) * 60;
+        g = ctx.createRadialGradient(dx, dy, 0, dx, dy, e[2]);
+        g.addColorStop(0, 'rgba(255,250,200,' + (.9 * a) + ')');
+        g.addColorStop(1, 'rgba(255,250,200,0)');
+        ctx.fillStyle = g; ctx.fillRect(dx - e[2], dy - e[2], e[2] * 2, e[2] * 2);
+      }
+      ctx.globalCompositeOperation = 'screen';
+      g = ctx.createRadialGradient(1150, 100, 0, 1150, 100, 700);
+      g.addColorStop(0, 'rgba(255,240,180,' + (.35 * a) + ')');
+      g.addColorStop(1, 'rgba(255,240,180,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    if (o > .01){
+      ctx.globalCompositeOperation = 'screen';
+      var fl = .8 + .2 * Math.sin(tsec * .4);
+      g = ctx.createRadialGradient(690, 845, 0, 690, 845, 900);
+      g.addColorStop(0, 'rgba(255,170,60,' + (.45 * o * fl) + ')');
+      g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+    var x8 = o + h;
+    if (x8 > 0){
+      ctx.globalCompositeOperation = 'lighter';
+      for (i = 0; i < SHORE.length; i++){
+        var sx = SHORE[i][0], sy = SHORE[i][1];
+        var on = Math.max(0, Math.min(1, x8 * 8 - i - .5)) * x8;
+        if (on <= 0) continue;
+        var col = (i % 2) ? '255,170,90' : '255,120,190';
+        g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 14);
+        g.addColorStop(0, 'rgba(' + col + ',' + on + ')');
+        g.addColorStop(1, 'rgba(' + col + ',0)');
+        ctx.fillStyle = g; ctx.fillRect(sx - 14, sy - 14, 28, 28);
+        if (h > .05){
+          var rf = .7 + .3 * Math.sin(tsec * 2 + i);
+          var lg = ctx.createLinearGradient(sx, 892, sx, 990);
+          lg.addColorStop(0, 'rgba(' + col + ',' + (.55 * h * rf) + ')');
+          lg.addColorStop(1, 'rgba(' + col + ',0)');
+          ctx.fillStyle = lg; ctx.fillRect(sx - 4, 892, 8, 98);
+        }
+      }
+    }
+    if (h > .01){
+      buildSky();
+      var r = (((tsec % T) + T) % T) / T;
+      var me = Math.max(0, Math.min(1, (r - .5) / .36));
+      var mx = 250 + me * 1100, my = 420 - Math.sin(me * Math.PI) * 280;
+      ctx.globalCompositeOperation = 'screen';
+      g = ctx.createRadialGradient(mx, my, 0, mx, my, 520);
+      g.addColorStop(0, 'rgba(210,255,225,' + (.5 * h) + ')');
+      g.addColorStop(.15, 'rgba(180,230,210,' + (.25 * h) + ')');
+      g.addColorStop(1, 'rgba(150,200,200,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (skyAt(mx, my)){
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(250,250,235,' + (.95 * h) + ')';
+        ctx.beginPath(); ctx.arc(mx, my, 34, 0, 6.29); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      if (STARS){
+        for (i = 0; i < STARS.length; i++){
+          e = STARS[i];
+          if (Math.hypot(e[0] - mx, e[1] - my) < 60) continue;
+          ctx.fillStyle = 'rgba(255,255,255,' + (h * h * (.55 + .45 * Math.sin(tsec * e[4] + e[3]))) + ')';
+          ctx.beginPath(); ctx.arc(e[0], e[1], e[2], 0, 6.29); ctx.fill();
+        }
+      }
+      for (i = 0; i < SPARK.length; i++){
+        e = SPARK[i];
+        var sa = h * Math.pow(Math.max(0, Math.sin(tsec * e[3] + e[2])), 3);
+        if (sa <= 0) continue;
+        g = ctx.createRadialGradient(e[0], e[1], 0, e[0], e[1], 5);
+        g.addColorStop(0, 'rgba(120,255,230,' + sa + ')');
+        g.addColorStop(1, 'rgba(80,200,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(e[0] - 5, e[1] - 5, 10, 10);
+      }
+      for (i = 0; i < FLIES.length; i++){
+        e = FLIES[i];
+        var fx2 = e[0] + Math.sin(tsec * .13 + e[2]) * e[3],
+            fy2 = e[1] + Math.cos(tsec * .11 + e[2] * 1.3) * e[3] * .6,
+            fa = h * (.4 + .6 * Math.max(0, Math.sin(tsec * .9 + e[2] * 3)));
+        g = ctx.createRadialGradient(fx2, fy2, 0, fx2, fy2, 12);
+        g.addColorStop(0, 'rgba(255,230,120,' + fa + ')');
+        g.addColorStop(.3, 'rgba(255,200,80,' + (fa * .5) + ')');
+        g.addColorStop(1, 'rgba(255,180,60,0)');
+        ctx.fillStyle = g; ctx.fillRect(fx2 - 12, fy2 - 12, 24, 24);
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function stack(p){
+    return { day: document.getElementById(p + 'Day'),
+             sunset: document.getElementById(p + 'Sunset'),
+             night: document.getElementById(p + 'Night'),
+             fx: document.getElementById(p + 'Fx') };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsOpen = false, priorState = 'still';
+
+  function apply(st, w, living, tsec){
+    var po = living ? plateOps(w) : { day: 1, sunset: 0, night: 0 };
+    st.day.style.opacity = po.day;
+    st.sunset.style.opacity = po.sunset;
+    st.night.style.opacity = po.night;
+    if (living) drawFx(st.fx, w, tsec);
+    else { var c = st.fx.getContext('2d'); c && c.clearRect(0, 0, W, H); }
+  }
+  function frame(now){
+    var t = frozen !== null ? frozen : phaseNow(now);
+    var w = weights(t);
+    var living = state === 'living';
+    apply(page, w, living, t);
+    if (fsOpen){ apply(fs, w, fsSaved !== 'still', t); applyBg(w, fsSaved !== 'still'); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){
+      ignited = true;
+      anchorT = performance.now(); anchorP = 0;
+    }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  function openFs(){
+    priorState = state;
+    if (!ignited) ignite();
+    fsSaved = priorState; applyFsMode();   // full screen opens on the version on stage
+    fsOpen = true; fsEl.style.display = 'block';
+  }
+  // Full-screen controls: STILL shows the untouched painting, LIVING the
+  // living version, X (or Esc) exits — flipping inside full screen never
+  // changes the stage state underneath.
+  var fsSaved = null;
+  document.getElementById('fsStill').addEventListener('click', function(e){
+    e.stopPropagation(); fsSaved = 'still'; applyFsMode();
+  });
+  document.getElementById('fsLiving').addEventListener('click', function(e){
+    e.stopPropagation(); fsSaved = 'living'; applyFsMode();
+  });
+  document.getElementById('fsClose').addEventListener('click', function(e){
+    e.stopPropagation(); closeFs();
+  });
+  function applyFsMode(){
+    var living = fsSaved !== 'still';
+    document.getElementById('fsStill').classList.toggle('on', !living);
+    document.getElementById('fsLiving').classList.toggle('on', living);
+  }
+
+  // Full-screen surround: the photo shows WHOLE (contain); behind it, a
+  // blurred, darkened copy of the same plates fills the frame (whole-photo
+  // hierarchy — size changes, never the fit).
+  var fsBg = { day: document.getElementById('fsBgDay'),
+               sunset: document.getElementById('fsBgSunset'),
+               night: document.getElementById('fsBgNight') };
+  fsBg.day.src = fs.day.src; fsBg.sunset.src = fs.sunset.src;
+  fsBg.night.src = fs.night.src;
+  function applyBg(w, living){
+    var po = living ? plateOps(w) : { day: 1, sunset: 0, night: 0 };
+    fsBg.day.style.opacity = po.day;
+    fsBg.sunset.style.opacity = po.sunset;
+    fsBg.night.style.opacity = po.night;
+  }
+
+  function closeFs(){
+    fsOpen = false; fsEl.style.display = 'none';
+    if (priorState === 'still') setStill(); else setLiving();  // exactly the prior state
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ anchorP = frozen; anchorT = performance.now(); frozen = null; } },
+    phase: function(){ return frozen !== null ? frozen : phaseNow(performance.now()); },
+    state: function(){ return { state: state, fsOpen: fsOpen, clock: phaseNow(performance.now()) }; },
+    weights: function(){ return weights(frozen !== null ? frozen : phaseNow(performance.now())); },
+    stars: function(){ buildSky(); return STARS ? STARS.length : 0; }
+  };
+})();
+</script>
+<style>
+  /* Wall mode fit (added for the Living Photos wall): whole photo, with
+     the photo's own blurred plates filling any surround. */
+  #fs .lp-wallbg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #fs .lp-wallbg img { position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; filter:blur(26px) brightness(.7) saturate(1.06);
+    transform:scale(1.14); display:block; }
+  #fs.lp-wallfit img:not(.acc):not(.crop):not(.lp-bgimg) { object-fit:contain !important; }
+</style>
+<script>
+(function(){
+  "use strict";
+  // Wall mode: embedded in the Living Photos wall (#wall), open directly
+  // on the full-screen living view, framed whole — the wall owns taps
+  // and keys, so the usual tap/key exits are disarmed in this mode only.
+  if (!/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
+  var fsEl = document.getElementById('fs');
+  if (!fsEl || !window.LP) return;
+  // Blurred-extension surround: blurred copies of this piece's own
+  // photographic plates (the .jpg layers), crossfaded in step with them.
+  var plates = [];
+  fsEl.querySelectorAll('img').forEach(function(im){
+    if (/\.jpe?g($|\?)/i.test(im.getAttribute('src') || '')) plates.push(im);
+  });
+  if (plates.length){
+    var bg = document.createElement('div');
+    bg.className = 'lp-wallbg';
+    var clones = plates.map(function(im){
+      var c = document.createElement('img');
+      c.src = im.src; c.alt = ''; c.className = 'lp-bgimg';
+      c.style.opacity = getComputedStyle(im).opacity;
+      bg.appendChild(c);
+      return [c, im];
+    });
+    fsEl.insertBefore(bg, fsEl.firstChild);
+    (function mirror(){
+      for (var i = 0; i < clones.length; i++){
+        var o = clones[i][1].style.opacity;
+        if (o !== '') clones[i][0].style.opacity = o;
+      }
+      requestAnimationFrame(mirror);
+    })();
+  }
+  fsEl.classList.add('lp-wallfit');
+  if (LP.ignite){ try { LP.ignite(); } catch(e){} }
+  if (LP.openFs){ try { LP.openFs(); } catch(e){} }
+  document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
+  fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+})();
+</script>
+</body>
+</html>
