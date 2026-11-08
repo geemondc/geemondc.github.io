@@ -305,6 +305,9 @@
     object-fit:cover; filter:blur(26px) brightness(.7) saturate(1.06);
     transform:scale(1.14); display:block; }
   #fs.lp-wallfit img:not(.acc):not(.crop):not(.lp-bgimg) { object-fit:contain !important; }
+  /* No-bar wall mode (#wallnb): the still/living bar is hidden — the
+     embedding exhibit's own chips do the flipping in this mode only. */
+  #fs.lp-wallnb #fsBar { display:none; }
 </style>
 <script>
 (function(){
@@ -341,6 +344,50 @@
     })();
   }
   fsEl.classList.add('lp-wallfit');
+  if (LP.ignite){ try { LP.ignite(); } catch(e){} }
+  if (LP.openFs){ try { LP.openFs(); } catch(e){} }
+  document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
+  fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+})();
+</script>
+<script>
+(function(){
+  "use strict";
+  // No-bar wall mode (#wallnb): same embed as #wall — open directly on
+  // the full-screen living view, framed whole, taps/keys disarmed — but
+  // the fullscreen Still/Living/X bar stays hidden: the embedding
+  // exhibit's own chips do the flipping. Standalone and #wall embeds
+  // are untouched and keep the full bar.
+  if (!/(^|[#&])wallnb([&#]|$)/.test(location.hash || '')) return;
+  var fsEl = document.getElementById('fs');
+  if (!fsEl || !window.LP) return;
+  // Blurred-extension surround: blurred copies of this piece's own
+  // photographic plates (the .jpg layers), crossfaded in step with them.
+  var plates = [];
+  fsEl.querySelectorAll('img').forEach(function(im){
+    if (/\.jpe?g($|\?)/i.test(im.getAttribute('src') || '')) plates.push(im);
+  });
+  if (plates.length){
+    var bg = document.createElement('div');
+    bg.className = 'lp-wallbg';
+    var clones = plates.map(function(im){
+      var c = document.createElement('img');
+      c.src = im.src; c.alt = ''; c.className = 'lp-bgimg';
+      c.style.opacity = getComputedStyle(im).opacity;
+      bg.appendChild(c);
+      return [c, im];
+    });
+    fsEl.insertBefore(bg, fsEl.firstChild);
+    (function mirror(){
+      for (var i = 0; i < clones.length; i++){
+        var o = clones[i][1].style.opacity;
+        if (o !== '') clones[i][0].style.opacity = o;
+      }
+      requestAnimationFrame(mirror);
+    })();
+  }
+  fsEl.classList.add('lp-wallfit');
+  fsEl.classList.add('lp-wallnb');
   if (LP.ignite){ try { LP.ignite(); } catch(e){} }
   if (LP.openFs){ try { LP.openFs(); } catch(e){} }
   document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
