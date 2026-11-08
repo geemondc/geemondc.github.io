@@ -1776,6 +1776,7 @@ function pfFeatherWide(img){
   img._softW=c; return c;
 }
 let PF_W={far:1,approach:0,close:0,side:0,above:0}, pfSideF=0, pfLastT=0;
+let pfHoldF=0;   /* #588: the tour's Falls hold — eases the backdrop weights onto the true painting for the whole stop */
 /* ================= PARADISE FALLS: the Brief-1 element layer (Nov 2) =================
    Gary's Manus element sheet, cut out piece by piece and PLACED into the
    vista the way the house was: panel-fraction anchors blended across the
@@ -1801,8 +1802,8 @@ function drawFallsElements(RP,G){
   const t=S.flyT, left=G.left, top=G.top, pw=G.pw, ph=G.ph, fxF=G.fxF;
   const wA=PF_W.above||0, groundF=1-wA;
   if(groundF<=0.01)return;
-  const bf=[['butterfly-monarch',0.055,0.628,0.0],['butterfly-yellow',0.150,0.664,2.4]];
-  for(let i=0;i<2;i++){ const img=pfElem[bf[i][0]], gr=pfHouseGraded(img,RP); if(!gr)continue;
+  const bf=[['butterfly-monarch',0.055,0.628,0.0],['butterfly-yellow',0.150,0.664,2.4],['butterfly-blue',0.205,0.640,4.6]];   /* #588: a third butterfly joins — Gary, Nov 8: use the butterflies more in magical places (the Nov 3 reset's own ceiling was 1-3) */
+  for(let i=0;i<bf.length;i++){ const img=pfElem[bf[i][0]], gr=pfHouseGraded(img,RP); if(!gr)continue;
     const p2=bf[i][3];
     const cxp=fxF+bf[i][1]+0.026*Math.sin(t*0.21+p2), cyp=bf[i][2]+0.016*Math.sin(t*0.29+p2*1.7);
     const dw=pw*0.034, dh=dw*img.naturalHeight/img.naturalWidth, sq=0.84+0.16*Math.sin(t*6+p2*3.0);
@@ -1813,17 +1814,38 @@ function drawFallsVista(RP,hy,cx){
   const t=S.flyT;
   const dtF=clamp(t-pfLastT,0,0.05); pfLastT=t;
   /* ---- the zone weights: the flight itself picks the painting ---- */
-  const wAbove=sstep(0.78,0.88,S.alt);   /* #466: narrow bands — one painting dominant, blends finish */
-  const wClose=(1-sstep(0.34,0.44,S.alt))*(1-wAbove);
+  let wAbove=sstep(0.78,0.88,S.alt);   /* #466: narrow bands — one painting dominant, blends finish */
+  let wClose=(1-sstep(0.34,0.44,S.alt))*(1-wAbove);
   const flankT=Math.max(sstep(0.38,0.72,Math.abs(S.bankD)), sstep(0.65,1.15,Math.abs(S.lookYaw)));
   pfSideF=clamp(pfSideF+clamp(flankT-pfSideF,-dtF*0.45,dtF*1.1),0,1);   /* swings in on a held bank, drifts out slower */
-  const wSide=pfSideF*(1-wAbove)*(1-wClose);
+  let wSide=pfSideF*(1-wAbove)*(1-wClose);
   const rem=Math.max(0,1-wAbove-wClose-wSide);
-  const wFar=rem*sstep(0.56,0.66,S.alt);
-  const wApp=rem-wFar;
+  let wFar=rem*sstep(0.56,0.66,S.alt);
+  let wApp=rem-wFar;
   PF_W={far:wFar,approach:wApp,close:wClose,side:wSide,above:wAbove};
   const WZ=[['far',wFar],['approach',wApp],['side',wSide],['close',wClose],['above',wAbove]];
   const blend=(tbl,def)=>{ let v=0; for(let i=0;i<WZ.length;i++){ const w=WZ[i][1], tv=tbl[WZ[i][0]]; v+=w*(tv!==undefined?tv:def); } return v; };
+  /* Nov 8 (#588, Gary — THE FALLS HOLDS, THE HOUSE ANCHORED): on the
+     tour the Falls backdrop holds for the FULL dwell — one painting
+     per visit, and it is THE true Falls: the 'close' painting, the
+     yellow storybook house with flower boxes on the cliff edge beside
+     the waterfall. The old altitude/bank crossfade swapped paintings
+     mid-visit ("changing the background too quick") and blended the
+     cutout house between its zone positions, so the house drifted and
+     changed size ("buildings don't breathe"). pfHoldF eases every
+     weight onto the true painting while the tour or the Auto rotation
+     drives; with the weights pinned, the cutout house yields to the
+     painted one (hFade) and nothing in the frame moves house again.
+     A hand at the stick releases the hold and gets the full altitude
+     continuum back. The lookalike paintings keep their places in the
+     stack for hand-flown flight — they no longer cycle through a
+     tour visit wearing the Falls name. */
+  const tourHold=(S.pilot||S.worldMode==='auto')&&!S.gate;
+  pfHoldF=clamp(pfHoldF+(tourHold? dtF/2.2 : -dtF/1.4),0,1);
+  if(pfHoldF>0.001){ const k=pfHoldF, mx=(a,b)=>a+(b-a)*k;
+    wAbove=mx(wAbove,0); wClose=mx(wClose,1); wSide=mx(wSide,0); wFar=mx(wFar,0); wApp=mx(wApp,0);
+    PF_W.far=wFar; PF_W.approach=wApp; PF_W.side=wSide; PF_W.close=wClose; PF_W.above=wAbove;
+    WZ[0][1]=wFar; WZ[1][1]=wApp; WZ[2][1]=wSide; WZ[3][1]=wClose; WZ[4][1]=wAbove; }
   /* ---- geometry: a full-bleed backdrop anchored to the horizon. The
          paintings are wider than the screen at any pan, so no side edge
          can ever show; the top edge melts into the sky haze; the bottom
@@ -1869,27 +1891,27 @@ function drawFallsVista(RP,hy,cx){
   const pourY=top+ph*0.15, pourH=ph*0.53;
   ctx.save(); ctx.globalCompositeOperation='screen';
   for(let sI=0;sI<3;sI++){ const sx=fx+(sI-1)*pw*0.018;
-    const sh=(0.05+0.035*Math.sin(t*2.6+sI*2.1))*(1-0.82*RP.nightF);   /* #466b: the shimmer rides the painting's night grade — ungraded, the pour columns stood out as glowing bars on the dark Falls (defect 2) */
+    const sh=(0.05+0.022*Math.sin(t*1.4+sI*2.1))*(1-0.82*RP.nightF);   /* #466b: the shimmer rides the painting's night grade — ungraded, the pour columns stood out as glowing bars on the dark Falls (defect 2) */
     const pg=ctx.createLinearGradient(0,pourY,0,pourY+pourH);
     pg.addColorStop(0,'rgba(230,250,255,'+sh+')'); pg.addColorStop(1,'rgba(230,250,255,0)');
     ctx.fillStyle=pg; ctx.fillRect(sx-pw*0.006,pourY,pw*0.012,pourH); }
-  for(let i=0;i<9;i++){ const p=((t*0.55+i/9)%1);
-    ctx.globalAlpha=(1-p)*0.15*(1-0.82*RP.nightF);
+  for(let i=0;i<6;i++){ const p=((t*0.30+i/6)%1);
+    ctx.globalAlpha=(1-p)*0.11*(1-0.82*RP.nightF);
     ctx.fillStyle='rgba(240,252,255,1)';
     ctx.fillRect(fx-pw*0.020+((i*37)%13)/13*pw*0.04,pourY+p*pourH,pw*0.006,pourH*0.05); }
   ctx.globalAlpha=1;
   /* ---- the rainbow breathes over the plunge pool ---- */
-  const rbCx=fx, rbCy=top+ph*0.64, rbR=pw*0.15*(1+0.035*Math.sin(t*0.7));
-  const rbA=0.05+0.03*Math.sin(t*0.7+1.2);
+  const rbCx=fx, rbCy=top+ph*0.64, rbR=pw*0.15*(1+0.018*Math.sin(t*0.45));
+  const rbA=0.05+0.018*Math.sin(t*0.45+1.2);
   const rbg=ctx.createRadialGradient(rbCx,rbCy,0,rbCx,rbCy,rbR);
   rbg.addColorStop(0,'rgba(255,190,220,'+rbA+')'); rbg.addColorStop(0.55,'rgba(170,220,255,'+(rbA*0.7)+')'); rbg.addColorStop(1,'rgba(170,220,255,0)');
   ctx.fillStyle=rbg; ctx.fillRect(rbCx-rbR,rbCy-rbR,rbR*2,rbR*2);
   /* ---- river sparkle: sun flecks twinkling on the pool and run-out ---- */
   const r9=mulberry(97);
   ctx.fillStyle='rgba(255,255,240,1)';
-  for(let i=0;i<16;i++){ const sx=left+pw*(0.30+r9()*0.45), sy=top+ph*(0.60+r9()*0.10);
-    const tw=0.5+0.5*Math.sin(t*3.1+i*2.3);
-    ctx.globalAlpha=0.28*tw; ctx.fillRect(sx,sy,2.2,2.2); }
+  for(let i=0;i<10;i++){ const sx=left+pw*(0.30+r9()*0.45), sy=top+ph*(0.60+r9()*0.10);
+    const tw=0.5+0.5*Math.sin(t*1.9+i*2.3);
+    ctx.globalAlpha=0.20*tw; ctx.fillRect(sx,sy,2.2,2.2); }
   ctx.globalAlpha=1;
   ctx.restore();
   /* ---- THE HOUSE: cut out of the paintings and placed into the world
@@ -1928,7 +1950,7 @@ function drawFallsVista(RP,hy,cx){
   }
   /* ---- mist at the base: drifting off the plunge pool ---- */
   ctx.globalAlpha=0.40*(1-0.55*RP.nightF);   /* #466b: the plunge-pool mist takes the night grade too — before, it hung as bright grey eggs on the dark water */
-  const mw=pw*0.42, mDrift=Math.sin(t*0.18)*pw*0.02;
+  const mw=pw*0.42, mDrift=Math.sin(t*0.12)*pw*0.010;
   ctx.drawImage(softBlobW,fx-mw/2+mDrift,top+ph*0.58,mw,mw*0.26);
   ctx.drawImage(softBlobW,fx-mw*0.30-mDrift,top+ph*0.64,mw*0.7,mw*0.20);
   ctx.globalAlpha=1;
@@ -2178,7 +2200,7 @@ const beachSeats={ hero:new Image(), wetland:new Image(), broadwalk:new Image(),
 beachSeats.hero.src='assets/seats/guitar-hero.webp'; beachSeats.wetland.src='assets/seats/wetland.webp';
 beachSeats.broadwalk.src='assets/seats/broadwalk.webp'; beachSeats.aerial.src='assets/seats/guitar-aerial.webp';
 beachSeats.command.src='assets/seats/beach-command.webp';   /* Nov 4 — THE COMMAND CENTER (Gary's master, fed Nov 3): his desk at night, three charts up, the guitar hotel lit over his golf course — AS IS; his home seat in the Hollywood family (note: the painting centers the guitar — Gary's real window has it LEFT; his call when he flies it) */
-const BEACH_SEAT_ORDER=['hero','wetland','broadwalk','aerial','command'];
+const BEACH_SEAT_ORDER=['hero','wetland','broadwalk','command'];   /* Nov 8 (#588, Gary): the dusk AERIAL seat is OUT of the rotation — its glitter-wash aerial buried the guitar hotel ("you can't even see the hard rock"). A replacement aerial with the guitar large and unmistakable is queued for the next Manus session; the painting itself stays in the bank, unshipped as a seat until then. */
 let beachEnterT=-99;
 function beachSeatReady(){ for(const k of BEACH_SEAT_ORDER){ const im=beachSeats[k]; if(im.complete&&im.naturalWidth>0)return true; } return false; }
 function beachSeatWeights(){   /* REBUILD: stop-driven — this visit's chosen seat, or nothing (the stack flies) */
@@ -3342,12 +3364,37 @@ function seatBiomeAccent(b,g,RP){
     for(let i=0;i<22;i++){ const fx=0.08+sr()*0.84, fy=0.58+sr()*0.30; const tw=0.5+0.5*Math.sin(t*1.4+i*2.31); ctx.globalAlpha=0.13*tw; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.3,1.7); }
     const srH=mulberry(5150);
     for(let i=0;i<12;i++){ const fx=0.05+srH()*0.24, fy=0.44+srH()*0.14; const tw=0.5+0.5*Math.sin(t*2.3+i*1.87); ctx.globalAlpha=0.13*tw; ctx.fillStyle=i%3? 'rgba(255,120,200,1)':'rgba(120,220,255,1)'; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.2,1.8); }
-    for(const fw of [[0.68,0.16,0],[0.34,0.12,13]]){ const cyc=(t+fw[2])%26; if(cyc<3){ const p=cyc/3, bx=g.left+fw[0]*g.pw, by=g.top+fw[1]*g.ph, R=g.pw*0.075*p;
-      const fg=ctx.createRadialGradient(bx,by,0,bx,by,g.pw*0.30);
-      fg.addColorStop(0,'rgba(255,225,170,'+(0.11*(1-p))+')'); fg.addColorStop(1,'rgba(255,225,170,0)');
-      ctx.fillStyle=fg; ctx.fillRect(bx-g.pw*0.30,by-g.pw*0.30,g.pw*0.60,g.pw*0.60);
-      ctx.strokeStyle='rgba(255,190,120,'+(0.5*(1-p))+')'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(bx,by,R,0,TAU); ctx.stroke();
-      ctx.fillStyle='rgba(255,220,160,'+(0.6*(1-p))+')'; for(let i=0;i<10;i++){ const a2=i/10*TAU; ctx.fillRect(bx+Math.cos(a2)*R-1,by+Math.sin(a2)*R-1,2,2); } } }
+    /* Nov 8 (#588, Gary): REAL fireworks, moving like the plane that
+       crosses this scene — a shell launches off the skyline, blooms,
+       and its sparks streak outward, droop, sparkle and fade (the
+       North Pole show's recipe). Occasional, never constant: three
+       shells on one 46 s clock with long quiet between. Apexes are
+       SCREEN-anchored in the upper sky, because the raised cover
+       crops the painting's top while drifting; positions keep clear
+       of the guitar hotel at the left and the sunset at the right. */
+    ctx.save(); ctx.globalCompositeOperation='source-over';   /* solid color: 'screen' washed the shells out against the bright sunset */
+    for(const fw of [[0.30,'255,190,80',0],[0.52,'255,130,190',15],[0.68,'130,220,255',30]]){
+      const cyc=(t+fw[2])%46, RISE=2.2, BURST=3.6;
+      const bx=g.left+fw[0]*g.pw, apexY=H*(0.115+0.05*((fw[2]/15)%2)), baseY=g.top+g.ph*0.44;
+      if(cyc<RISE){ const p=cyc/RISE, ry=lerp(baseY,apexY,p*p), flick=0.55+0.45*Math.sin(t*34+fw[2]);
+        ctx.fillStyle='rgba(255,240,200,'+(0.85*flick)+')'; ctx.fillRect(bx-1.3,ry-1.3,2.6,2.6);
+        ctx.fillStyle='rgba(255,190,90,0.35)'; ctx.fillRect(bx-0.8,ry+4,1.6,7); }
+      else if(cyc<RISE+BURST){ const bp=(cyc-RISE)/BURST, R=g.pw*0.10*(1-Math.pow(1-bp,2.2)), fade=Math.pow(1-bp,1.5);
+        const fg2=ctx.createRadialGradient(bx,apexY,0,bx,apexY,g.pw*0.13);
+        fg2.addColorStop(0,'rgba('+fw[1]+','+(0.16*fade)+')'); fg2.addColorStop(1,'rgba('+fw[1]+',0)');
+        ctx.fillStyle=fg2; ctx.fillRect(bx-g.pw*0.13,apexY-g.pw*0.13,g.pw*0.26,g.pw*0.26);
+        ctx.lineWidth=2.0; ctx.lineCap='round';
+        for(let i=0;i<52;i++){ const a2=i/46*TAU+((i*7919)%13)*0.008, sp=0.72+((i*104729)%29)/29*0.38;
+          const r1=R*sp*0.55, r2=R*sp, droop=g.pw*0.030*bp*bp;
+          ctx.strokeStyle='rgba('+fw[1]+','+(0.9*fade)+')';
+          ctx.beginPath(); ctx.moveTo(bx+Math.cos(a2)*r1,apexY+Math.sin(a2)*r1+droop*0.4); ctx.lineTo(bx+Math.cos(a2)*r2,apexY+Math.sin(a2)*r2+droop); ctx.stroke();
+          if(i%3===0){ const tw2=0.5+0.5*Math.sin(t*9+i*2.4); ctx.fillStyle='rgba(255,255,255,'+(0.5*fade*tw2)+')'; ctx.fillRect(bx+Math.cos(a2)*r2-1,apexY+Math.sin(a2)*r2+droop-1,2,2); } } }
+    }
+    ctx.restore();
+    /* Nov 8 (#588): the big lake keeps its reflections — long shimmer streaks low on the water */
+    const srL2=mulberry(777); ctx.fillStyle='rgba(255,214,150,1)';
+    for(let i=0;i<14;i++){ const fx=0.40+srL2()*0.56, fy=0.72+srL2()*0.22; const tw=0.5+0.5*Math.sin(t*1.1+i*1.97); ctx.globalAlpha=0.15*tw; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,6.5,1.6); }
+    ctx.globalAlpha=1;
   } else if(b==='boardwalk'){ /* pier + wheel light alive on the water */
     const sr=mulberry(717); ctx.fillStyle='rgba(255,225,170,1)';
     for(let i=0;i<26;i++){ const fx=0.05+sr()*0.9, fy=0.55+sr()*0.38; const tw=0.5+0.5*Math.sin(t*1.7+i*1.93); ctx.globalAlpha=0.14*tw; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.3,1.7); }
@@ -3378,10 +3425,27 @@ function seatBiomeAccent(b,g,RP){
   }
   ctx.restore(); ctx.globalAlpha=1;
 }
+function drawOverlookCover(img,hy){
+  /* Nov 8 (#588, Gary — THE OVERLOOK, RAISED): the moving ground band
+     stays — Gary likes the feeling of motion it gives — but it may
+     never slice the lake again. While the tour drifts, the painting
+     is composed so its BOTTOM lands exactly on the band's top edge:
+     the whole painting, lake included, sits above the band. As a
+     seat stop settles the frame, the painting eases out to the
+     full-frame cover every other seat knows. Whole-photo law: the
+     subject is never cut by the furniture. */
+  if(!img.complete||!img.naturalWidth)return null;
+  const iw=img.naturalWidth, ih=img.naturalHeight, sf=window.__seatFocus||0;
+  const B=lerp(clamp(hy,H*0.55,H*0.92), H, sstep(0.5,0.95,sf));
+  const sc=Math.max(W/iw, B/ih);
+  const dw=iw*sc, dh=ih*sc, left=(W-dw)/2, top=B-dh;
+  ctx.globalAlpha=1; ctx.drawImage(img,left,top,dw,dh); ctx.globalAlpha=1;
+  return {left:left,top:top,pw:dw,ph:dh};
+}
 function drawSeatBiomeVista(RP,hy,cx){
   const b=S.biome, im=seatBiomeImgs[b]; SEATB_G=null;
   if(!im||!im.complete||!im.naturalWidth)return;
-  const g=drawSeatCover(im,1); if(!g)return; SEATB_G=g; seatBiomeAccent(b,g,RP);
+  const g=(b==='overlook')? drawOverlookCover(im,hy) : drawSeatCover(im,1); if(!g)return; SEATB_G=g; seatBiomeAccent(b,g,RP);
 }
 function drawSeatBiomeLife(RP,hy,cx){
   const g=SEATB_G; if(!g)return; const t=S.flyT;
@@ -3413,8 +3477,8 @@ function drawSeatBiomeLife(RP,hy,cx){
     ctx.drawImage(softBlobW,g.left+0.44*g.pw-mw/2+mDr,g.top+0.60*g.ph,mw,mw*0.22);
     ctx.drawImage(softBlobW,g.left+0.55*g.pw-mw*0.32-mDr,g.top+0.655*g.ph,mw*0.64,mw*0.16);
     ctx.restore();
-    for(let i=0;i<2;i++){ const p2=i*2.4, cxp=g.left+(0.60+0.05*i+0.03*Math.sin(t*0.22+p2))*g.pw, cyp=g.top+(0.52+0.05*i+0.016*Math.sin(t*0.3+p2*1.7))*g.ph, sq=0.84+0.16*Math.sin(t*6+p2*3.0), bw2=g.pw*0.0085;
-      ctx.save(); ctx.translate(cxp,cyp); ctx.scale(1,sq); ctx.fillStyle=i? 'rgba(238,158,44,0.96)':'rgba(96,156,238,0.96)';
+    for(let i=0;i<3;i++){ const p2=i*2.4, cxp=g.left+(0.60+0.05*i+0.03*Math.sin(t*0.22+p2))*g.pw, cyp=g.top+(0.52+0.05*i+0.016*Math.sin(t*0.3+p2*1.7))*g.ph, sq=0.84+0.16*Math.sin(t*6+p2*3.0), bw2=g.pw*0.0085;   /* #588: three butterflies now — a magical scene wears the magic marker */
+      ctx.save(); ctx.translate(cxp,cyp); ctx.scale(1,sq); ctx.fillStyle=['rgba(96,156,238,0.96)','rgba(238,158,44,0.96)','rgba(238,120,190,0.96)'][i];
       ctx.beginPath(); ctx.ellipse(-bw2*0.55,0,bw2*0.55,bw2*0.34,-0.5,0,TAU); ctx.fill();
       ctx.beginPath(); ctx.ellipse(bw2*0.55,0,bw2*0.55,bw2*0.34,0.5,0,TAU); ctx.fill();
       ctx.fillStyle='rgba(40,30,20,0.9)'; ctx.beginPath(); ctx.ellipse(0,0,bw2*0.13,bw2*0.42,0,0,TAU); ctx.fill(); ctx.restore(); }
@@ -3424,6 +3488,11 @@ function drawSeatBiomeLife(RP,hy,cx){
         ctx.beginPath(); ctx.moveTo(bx-4.6,by-f); ctx.quadraticCurveTo(bx,by+1.5,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.5,bx+4.6,by-f); ctx.stroke(); }
       ctx.restore(); } }
   if(S.biome==='boardwalk'){ /* REBUILD (Gary: "needs more cutout elements"): gulls over the pier, one small boat on the water */
+    /* Nov 8 (#588): a slow cloud shadow drifts across the boards — light moving over the scene, nothing added to it */
+    { const shx=g.left+(((t*0.011)%1.5)-0.25)*g.pw, shw=g.pw*0.34, shy=g.top+g.ph*0.45;
+      ctx.save(); const shg=ctx.createRadialGradient(shx,shy,0,shx,shy,shw);
+      shg.addColorStop(0,'rgba(16,20,34,0.10)'); shg.addColorStop(1,'rgba(16,20,34,0)');
+      ctx.fillStyle=shg; ctx.fillRect(g.left,g.top,g.pw,g.ph); ctx.restore(); }
     const bcyc=t%43; if(bcyc<9){ const bp=bcyc/9;
       ctx.save(); ctx.strokeStyle='rgba(22,26,34,0.6)'; ctx.lineWidth=1.7; ctx.lineCap='round';
       for(let i=0;i<3;i++){ const bx=g.left+lerp(-0.05,1.05,bp)*g.pw-i*g.pw*0.032, by=g.top+g.ph*(0.15+0.04*i)+Math.sin(t*2.2+i)*2.4, f=Math.sin(t*9+i*1.6)*3.2;
@@ -3443,6 +3512,12 @@ function drawSeatBiomeLife(RP,hy,cx){
       ctx.fillStyle='rgba(240,220,180,1)'; ctx.beginPath(); ctx.ellipse(bx,by,bs*0.30,bs*0.78,0,0,TAU); ctx.fill();
       ctx.strokeStyle='rgba(40,26,18,0.8)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(bx-bs*0.3,by+bs*0.7); ctx.lineTo(bx-bs*0.12,by+bs*1.02); ctx.moveTo(bx+bs*0.3,by+bs*0.7); ctx.lineTo(bx+bs*0.12,by+bs*1.02); ctx.stroke();
       ctx.fillStyle='rgba(90,60,34,1)'; ctx.fillRect(bx-bs*0.13,by+bs*1.0,bs*0.26,bs*0.20);
+      ctx.restore(); }
+    /* Nov 8 (#588): two far birds cross the canyon on their own slow clock, offset from the balloon's */
+    const bcyc9=t%63; if(bcyc9<11){ const bp9=bcyc9/11;
+      ctx.save(); ctx.strokeStyle='rgba(24,20,26,0.55)'; ctx.lineWidth=1.6; ctx.lineCap='round';
+      for(let i=0;i<2;i++){ const bx=g.left+lerp(-0.04,1.04,bp9)*g.pw-i*g.pw*0.045, by=g.top+g.ph*(0.13+0.05*i)+Math.sin(t*2.0+i*1.7)*2.2, f=Math.sin(t*8+i*1.9)*3.0;
+        ctx.beginPath(); ctx.moveTo(bx-4.2,by-f); ctx.quadraticCurveTo(bx,by+1.4,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.4,bx+4.2,by-f); ctx.stroke(); }
       ctx.restore(); } }
 }
 /* ================= #568 — THE TWO FLAT NIGHT WORLDS, ENRICHED =====
@@ -3626,6 +3701,51 @@ function drawDesertLife(RP,hy,cx){
       } else {
         stand(sahCut.low,0.452,0.905,0.105);
         stand(sahCut.sit,0.375,0.925,0.165); }
+      /* Nov 8 (#588, Gary: "add a few more cutouts maybe some fish in
+         the lake") — FISH in sa2's turquoise pool: three solid bright
+         fish cruising just under the surface (a water glaze laid over
+         them so they read as IN the water, never pasted on it), one
+         leaping on a long quiet clock with splash rings where it
+         leaves and lands, one dragonfly working the near reeds, and
+         one monarch over the far shore (butterflies = the magic
+         marker). All gated by sa2's own stack weight, so they live
+         only in the painting whose pool they were placed in.
+         Seasoning pace: slow drift, a rare leap, long quiet. */
+      const BW2=sahWeights(), fishA=pres*clamp(BW2.mid*1.7,0,1);
+      if(fishA>0.02){ const fish=(cxF,cyF,hF,col,ph2)=>{ const dh=g.ph*hF, dw=dh*2.25;
+          const fx2=cxF+0.030*Math.sin(t*0.05+ph2), dir=Math.cos(t*0.05+ph2)>=0?1:-1;
+          const bx=g.left+fx2*g.pw, by=g.top+cyF*g.ph;
+          ctx.save(); ctx.translate(bx,by); ctx.scale(dir,1); ctx.rotate(Math.sin(t*1.25+ph2)*0.07);
+          ctx.fillStyle=col; ctx.globalAlpha=fishA;
+          ctx.beginPath(); ctx.ellipse(0,0,dw*0.36,dh*0.30,0,0,TAU); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(-dw*0.30,0); ctx.lineTo(-dw*0.52,-dh*0.30); ctx.lineTo(-dw*0.52,dh*0.30); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(dw*0.10,-dh*0.16,dw*0.13,dh*0.13,-0.6,0,TAU); ctx.fill();
+          ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(dw*0.22,-dh*0.05,Math.max(0.8,dh*0.055),0,TAU); ctx.fill();
+          ctx.restore();
+          ctx.save(); ctx.globalAlpha=fishA*0.15; ctx.fillStyle='rgba(64,196,214,1)';
+          ctx.fillRect(bx-dw*0.55,by-dh*0.42,dw*1.1,dh*0.84);
+          ctx.globalAlpha=fishA*0.12; ctx.fillStyle='rgba(255,255,255,1)';
+          ctx.fillRect(bx-dw*0.55,by-dh*0.46,dw*1.1,1.4); ctx.restore(); ctx.globalAlpha=1; };
+        fish(0.36,0.640,0.026,'#ff8c3b',0.0);
+        fish(0.57,0.657,0.031,'#ff5d6a',2.1);
+        fish(0.76,0.646,0.022,'#ffd23e',4.2);
+        const lcyc=t%36;
+        if(lcyc<2.3){ const lp=lcyc/2.3, lx=g.left+0.64*g.pw, ly=g.top+(0.630-0.052*Math.sin(lp*Math.PI))*g.ph, dh2=g.ph*0.030, dw2=dh2*2.25;
+          if(lcyc<0.35||lcyc>1.95){ const rp2=(lcyc<0.35? lcyc/0.35 : (lcyc-1.95)/0.35);
+            ctx.save(); ctx.strokeStyle='rgba(255,255,255,'+(0.5*(1-rp2)*fishA)+')'; ctx.lineWidth=1.6;
+            ctx.beginPath(); ctx.ellipse(lx,g.top+0.632*g.ph,2+rp2*g.pw*0.016,(2+rp2*g.pw*0.016)*0.30,0,0,TAU); ctx.stroke(); ctx.restore(); }
+          ctx.save(); ctx.translate(lx,ly); ctx.rotate(-0.7+lp*1.4); ctx.globalAlpha=fishA; ctx.fillStyle='#ffb03a';
+          ctx.beginPath(); ctx.ellipse(0,0,dw2*0.36,dh2*0.30,0,0,TAU); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(-dw2*0.30,0); ctx.lineTo(-dw2*0.52,-dh2*0.30); ctx.lineTo(-dw2*0.52,dh2*0.30); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.globalAlpha=1; }
+        const dg=pfElem['dragonfly-blue'], dgr=dg? pfHouseGraded(dg,RP):null;
+        if(dgr){ const dx=g.left+(0.360+0.028*Math.sin(t*0.11))*g.pw, dy=g.top+(0.626+0.011*Math.sin(t*0.23+1))*g.ph, dh3=g.ph*0.017, dw3=dh3*dg.naturalWidth/Math.max(1,dg.naturalHeight);
+          ctx.save(); ctx.globalAlpha=0.10*fishA; ctx.fillStyle='rgba(10,40,50,1)';
+          ctx.beginPath(); ctx.ellipse(dx,g.top+0.656*g.ph,dw3*0.4,dw3*0.10,0,0,TAU); ctx.fill(); ctx.restore();
+          ctx.globalAlpha=fishA; ctx.drawImage(dgr,dx-dw3/2,dy-dh3/2,dw3,dh3); ctx.globalAlpha=1; }
+        const bfI=pfElem['butterfly-monarch'], bfG=bfI? pfHouseGraded(bfI,RP):null;
+        if(bfG){ const bx2=g.left+(0.870+0.020*Math.sin(t*0.13+1))*g.pw, by2=g.top+(0.600+0.013*Math.sin(t*0.31))*g.ph, dw4=g.pw*0.016, dh4=dw4*bfI.naturalHeight/Math.max(1,bfI.naturalWidth), sq4=0.84+0.16*Math.sin(t*6+1.5);
+          ctx.save(); ctx.translate(bx2,by2); ctx.scale(1,sq4); ctx.globalAlpha=0.95*fishA; ctx.drawImage(bfG,-dw4/2,-dh4/2,dw4,dh4); ctx.restore(); ctx.globalAlpha=1; }
+      }
       /* #567 — THE FALCON, over the low-flight seat only: one
          silhouette gliding the sunrise sky on an 80 s clock, at the
          painted falcons' own tiny scale — a shaded shape, the far
@@ -5526,30 +5646,36 @@ const SEAT_WORLDS={ temple:1, overlook:1, boardwalk:1, storyfalls:1, canal:1, ca
 function worldHasSeat(b){ return !!SEAT_ORDERS[b]||!!SEAT_WORLDS[b]; }
 let tourPlan=[], lastStopKind={};
 function planStops(){
-  const bag=CYCLE.slice();
-  for(let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t2=bag[i]; bag[i]=bag[j]; bag[j]=t2; }
-  const chunks=[['D','S'],['D','D','S'],['D','S'],['D','D','S'],['D','D','S']];
-  for(let i=chunks.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t2=chunks[i]; chunks[i]=chunks[j]; chunks[j]=t2; }
-  const kinds=[]; for(const c of chunks)for(const k of c)kinds.push(k);
-  const plan=[]; let bi=0;
-  const nextBag=()=>{ const w=bag[bi%bag.length]; bi++; return w; };
-  const prevB=()=>plan.length? plan[plan.length-1].b : S.biome;
-  for(const k of kinds){
-    if(k==='S'){
-      let w=null;
-      for(let tries=0;tries<bag.length;tries++){ const cand=nextBag();
-        if(worldHasSeat(cand)&&cand!==prevB()){ w=cand; break; }
-        if(!w&&worldHasSeat(cand))w=cand; }
-      if(!w)w=nextBag();
-      if(lastStopKind[w]==='seat')plan.push({b:w,kind:'drift'});
-      plan.push({b:w,kind:'seat'}); lastStopKind[w]='seat';
-    } else {
-      let w=nextBag(); if(w===prevB())w=nextBag();
-      plan.push({b:w,kind:'drift'}); lastStopKind[w]='drift';
-    }
+  /* Nov 8 (#588, Gary — THE FULL-CYCLE RULE): the tour is a shuffled
+     deck — EVERY area plays exactly once before ANY area repeats; a
+     fresh lap reshuffles only after the full set has played. (The old
+     planner drew 13 chunked stops out of a 15-world bag with
+     wrap-around, let its seat search silently eat bag worlds, and
+     could push a bonus drift stop for a world whose last visit was a
+     seat — so one area could surface three or four times in two
+     minutes while others never appeared.) SPACE and UNDERWATER anchor
+     the FRONT of every lap: Space is the Aurora stop's climb (its tour
+     altitude is 1.14, over the space band), so the two best places
+     land inside the first two stops of each lap, every lap. One stop
+     per area per lap, however many paintings the area holds. Kinds
+     keep Gary's rhythm: drift-weighted, never two seats back-to-back.
+     The Nov 1 law stands: Paris and the Aurora Horizon never sit
+     adjacent. */
+  const rest=CYCLE.filter(w=>w!=='underwater'&&w!=='aurora');
+  for(let i=rest.length-1;i>0;i--){ const j2=Math.floor(Math.random()*(i+1)); const t2=rest[i]; rest[i]=rest[j2]; rest[j2]=t2; }
+  const anchors=['underwater','aurora'];
+  if(Math.random()<0.5)anchors.reverse();
+  const order=anchors.concat(rest);
+  const ai=order.indexOf('aurora'), pi=order.indexOf('paris');
+  if(pi===ai+1){ const mv=order.splice(pi,1)[0]; order.push(mv); }
+  const plan=[]; let seats=0, sinceSeat=2;
+  for(let i=0;i<order.length;i++){ const w=order[i];
+    let kind='drift';
+    if(worldHasSeat(w)&&seats<5&&sinceSeat>=2)kind='seat';
+    else if(worldHasSeat(w)&&seats<5&&sinceSeat>=1&&(order.length-i-1)<=(5-seats)*2)kind='seat';
+    if(kind==='seat'){ seats++; sinceSeat=0; } else sinceSeat++;
+    plan.push({b:w,kind:kind}); lastStopKind[w]=kind;
   }
-  for(let i=1;i<plan.length;i++){ const a=plan[i-1].b, c=plan[i].b;
-    if((a==='paris'&&c==='aurora')||(a==='aurora'&&c==='paris')){ const mv=plan.splice(i,1)[0]; plan.push(mv); i--; } }
   tourPlan=plan;
 }
 function nextBiome(){
@@ -5574,9 +5700,11 @@ function beginStop(b,kind){
    LESS stationary. A QA override (__setTourDur) still wins outright. */
 function tourDwellFor(b,kind){
   if(window.__tourDurSet)return window.__tourDur;
-  if(b==='underwater')return 85;
-  if(kind==='seat')return 48;
-  return (b==='paris'||b==='aurora')? 40 : 36;
+  /* Nov 8 (#588, Gary): every dwell cut ~30% — "we're spending too long
+     in some of these spots" (85->59.5 · 48->33.6 · 40->28 · 36->25.2) */
+  if(b==='underwater')return 59.5;
+  if(kind==='seat')return 33.6;
+  return (b==='paris'||b==='aurora')? 28 : 25.2;
 }
 function tourDwell(b){ return tourDwellFor(b,S.stopKind); }
 /* the effective trail: underwater is always bubbles; a manual TRAILS pick
