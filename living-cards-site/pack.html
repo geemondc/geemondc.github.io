@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your Living Card Pack — Photo Letters by Living Photos</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{--burgundy:#5d1220;--burgundy-deep:#3d0a15;--gold:#c9a24d;--gold-bright:#ecd28a;--ivory:#faf5ea;--ink:#3a2c22;--teal:#14655e}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Georgia,serif;background:#221016 radial-gradient(120% 90% at 50% 0%, #3a0e1a 0%, #221016 60%);color:var(--ink);min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:28px 16px 48px}
+  .box{width:min(560px,96vw);background:var(--ivory);border-radius:10px;box-shadow:0 30px 80px rgba(0,0,0,.55);padding:30px 26px 24px;text-align:center;position:relative}
+  .box::before{content:"";position:absolute;inset:9px;border:1px solid var(--gold);border-radius:6px;pointer-events:none;opacity:.75}
+  h1{font-family:Didot,"Playfair Display",Georgia,serif;font-size:27px;color:var(--burgundy);margin:4px 0 8px}
+  .sub{font-size:16px;line-height:1.55;color:#5c4a38;margin:0 10px}
+  .code{font-family:"Courier New",monospace;font-weight:700;font-size:clamp(26px,7vw,36px);letter-spacing:.08em;color:var(--burgundy);background:#fff;border:2px dashed var(--gold);border-radius:10px;padding:16px 8px;margin:20px 4px 6px;word-break:break-all}
+  .bal{font-size:18px;color:var(--teal);font-weight:700;margin:8px 0 2px}
+  .btn{display:inline-block;margin-top:16px;background:var(--burgundy);color:#f5e7c8;border:1px solid var(--gold);border-radius:999px;padding:12px 28px;font-family:Georgia,serif;font-size:15.5px;letter-spacing:.06em;cursor:pointer;text-decoration:none}
+  .btn.ghost{background:transparent;color:var(--burgundy)}
+  .note{font-size:14px;line-height:1.55;color:#7a6753;margin:16px 12px 0}
+  .warn{color:#a33;font-weight:700}
+  hr{border:none;border-top:1px solid #e3d5b8;margin:26px 8px 18px}
+  h2{font-size:19px;color:var(--burgundy);margin-bottom:8px}
+  input[type=email],input[type=text]{width:100%;padding:13px 14px;font-size:16.5px;font-family:inherit;border:1.5px solid var(--gold);border-radius:12px;background:#fff;color:var(--ink);margin-top:8px}
+  .msg{margin-top:12px;font-size:15px;line-height:1.5;min-height:22px}
+  .spin{font-size:15px;color:#8a6d2f;margin-top:18px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Your pack is ready 🎉</h1>
+  <p class="sub" id="lead">Thank you! Your Living Cards live in one personal code.<br>Every card you make and send uses one. Looking is always free.</p>
+
+  <div id="working"><p class="spin">Checking your purchase with Stripe…</p></div>
+
+  <div id="ready" hidden>
+    <div class="code" id="codeOut">GEE-····-····</div>
+    <p class="bal" id="balOut"></p>
+    <button class="btn" id="copyBtn" type="button">Copy my code</button>
+    <p class="msg" id="copyMsg"></p>
+    <p class="note"><b>Save this code</b> — a photo of it, a note, anywhere safe. It <i>is</i> your pack:
+      no account, no password. Type it once when you make a card and this browser remembers it.
+      Lost it later? Come back to this page and use the email finder below.</p>
+    <a class="btn" href="https://thelivingphotos.com/envelopes.html">See the envelopes →</a><br>
+    <a class="btn ghost" href="https://geemondc.github.io/living-cards-site/#sendcard">Make my first card →</a>
+  </div>
+
+  <div id="problem" hidden>
+    <p class="msg warn" id="problemOut"></p>
+    <p class="note">If you just paid, give Stripe a few seconds and refresh this page.
+      Still stuck? Email us at geemondc@gmail.com with your receipt and we'll set your pack right by hand — you will never lose a paid card.</p>
+  </div>
+
+  <div id="dormant" hidden>
+    <p class="msg">Pack codes are being switched on right now. If you just bought a pack,
+      your purchase is safe in Stripe — this page will hand you your code the moment the switch flips,
+      and the email finder below will find it too.</p>
+  </div>
+
+  <hr>
+  <h2>Lost your code?</h2>
+  <p class="sub" style="font-size:15px">Enter the email you used when you paid, and we'll show your code(s) and what's left.</p>
+  <input type="email" id="recEmail" placeholder="you@example.com" autocomplete="email">
+  <button class="btn" id="recBtn" type="button">Find my code</button>
+  <p class="msg" id="recOut"></p>
+</div>
+
+<script src="pack-config.js"></script>
+<script>
+(function () {
+  var API = (window.PACK_API || '').replace(/\/+$/, '');
+  var q = new URLSearchParams(location.search);
+  var session = q.get('session_id') || q.get('order') || '';
+  var $ = function (id) { return document.getElementById(id); };
+  function show(id) { ['working', 'ready', 'problem', 'dormant'].forEach(function (x) { $(x).hidden = x !== id; }); }
+  function problem(msg) { $('problemOut').textContent = msg; show('problem'); }
+  function ready(code, balance, already) {
+    $('codeOut').textContent = code;
+    $('balOut').textContent = balance + (balance === 1 ? ' card' : ' cards') + ' left in your pack';
+    if (already) $('lead').innerHTML = 'Welcome back! This purchase was already claimed —<br>here is its code again (claiming twice never makes two packs).';
+    try { localStorage.setItem('lc_pack_code', code); } catch (e) {}
+    show('ready');
+  }
+  if (!API) { show(session ? 'dormant' : 'working'); if (!session) { $('working').hidden = true; $('dormant').hidden = false; } }
+  else if (!session) { $('working').hidden = true; $('dormant').hidden = true; }
+  else {
+    fetch(API + '/api/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: session }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (x.ok && x.j.code) ready(x.j.code, x.j.balance, x.j.already);
+        else problem((x.j && x.j.message) || 'We could not match that purchase to a card pack.');
+      })
+      .catch(function () { problem('We could not reach the pack service just now.'); });
+  }
+  $('copyBtn').addEventListener('click', function () {
+    var code = $('codeOut').textContent;
+    function done() { $('copyMsg').textContent = 'Copied ✓ — keep it somewhere safe.'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, done);
+    else { var ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); done(); }
+  });
+  $('recBtn').addEventListener('click', function () {
+    var email = $('recEmail').value.trim();
+    var out = $('recOut');
+    if (!API) { out.textContent = 'The finder switches on with the pack service — very soon.'; return; }
+    out.textContent = 'Looking…';
+    fetch(API + '/api/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (x) {
+        if (x.ok && x.j.codes && x.j.codes.length) {
+          out.innerHTML = x.j.codes.map(function (c) {
+            return '<b style="font-family:\'Courier New\',monospace">' + c.code + '</b> — ' + c.balance + ' left';
+          }).join('<br>');
+          try { localStorage.setItem('lc_pack_code', x.j.codes[0].code); } catch (e) {}
+        } else out.textContent = (x.j && x.j.message) || 'No pack found for that email.';
+      })
+      .catch(function () { out.textContent = 'Could not reach the pack service just now.'; });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pack Admin — private</title>
+<meta name="robots" content="noindex,nofollow">
+<style>
+  body{font-family:Georgia,serif;background:#1c1216;color:#f0e6d2;margin:0;padding:24px 16px 60px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;color:#ecd28a} h2{font-size:17px;color:#ecd28a;margin-top:30px}
+  input,button,select{font-family:inherit;font-size:15px;padding:10px 12px;border-radius:8px;border:1px solid #c9a24d;background:#2b1218;color:#f0e6d2}
+  button{background:#5d1220;cursor:pointer} button:active{transform:scale(.98)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0} .row input{flex:1;min-width:140px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+  td,th{border-bottom:1px solid #4a2c33;padding:6px 8px;text-align:left;vertical-align:top}
+  code{font-family:"Courier New",monospace;color:#ffd9a0}
+  #out{white-space:pre-wrap;font-size:14px;margin-top:12px;color:#bfe3c0}
+  .err{color:#ff9c9c!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔐 Living Cards — Pack Admin</h1>
+  <p>Private. The admin key lives only in your head / password manager — it is checked by the pack service, never stored in this page. The key is kept in this tab's session only.</p>
+  <div class="row"><input type="password" id="key" placeholder="Admin key"><button id="saveKey">Use key</button><button id="list">List codes</button></div>
+  <div id="out"></div>
+  <div id="listOut"></div>
+
+  <h2>Look up / fix one code</h2>
+  <div class="row"><input type="text" id="oneCode" placeholder="GEE-XXXX-XXXX"><button id="get">Get</button></div>
+  <div class="row"><input type="number" id="delta" placeholder="Adjust by (e.g. 3 or -1)"><button id="adjust">Adjust</button>
+    <button id="disable">Disable (refund → 0)</button></div>
+
+  <h2>Mint a code by hand (gift / replacement / test)</h2>
+  <div class="row"><input type="number" id="mintN" placeholder="Cards" min="1" max="1000">
+    <input type="email" id="mintEmail" placeholder="Buyer email (optional)">
+    <input type="text" id="mintNote" placeholder="Note (optional)"><button id="mint">Mint</button></div>
+</div>
+<script src="pack-config.js"></script>
+<script>
+(function () {
+  var API = (window.PACK_API || '').replace(/\/+$/, '');
+  var $ = function (id) { return document.getElementById(id); };
+  function key() { return sessionStorage.getItem('lc_admin_key') || ''; }
+  function out(msg, err) { var o = $('out'); o.textContent = msg; o.className = err ? 'err' : ''; }
+  function admin(body) {
+    if (!API) return Promise.reject(new Error('PACK_API not set yet — the service is not deployed.'));
+    if (!key()) return Promise.reject(new Error('Enter the admin key first.'));
+    return fetch(API + '/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key() }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ('http_' + r.status)); return j; }); });
+  }
+  $('saveKey').addEventListener('click', function () { sessionStorage.setItem('lc_admin_key', $('key').value.trim()); out('Key set for this tab.'); });
+  $('list').addEventListener('click', function () {
+    admin({ action: 'list' }).then(function (j) {
+      var rows = (j.codes || []).map(function (c) {
+        return '<tr><td><code>' + c.code + '</code></td><td>' + c.balance + ' / ' + c.credits + '</td><td>' + c.pack + '</td><td>' +
+          (c.email || '—') + '</td><td>' + (c.stripe_session ? c.stripe_session.slice(0, 18) + '…' : 'manual') + '</td><td>' + c.sends + ' sent</td><td>' + (c.created || '').slice(0, 10) + '</td></tr>';
+      }).join('');
+      $('listOut').innerHTML = '<table><tr><th>Code</th><th>Left</th><th>Pack</th><th>Email</th><th>Purchase</th><th>Sends</th><th>Born</th></tr>' + rows + '</table>';
+      out((j.codes || []).length + ' code(s).');
+    }).catch(function (e) { out(e.message, true); });
+  });
+  $('get').addEventListener('click', function () {
+    admin({ action: 'get', code: $('oneCode').value }).then(function (j) { out(JSON.stringify(j, null, 1)); }).catch(function (e) { out(e.message, true); });
+  });
+  $('adjust').addEventListener('click', function () {
+    admin({ action: 'adjust', code: $('oneCode').value, delta: parseInt($('delta').value, 10) }).then(function (j) { out('Balance now ' + j.balance + ' on ' + j.code); }).catch(function (e) { out(e.message, true); });
+  });
+  $('disable').addEventListener('click', function () {
+    if (!confirm('Set this code to 0? (refund path)')) return;
+    admin({ action: 'disable', code: $('oneCode').value }).then(function (j) { out(j.code + ' disabled — balance 0.'); }).catch(function (e) { out(e.message, true); });
+  });
+  $('mint').addEventListener('click', function () {
+    admin({ action: 'mint', credits: parseInt($('mintN').value, 10), email: $('mintEmail').value.trim() || undefined, note: $('mintNote').value.trim() || undefined })
+      .then(function (j) { out('Minted ' + j.code + ' with ' + j.balance + ' cards.'); }).catch(function (e) { out(e.message, true); });
+  });
+})();
+</script>
+</body>
+</html>
