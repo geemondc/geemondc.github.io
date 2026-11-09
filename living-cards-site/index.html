@@ -1393,6 +1393,8 @@ snapTo(null);
         }
       }
       if (stillLayer && showStill) stillLayer.hidden = false;
+      var fc0 = box.querySelector('.frame-catch');
+      if (fc0){ if (showStill) fc0.style.pointerEvents = ''; else if (fc0.getAttribute('data-catch-parked') !== null) fc0.style.pointerEvents = 'none'; }
       if (stL) stL.hidden = showStill;
       if (stS) stS.hidden = !showStill;
       box.querySelectorAll('.cmp-cell').forEach(function(c){
@@ -1403,19 +1405,64 @@ snapTo(null);
     }
     box.querySelectorAll('.cmp-cell').forEach(function(cell){
       cell.addEventListener('click', function(){
-        // A flip lands only when the target is ready to show: still needs
-        // its painting decoded, living needs the embed's document loaded.
-        // (Lazy media + a blind flip used to strand a void under the
-        // frame-catcher and swallow the tap - the Hammock exhibit catch.)
+        // A tap ALWAYS lands. Readiness is a timing question, never a veto:
+        // if the target is not ready yet, the flip waits for it (load event,
+        // decode, or a short poll) and then lands - latest tap wins. The
+        // stage is only revealed once the target can actually paint, so a
+        // flip still never strands a void under the frame-catcher.
+        // (The Nov 9 Hammock hardening vetoed any tap whose embed had not
+        // finished loading - and for a lazy embed that only loads when a
+        // flip asks for it, the veto was permanent: every cell on the page
+        // went dead while the stage itself still tapped fine.)
         var want = cell.getAttribute('data-put');
-        if (want === 'still'){
-          if (stillLayer && !(stillLayer.complete && stillLayer.naturalWidth)) return;
-        } else if (fr){
-          var live = fr.getAttribute('data-live'), ready = false;
-          try { ready = (fr.getAttribute('src') === live) && !!fr.contentWindow && !!fr.contentWindow.LP; } catch(e){ ready = false; }
-          if (!ready) return;
+        var wantStill = (want === 'still');
+        box.__pendWant = wantStill;
+        if (wantStill){
+          if (!stillLayer){ setMode(true); return; }
+          if (stillLayer.complete && stillLayer.naturalWidth){ setMode(true); return; }
+          var ps = setInterval(function(){
+            if (box.__pendWant !== true){ clearInterval(ps); return; }
+            if (stillLayer.complete && stillLayer.naturalWidth){ clearInterval(ps); setMode(true); }
+          }, 150);
+          stillLayer.addEventListener('load', function hs(){
+            stillLayer.removeEventListener('load', hs);
+            if (box.__pendWant === true){ clearInterval(ps); setMode(true); }
+          });
+          setTimeout(function(){ clearInterval(ps); }, 8000);
+          return;
         }
-        setMode(want === 'still');
+        if (!fr){ setMode(false); return; }
+        var need = fr.getAttribute('data-live');
+        var already = fr.getAttribute('src') === need && fr.style.display !== 'none' && stillLayer && stillLayer.hidden;
+        if (already){ setMode(false); return; }
+        if (fr.getAttribute('src') !== need) fr.src = need;
+        fr.style.display = '';
+        /* keep the still (or the frame's own backdrop) over the stage until
+           the embed has painted, then reveal - the anti-void cover. The
+           frame-catch sits ABOVE the still (z-6 vs z-2), so also park it:
+           with pointer-events live it would swallow touches aimed at the
+           living photo underneath. */
+        var fc = box.querySelector('.frame-catch');
+        if (fc && !fc.getAttribute('data-catch-parked')) fc.setAttribute('data-catch-parked', getComputedStyle(fc).pointerEvents);
+        if (stillLayer && !(stillLayer.complete && stillLayer.naturalWidth)) stillLayer.hidden = true;
+        else if (stillLayer){ stillLayer.hidden = false; if (fc) fc.style.pointerEvents = 'none'; }
+        var tries = 0;
+        var pl = setInterval(function(){
+          if (box.__pendWant !== false){ clearInterval(pl); if (fc && modeStill) fc.style.pointerEvents = ''; return; }
+          tries++;
+          var painted = false;
+          try { painted = !!(fr.contentWindow && fr.contentWindow.LP); } catch(e){ painted = false; }
+          if (!painted){
+            try {
+              var d = fr.contentDocument;
+              painted = !!(d && d.readyState === 'complete' && d.body && d.body.childElementCount);
+            } catch(e){ /* cross-origin and no LP handle: fall back to the timer below */ }
+          }
+          if (painted || tries >= 16){ /* ~4s cap, then reveal regardless */
+            clearInterval(pl);
+            if (box.__pendWant === false) setMode(false);
+          }
+        }, 250);
       });
     });
     box.querySelectorAll('img').forEach(function(im){
