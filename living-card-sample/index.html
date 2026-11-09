@@ -253,7 +253,7 @@
      LIVING - the photo loops forever; STILL is only ever a viewer's tap. */
   #ctrlbar{display:flex; gap:8px; justify-content:center; align-items:center; margin-top:14px; visibility:hidden; opacity:0}
   body.open #ctrlbar{visibility:visible; opacity:1; transition:opacity .8s ease 2.35s, visibility 0s linear 2.35s}
-  body.fxcard.open #ctrlbar{transition:opacity .45s ease 3.95s, visibility 0s linear 3.95s}
+  body.fxcard.open #ctrlbar{transition:opacity .45s ease 3.45s, visibility 0s linear 3.45s}
   #ctrlbar button{font-family:Georgia,serif; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; padding:9px 16px; border-radius:999px; border:1px solid var(--gold); background:transparent; color:#8a6d2f; cursor:pointer}
   #ctrlbar button.on{background:var(--burgundy); color:#f5e7c8}
   #ctrlbar #replay{opacity:1; visibility:visible; pointer-events:auto; margin:0; transition:none}
@@ -1827,6 +1827,45 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.ptTen.opening #card{transition:opacity .8s ease 2.35s}
   /* ---- the celebration, re-homed to AFTER the card lands ---- */
   body.ptTen.opening #burst{animation:burstflash 1s ease 2.85s}
+
+  /* ---- VISIBLE FLAP — THE MINI'S TECHNIQUE, PORTED (Gary, Nov 9 16:07) ----
+     The gallery showcase mini folds a FLAT clip-path triangle on a 2D
+     rotateX inside a small perspective box, with the envelope's dark
+     interior triangle under it — and that is what Gary's screen paints.
+     The engine's preserve-3d scene (#front is a preserve-3d context, #scene
+     carries perspective:1100px) made the same rotation sample as 172deg
+     while painting nothing. So the fold is rebuilt the mini's way:
+     FLATTENED (transform-style:flat on the stage and the front), the flap
+     keeps its own small perspective wrapper (the front, 640px like the
+     mini), backface VISIBLE with a REAL UNDERSIDE painted on it (the
+     mini's xflap darkens as it passes vertical — here the underside is a
+     lighter paper tone, so the eye reads a sheet turning over, never a
+     vanishing act), SLOWER (1.25s — "even if it's a little slower"), and
+     the interior triangle (#flapIn, the mini's .xin) fades in beneath it
+     as the mouth of the envelope. No X: the flap's edges remain the only
+     lines; the underside carries no seam. */
+  #scene{transform-style:flat}
+  body.ptTen #front{transform-style:flat; perspective:640px}
+  body.ptTen #flapIn{display:block; position:absolute; left:0; right:0; top:0; height:50%; z-index:1;
+    clip-path:polygon(0 0, 100% 0, 50% 100%);
+    background:linear-gradient(180deg, var(--burgundy-deep) 0%, var(--burgundy) 78%, #7a1a2c 100%);
+    opacity:0; transition:opacity .45s ease .8s; pointer-events:none}
+  body.ptTen.opening #flapIn, body.ptTen.open #flapIn{opacity:1}
+  body.ptTen #flap{transform-style:flat; backface-visibility:visible; overflow:hidden;
+    transition:transform 1.5s cubic-bezier(.3,.6,.35,1) .45s, opacity .35s ease 2.1s}
+  body.ptTen #flap .fu{position:absolute; left:0; top:0; width:100%; height:200%;
+    background:linear-gradient(0deg, #d9c08e 0%, #efdcb2 45%, #f9efce 78%, #fff6da 100%);
+    opacity:0; transition:opacity .001s linear 1.2s; pointer-events:none}
+  body.ptTen.opening #flap .fu, body.ptTen.open #flap .fu{opacity:1}
+  /* the card arrives a little quicker (Gary Nov 9 16:07): the dead air was
+     the front's long crossfade AFTER the fold. Front retires at 1.95s
+     (was 2.55s), card lands behind it at 1.75s (was 2.35s); animation
+     scenes: front 1.75s (was 2.05s), card full ~3.9s (was ~4.4s). The
+     STILL · LIVING · REPLAY bar keeps arriving WITH the card, untouched. */
+  body.ptTen.open #front{transition:opacity .45s ease 1.95s, visibility 0s linear 2.45s}
+  body.fxcard.ptTen.open #front{transition:opacity .45s ease 1.75s, visibility 0s linear 2.25s}
+  body.ptTen.opening #card{transition:opacity .8s ease 1.75s}
+  body.ptTen.opening #burst{animation-delay:2.3s}
   body.ptQuiet #sealBoom, body.ptQuiet #burst{display:none!important}
   body.ptTen #sealBoom .flash{animation:none}
   body.ptTen.opening #sealBoom .flash{animation:sealFlash 1s ease-out 2.85s both}
@@ -1946,7 +1985,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
      fxgo (star at the beat, string lights on their inline .55-1.85s delays) -
      the flapseal-era absolute-delay overrides were removed, they would
      double-delay under fxgo. */
-  body.fxcard.opening #card{transition:opacity .45s ease 3.95s} /* tightened (Gary Nov 9): fxgo 1.8s + animation, then the card is simply THERE - full at ~4.4s, no empty beat */
+  body.fxcard.opening #card{transition:opacity .45s ease 3.45s} /* quicker (Gary Nov 9 16:07): fxgo 1.5s + the animation plays alone, then the card is there - full ~3.9s */ /* tightened (Gary Nov 9): fxgo 1.8s + animation, then the card is simply THERE - full at ~4.4s, no empty beat */
   /* per-envelope interiors (generated from each front's own base layer,
      flipped to the bottom anchor like the hand-built ten) */
   body.ptTen.env-thankyou #envIn{background:
@@ -2475,7 +2514,8 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   </main>
 
   <button id="front" type="button" aria-label="Sealed card for Sofia, from James. Tap the seal to open.">
-    <div id="flap" aria-hidden="true"></div>
+    <div id="flapIn" aria-hidden="true"></div>
+    <div id="flap" aria-hidden="true"><i class="fu" aria-hidden="true"></i></div>
     <div class="f-for">A Living Card</div>
     <div class="f-name">Sofia</div>
     <div class="f-from"><span>Happy New Year,</span><span class="f-from-name">from James</span></div>
@@ -3443,7 +3483,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
       clearTimeout(fxTimer);
       fxTimer = setTimeout(function(){
         if (document.body.classList.contains('open')) document.body.classList.add('fxgo');
-      }, 1800); /* tightened -0.5s (Gary Nov 9): fxgo lands as the front begins its crossfade */
+      }, 1500); /* quicker (Gary Nov 9 16:07): the animation beat starts as the visible flap finishes */
     }
   };
   /* the canvas confetti (popBurst: birthday/biglove at the tap, the
@@ -3452,15 +3492,15 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   var popBurstOrig = popBurst;
   popBurst = function(){
     if (document.body.classList.contains('ptQuiet')) return;
-    if (document.body.classList.contains('ptTen')) { setTimeout(popBurstOrig, 1800); }
+    if (document.body.classList.contains('ptTen')) { setTimeout(popBurstOrig, 1500); }
     else popBurstOrig();
   };
   front.addEventListener('click', open);
   document.getElementById('replay').addEventListener('click', function(){
-    /* REPLAY (Gary Nov 9): the closed envelope returns and the WHOLE opening
-       re-runs - seal, gold creases, flap, animation, card. */
+    /* REPLAY (Gary Nov 9 16:07): the closed envelope returns and STOPS.
+       Nothing opens automatically — the viewer's own tap on the seal/front
+       opens it again, exactly like the first opening. */
     reseal();
-    setTimeout(function(){ if (!document.body.classList.contains('open')) open(); }, 1250); /* 1250ms: the envelope face fully re-materializes (closed) before the sequence re-runs */
   });
   var _bS = document.getElementById('btnStill'), _bL = document.getElementById('btnLiving');
   function setStill(on){
