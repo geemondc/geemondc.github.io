@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Wedding Envelopes — a Living Cards prototype</title>
+<style>
+  :root{
+    --gold1:#f9ecb8; --gold2:#e9c766; --gold3:#b8860b; --gold4:#8a5a00;
+    --ink:#2b2118;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:Georgia,'Times New Roman',serif;
+    background:radial-gradient(120% 90% at 50% 0%, #2a2135 0%, #17121f 55%, #0d0a12 100%);
+    color:#f3ead8; overflow-x:hidden;
+  }
+  /* ---------- gallery ---------- */
+  header{padding:26px 18px 6px;text-align:center}
+  header h1{font-size:26px;font-weight:normal;letter-spacing:.14em;color:var(--gold1);
+    text-shadow:0 0 18px rgba(233,199,102,.35)}
+  header p{margin-top:8px;font-size:14.5px;font-style:italic;color:#cdbf9f}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px;padding:20px 14px 40px;max-width:760px;margin:0 auto}
+  .tile{background:rgba(255,255,255,.045);border:1px solid rgba(233,199,102,.28);border-radius:14px;
+    padding:14px 10px 12px;text-align:center;cursor:pointer;transition:transform .18s, border-color .18s}
+  .tile:active{transform:scale(.97)}
+  .tile .tname{margin-top:11px;font-size:14.5px;letter-spacing:.06em;color:#f3ead8}
+  .tile .tsub{font-size:11.5px;font-style:italic;color:#a5946f;margin-top:2px}
+  footer{padding:0 20px 34px;text-align:center;font-size:12.5px;color:#8d7f61;font-style:italic}
+
+  /* ---------- envelope stage ---------- */
+  #stage{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;
+    background:radial-gradient(110% 80% at 50% 30%, #241b31 0%, #120d1a 70%, #0a0710 100%);
+    padding:14px 12px calc(14px + env(safe-area-inset-bottom))}
+  #stage.on{display:flex}
+  #stageBar{width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center}
+  #stageName{font-size:17px;letter-spacing:.12em;color:var(--gold1)}
+  .sbtn{background:none;border:1px solid rgba(233,199,102,.5);color:var(--gold1);border-radius:999px;
+    font-family:inherit;font-size:13.5px;padding:7px 16px;cursor:pointer;letter-spacing:.05em}
+  #stageMid{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;min-height:0}
+  #hint{font-size:14px;font-style:italic;color:#cdbf9f;letter-spacing:.04em;transition:opacity .4s}
+  #replayBtn{display:none}
+
+  /* ---------- envelope component ---------- */
+  .envwrap{perspective:1400px;width:100%}
+  #stageEnv .envwrap{width:min(92vw,540px)}
+  .env{position:relative;overflow:visible;width:100%;aspect-ratio:1.42/1;border-radius:10px;
+    box-shadow:0 24px 50px rgba(0,0,0,.55), 0 4px 14px rgba(0,0,0,.5)}
+  .env.mini{box-shadow:0 8px 18px rgba(0,0,0,.45)}
+  .env .back{position:absolute;inset:0;border-radius:10px;background:#17110d;overflow:hidden}
+  .env .body{border-radius:10px}
+  .env .back::after{content:"";position:absolute;inset:6px;border-radius:7px;
+    background:linear-gradient(160deg,#fdf6e0,#f3e5c3);opacity:.94}
+  /* rising card (mini, seen during open) */
+  .riser{position:absolute;left:6%;right:6%;top:7%;height:86%;border-radius:6px;z-index:2;
+    background:linear-gradient(165deg,#fffaf0,#f7ecd2);border:1px solid #d9be7f;
+    box-shadow:0 6px 22px rgba(0,0,0,.35);transform:translateY(9%) scale(.96);opacity:1;
+    display:flex;align-items:center;justify-content:center}
+  .riser span{font-style:italic;color:#8a6d2f;font-size:15px;letter-spacing:.08em}
+  .envwrap.open1 .riser{transform:translateY(-22%) scale(.99);transition:transform 1.5s cubic-bezier(.22,.8,.3,1)}
+  /* body front */
+  .body{position:absolute;inset:0;border-radius:10px;z-index:3;overflow:hidden;
+    background:linear-gradient(155deg,var(--b1),var(--b2) 55%,var(--b3));
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.18), inset 0 0 34px rgba(0,0,0,.16)}
+  .body .sheen{position:absolute;inset:0;background:
+    radial-gradient(90% 60% at 22% 8%, rgba(255,255,255,.20), rgba(255,255,255,0) 55%),
+    radial-gradient(70% 55% at 85% 100%, rgba(0,0,0,.20), rgba(0,0,0,0) 60%)}
+  /* folds */
+  .fold{position:absolute;inset:0;pointer-events:none}
+  .fold.x .tri-l{position:absolute;inset:0;background:linear-gradient(115deg,rgba(0,0,0,.20),rgba(0,0,0,0) 60%);
+    clip-path:polygon(0 0,0 100%,52% 50%)}
+  .fold.x .tri-r{position:absolute;inset:0;background:linear-gradient(245deg,rgba(0,0,0,.20),rgba(0,0,0,0) 60%);
+    clip-path:polygon(100% 0,100% 100%,48% 50%)}
+  .fold.x .tri-b{position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.14),rgba(0,0,0,0) 55%);
+    clip-path:polygon(0 100%,100% 100%,50% 46%)}
+  .fold.x .seam{position:absolute;inset:0}
+  .fold.gate .panel-l{position:absolute;top:0;bottom:0;left:0;width:50.6%;
+    background:linear-gradient(90deg,rgba(255,255,255,.10),rgba(0,0,0,.10));
+    clip-path:polygon(0 0,100% 0,88% 100%,0 100%)}
+  .fold.gate .panel-r{position:absolute;top:0;bottom:0;right:0;width:50.6%;
+    background:linear-gradient(270deg,rgba(255,255,255,.10),rgba(0,0,0,.10));
+    clip-path:polygon(0 0,100% 0,100% 100%,12% 100%)}
+  .piping{position:absolute;inset:7px;border:1.5px solid var(--gold2);border-radius:6px;opacity:.85;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.15), inset 0 0 0 .5px rgba(255,246,200,.35)}
+  .goldline{position:absolute;background:linear-gradient(90deg,var(--gold3),var(--gold1),var(--gold3))}
+  /* ornaments layer */
+  .orn{position:absolute;inset:0;z-index:7;pointer-events:none;transition:opacity .4s}
+  .envwrap.opening .orn{opacity:0;transition:opacity .7s ease .1s}
+  .orn svg{position:absolute;overflow:visible}
+  .emboss{position:absolute;inset:0;opacity:.36;mix-blend-mode:overlay}
+  .emboss.solid{opacity:.85;mix-blend-mode:normal}
+  /* names — always ABOVE flap zone, flap tip never reaches them */
+  .names{position:absolute;left:0;right:0;top:59%;z-index:7;text-align:center;pointer-events:none;padding:0 8%}
+  .names .to{font-size:clamp(24px,7.2vw,40px);font-style:italic;color:var(--ink);
+    text-shadow:0 1px 0 rgba(255,255,255,.18)}
+  .names .from{margin-top:5px;font-size:clamp(12px,3.4vw,16.5px);letter-spacing:.14em;color:var(--ink2);text-transform:uppercase}
+  .mini .names{display:none}
+  /* flap */
+  .flap{position:absolute;left:0;right:0;top:-70.4%;height:70.4%;z-index:6;transform-origin:50% 99.5%;
+    transform:rotateX(179.9deg);transform-style:preserve-3d;
+    background:linear-gradient(180deg,var(--f2),var(--f1));
+    clip-path:polygon(0 0,100% 0,50% 100%);
+    box-shadow:inset 0 0 26px rgba(0,0,0,.18)}
+  .flap::after{content:"";position:absolute;inset:0;clip-path:polygon(0 0,100% 0,50% 100%);
+    background:linear-gradient(0deg,rgba(0,0,0,.13),rgba(0,0,0,.05));
+    transform:rotateY(180deg);backface-visibility:hidden}
+  .flap.scallop{clip-path:none;border-radius:50% 50% 0 0/92% 92% 0 0;
+    box-shadow:inset 0 3px 0 var(--gold2), inset 0 0 26px rgba(0,0,0,.14)}
+  .flap.scallop::after{display:none}
+  .flap .flapedge{position:absolute;inset:0;clip-path:polygon(0 0,100% 0,50% 100%);
+    background:linear-gradient(115deg,transparent 49.4%,var(--gold2) 49.9%,var(--gold1) 50.4%,transparent 51%),
+               linear-gradient(245deg,transparent 49.4%,var(--gold2) 49.9%,var(--gold1) 50.4%,transparent 51%);opacity:.9}
+  .flap.scallop .flapedge{display:none}
+  .envwrap.opening .flap{transform:rotateX(-2deg);transition:transform 3s cubic-bezier(.33,.55,.3,1)}
+  .envwrap.opening .flap{z-index:1}
+  .envwrap.noanim *{transition:none !important;animation:none !important}
+  /* seal / opener */
+  .opener{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);z-index:10;cursor:pointer;
+    background:none;border:none;padding:10px;border-radius:50%;transition:opacity .45s}
+  .envwrap.opening .opener{opacity:0;pointer-events:none}
+  .opener .pulse{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(249,236,184,0)}
+  .envwrap:not(.opening) .opener .pulse{animation:pulsering 2.6s ease-out infinite}
+  @keyframes pulsering{0%{transform:scale(.8);opacity:.8;border-color:rgba(249,236,184,.85)}
+    65%{transform:scale(1.28);opacity:0;border-color:rgba(249,236,184,0)}
+    100%{transform:scale(1.28);opacity:0}}
+  .waxseal{width:64px;height:64px;border-radius:48% 52% 51% 49%/53% 47% 52% 48%;
+    display:flex;align-items:center;justify-content:center;position:relative;
+    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 2px 5px rgba(255,255,255,.35), inset 0 -4px 8px rgba(0,0,0,.35)}
+  .waxseal::after{content:"";position:absolute;inset:7px;border-radius:50%;border:1.5px solid rgba(255,235,190,.5)}
+  .waxseal .init{font-size:19px;letter-spacing:.08em;color:#ffeec2;text-shadow:0 1px 2px rgba(0,0,0,.5);z-index:1}
+  .waxseal svg{z-index:1}
+  .mini .waxseal{width:34px;height:34px}
+  .mini .waxseal .init{font-size:10px}
+  .mini .opener{padding:4px;pointer-events:none}
+  /* jewel */
+  .jewelwrap{display:flex;flex-direction:column;align-items:center;gap:1px}
+  .mini .jewelwrap svg{transform:scale(.55)}
+  /* GOLD LIGHT-UP */
+  .sweep{position:absolute;inset:0;z-index:11;pointer-events:none;overflow:hidden;border-radius:10px;opacity:0}
+  .sweep::before{content:"";position:absolute;top:-25%;bottom:-25%;left:-35%;width:42%;
+    background:linear-gradient(100deg,transparent,rgba(255,244,196,.34) 38%,rgba(255,252,230,.75) 50%,rgba(255,244,196,.34) 62%,transparent);
+    transform:skewX(-14deg)}
+  .envwrap.lit .sweep{opacity:1}
+  .envwrap.lit .sweep::before{animation:sweepmove 1.25s ease-in-out forwards}
+  @keyframes sweepmove{from{left:-35%}to{left:105%}}
+  .goldfx{transition:filter .45s}
+  .envwrap.lit .goldfx{filter:drop-shadow(0 0 7px rgba(255,214,90,.95)) drop-shadow(0 0 20px rgba(255,190,60,.55)) brightness(1.28)}
+  .spark{position:absolute;width:15px;height:15px;z-index:12;pointer-events:none;opacity:0}  .envwrap.lit .spark{animation:sparkle 1.2s ease-in-out forwards}
+  .envwrap.lit .spark.s2{animation-delay:.28s}.envwrap.lit .spark.s3{animation-delay:.55s}
+  @keyframes sparkle{0%{opacity:0;transform:scale(.3) rotate(0deg)}35%{opacity:1;transform:scale(1.15) rotate(40deg)}
+    70%{opacity:.9}100%{opacity:0;transform:scale(.4) rotate(85deg)}}
+  .envwrap.lit .waxseal{box-shadow:0 4px 10px rgba(0,0,0,.4),0 0 22px rgba(255,205,80,.85),inset 0 2px 5px rgba(255,255,255,.4),inset 0 -4px 8px rgba(0,0,0,.3)}
+
+  /* ---------- inside card ---------- */
+  #insideView{position:fixed;inset:0;z-index:60;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;
+    background:radial-gradient(110% 80% at 50% 22%, #2a2138 0%, #140f1d 70%, #0a0710 100%);
+    padding:18px 12px calc(26px + env(safe-area-inset-bottom))}
+  #insideView.on{display:flex}
+  .card{width:min(94vw,520px);background:linear-gradient(170deg,#fffaf0,#f8eed6);color:#3a2c17;border-radius:10px;
+    box-shadow:0 30px 60px rgba(0,0,0,.6);padding:12px;animation:cardin 1.1s cubic-bezier(.2,.8,.3,1)}
+  @keyframes cardin{from{opacity:0;transform:translateY(36px) scale(.97)}to{opacity:1;transform:none}}
+  .card .frame{border:2px solid #c9a227;border-radius:6px;padding:20px 18px 22px;position:relative}
+  .card .frame::after{content:"";position:absolute;inset:5px;border:1px solid rgba(201,162,39,.55);border-radius:4px;pointer-events:none}
+  .card .ttl{text-align:center;font-size:15px;letter-spacing:.34em;text-transform:uppercase;color:#8a6d2f}
+  .card .rule{width:64px;height:2px;margin:10px auto 14px;background:linear-gradient(90deg,transparent,#c9a227,transparent)}
+  .scenebox{border:2px solid #c9a227;border-radius:5px;overflow:hidden;box-shadow:0 4px 14px rgba(90,60,0,.25)}
+  .scenebox svg{display:block;width:100%;height:auto}
+  .card .headline{text-align:center;font-size:22.5px;font-style:italic;margin:17px 4px 0;color:#4a3510}
+  .card .bodytxt{text-align:center;font-size:15.5px;line-height:1.55;margin:10px 6px 0;color:#5d4a26}
+  .card .closing{text-align:center;margin-top:18px}
+  .card .closing .wl{display:block;font-style:italic;font-size:16.5px;color:#8a6d2f}
+  .card .closing .nm{display:block;font-size:21px;margin-top:3px;color:#3a2c17;letter-spacing:.03em}
+  .card .btns{display:flex;gap:10px;justify-content:center;margin-top:20px}
+  .card .btns button{font-family:inherit;font-size:13.5px;letter-spacing:.05em;padding:10px 15px;border-radius:999px;cursor:pointer}
+  .btn-gold{background:linear-gradient(180deg,#e9c766,#c9a227);border:1px solid #a8842a;color:#3a2a05}
+  .btn-ghost{background:none;border:1px solid #b39b58;color:#6d5620}
+
+  /* ---------- living scene (SVG, animated by CSS) ---------- */
+  .skySunset,.skyNight,.starsG,.moonG,.shadeR,.winGlow{animation:skyCycle 20s linear infinite}
+  .skySunset{opacity:0}.skyNight{opacity:0}.starsG{opacity:0}.winGlow{opacity:0}
+  .sunG{animation:sunCycle 20s linear infinite}
+  @keyframes skyCycle{
+    0%,26%{opacity:var(--o0,0)} 42%,52%{opacity:var(--o1,0)} 70%,88%{opacity:var(--o2,0)} 100%{opacity:var(--o0,0)}}
+  .skySunset{--o0:0;--o1:1;--o2:0}
+  .skyNight{--o0:0;--o1:0;--o2:1}
+  .starsG{--o0:0;--o1:0;--o2:1}
+  .winGlow{--o0:0;--o1:.25;--o2:1}
+  .shadeR{--o0:0;--o1:.10;--o2:.38}
+  .moonG{--o0:0;--o1:0;--o2:1}
+  @keyframes sunCycle{
+    0%{transform:translate(0,0);opacity:1} 30%{transform:translate(-14px,26px);opacity:1}
+    48%{transform:translate(-24px,58px);opacity:.9} 62%{transform:translate(-30px,86px);opacity:0}
+    88%{transform:translate(-6px,30px);opacity:0} 100%{transform:translate(0,0);opacity:1}}
+  .firefly{animation:fly 3.4s ease-in-out infinite alternate}
+  .firefly.f2{animation-duration:4.3s;animation-delay:.7s}.firefly.f3{animation-duration:2.9s;animation-delay:1.3s}
+  @keyframes fly{from{transform:translate(0,0)}to{transform:translate(7px,-9px)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>WEDDING ENVELOPES</h1>
+  <p>Ten luxury envelopes in a new class — tap one, then tap the seal.<br>The gold lights up, and it opens slowly.</p>
+</header>
+<main class="grid" id="grid"></main>
+<footer>A prototype for Gary's verdict — Photo Letters by Living Photos.</footer>
+
+<div id="stage" role="dialog" aria-modal="true">
+  <div id="stageBar">
+    <div id="stageName"></div>
+    <button class="sbtn" id="closeBtn">Close ✕</button>
+  </div>
+  <div id="stageMid">
+    <div id="stageEnv"></div>
+    <div id="hint">Tap the seal to open</div>
+    <button class="sbtn" id="replayBtn">↺ Replay the opening</button>
+  </div>
+</div>
+
+<div id="insideView"></div>
+
+<style>
+  .envwrap.noanim.lit .sweep{opacity:1}
+  .envwrap.noanim.lit .sweep::before{left:36%;width:46%}
+  .envwrap.noanim.lit .spark{opacity:.95}
+</style>
+
+<script>
+/* ============ ornament SVG builders (all original drawings) ============ */
+function roseSVG(size){return `<svg class="goldfx" width="${size}" height="${size}" viewBox="0 0 40 40">
+  <g fill="none" stroke="#f3d67b" stroke-width="2" stroke-linecap="round">
+  <path d="M20 6a8 8 0 1 1-8 8"/><path d="M20 11a5.4 5.4 0 1 0 5.4 5.4"/>
+  <path d="M20 15.4a2.8 2.8 0 1 1-2.8 2.8"/></g>
+  <g fill="#f3d67b"><circle cx="7" cy="24" r="1.7"/><circle cx="33" cy="24" r="1.7"/>
+  <path d="M6 30q5-4 9-1-4 4-9 1Z"/><path d="M34 30q-5-4-9-1 4 4 9 1Z"/></g></svg>`}
+function sprigSVG(w){return `<svg class="goldfx" width="${w}" viewBox="0 0 60 44">
+  <path d="M6 40 Q26 22 52 6" fill="none" stroke="#b8860b" stroke-width="2.4" stroke-linecap="round"/>
+  <g fill="#c9a227"><ellipse cx="18" cy="30" rx="7" ry="3.4" transform="rotate(-38 18 30)"/>
+  <ellipse cx="27" cy="22" rx="7" ry="3.4" transform="rotate(-38 27 22)"/>
+  <ellipse cx="36" cy="15" rx="6.4" ry="3.1" transform="rotate(-38 36 15)"/>
+  <ellipse cx="24" cy="33" rx="6" ry="3" transform="rotate(24 24 33)"/>
+  <ellipse cx="34" cy="25" rx="6" ry="3" transform="rotate(24 34 25)"/></g></svg>`}
+function bowSVG(main,dark,light,w){return `<svg width="${w}" viewBox="0 0 120 80">
+  <path d="M60 34 L26 62 L34 74 L60 48 Z" fill="${dark}"/>
+  <path d="M60 34 L94 62 L86 74 L60 48 Z" fill="${dark}"/>
+  <path d="M58 36 C34 6 6 10 8 30 C10 50 38 50 58 40 Z" fill="${main}"/>
+  <path d="M62 36 C86 6 114 10 112 30 C110 50 82 50 62 40 Z" fill="${main}"/>
+  <path d="M58 37 C40 18 20 18 18 30 C16 42 40 44 58 40 Z" fill="${light}" opacity=".55"/>
+  <path d="M62 37 C80 18 100 18 102 30 C104 42 80 44 62 40 Z" fill="${light}" opacity=".55"/>
+  <rect x="51" y="28" width="18" height="18" rx="5" fill="${dark}"/>
+  <rect x="54" y="30" width="12" height="6" rx="3" fill="${light}" opacity=".6"/></svg>`}
+function gemSVG(c1,c2,c3,h){return `<svg class="goldfx" height="${h}" viewBox="0 0 60 76">
+  <polygon points="14,4 46,4 58,26 30,72 2,26" fill="${c2}"/>
+  <polygon points="18,11 42,11 49,26 11,26" fill="${c1}"/>
+  <polygon points="11,26 49,26 30,72" fill="${c3}" opacity=".55"/>
+  <polygon points="14,4 30,26 2,26" fill="${c1}" opacity=".5"/>
+  <polygon points="46,4 58,26 30,26" fill="${c1}" opacity=".35"/>
+  <polyline points="18,11 42,11 49,26 11,26 18,11" fill="none" stroke="#ffffff" stroke-opacity=".65" stroke-width="1.4"/>
+  <line x1="30" y1="26" x2="30" y2="72" stroke="#ffffff" stroke-opacity=".3" stroke-width="1.2"/>
+  <path d="M16,2.5 L44,2.5 L38,10.5 L22,10.5 Z" fill="${c2}"/>
+  <path d="M20.5,4.5 L39.5,4.5 L35.5,9.5 L24.5,9.5 Z" fill="${c1}"/>
+  <polyline points="20.5,4.5 39.5,4.5 35.5,9.5 24.5,9.5 20.5,4.5" fill="none" stroke="#ffffff" stroke-opacity=".65" stroke-width="1.1"/></svg>`}
+function filigreeSVG(c1,c2,c3,h){return `<svg class="goldfx" height="${h}" viewBox="0 0 84 96">
+  <g fill="none" stroke="#d9b64a" stroke-width="2.6">
+  <path d="M42 3 C20 3 8 16 8 34 C8 47 15 54 24 58 C15 62 8 71 8 82" />
+  <path d="M42 3 C64 3 76 16 76 34 C76 47 69 54 60 58 C69 62 76 71 76 82"/>
+  <circle cx="10" cy="86" r="3.4"/><circle cx="74" cy="86" r="3.4"/></g>
+  <g transform="translate(12,10)">${gemSVG(c1,c2,c3,72)}</g></svg>`}
+function chainSVG(){let dots='';const pts=[[15,13],[42,21],[69,28],[96,33],[123,36],[150,37],[177,36],[204,33],[231,28],[258,21],[285,13]];
+  pts.forEach(p=>{dots+=`<circle cx="${p[0]}" cy="${p[1]}" r="2.7" fill="#e9c766"/>`});
+  return `<svg class="goldfx" style="left:7%;top:7%;width:86%;height:21%" viewBox="0 0 300 48" preserveAspectRatio="none">
+  <path d="M2 4 Q150 52 298 4" fill="none" stroke="#c9a227" stroke-width="2.2"/>${dots}</svg>`}
+function flowerSVG(w){let petals='';for(let i=0;i<6;i++){const a=i*60;
+  petals+=`<ellipse cx="45" cy="24" rx="12.5" ry="20" fill="#2c4a8a" stroke="#d9b64a" stroke-width="1.8" transform="rotate(${a} 45 45)"/>`}
+  return `<svg class="goldfx" width="${w}" height="100%" viewBox="0 0 90 90">${petals}<circle cx="45" cy="45" r="8.5" fill="#e9c766"/><circle cx="45" cy="45" r="4" fill="#b8860b"/></svg>`}
+function orchidSVG(w){return `<svg width="${w}" height="100%" viewBox="0 0 100 78">
+  <path d="M14 66 Q30 52 48 60 Q32 74 14 66Z" fill="#c9a227"/>
+  <path d="M86 66 Q70 52 52 60 Q68 74 86 66Z" fill="#d9b64a"/>
+  <g fill="#fffdf6" stroke="#e3d5b8" stroke-width="1">
+  <ellipse cx="50" cy="20" rx="10" ry="16"/>
+  <ellipse cx="29" cy="32" rx="15" ry="9.5" transform="rotate(-32 29 32)"/>
+  <ellipse cx="71" cy="32" rx="15" ry="9.5" transform="rotate(32 71 32)"/>
+  <ellipse cx="36" cy="52" rx="13" ry="8.5" transform="rotate(24 36 52)"/>
+  <ellipse cx="64" cy="52" rx="13" ry="8.5" transform="rotate(-24 64 52)"/></g>
+  <ellipse cx="50" cy="40" rx="7" ry="10" fill="#e58bb5"/>
+  <circle cx="50" cy="36" r="3" fill="#c2508a"/></svg>`}
+function scrollSVG(tone,goldLines){const corner=`<path d="M6 46 C6 22 22 6 46 6 C32 11 25 18 23 28 C31 25 38 29 38 38 C29 40 21 35 19 26" fill="none" stroke="${tone}" stroke-width="3" stroke-linecap="round"/><circle cx="52" cy="8" r="3" fill="${tone}"/><circle cx="8" cy="52" r="3" fill="${tone}"/>`;
+  let gl='';if(goldLines){gl=`<path d="M0 64 Q75 30 150 62 T300 58" fill="none" stroke="#d9b64a" stroke-width="2.1" opacity=".95"/><path d="M0 196 Q90 210 180 198 T300 202" fill="none" stroke="#d9b64a" stroke-width="2.1" opacity=".8"/>`}
+  return `<svg style="left:0;top:0;width:100%;height:100%" viewBox="0 0 300 212" preserveAspectRatio="none">
+  <g>${corner}</g><g transform="translate(300,0) scale(-1,1)">${corner}</g>
+  <g transform="translate(0,212) scale(1,-1)">${corner}</g><g transform="translate(300,212) scale(-1,-1)">${corner}</g>${gl}</svg>`}
+function floralSVG(){const fl=(x,y,s,r)=>`<g transform="translate(${x},${y}) scale(${s}) rotate(${r})" fill="none" stroke="#ffffff" stroke-width="2">
+  <circle r="5"/><ellipse cx="0" cy="-12" rx="5.5" ry="8"/><ellipse cx="0" cy="12" rx="5.5" ry="8"/>
+  <ellipse cx="-12" cy="0" rx="8" ry="5.5"/><ellipse cx="12" cy="0" rx="8" ry="5.5"/></g>`;
+  return `<svg style="left:0;top:0;width:100%;height:100%" viewBox="0 0 300 212" preserveAspectRatio="none">
+  ${fl(38,36,1,10)}${fl(262,36,.9,25)}${fl(40,178,.85,40)}${fl(260,176,1,15)}${fl(150,26,.7,30)}${fl(150,190,.7,55)}</svg>`}
+function sparkSVG(x,y,d){return `<svg class="spark ${d||''}" style="left:${x}%;top:${y}%" viewBox="0 0 20 20">
+  <path d="M10 0 L12 8 L20 10 L12 12 L10 20 L8 12 L0 10 L8 8Z" fill="#fff3c4"/></svg>`}
+
+/* ============ the 10 designs ============ */
+const EMERALD=['#8fe6b0','#1d9e5f','#0a5230'], CLEAR=['#f2f9ff','#bcd8f2','#7fa8cc'],
+      PINK=['#ffd9e9','#f28bb8','#c2508a'], BLACKG=['#62626e','#26262e','#0a0a10'];
+const DESIGNS=[
+ {id:'burgundy', name:'Burgundy Velvet', sub:'velvet · wax seal', b:['#7c2233','#5e1220','#420a16'], f:['#8a2a3c','#671626'],
+  fold:'x', piping:true, ink:'#ffeec9', ink2:'#e8cf9a', orn:d=>chainSVG(), opener:d=>sealRose('#8e1f2f')},
+ {id:'cream', name:'Cream Satin Bow', sub:'gatefold · emerald jewel', b:['#faf4e4','#f1e6cb','#e2d2ab'], f:['#fbf6ea','#efe3c6'],
+  fold:'gate', ink:'#5d4a26', ink2:'#8a6d2f',
+  orn:d=>`<div style="position:absolute;left:50%;top:5%;transform:translateX(-50%);width:33%">${bowSVG('#ecd9b4','#bfa06e','#f7ecd2','100%')}</div>
+          <div style="position:absolute;left:57%;top:9%">${sprigSVG('52px')}</div>`,
+  opener:d=>`<div class="jewelwrap">${gemSVG(...EMERALD,54)}</div>`},
+ {id:'ivory', name:'Ivory Pearl', sub:'embossed · pearl seal', b:['#fdfaf1','#f4ecd9','#e7dbc0'], f:['#fefcf6','#f1e8d2'],
+  fold:'std', ink:'#5d4a26', ink2:'#8a6d2f', emboss:()=>floralSVG(), orn:d=>'', opener:d=>sealInit(true)},
+ {id:'midnight', name:'Midnight Navy', sub:'chain · rose seal', b:['#26386b','#182747','#0d1730'], f:['#2e4177','#1a2a52'],
+  fold:'x', ink:'#ffeec9', ink2:'#d9c48d',
+  orn:d=>chainSVG()+`<div style="position:absolute;right:3.5%;bottom:4%;width:23%;aspect-ratio:1/1">${flowerSVG('100%')}</div>
+          <div class="goldline goldfx" style="left:7%;bottom:13%;width:27%;height:2px"></div>
+          <div class="goldline goldfx" style="left:7%;bottom:17.5%;width:19%;height:2px"></div>`,
+  opener:d=>sealRose('#31477e')},
+ {id:'emerald', name:'Emerald Bow', sub:'gatefold · emerald jewel', b:['#177a4c','#0d5c37','#083d24'], f:['#1c8a56','#0f6a3e'],
+  fold:'gate', ink:'#ffeec9', ink2:'#d9c48d',
+  orn:d=>`<div style="position:absolute;left:50%;top:5%;transform:translateX(-50%);width:33%">${bowSVG('#0f7a46','#07512c','#3bb573','100%')}</div>
+          <div style="position:absolute;left:57%;top:9%">${sprigSVG('52px')}</div>`,
+  opener:d=>`<div class="jewelwrap">${gemSVG(...EMERALD,54)}</div>`},
+ {id:'amber', name:'Amber Jewel', sub:'x-fold · one great jewel', b:['#f59a23','#e07f0e','#b85f04'], f:['#f7a832','#e8890f'],
+  fold:'x', piping:true, ink:'#fff6da', ink2:'#ffe1a8',
+  orn:d=>`<div style="position:absolute;left:9%;top:44%;color:#fff3c4;font-size:15px">◆</div>
+          <div style="position:absolute;right:9%;top:44%;color:#fff3c4;font-size:15px">◆</div>`,
+  opener:d=>`<div class="jewelwrap">${gemSVG(...CLEAR,66)}</div>`},
+ {id:'blush', name:'Blush Gem', sub:'gatefold · gold bar', b:['#f9dde8','#f3c3d5','#e5a6bf'], f:['#fbe7ef','#f5cbdb'],
+  fold:'gate', ink:'#7c3552', ink2:'#a35d78', orn:d=>'',
+  opener:d=>`<div class="goldfx" style="position:relative;width:76px;height:12px;border-radius:6px;background:linear-gradient(180deg,#f9ecb8,#c9a227,#8a5a00);box-shadow:0 2px 6px rgba(0,0,0,.3)">
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">${gemSVG(...PINK,30)}</div></div>`},
+ {id:'noir', name:'Noir Scroll', sub:'scrollwork · black jewel', b:['#34343f','#22222b','#131318'], f:['#3d3d4a','#26262f'],
+  fold:'std', ink:'#ffeec9', ink2:'#cbb27a', emboss:()=>scrollSVG('#23232c',true), solid:true, orn:d=>'',
+  opener:d=>filigreeSVG(...BLACKG,64)},
+ {id:'champagne', orch:true, name:'Champagne Clasp', sub:'scalloped flap · orchid', b:['#f6e7c8','#eedcae','#dfc88f'], f:['#f8ecd0','#ecd9a9'],
+  fold:'std', flap:'scallop', ink:'#5d4a26', ink2:'#8a6d2f',
+  orn:d=>`<div style="position:absolute;left:3.5%;bottom:4.5%;width:24%;aspect-ratio:100/78">${orchidSVG('100%')}</div>`,
+  opener:d=>`<div class="goldfx" style="position:relative;width:13px;height:58px;border-radius:7px;background:linear-gradient(90deg,#f9ecb8,#c9a227,#8a5a00);box-shadow:0 2px 6px rgba(0,0,0,.3)">
+          <div style="position:absolute;left:50%;top:50%;width:11px;height:11px;background:#ffffff;transform:translate(-50%,-50%) rotate(45deg);box-shadow:0 0 6px #fff, inset 0 0 3px #bcd8f2"></div></div>`},
+ {id:'amethyst', name:'Amethyst Scroll', sub:'scrollwork · satin bow', b:['#5b2a86','#431d66','#2c1147'], f:['#68359a','#4c2373'],
+  fold:'std', ink:'#ffeec9', ink2:'#dcc48f', emboss:()=>scrollSVG('#6d3aa3',true), solid:true,
+  orn:d=>`<div style="position:absolute;left:50%;top:5%;transform:translateX(-50%);width:33%">${bowSVG('#5e2b8c','#3a1860','#8a54bd','100%')}</div>`,
+  opener:d=>filigreeSVG(...CLEAR,64)},
+];
+function sealRose(col){return `<div class="waxseal" style="background:radial-gradient(circle at 35% 30%, ${col}, ${col} 55%, rgba(0,0,0,.38) 130%)">${roseSVG(32)}</div>`}
+function sealInit(pearl){return `<div class="waxseal" style="background:radial-gradient(circle at 35% 30%, #ffffff, #f1e7cf 55%, #c9b992 130%)"><span class="init" style="color:#8a6d2f;text-shadow:none">E·J</span></div>`}
+
+/* ============ envelope builder ============ */
+function envHTML(d,mini){
+  const fold = d.fold==='x' ? `<div class="fold x"><div class="tri-l"></div><div class="tri-r"></div><div class="tri-b"></div></div>`
+             : d.fold==='gate' ? `<div class="fold gate"><div class="panel-l"></div><div class="panel-r"></div></div>` : '';
+  return `<div class="envwrap" data-id="${d.id}"><div class="env ${mini?'mini':''}${d.orch?' orch':''}"
+    style="--b1:${d.b[0]};--b2:${d.b[1]};--b3:${d.b[2]}">
+    <div class="back"></div>
+    <div class="riser"><span>For Emma</span></div>
+    <div class="body">
+      <div class="sheen"></div>${fold}
+      ${d.emboss?`<div class="emboss${d.solid?' solid':''}">${d.emboss()}</div>`:''}
+      ${d.piping?'<div class="piping goldfx"></div>':''}
+    </div>
+    <div class="orn">${d.orn(d)}</div>
+    <div class="names">
+      <div class="to" style="color:${d.ink}">Emma</div>
+      <div class="from" style="color:${d.ink2}">from&nbsp; James</div>
+    </div>
+    <div class="flap ${d.flap==='scallop'?'scallop':''}" style="--f1:${d.f[0]};--f2:${d.f[1]};background:linear-gradient(180deg,${d.f[0]},${d.f[1]})">
+      ${d.flap==='scallop'?'':'<div class="flapedge goldfx"></div>'}
+    </div>
+    <div class="sweep"></div>
+    ${sparkSVG(30,30)}${sparkSVG(63,22,'s2')}${sparkSVG(71,50,'s3')}
+    <button class="opener" aria-label="Open the envelope">${d.opener(d)}<span class="pulse"></span></button>
+  </div></div>`;
+}
+
+/* ============ gallery + stage ============ */
+const grid=document.getElementById('grid'), stage=document.getElementById('stage'),
+      stageEnv=document.getElementById('stageEnv'), stageName=document.getElementById('stageName'),
+      hint=document.getElementById('hint'), replayBtn=document.getElementById('replayBtn'),
+      insideView=document.getElementById('insideView');
+let cur=null, seq=[], state='closed';
+
+DESIGNS.forEach(d=>{
+  const t=document.createElement('div'); t.className='tile';
+  t.innerHTML=envHTML(d,true)+`<div class="tname">${d.name}</div><div class="tsub">${d.sub}</div>`;
+  t.addEventListener('click',()=>openStage(d));
+  grid.appendChild(t);
+});
+function clearTimers(){seq.forEach(clearTimeout);seq=[]}
+function later(fn,ms){seq.push(setTimeout(fn,ms))}
+function openStage(d){
+  cur=d; state='closed'; clearTimers();
+  stageName.textContent=d.name;
+  stageEnv.innerHTML=envHTML(d,false);
+  hint.style.opacity=1; hint.textContent='Tap the seal to open';
+  replayBtn.style.display='none';
+  insideView.classList.remove('on'); insideView.innerHTML='';
+  stage.classList.add('on'); document.body.style.overflow='hidden';
+  stageEnv.querySelector('.opener').addEventListener('click',startOpen);
+}
+function closeStage(){
+  clearTimers(); stage.classList.remove('on'); insideView.classList.remove('on');
+  document.body.style.overflow=''; state='closed';
+}
+document.getElementById('closeBtn').addEventListener('click',closeStage);
+function startOpen(){
+  if(state!=='closed')return; state='light';
+  const wrap=stageEnv.querySelector('.envwrap');
+  replayBtn.style.display='none';
+  hint.textContent='The gold lights up…';
+  wrap.classList.add('lit');
+  later(()=>{ state='opening'; hint.textContent='It opens slowly…'; wrap.classList.add('opening'); },1250);
+  later(()=>{ wrap.classList.add('open1'); },1250+1400);
+  later(()=>{ showInside(); },1250+3050);
+}
+replayBtn.addEventListener('click',()=>{
+  const wrap=stageEnv.querySelector('.envwrap');
+  wrap.classList.remove('lit','opening','open1'); state='closed';
+  hint.textContent='Tap the seal to open'; replayBtn.style.display='none';
+  void wrap.offsetWidth; later(startOpen,420);
+});
+
+/* ============ inside card (same for all 10 in this prototype) ============ */
+function sceneSVG(){
+  let stars='';const sp=[[30,26],[70,14],[120,30],[168,16],[215,28],[262,15],[308,30],[348,18],[382,34],[95,44],[190,46],[285,44],[340,52],[52,58],[238,58]];
+  sp.forEach(p=>{stars+=`<circle cx="${p[0]}" cy="${p[1]}" r="1.6" fill="#ffffff"/>`});
+  return `<svg viewBox="0 0 400 250" role="img" aria-label="A garden at dusk, living">
+  <defs>
+    <linearGradient id="skyD" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6db9f2"/><stop offset="1" stop-color="#dff3ff"/></linearGradient>
+    <linearGradient id="skyS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a4b9e"/><stop offset=".55" stop-color="#e86a92"/><stop offset="1" stop-color="#ffb35c"/></linearGradient>
+    <linearGradient id="skyN" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#081a45"/><stop offset="1" stop-color="#274b8f"/></linearGradient>
+  </defs>
+  <rect width="400" height="250" fill="url(#skyD)"/>
+  <rect class="skySunset" width="400" height="250" fill="url(#skyS)"/>
+  <rect class="skyNight" width="400" height="250" fill="url(#skyN)"/>
+  <g class="starsG">${stars}</g>
+  <g class="moonG"><circle cx="338" cy="42" r="15" fill="#f7efce"/><circle cx="329" cy="37" r="13" fill="#12275e" opacity=".28"/></g>
+  <g class="sunG"><circle cx="112" cy="86" r="21" fill="#ffd94d"/><circle cx="112" cy="86" r="29" fill="#ffe9a0" opacity=".35"/></g>
+  <path d="M0 168 Q90 138 200 160 T400 150 V250 H0 Z" fill="#79b657"/>
+  <path d="M0 200 Q120 172 240 192 T400 186 V250 H0 Z" fill="#4c9448"/>
+  <g>
+    <rect x="52" y="158" width="52" height="38" fill="#fdf6e0"/>
+    <polygon points="46,158 78,132 110,158" fill="#a34d3a"/>
+    <rect x="71" y="172" width="14" height="24" fill="#7a4a26"/>
+    <rect class="winGlow" x="58" y="166" width="9" height="10" fill="#ffd76a"/>
+    <rect x="90" y="166" width="9" height="10" fill="#5d4a26"/>
+  </g>
+  <g stroke="#6d4a2a" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M238 196 V128"/><path d="M322 196 V128"/><path d="M238 128 Q280 96 322 128"/></g>
+  <g fill="#e86a92"><circle cx="244" cy="122" r="6"/><circle cx="262" cy="106" r="6"/><circle cx="282" cy="100" r="6"/>
+    <circle cx="302" cy="106" r="6"/><circle cx="318" cy="122" r="6"/></g>
+  <g fill="#c23b5e"><circle cx="253" cy="114" r="4.4"/><circle cx="281" cy="108" r="4.4"/><circle cx="309" cy="114" r="4.4"/></g>
+  <path d="M168 250 L196 198 L214 198 L238 250 Z" fill="#e8d9ae"/>
+  <g><rect x="352" y="168" width="6" height="30" fill="#6d4a2a"/><circle cx="355" cy="152" r="19" fill="#3e7d3a"/>
+      <rect x="24" y="182" width="5" height="24" fill="#6d4a2a"/><circle cx="27" cy="168" r="15" fill="#4c9448"/></g>
+  <rect class="shadeR" width="400" height="250" fill="#0a1440" opacity="0"/>
+  <g class="starsG"><circle class="firefly" cx="150" cy="205" r="2.6" fill="#ffe97a"/>
+    <circle class="firefly f2" cx="255" cy="215" r="2.3" fill="#ffe97a"/>
+    <circle class="firefly f3" cx="330" cy="200" r="2.5" fill="#ffe97a"/></g>
+  </svg>`;
+}
+function showInside(){
+  state='inside';
+  insideView.innerHTML=`<div class="card"><div class="frame">
+    <div class="ttl">You are invited</div><div class="rule"></div>
+    <div class="scenebox">${sceneSVG()}</div>
+    <div class="headline">A celebration is coming, Emma</div>
+    <p class="bodytxt">Join us for an evening of love, laughter and dancing under the stars —
+      every detail is being prepared with you in mind.</p>
+    <div class="closing"><span class="wl">With love,</span><span class="nm">James</span></div>
+    <div class="btns">
+      <button class="btn-gold" id="inReplay">↺ Replay the opening</button>
+      <button class="btn-ghost" id="inBack">All envelopes</button>
+    </div></div></div>`;
+  insideView.classList.add('on'); insideView.scrollTop=0;
+  document.getElementById('inReplay').addEventListener('click',()=>{
+    insideView.classList.remove('on'); openStage(cur); later(startOpen,380);
+  });
+  document.getElementById('inBack').addEventListener('click',closeStage);
+}
+
+/* ============ QA freeze hooks (?stage=id&freeze=closed|light|midopen|inside) ============ */
+(function(){
+  const q=new URLSearchParams(location.search);
+  const d=DESIGNS.find(x=>x.id===q.get('stage')); if(!d)return;
+  openStage(d);
+  const wrap=stageEnv.querySelector('.envwrap'), f=q.get('freeze');
+  if(!f||f==='closed')return;
+  if(f==='inside'){ showInside(); return; }
+  wrap.classList.add('noanim');
+  if(f==='light'){ wrap.classList.add('lit'); hint.textContent='The gold lights up…'; }
+  if(f==='midopen'){
+    wrap.classList.add('lit','opening','open1');
+    const flap=wrap.querySelector('.flap'); flap.style.transform='rotateX(116deg)';
+    const riser=wrap.querySelector('.riser'); riser.style.transform='translateY(-17%) scale(.985)';
+    hint.textContent='It opens slowly…';
+  }
+})();
+</script>
+</body>
+</html>
