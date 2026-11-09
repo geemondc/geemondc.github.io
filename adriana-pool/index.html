@@ -36,6 +36,11 @@
   #fsBg { position:absolute; inset:-48px; filter:blur(30px) brightness(.55) saturate(1.2); }
   #fsBg img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   #fs > img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+   /* FIX2 (Nov 9): full-screen bar — STILL / LIVING / close, mirroring the Hammock page. */
+   #fsBar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:center; justify-content:center; gap:14px; padding:14px 12px; background:rgba(8,8,10,.72); }
+   #fsBar button { font-size:14px; padding:9px 22px; border-radius:999px; }
+   #fsBar .x { padding:9px 16px; }
+   #fs.lp-wallnb #fsBar { display:none; }
 </style>
 </head>
 <body>
@@ -63,7 +68,7 @@
   <div class="controls">
     <button id="ignite">&#10022; Bring it to life</button>
     <div class="toggle" id="toggle">
-      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+      <button id="btnStill" class="on">Still</button><button id="btnLiving">Living</button>
     </div>
   </div>
 </main>
@@ -93,8 +98,7 @@
     <img id="fsStrC" src="acc-string-c.png" alt="" style="opacity:0">
     <img id="fsHeld" src="held.png" alt="" style="opacity:0">
     <img id="fsSuit" src="acc-suit.png" alt="" style="opacity:0">
-    <img id="fsHair" src="acc-hair.png" alt="" style="opacity:0">
-</div>
+    <img id="fsHair" src="acc-hair.png" alt="" style="opacity:0">      <div id="fsBar">     <button id="fsStill">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&times;</button>     </div> </div>
 
 <script>
 (function(){
@@ -133,14 +137,15 @@
                golden: document.getElementById('fsBgGolden'),
                glow: document.getElementById('fsBgGlow'),
                held: document.getElementById('fsBgHeld') };
-  function applyBg(so){
+  function applyBg(so, living){
     fsBg.day.style.opacity = so.day;
     fsBg.golden.style.opacity = so.golden;
     fsBg.glow.style.opacity = so.glow;
-    fsBg.held.style.opacity = 1;      // full screen always shows the living composite
+    fsBg.held.style.opacity = (living === false) ? 0 : 1;   // the held layer rides only in the living view
   }
   var fsEl = document.getElementById('fs');
   var fsOpen = false, priorState = 'still';
+  var fsSaved = null;   // FIX2: full screen keeps the stage's state (still or living).
 
   // The journey (20s): afternoon hold -> golden melt -> golden hold ->
   // blue-hour melt -> glow hold -> back through golden -> afternoon.
@@ -224,7 +229,7 @@
     var living = state === 'living';
     if (!living) so = { day:1, golden:0, glow:0 };
     apply(page, so, ao, living);
-    if (fsOpen){ apply(fs, so, ao, true); applyBg(so); }
+    if (fsOpen){ var fsLiving = fsSaved !== 'still'; var fsSo = fsLiving ? so : { day:1, golden:0, glow:0 }; apply(fs, fsSo, ao, fsLiving); applyBg(fsSo, fsLiving); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -253,8 +258,9 @@
 
   function openFs(){
     priorState = state;
-    if (!ignited) ignite();           // full screen is the living state
-    fsOpen = true; fsEl.style.display = 'block';
+    fsSaved = priorState;
+    if (!ignited) ignite();           // start the clock if needed; the fs view itself keeps the stage's state (see frame())
+    fsOpen = true; fsEl.style.display = 'block'; syncFsBar();
   }
   function closeFs(){
     fsOpen = false; fsEl.style.display = 'none';
@@ -262,8 +268,13 @@
   }
   document.getElementById('stage').addEventListener('click', openFs);
   fsEl.addEventListener('click', closeFs);
+  function syncFsBar(){ var b = document.getElementById('fsStill'), c = document.getElementById('fsLiving'); if (b) b.classList.toggle('on', fsSaved === 'still'); if (c) c.classList.toggle('on', fsSaved !== 'still'); }
+  document.getElementById('fsStill').addEventListener('click', function(e){ e.stopPropagation(); fsSaved = 'still'; syncFsBar(); });
+  document.getElementById('fsLiving').addEventListener('click', function(e){ e.stopPropagation(); fsSaved = 'living'; syncFsBar(); });
+  document.getElementById('fsClose').addEventListener('click', function(e){ e.stopPropagation(); closeFs(); });
+  if (/(^|[#&])wall([&#]|$)/.test(location.hash || '')){ ['fsStill','fsLiving','fsClose'].forEach(function(id){ var b = document.getElementById(id); if (b){ b.setAttribute('disabled',''); b.setAttribute('tabindex','-1'); } }); }
   document.addEventListener('keydown', function(e){
-    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+    if (fsOpen && e.key === 'Escape') closeFs();
   });
 
   // Wall mode: embedded in the Living Photos wall (#wall), open directly
@@ -271,6 +282,7 @@
   // and keys, so the usual tap/key exits are disarmed in this mode only.
   if (/(^|[#&])wall([&#]|$)/.test(location.hash || '')){
     openFs();
+    ['fsStill','fsLiving','fsClose'].forEach(function(id){ var b = document.getElementById(id); if (b){ b.setAttribute('disabled',''); b.setAttribute('tabindex','-1'); } });
     document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden';
     document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
     fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);

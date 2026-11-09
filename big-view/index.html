@@ -39,6 +39,11 @@
   #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
   #fs img.acc { inset:auto; object-fit:fill; }
   #fs canvas.fw { position:absolute; inset:0; width:100%; height:100%; display:block; }
+   /* FIX2 (Nov 9): full-screen bar — STILL / LIVING / close, mirroring the Hammock page. */
+   #fsBar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:center; justify-content:center; gap:14px; padding:14px 12px; background:rgba(8,8,10,.72); }
+   #fsBar button { font-size:14px; padding:9px 22px; border-radius:999px; }
+   #fsBar .x { padding:9px 16px; }
+   #fs.lp-wallnb #fsBar { display:none; }
 </style>
 </head>
 <body>
@@ -70,7 +75,7 @@
   <div class="controls">
     <button id="ignite">&#10022; Bring it to life</button>
     <div class="toggle" id="toggle">
-      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+      <button id="btnStill" class="on">Still</button><button id="btnLiving">Living</button>
     </div>
   </div>
 </main>
@@ -98,7 +103,7 @@
     <img class="acc" id="fsAccCityC" src="acc-cityc.png" alt="" style="opacity:0;left:13.7500%;top:33.4028%;width:74.8047%;height:13.8889%">
     <img class="acc" id="fsAccLakeA" src="acc-lakea.png" alt="" style="opacity:0;left:38.0469%;top:41.7361%;width:35.1953%;height:11.1111%">
     <img class="acc" id="fsAccLakeB" src="acc-lakeb.png" alt="" style="opacity:0;left:35.3906%;top:41.7361%;width:38.5938%;height:11.1111%">
-    <img class="acc" id="fsAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">
+    <img class="acc" id="fsAccLakeC" src="acc-lakec.png" alt="" style="opacity:0;left:36.2500%;top:41.7361%;width:36.2109%;height:9.4444%">      <div id="fsBar">     <button id="fsStill">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&times;</button>     </div> 
 </div></div>
 
 <script>
@@ -337,15 +342,20 @@
   // from LIVING the living picture at the same phase; exit restores the
   // page exactly (mode untouched, clock untouched).
   function openFs(){
-    fsOpen = true; fitFs(); fsEl.style.display = 'block';
+    fsOpen = true; fitFs(); fsEl.style.display = 'block'; syncFsBar();
   }
   function closeFs(){
     fsOpen = false; fsEl.style.display = 'none';
   }
   document.getElementById('stage').addEventListener('click', openFs);
   fsEl.addEventListener('click', closeFs);
+  function syncFsBar(){ var b = document.getElementById('fsStill'), c = document.getElementById('fsLiving'); if (b) b.classList.toggle('on', state === 'still'); if (c) c.classList.toggle('on', state !== 'still'); }
+  document.getElementById('fsStill').addEventListener('click', function(e){ e.stopPropagation(); setStill(); syncFsBar(); });
+  document.getElementById('fsLiving').addEventListener('click', function(e){ e.stopPropagation(); setLiving(); syncFsBar(); });
+  document.getElementById('fsClose').addEventListener('click', function(e){ e.stopPropagation(); closeFs(); });
+  if (/(^|[#&])wall([&#]|$)/.test(location.hash || '')){ ['fsStill','fsLiving','fsClose'].forEach(function(id){ var b = document.getElementById(id); if (b){ b.setAttribute('disabled',''); b.setAttribute('tabindex','-1'); } }); }
   document.addEventListener('keydown', function(e){
-    if (fsOpen && (e.key === 'Escape' || e.key)) closeFs();
+    if (fsOpen && e.key === 'Escape') closeFs();
   });
 
   // QA hooks (invisible in normal use).
