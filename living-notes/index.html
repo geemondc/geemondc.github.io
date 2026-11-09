@@ -50,18 +50,16 @@
   .nb.go2 .foldH{transform:rotateX(0deg)}
   .nb.go3 .foldV2{transform:rotateY(0deg)}
 
-  /* ---- notebook, letter fold (notebook2): half, then half again, opened in two full-panel swings ---- */
-  .nb2 .qTop{left:0; top:0; width:100%; height:50%; z-index:1}
-  .nb2 .foldBot2{left:0; bottom:0; width:100%; height:50%; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1); z-index:4}
-  .nb2 .qLB{width:50%; height:100%; float:left}
-  .nb2 .foldHalf{left:50%; top:0; width:50%; height:100%; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
-  .nb2.go1 .foldHalf{transform:rotateY(0deg)}
-  .nb2.go2 .foldBot2{transform:rotateX(0deg)}
-  .nb2 .face.backX{transform:rotateX(180deg)}
-  .nb2 .face.backY{transform:rotateY(180deg)}
+  /* ---- notebook, booklet open (notebook2): spine on the left; cover swings open, then a page turn lands full size ---- */
+  .nb2 .qR{right:0; top:0; width:50%; height:100%; z-index:1}
+  .nb2 .foldCover{left:0; top:0; width:50%; height:100%; z-index:3; transform-origin:0 50%; transform:rotateY(0deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .nb2 .foldUnder{left:0; top:0; width:50%; height:100%; z-index:2; transform-origin:100% 50%; transform:rotateY(180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .nb2.go1 .foldCover{transform:rotateY(-180deg)}
+  .nb2.go2 .foldUnder{transform:rotateY(0deg)}
+  .nb2 .spine{position:absolute; left:0; top:0; bottom:0; width:9px; z-index:5; pointer-events:none;
+    background:linear-gradient(90deg, rgba(70,55,25,.22), rgba(70,55,25,.05) 55%, transparent)}
   .nb2 .creases{background:
-    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px)),
-    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
   .nb .face.backX{transform:rotateX(180deg)}
   .nb .face.backY{transform:rotateY(180deg)}
 
@@ -194,15 +192,13 @@
     </div>
   </div>
 
-  <!-- NOTEBOOK, LETTER FOLD -->
+  <!-- NOTEBOOK, BOOKLET OPEN -->
   <div class="sheetwrap" id="wrapNB2" hidden>
-    <div class="sheet nb nb2" id="sheetNB2" role="button" tabindex="0" aria-label="Folded notebook note, letter fold. Activate to unfold.">
-      <div class="quad qTop"><div class="face front nbfront noise posTL"><div class="hole" style="top:calc(var(--lh)*2.34)"></div></div></div>
-      <div class="fold foldBot2">
-        <div class="quad qLB"><div class="face front nbfront noise posBL"><div class="hole" style="top:calc(var(--lh)*10.66)"></div></div><div class="face backX nbback posBL"></div></div>
-        <div class="fold foldHalf"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
-      </div>
-      <div class="hole midhole"></div>
+    <div class="sheet nb nb2" id="sheetNB2" role="button" tabindex="0" aria-label="Folded notebook note, booklet. Activate to open.">
+      <div class="quad qR"><div class="face front nbfront noise posBR"></div></div>
+      <div class="fold foldUnder"><div class="quad"><div class="face front nbfront noise posTL"><div class="hole" style="top:calc(var(--lh)*2.34)"></div><div class="hole" style="top:calc(var(--lh)*5.77)"></div><div class="hole" style="top:calc(var(--lh)*9.16)"></div></div><div class="face backY nbback posBR"></div></div></div>
+      <div class="fold foldCover"><div class="quad"><div class="face front nbback posTL"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div><div class="face backY nbfront noise posTL"><div class="hole" style="top:calc(var(--lh)*2.34)"></div><div class="hole" style="top:calc(var(--lh)*5.77)"></div><div class="hole" style="top:calc(var(--lh)*9.16)"></div></div></div></div>
+      <div class="spine"></div>
       <div class="creases"></div>
       <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
     </div>
@@ -229,7 +225,7 @@
   <label>Paper
     <select id="cNote">
       <option value="notebook">Notebook Note A — folded notebook paper</option>
-      <option value="notebook2">Notebook — letter fold</option>
+      <option value="notebook2">Notebook — new opening</option>
       <option value="yellow">Yellow Pad Note — the longer yellow sheet</option>
     </select>
   </label>
@@ -259,7 +255,7 @@
       body:"Quick one — the meeting moved to 3, so don't rush back.\nYour coffee money is on the counter, and the spare keys are with the front desk.\nSee you at dinner." }
   };
   var kind = isYellow ? "yellow" : (isNB2 ? "notebook2" : "notebook");
-  var demo = DEMO[kind];
+  var demo = DEMO[isNB2 ? "notebook" : kind];
   function clamp(s, n){ s = (s == null ? "" : String(s)); return s.length > n ? s.slice(0, n) : s; }
   var to   = clamp(q.get("to")   || demo.to,   40);
   var from = clamp(q.get("from") || demo.from, 40);
@@ -270,7 +266,7 @@
   var sheet  = document.getElementById(isYellow ? "sheetYP" : (isNB2 ? "sheetNB2" : "sheetNB"));
   var wrap   = isYellow ? wrapYP : (isNB2 ? wrapNB2 : wrapNB);
   if (isYellow){ wrapNB.hidden = true; wrapYP.hidden = false; document.title = "Yellow Pad Note — a folded note"; }
-  else if (isNB2){ wrapNB.hidden = true; wrapNB2.hidden = false; document.title = "Notebook — letter fold — a folded note"; }
+  else if (isNB2){ wrapNB.hidden = true; wrapNB2.hidden = false; document.title = "Notebook — booklet open — a folded note"; }
   else { document.title = "Notebook Note A — a folded note"; }
 
   /* fill the words */
@@ -312,9 +308,9 @@
       shade(bot, 1150 * T); sheet.classList.add("go1"); await wait(1180 * T);
       shade(top, 1150 * T); sheet.classList.add("go2"); await wait(1150 * T);
     } else if (isNB2){
-      var half = sheet.querySelector(".foldHalf"), bot2 = sheet.querySelector(".foldBot2");
-      shade(half, 1150 * T); sheet.classList.add("go1"); await wait(1120 * T);
-      shade(bot2, 1250 * T); sheet.classList.add("go2"); await wait(1220 * T);
+      var cover = sheet.querySelector(".foldCover"), under = sheet.querySelector(".foldUnder");
+      shade(cover, 1250 * T); sheet.classList.add("go1"); await wait(1220 * T);
+      shade(under, 1150 * T); sheet.classList.add("go2"); await wait(1120 * T);
     } else {
       var br = sheet.querySelector(".foldV"), fh = sheet.querySelector(".foldH"), tr = sheet.querySelector(".foldV2");
       shade(br, 1050 * T); sheet.classList.add("go1"); await wait(1020 * T);
