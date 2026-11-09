@@ -18,18 +18,18 @@
     background:#221016 radial-gradient(120% 90% at 50% 0%, #3a0e1a 0%, #221016 60%);
     color:var(--ink); overflow:hidden;
   }
-  #scene{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:18px; perspective:1100px;}
+  #scene{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:18px 6px; perspective:1100px;} /* side padding 18->6 (Gary Nov 9): the card uses the negative space, +36% photo area */
 
   /* ---------- the inside card (sits beneath the envelope front) ---------- */
   #card{
-    position:relative; width:min(452px, 95vw); max-height:94dvh; overflow:auto; scrollbar-width:none;
+    position:relative; width:min(470px, 97vw); max-height:94dvh; overflow:auto; scrollbar-width:none;
     background:var(--ivory);
     border-radius:6px;
     box-shadow:0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
-    padding:26px 22px 18px;
+    padding:20px 13px 14px;
     text-align:center;
-    opacity:0; transform:translateY(26px) scale(.93);
-    transition:opacity .8s ease .5s, transform .8s cubic-bezier(.22,.9,.3,1) .5s;
+    opacity:0;
+    transition:opacity .8s ease .5s;
   }
   #card::-webkit-scrollbar{display:none}
   #card::before{
@@ -41,7 +41,7 @@
   .frame{
     position:relative; border:2px solid var(--gold); border-radius:3px; overflow:hidden;
     box-shadow:0 10px 26px rgba(60,30,10,.25); background:#101018;
-    aspect-ratio:4/3.4; margin:14px 4px 0;
+    aspect-ratio:4/3.4; margin:14px 0 0;
   }
   .frame iframe{position:absolute; inset:0; width:100%; height:100%; border:0; display:block; overflow:hidden}
   .frame canvas#fx{position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none}
@@ -165,7 +165,6 @@
   body.env-sp-striker{--sealBoomA:#ffe066;--sealBoomHi:#ffeeab;--sealBoomLo:#b29d47;--sealBoomPiece:#ffe066}
   body.env-sp-tightlines{--sealBoomA:#ffd9a0;--sealBoomHi:#ffeacb;--sealBoomLo:#b29870;--sealBoomPiece:#ffd9a0}
   body.env-sp-tropical{--sealBoomA:#ffd94a;--sealBoomHi:#ffea9b;--sealBoomLo:#b29834;--sealBoomPiece:#ffd94a}
-  body.env-sp-vinyl{--sealBoomA:#c9a24d;--sealBoomHi:#e1cc9d;--sealBoomLo:#8d7136;--sealBoomPiece:#c9a24d}
   body.env-sp-wetlands{--sealBoomA:#ffe066;--sealBoomHi:#ffeeab;--sealBoomLo:#b29d47;--sealBoomPiece:#ffe066}
   body.env-sp-withlove{--sealBoomA:#ffb3c2;--sealBoomHi:#ffd5dd;--sealBoomLo:#b27d88;--sealBoomPiece:#ffb3c2}
   body.env-striker{--sealBoomA:#2c4a7c;--sealBoomHi:#8b9bb7;--sealBoomLo:#1f3457;--sealBoomPiece:#2c4a7c}
@@ -225,7 +224,6 @@
     position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
     opacity:0; transition:opacity 1.6s ease; pointer-events:none;
   }
-  body.settled .frame img.still{opacity:1}
   .message{
     font-family:Georgia,serif; font-style:italic; font-size:18.5px; line-height:1.55;
     color:#5c4a38; margin:16px 12px 0; text-align:center;
@@ -245,20 +243,27 @@
     margin-top:12px; background:var(--burgundy); color:#f5e7c8; border:1px solid var(--gold);
     border-radius:999px; cursor:pointer; padding:10px 26px;
     font-family:Georgia,serif; font-size:14px; letter-spacing:.12em;
-    opacity:0; pointer-events:none; transition:opacity .9s ease .5s;
+    opacity:0; pointer-events:none; visibility:hidden; transition:opacity .9s ease .5s;
   }
   #musicBtn{display:none;position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:40;width:52px;height:52px;border-radius:50%;border:1.5px solid #f6b73c;background:rgba(24,12,6,.72);color:#ffd9a0;font-size:24px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.45);}
-  body.musical.settled #musicBtn{display:block}
+  body.musical.fxgo #musicBtn{display:block} /* arrives with the card (fxgo beat), never gated on a settle (Gary Nov 9) */
   #musicBtn.on{background:#f6b73c;color:#3a2408}
-  body.settled #replay{opacity:1; pointer-events:auto}
+  /* CONTROL BAR (Gary Nov 9 15:43, Dan Reed pattern): STILL | LIVING | REPLAY
+     at the bottom of the card, present from the card's arrival. Default is
+     LIVING - the photo loops forever; STILL is only ever a viewer's tap. */
+  #ctrlbar{display:flex; gap:8px; justify-content:center; align-items:center; margin-top:14px; visibility:hidden; opacity:0}
+  body.open #ctrlbar{visibility:visible; opacity:1; transition:opacity .8s ease 2.35s, visibility 0s linear 2.35s}
+  body.fxcard.open #ctrlbar{transition:opacity .45s ease 3.95s, visibility 0s linear 3.95s}
+  #ctrlbar button{font-family:Georgia,serif; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; padding:9px 16px; border-radius:999px; border:1px solid var(--gold); background:transparent; color:#8a6d2f; cursor:pointer}
+  #ctrlbar button.on{background:var(--burgundy); color:#f5e7c8}
+  #ctrlbar #replay{opacity:1; visibility:visible; pointer-events:auto; margin:0; transition:none}
+  body.showStill .frame img.still{opacity:1} /* the ONLY still state: a viewer's tap */
   #replay:active{transform:scale(.97)}
 
   /* ---------- the sealed envelope front ---------- */
   #front{
     position:absolute; inset:0; z-index:5; cursor:pointer; border:none; width:100%; text-align:center;
     background:
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #7a1a2c 0%, var(--burgundy) 55%, var(--burgundy-deep) 100%);
     color:#f5e7c8; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
     padding:9vh 18px calc(26px + env(safe-area-inset-bottom)); padding:9dvh 18px calc(26px + env(safe-area-inset-bottom));
@@ -305,8 +310,6 @@
   /* ---------- envelope variants: same card soul, different envelope ---------- */
   body.env-kid #front{
     background:
-      linear-gradient(155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
       radial-gradient(circle at 12% 20%, #ffd93b 0 10px, transparent 11px),
       radial-gradient(circle at 84% 14%, #ff6b9d 0 8px, transparent 9px),
       radial-gradient(circle at 90% 78%, #39c2d7 0 11px, transparent 12px),
@@ -329,8 +332,6 @@
   body.env-kid #replay{background:#ff6b9d; border-color:#ffd93b; color:#fff}
   body.env-love #front{
     background:
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #8e2f4f 0%, #6d1f3c 55%, #471126 100%);
     color:#f9e3ec;
   }
@@ -349,8 +350,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 25px), rgba(242,118,92,.88) calc(50% - 25px), rgba(242,118,92,.88) calc(50% + 25px), transparent calc(50% + 25px)),
       linear-gradient(0deg, transparent calc(50% - 25px), rgba(242,118,92,.78) calc(50% - 25px), rgba(242,118,92,.78) calc(50% + 25px), transparent calc(50% + 25px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(120,70,30,.12) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(120,70,30,.12) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #fdf6e7 0%, #f7ead0 55%, #efdcba 100%);
     color:#6d4a2f;
   }
@@ -370,8 +369,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.92) calc(50% - 24px), rgba(232,200,119,.92) 50%, rgba(201,162,77,.92) calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(201,162,77,.85) calc(50% - 24px), rgba(201,162,77,.85) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #17573a 0%, #0f4530 55%, #093322 100%);
     color:#f3ead2;
   }
@@ -384,9 +381,6 @@
   /* the origami envelope: paper white, quiet fold lines, coral-red seal */
   body.env-origami #front{
     background:
-      linear-gradient(155deg, transparent 49.7%, rgba(90,90,90,.16) 50%, transparent 50.4%),
-      linear-gradient(-155deg, transparent 49.7%, rgba(90,90,90,.16) 50%, transparent 50.4%),
-      linear-gradient(24deg, transparent 49.8%, rgba(90,90,90,.08) 50%, transparent 50.3%),
       linear-gradient(160deg, #ffffff 0%, #f6f3ec 55%, #ece7db 100%);
     color:#3c3a36;
   }
@@ -405,9 +399,6 @@
      each new shape carries its own paper tint + seal color so the five read apart */
   body.env-origamibird #front{
     background:
-      linear-gradient(155deg, transparent 49.7%, rgba(60,80,120,.16) 50%, transparent 50.4%),
-      linear-gradient(-155deg, transparent 49.7%, rgba(60,80,120,.16) 50%, transparent 50.4%),
-      linear-gradient(24deg, transparent 49.8%, rgba(60,80,120,.08) 50%, transparent 50.3%),
       linear-gradient(160deg, #fdfdff 0%, #eaf3fd 55%, #d7e7f8 100%);
     color:#33404f;
   }
@@ -424,9 +415,6 @@
   body.env-origamibird #replay{background:#3b6fe0; border-color:#a9c2f5; color:#f2f7ff}
   body.env-origamiboat #front{
     background:
-      linear-gradient(155deg, transparent 49.7%, rgba(120,80,50,.16) 50%, transparent 50.4%),
-      linear-gradient(-155deg, transparent 49.7%, rgba(120,80,50,.16) 50%, transparent 50.4%),
-      linear-gradient(24deg, transparent 49.8%, rgba(120,80,50,.08) 50%, transparent 50.3%),
       linear-gradient(160deg, #fffdf8 0%, #fdf0e2 55%, #fbe3cb 100%);
     color:#4a3a2c;
   }
@@ -443,9 +431,6 @@
   body.env-origamiboat #replay{background:#f09a5e; border-color:#ffd0ab; color:#fff8f1}
   body.env-origamifrog #front{
     background:
-      linear-gradient(155deg, transparent 49.7%, rgba(50,100,60,.16) 50%, transparent 50.4%),
-      linear-gradient(-155deg, transparent 49.7%, rgba(50,100,60,.16) 50%, transparent 50.4%),
-      linear-gradient(24deg, transparent 49.8%, rgba(50,100,60,.08) 50%, transparent 50.3%),
       linear-gradient(160deg, #fdfffc 0%, #ecf8ec 55%, #d8efdb 100%);
     color:#35473a;
   }
@@ -462,9 +447,6 @@
   body.env-origamifrog #replay{background:#3fae5a; border-color:#a3dcb2; color:#f2fbf4}
   body.env-origamiflower #front{
     background:
-      linear-gradient(155deg, transparent 49.7%, rgba(120,60,90,.16) 50%, transparent 50.4%),
-      linear-gradient(-155deg, transparent 49.7%, rgba(120,60,90,.16) 50%, transparent 50.4%),
-      linear-gradient(24deg, transparent 49.8%, rgba(120,60,90,.08) 50%, transparent 50.3%),
       linear-gradient(160deg, #fffdfd 0%, #fdeef3 55%, #fadbe6 100%);
     color:#4d3540;
   }
@@ -484,8 +466,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 22px), rgba(172,180,194,.85) calc(50% - 22px), rgba(216,221,229,.95) 50%, rgba(172,180,194,.85) calc(50% + 22px), transparent calc(50% + 22px)),
       linear-gradient(0deg, transparent calc(50% - 22px), rgba(172,180,194,.7) calc(50% - 22px), rgba(172,180,194,.7) calc(50% + 22px), transparent calc(50% + 22px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(60,60,70,.10) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(60,60,70,.10) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #fffdf8 0%, #faf5ea 55%, #f0e8d8 100%);
     color:#2e3440;
   }
@@ -505,8 +485,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.92) calc(50% - 24px), rgba(236,210,138,.95) 50%, rgba(201,162,77,.92) calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(201,162,77,.85) calc(50% - 24px), rgba(201,162,77,.85) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #1a4b96 0%, #123a7a 55%, #0b2653 100%);
     color:#fff6e8;
   }
@@ -526,8 +504,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 25px), rgba(255,46,166,.9) calc(50% - 25px), rgba(255,46,166,.9) calc(50% + 25px), transparent calc(50% + 25px)),
       linear-gradient(0deg, transparent calc(50% - 25px), rgba(255,46,166,.8) calc(50% - 25px), rgba(255,46,166,.8) calc(50% + 25px), transparent calc(50% + 25px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.2) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.2) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #8b30d6 0%, #6716ad 55%, #43097a 100%);
     color:#ffffff;
   }
@@ -547,8 +523,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 20px), rgba(122,84,50,.85) calc(50% - 20px), rgba(122,84,50,.85) calc(50% + 20px), transparent calc(50% + 20px)),
       linear-gradient(0deg, transparent calc(50% - 20px), rgba(122,84,50,.75) calc(50% - 20px), rgba(122,84,50,.75) calc(50% + 20px), transparent calc(50% + 20px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(90,60,20,.12) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(90,60,20,.12) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #ecd9ae 0%, #dcbf92 55%, #c49e66 100%);
     color:#1e4633;
   }
@@ -568,8 +542,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 22px), rgba(255,255,255,.88) calc(50% - 22px), rgba(255,255,255,.88) calc(50% + 22px), transparent calc(50% + 22px)),
       linear-gradient(0deg, transparent calc(50% - 22px), rgba(255,255,255,.75) calc(50% - 22px), rgba(255,255,255,.75) calc(50% + 22px), transparent calc(50% + 22px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(20,70,120,.10) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(20,70,120,.10) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #e2f3fd 0%, #bfe3f7 55%, #8ec9ee 100%);
     color:#123a63;
   }
@@ -589,8 +561,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.92) calc(50% - 24px), rgba(236,210,138,.95) 50%, rgba(201,162,77,.92) calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(201,162,77,.85) calc(50% - 24px), rgba(201,162,77,.85) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(255,255,255,.09) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(255,255,255,.09) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #2b2b30 0%, #141416 55%, #000000 100%);
     color:#ffd873;
   }
@@ -610,8 +580,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 23px), rgba(255,183,140,.92) calc(50% - 23px), rgba(255,183,140,.92) calc(50% + 23px), transparent calc(50% + 23px)),
       linear-gradient(0deg, transparent calc(50% - 23px), rgba(255,183,140,.8) calc(50% - 23px), rgba(255,183,140,.8) calc(50% + 23px), transparent calc(50% + 23px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(20,90,80,.09) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(20,90,80,.09) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #f0fdf4 0%, #d8f3e3 55%, #b2e3c8 100%);
     color:#0f4c46;
   }
@@ -631,8 +599,6 @@
     background:
       linear-gradient(90deg, transparent calc(50% - 24px), #14532d calc(50% - 24px), #14532d calc(50% - 5px), #c9a24d calc(50% - 5px), #ecd28a 50%, #c9a24d calc(50% + 5px), #14532d calc(50% + 5px), #14532d calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(20,83,45,.9) calc(50% - 24px), rgba(20,83,45,.9) calc(50% - 5px), rgba(201,162,77,.9) calc(50% - 5px), rgba(236,210,138,.9) 50%, rgba(201,162,77,.9) calc(50% + 5px), rgba(20,83,45,.9) calc(50% + 5px), rgba(20,83,45,.9) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #a31621 0%, #7f1d1d 55%, #450a0a 100%);
     color:#fff6e8;
   }
@@ -676,8 +642,6 @@
       radial-gradient(circle at 86% 62%, rgba(255,255,255,.6) 0 3px, transparent 4px),
       radial-gradient(circle at 10% 68%, rgba(255,255,255,.65) 0 2.5px, transparent 3.5px),
       radial-gradient(circle at 58% 8%, rgba(255,255,255,.75) 0 2px, transparent 3px),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #274b7a 0%, #17335c 55%, #0b1e3d 100%);
     color:#f2f8ff;
   }
@@ -700,8 +664,6 @@
       radial-gradient(circle at 90% 80%, rgba(230,190,20,.85) 0 9px, transparent 10px),
       radial-gradient(circle at 8% 82%, rgba(126,217,87,.8) 0 10px, transparent 11px),
       radial-gradient(circle at 68% 90%, rgba(255,93,143,.7) 0 7px, transparent 8px),
-      linear-gradient(155deg, transparent 49.6%, rgba(120,60,120,.10) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(120,60,120,.10) 50%, transparent 50.6%),
       linear-gradient(160deg, #fffdf6 0%, #fdf0dc 55%, #fbe3c2 100%);
     color:#57135e;
   }
@@ -742,8 +704,6 @@
       radial-gradient(circle at 14% 84%, rgba(126,217,87,.35) 0 20px, transparent 21px),
       radial-gradient(circle at 88% 86%, rgba(232,106,138,.30) 0 18px, transparent 19px),
       radial-gradient(circle at 82% 12%, rgba(255,217,59,.35) 0 12px, transparent 13px),
-      linear-gradient(155deg, transparent 49.6%, rgba(60,100,40,.09) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(60,100,40,.09) 50%, transparent 50.6%),
       linear-gradient(160deg, #fdfff6 0%, #eef7dc 55%, #dcebc4 100%);
     color:#274d1e;
   }
@@ -762,8 +722,6 @@
   body.env-treasure #front{
     background:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.9) calc(50% - 24px), rgba(236,210,138,.95) 50%, rgba(201,162,77,.9) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.3) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.3) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #4a2f16 0%, #33200e 55%, #1d1106 100%);
     color:#f7ead0;
   }
@@ -786,8 +744,6 @@
       radial-gradient(circle at 84% 58%, rgba(190,255,150,.7) 0 3px, transparent 4px),
       radial-gradient(circle at 12% 64%, rgba(255,233,122,.6) 0 2.5px, transparent 3.5px),
       radial-gradient(circle at 60% 84%, rgba(255,233,122,.55) 0 2px, transparent 3px),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.3) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.3) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #1b2350 0%, #12173a 55%, #090d24 100%);
     color:#eef0ff;
   }
@@ -807,8 +763,6 @@
     background:
       radial-gradient(circle at 50% 46%, transparent 0 54px, rgba(155,109,214,.5) 54px 57px, transparent 58px),
       radial-gradient(circle at 50% 46%, transparent 0 76px, rgba(155,109,214,.35) 76px 79px, transparent 80px),
-      linear-gradient(155deg, transparent 49.6%, rgba(255,255,255,.07) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(255,255,255,.07) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #241433 0%, #170c26 55%, #0a0514 100%);
     color:#efe8ff;
   }
@@ -851,8 +805,6 @@
       radial-gradient(circle at 18% 16%, rgba(255,238,200,.85) 0 2.5px, transparent 3.5px),
       radial-gradient(circle at 80% 12%, rgba(255,238,200,.7) 0 2px, transparent 3px),
       radial-gradient(circle at 64% 30%, rgba(255,238,200,.55) 0 2px, transparent 3px),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #3a1c4e 0%, #2b1538 55%, #170a22 100%);
     color:#ffeedd;
   }
@@ -874,8 +826,6 @@
       radial-gradient(circle at 78% 10%, rgba(255,214,150,.65) 0 2px, transparent 3px),
       radial-gradient(circle at 64% 26%, rgba(255,214,150,.5) 0 1.6px, transparent 2.6px),
       radial-gradient(58% 44% at 50% 46%, rgba(232,50,79,.55) 0%, rgba(160,25,60,.22) 55%, transparent 75%),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #4a1440 0%, #33102e 55%, #1c0716 100%);
     color:#ffe9f2;
   }
@@ -935,7 +885,6 @@
   body[class*="env-sp-"] .over{color:var(--sp2)}
   body[class*="env-sp-"] #replay{background:var(--sp2); border-color:var(--spA); color:#fff6ea}
   body.env-sp-gameday{--sp1:#31572c; --sp2:#1d3a24; --spA:#ffb03a; --fx1:#31572c; --fx2:#1d3a24; --fx3:#ffb03a}
-  body.env-sp-vinyl{--sp1:#3b1d5e; --sp2:#1c0b31; --spA:#c9a24d; --fx1:#3b1d5e; --fx2:#1c0b31; --fx3:#c9a24d}
   body.env-sp-holes{--sp1:#2e7d4f; --sp2:#17452a; --spA:#ffd94a; --fx1:#2e7d4f; --fx2:#17452a; --fx3:#ffd94a}
   body.env-sp-fishing{--sp1:#b3546e; --sp2:#5e2a3d; --spA:#ffc46b; --fx1:#b3546e; --fx2:#5e2a3d; --fx3:#ffc46b}
   body.env-sp-hoops{--sp1:#5b2a86; --sp2:#2c1445; --spA:#ff9a3d; --fx1:#5b2a86; --fx2:#2c1445; --fx3:#ff9a3d}
@@ -991,7 +940,7 @@
   /* Gary Nov 7 15:50: the tree forms ALONE on a blank neutral stage first;
      the living card appears only after the tree is completely formed. */
   body.env-origami.fxgo #origamiFx{background:radial-gradient(120% 90% at 50% 38%, #fdfaf2 0%, #f6efdd 55%, #ece2cc 100%)}
-  body.env-origami.opening #card{transition:opacity .8s ease 2.55s, transform .8s cubic-bezier(.22,.9,.3,1) 2.55s}
+  body.env-origami.opening #card{transition:opacity .8s ease 2.55s}
 
   /* ---------- ORIGAMI FAMILY OPENINGS (Gary, Nov 9) ----------
      Bird · Boat · Frog · Flower join the Tree. Same law as the tree (Gary Nov 7):
@@ -1077,7 +1026,7 @@
   /* Gary Nov 7: the wedding ring gets the origami treatment — it rises ALONE on a
      blank ivory stage first; the living card appears only after the ring has risen. */
   body.env-wedding.fxgo #weddingFx{background:radial-gradient(120% 90% at 50% 38%, #fffdf6 0%, #faf3e2 55%, #efe3cb 100%)}
-  body.env-wedding.opening #card{transition:opacity .8s ease 2.55s, transform .8s cubic-bezier(.22,.9,.3,1) 2.55s}
+  body.env-wedding.opening #card{transition:opacity .8s ease 2.55s}
 
   /* ---------- UNIVERSAL STAGED OPENING (Gary, Nov 7) ----------
      EVERY envelope, no exceptions: tap the seal -> the envelope opens ->
@@ -1100,7 +1049,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
 
 /* STAGE GATES — sp envelope family (Gary, Nov 7): every card shows its opening stage. */
   body.env-sp-gameday #gamedayFx{display:flex}
-  body.env-sp-vinyl #poolFx{display:flex}
   body.env-sp-holes #holesFx{display:flex}
   body.env-sp-fishing #fishingFx{display:flex}
   body.env-sp-tightlines #tightlinesFx{display:flex}
@@ -1129,7 +1077,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-sp-homer #homerFx{display:flex}
   body.env-sp-striker #strikerFx{display:flex}
 
-  body.opening #card{transition:opacity .8s ease 2.55s, transform .8s cubic-bezier(.22,.9,.3,1) 2.55s}
+  body.opening #card{transition:opacity .8s ease 2.55s}
   body.env-origami{--fx1:#ffffff; --fx2:#f6f3ec; --fx3:#ece7db}
   body.env-origamibird{--fx1:#ffffff; --fx2:#eef4fc; --fx3:#d7e7f8}
   body.env-origamiboat{--fx1:#fffdf8; --fx2:#fdf0e2; --fx3:#fbe3cb}
@@ -1223,8 +1171,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body[class*="env-sc-"] #seal .half{color:var(--sp1)}
   body[class*="env-sc-"] #front{
     background:
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.18) 50%, transparent 50.6%),
       radial-gradient(circle at 88% 12%, #ffd93b 0 9px, transparent 10px),
       radial-gradient(circle at 10% 16%, #ff6b9d 0 8px, transparent 9px),
       radial-gradient(circle at 92% 74%, #39c2d7 0 10px, transparent 11px),
@@ -1414,7 +1360,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   .st-striker{background:linear-gradient(180deg,#2c4a7c 0%,#3f7d38 60%,#2a5c26 100%)}
   /* sprite signature openings: real painted props fly when the seal breaks */
   .sigfx .fxsp{position:absolute; display:block; opacity:0; filter:drop-shadow(0 14px 18px rgba(20,10,40,.35))}
-  body.env-vinyl #poolFx, body.env-gameday #gamedayFx, body.env-holes #holesFx, body.env-fishing #fishingFx,
+  body.env-gameday #gamedayFx, body.env-holes #holesFx, body.env-fishing #fishingFx,
   body.env-hoops #hoopsFx, body.env-pickle #pickleFx, body.env-homerun #homerunFx,
   body.env-goal #goalFx, body.env-tropical #tropicalFx, body.env-beachday #beachdayFx,
   body.env-desert #desertFx, body.env-pond #pondFx{display:flex}
@@ -1785,7 +1731,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
      interior hold to ~2.55s · front crossfades 2.55-3.05s revealing the card
      (card fades beneath it from 2.35s) · seal-boom re-homed 2.85s+. */
   #envIn, .ptp, #ptGlowFx{display:none}
-  body.ptTen #front{overflow:hidden}
+  body.ptTen #front{overflow:hidden; perspective:820px} /* perspective: the flap looms larger mid-fold (Gary Nov 9) */
   /* the open envelope's empty interior: inside of the envelope, in its own
      colors (the front's base gradient run lighter at the top, like the inside
      of paper catching light), darker pocket at the bottom where the card sat */
@@ -1800,7 +1746,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.ptTen .ptp{display:block; position:absolute; z-index:1; pointer-events:none;
     background-repeat:no-repeat; backface-visibility:hidden; will-change:transform,opacity}
   /* top flap: the existing #flap element, re-timed inside the choreography */
-  body.ptTen #flap{z-index:2; backface-visibility:visible; transition:transform .8s cubic-bezier(.3,.7,.3,1) .45s, opacity .3s ease 1.3s}
+  body.ptTen #flap{z-index:2; backface-visibility:visible; transition:transform 1s cubic-bezier(.3,.7,.3,1) .45s, opacity .3s ease 1.62s} /* FULL SWING + HOLD + DISSOLVE (Gary Nov 9 15:47): the flap rotates all the way toward the viewer, holds a beat at full-open so the fold reads BIG, then dissolves by 1.92s - before the front's crossfade, never parked in the open state */
   body.ptTen.opening #flap, body.ptTen.open #flap{transform:rotateX(172deg)}
   /* left + right door panels (each carries its half of the face) */
   body.ptTen .ptp-l{left:0; top:0; width:100%; height:100%; clip-path:polygon(0 0, 100% 50%, 0 100%);
@@ -1821,6 +1767,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
      while the card fades in beneath it, then crossfade to the card - an early
      fade would strand the cream #stageBg as a blank flash between beats */
   body.ptTen.open #front{transform:none; transition:opacity .45s ease 2.55s, visibility 0s linear 3.05s; visibility:hidden}
+  body.fxcard.ptTen.open #front{transition:opacity .45s ease 2.05s, visibility 0s linear 2.55s}
   /* the face's words retire the moment the unfold begins (they cannot ride
      the folding panels); the panels carry the face itself */
   body.ptTen.opening #front .f-for, body.ptTen.open #front .f-for,
@@ -1877,7 +1824,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
      star rises at 2.9s; the string lights' inline delays (0.55s..1.85s)
      shift +2.35s so the string starts lighting as the star lands */
   /* ---- the card waits for the open envelope, then arrives ---- */
-  body.ptTen.opening #card{transition:opacity .8s ease 2.35s, transform .8s cubic-bezier(.22,.9,.3,1) 2.35s}
+  body.ptTen.opening #card{transition:opacity .8s ease 2.35s}
   /* ---- the celebration, re-homed to AFTER the card lands ---- */
   body.ptTen.opening #burst{animation:burstflash 1s ease 2.85s}
   body.ptQuiet #sealBoom, body.ptQuiet #burst{display:none!important}
@@ -1895,20 +1842,14 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.ptTen.opening #sealBoom .bit{animation:sealFly 1.15s cubic-bezier(.16,.68,.32,1) 2.85s both}
   /* per-scene face + interior (exact copies of each front's background stack) */
   body.env-formal{--frontBg:
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #7a1a2c 0%, var(--burgundy) 55%, var(--burgundy-deep) 100%)}
   body.env-sp-partytime{--frontBg:
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #a31230 0%, #7c0d24 55%, #4d0a1c 100%)}
   body.ptTen.env-sp-partytime #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
       radial-gradient(130% 100% at 50% 100%, #a31230 0%, #7c0d24 55%, #4d0a1c 100%);
     box-shadow:inset 0 0 90px rgba(0,0,0,.5)}
   body.env-kid{--frontBg:
-      linear-gradient(155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(31,90,140,.13) 50%, transparent 50.6%),
       radial-gradient(circle at 12% 20%, #ffd93b 0 10px, transparent 11px),
       radial-gradient(circle at 84% 14%, #ff6b9d 0 8px, transparent 9px),
       radial-gradient(circle at 90% 78%, #39c2d7 0 11px, transparent 12px),
@@ -1925,8 +1866,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
       radial-gradient(circle at 78% 10%, rgba(255,214,150,.65) 0 2px, transparent 3px),
       radial-gradient(circle at 64% 26%, rgba(255,214,150,.5) 0 1.6px, transparent 2.6px),
       radial-gradient(58% 44% at 50% 46%, rgba(232,50,79,.55) 0%, rgba(160,25,60,.22) 55%, transparent 75%),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #4a1440 0%, #33102e 55%, #1c0716 100%)}
   body.ptTen.env-biglove #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
@@ -1935,8 +1874,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-wedding{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 22px), rgba(172,180,194,.85) calc(50% - 22px), rgba(216,221,229,.95) 50%, rgba(172,180,194,.85) calc(50% + 22px), transparent calc(50% + 22px)),
       linear-gradient(0deg, transparent calc(50% - 22px), rgba(172,180,194,.7) calc(50% - 22px), rgba(172,180,194,.7) calc(50% + 22px), transparent calc(50% + 22px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(60,60,70,.10) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(60,60,70,.10) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #fffdf8 0%, #faf5ea 55%, #f0e8d8 100%)}
   body.ptTen.env-wedding #envIn{background:
       linear-gradient(0deg, rgba(110,95,60,.18) 0%, rgba(0,0,0,0) 26%),
@@ -1945,8 +1882,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-barmitzvah{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.92) calc(50% - 24px), rgba(236,210,138,.95) 50%, rgba(201,162,77,.92) calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(201,162,77,.85) calc(50% - 24px), rgba(201,162,77,.85) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.25) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #1a4b96 0%, #123a7a 55%, #0b2653 100%)}
   body.ptTen.env-barmitzvah #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
@@ -1955,8 +1890,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-surprise{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 25px), rgba(255,46,166,.9) calc(50% - 25px), rgba(255,46,166,.9) calc(50% + 25px), transparent calc(50% + 25px)),
       linear-gradient(0deg, transparent calc(50% - 25px), rgba(255,46,166,.8) calc(50% - 25px), rgba(255,46,166,.8) calc(50% + 25px), transparent calc(50% + 25px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.2) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.2) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #8b30d6 0%, #6716ad 55%, #43097a 100%)}
   body.ptTen.env-surprise #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
@@ -1965,8 +1898,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-graduation{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 24px), rgba(201,162,77,.92) calc(50% - 24px), rgba(236,210,138,.95) 50%, rgba(201,162,77,.92) calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(201,162,77,.85) calc(50% - 24px), rgba(201,162,77,.85) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(255,255,255,.09) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(255,255,255,.09) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #2b2b30 0%, #141416 55%, #000000 100%)}
   body.ptTen.env-graduation #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
@@ -1975,8 +1906,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-baby{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 23px), rgba(255,183,140,.92) calc(50% - 23px), rgba(255,183,140,.92) calc(50% + 23px), transparent calc(50% + 23px)),
       linear-gradient(0deg, transparent calc(50% - 23px), rgba(255,183,140,.8) calc(50% - 23px), rgba(255,183,140,.8) calc(50% + 23px), transparent calc(50% + 23px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(20,90,80,.09) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(20,90,80,.09) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #f0fdf4 0%, #d8f3e3 55%, #b2e3c8 100%)}
   body.ptTen.env-baby #envIn{background:
       linear-gradient(0deg, rgba(40,110,85,.18) 0%, rgba(0,0,0,0) 26%),
@@ -1985,8 +1914,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-christmas{--frontBg:
       linear-gradient(90deg, transparent calc(50% - 24px), #14532d calc(50% - 24px), #14532d calc(50% - 5px), #c9a24d calc(50% - 5px), #ecd28a 50%, #c9a24d calc(50% + 5px), #14532d calc(50% + 5px), #14532d calc(50% + 24px), transparent calc(50% + 24px)),
       linear-gradient(0deg, transparent calc(50% - 24px), rgba(20,83,45,.9) calc(50% - 24px), rgba(20,83,45,.9) calc(50% - 5px), rgba(201,162,77,.9) calc(50% - 5px), rgba(236,210,138,.9) 50%, rgba(201,162,77,.9) calc(50% + 5px), rgba(20,83,45,.9) calc(50% + 5px), rgba(20,83,45,.9) calc(50% + 24px), transparent calc(50% + 24px)),
-      linear-gradient(155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
-      linear-gradient(-155deg, transparent 49.6%, rgba(0,0,0,.28) 50%, transparent 50.6%),
       radial-gradient(130% 100% at 50% 0%, #a31621 0%, #7f1d1d 55%, #450a0a 100%)}
   body.ptTen.env-christmas #envIn{background:
       linear-gradient(0deg, rgba(0,0,0,.34) 0%, rgba(0,0,0,0) 26%),
@@ -2019,7 +1946,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
      fxgo (star at the beat, string lights on their inline .55-1.85s delays) -
      the flapseal-era absolute-delay overrides were removed, they would
      double-delay under fxgo. */
-  body.fxcard.opening #card{transition:opacity .8s ease 4.9s, transform .8s cubic-bezier(.22,.9,.3,1) 4.9s}
+  body.fxcard.opening #card{transition:opacity .45s ease 3.95s} /* tightened (Gary Nov 9): fxgo 1.8s + animation, then the card is simply THERE - full at ~4.4s, no empty beat */
   /* per-envelope interiors (generated from each front's own base layer,
      flipped to the bottom anchor like the hand-built ten) */
   body.ptTen.env-thankyou #envIn{background:
@@ -2532,7 +2459,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
 <g class="st-ball"><circle cx="112" cy="196" r="14" fill="#ffffff" stroke="#222" stroke-width="1.8"/><path d="M112,186 L122,193 L118,204 L106,204 L102,193 Z" fill="#222"/><path d="M100,184 L107,191 M126,188 L119,194 M112,210 L112,204" stroke="#222" stroke-width="1.6"/></g>
 </svg></div>
   <main id="card" aria-label="The opened New Year card for Sofia">
-    <div class="over">Turn it up</div>
+    <div class="over">Happy New Year</div>
     <div class="frame">
       <iframe src="https://geemondc.github.io/big-view/#wall" title="Living photo — fireworks over the water" allow="autoplay" loading="eager" scrolling="no"></iframe>
       <canvas id="fx" aria-hidden="true"></canvas>
@@ -2543,7 +2470,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     <p class="closing">Happy New Year, Sofia.</p>
     <p class="signature"><span class="sig-close">With love,</span><span class="sig-name">James — here&rsquo;s to 2027</span></p>
     
-    <button id="replay" type="button">Replay</button>
+    <div id="ctrlbar" role="group" aria-label="Photo controls"><button id="btnStill" type="button">Still</button><button id="btnLiving" type="button" class="on">Living</button><button id="replay" type="button">Replay</button></div>
   <button id="musicBtn" type="button" title="Play the ballpark organ" aria-label="Play the ballpark organ">&#127929;</button>
   </main>
 
@@ -2575,13 +2502,13 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     if (!hasParams) return;
     var sc = clean(q.get('scene'), 24).toLowerCase();
     if (/^w[0-9][0-9]$/.test(sc)) sc = sc.toUpperCase();
-    var scene = (sc === 'chilling' || sc === 'birthday' || sc === 'heart' || sc === 'butterfly' || sc === 'money' || sc === 'origami' || sc === 'origamibird' || sc === 'origamiboat' || sc === 'origamifrog' || sc === 'origamiflower' || sc === 'wedding' || sc === 'barmitzvah' || sc === 'surprise' || sc === 'thankyou' || sc === 'getwell' || sc === 'graduation' || sc === 'baby' || sc === 'christmas' || sc === 'balloonpop' || sc === 'snowglobe' || sc === 'pinata' || sc === 'ocean' || sc === 'bloom' || sc === 'treasure' || sc === 'firefly' || sc === 'pool' || sc === 'hotair' || sc === 'lantern' || sc === 'biglove' || sc === 'pool2' || sc === 'race1' || sc === 'race2' || sc === 'possibility' || sc === 'healthcoach' || sc === 'dream1' || sc === 'dream2' || sc === 'healthworks1' || sc === 'healthworks2' || sc === 'healthworks3' || sc === 'dreamsauna' || sc === 'wellness' || sc === 'balloonburst' || sc === 'vinyl' || sc === 'tempsnow' || sc === 'bkboys' || sc === 'bkgirls' || sc === 'scboys' || sc === 'scgirls' || sc === 'fbboys' || sc === 'fbgirls' || sc === 'bsa' || sc === 'bsb' || sc === 'sba' || sc === 'sbb' || sc === 'swboys' || sc === 'swgirls' || sc === 'tkboys' || sc === 'tkgirls' || sc === 'cheer' || ['gameday','holes','fishing','hoops','pickle','homerun','goal','tropical','beachday','desert','pond','racers','champions','coach','fans','fairway','tightlines','deepsea','shore','rainforest','wetlands','desertday','partytime','celebrate','withlove','garden','homer','striker','trainride','dayflight','W01','W02','W03','W04','W05','W06','W07','W08','W09','W10','W11','W12','W13','W14','W15','W16','W17','W18','W19','W20','W21','W22','W23','W24','W25','W26','W27','W28','W29'].indexOf(sc) >= 0) ? sc : 'bigview';
+    var scene = (sc === 'chilling' || sc === 'birthday' || sc === 'heart' || sc === 'butterfly' || sc === 'money' || sc === 'origami' || sc === 'origamibird' || sc === 'origamiboat' || sc === 'origamifrog' || sc === 'origamiflower' || sc === 'wedding' || sc === 'barmitzvah' || sc === 'surprise' || sc === 'thankyou' || sc === 'getwell' || sc === 'graduation' || sc === 'baby' || sc === 'christmas' || sc === 'balloonpop' || sc === 'snowglobe' || sc === 'pinata' || sc === 'ocean' || sc === 'bloom' || sc === 'treasure' || sc === 'firefly' || sc === 'pool' || sc === 'hotair' || sc === 'lantern' || sc === 'biglove' || sc === 'pool2' || sc === 'race1' || sc === 'race2' || sc === 'possibility' || sc === 'healthcoach' || sc === 'dream1' || sc === 'dream2' || sc === 'healthworks1' || sc === 'healthworks2' || sc === 'healthworks3' || sc === 'dreamsauna' || sc === 'wellness' || sc === 'balloonburst' || sc === 'tempsnow' || sc === 'bkboys' || sc === 'bkgirls' || sc === 'scboys' || sc === 'scgirls' || sc === 'fbboys' || sc === 'fbgirls' || sc === 'bsa' || sc === 'bsb' || sc === 'sba' || sc === 'sbb' || sc === 'swboys' || sc === 'swgirls' || sc === 'tkboys' || sc === 'tkgirls' || sc === 'cheer' || ['gameday','holes','fishing','hoops','pickle','homerun','goal','tropical','beachday','desert','pond','racers','champions','coach','fans','fairway','tightlines','deepsea','shore','rainforest','wetlands','desertday','partytime','celebrate','withlove','garden','homer','striker','trainride','dayflight','W01','W02','W03','W04','W05','W06','W07','W08','W09','W10','W11','W12','W13','W14','W15','W16','W17','W18','W19','W20','W21','W22','W23','W24','W25','W26','W27','W28','W29'].indexOf(sc) >= 0) ? sc : 'bigview';
     window.__lcScene = scene;
     window.__lcPickId = scene;
     window.__lcRawScene = sc;
     window.__lcEnvKey = sc;
     scene = ({W01:'gameday',W02:'holes',W03:'fishing',W04:'hoops',W05:'pickle',W06:'homerun',W07:'goal',W08:'tropical',W09:'beachday',W10:'desert',W11:'pond',W12:'racers',W13:'champions',W14:'coach',W15:'fans',W16:'fairway',W17:'tightlines',W18:'deepsea',W19:'shore',W20:'rainforest',W21:'wetlands',W22:'desertday',W23:'partytime',W24:'celebrate',W25:'withlove',W26:'garden',W27:'homer',W28:'striker',W29:'tempsnow'}[scene] || scene); window.__lcScene = scene; window.__lcEnvKey = scene; window.__lcPickId = scene;
-    document.body.classList.add(({'bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','vinyl':'env-sp-vinyl','gameday':'env-sp-gameday','holes':'env-sp-holes','fishing':'env-sp-fishing','hoops':'env-sp-hoops','pickle':'env-sp-pickle','homerun':'env-sp-homerun','goal':'env-sp-goal','tropical':'env-sp-tropical','beachday':'env-sp-beachday','desert':'env-sp-desert','pond':'env-sp-pond','racers':'env-sp-racers','champions':'env-sp-champions','coach':'env-sp-coach','fans':'env-sp-fans','fairway':'env-sp-fairway','tightlines':'env-sp-tightlines','deepsea':'env-sp-deepsea','shore':'env-sp-shore','rainforest':'env-sp-rainforest','wetlands':'env-sp-wetlands','desertday':'env-sp-desertday','partytime':'env-sp-partytime','celebrate':'env-sp-celebrate','withlove':'env-sp-withlove','garden':'env-sp-garden','homer':'env-sp-homer','striker':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate'})[window.__lcEnvKey] || (scene === 'snowglobe' ? 'env-snowglobe' : scene === 'birthday' ? 'env-kid' : scene === 'heart' ? 'env-love' : scene === 'butterfly' ? 'env-butterfly' : scene === 'money' ? 'env-money' : scene === 'origami' ? 'env-origami' : scene === 'origamibird' ? 'env-origamibird' : scene === 'origamiboat' ? 'env-origamiboat' : scene === 'origamifrog' ? 'env-origamifrog' : scene === 'origamiflower' ? 'env-origamiflower' : scene === 'wedding' ? 'env-wedding' : scene === 'barmitzvah' ? 'env-barmitzvah' : scene === 'surprise' ? 'env-surprise' : scene === 'thankyou' ? 'env-thankyou' : scene === 'getwell' ? 'env-getwell' : scene === 'graduation' ? 'env-graduation' : scene === 'baby' ? 'env-baby' : scene === 'christmas' ? 'env-christmas' : scene === 'balloonpop' ? 'env-balloonpop' : scene === 'W29' ? 'env-snowglobe' : scene === 'pinata' ? 'env-pinata' : scene === 'ocean' ? 'env-ocean' : scene === 'bloom' ? 'env-bloom' : scene === 'treasure' ? 'env-treasure' : scene === 'firefly' ? 'env-firefly' : scene === 'wellness' ? 'env-wellness' : scene === 'dreamsauna' ? 'env-dreamsauna' : scene === 'dream1' ? 'env-dream1' : scene === 'dream2' ? 'env-dream2' : scene === 'healthworks1' ? 'env-healthworks1' : scene === 'healthworks2' ? 'env-healthworks2' : scene === 'healthworks3' ? 'env-healthworks3' : scene === 'possibility' ? 'env-possibility' : scene === 'healthcoach' ? 'env-healthcoach' : scene === 'race1' ? 'env-race1' : scene === 'race2' ? 'env-race2' : scene === 'pool2' ? 'env-pool2' : scene === 'pool' ? 'env-pool' : scene === 'hotair' ? 'env-hotair' : scene === 'lantern' ? 'env-lantern' : scene === 'biglove' ? 'env-biglove' : scene === 'balloonburst' ? 'env-balloonpop' : ({'W01':'env-sp-gameday','W02':'env-sp-holes','W03':'env-sp-fishing','W04':'env-sp-hoops','W05':'env-sp-pickle','W06':'env-sp-homerun','W07':'env-sp-goal','W08':'env-sp-tropical','W09':'env-sp-beachday','W10':'env-sp-desert','W11':'env-sp-pond','W12':'env-sp-racers','W13':'env-sp-champions','W14':'env-sp-coach','W15':'env-sp-fans','W16':'env-sp-fairway','W17':'env-sp-tightlines','W18':'env-sp-deepsea','W19':'env-sp-shore','W20':'env-sp-rainforest','W21':'env-sp-wetlands','W22':'env-sp-desertday','W23':'env-sp-partytime','W24':'env-sp-celebrate','W25':'env-sp-withlove','W26':'env-sp-garden','W27':'env-sp-homer','W28':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate',}[scene] || 'env-formal')));
+    document.body.classList.add(({'bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','gameday':'env-sp-gameday','holes':'env-sp-holes','fishing':'env-sp-fishing','hoops':'env-sp-hoops','pickle':'env-sp-pickle','homerun':'env-sp-homerun','goal':'env-sp-goal','tropical':'env-sp-tropical','beachday':'env-sp-beachday','desert':'env-sp-desert','pond':'env-sp-pond','racers':'env-sp-racers','champions':'env-sp-champions','coach':'env-sp-coach','fans':'env-sp-fans','fairway':'env-sp-fairway','tightlines':'env-sp-tightlines','deepsea':'env-sp-deepsea','shore':'env-sp-shore','rainforest':'env-sp-rainforest','wetlands':'env-sp-wetlands','desertday':'env-sp-desertday','partytime':'env-sp-partytime','celebrate':'env-sp-celebrate','withlove':'env-sp-withlove','garden':'env-sp-garden','homer':'env-sp-homer','striker':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate'})[window.__lcEnvKey] || (scene === 'snowglobe' ? 'env-snowglobe' : scene === 'birthday' ? 'env-kid' : scene === 'heart' ? 'env-love' : scene === 'butterfly' ? 'env-butterfly' : scene === 'money' ? 'env-money' : scene === 'origami' ? 'env-origami' : scene === 'origamibird' ? 'env-origamibird' : scene === 'origamiboat' ? 'env-origamiboat' : scene === 'origamifrog' ? 'env-origamifrog' : scene === 'origamiflower' ? 'env-origamiflower' : scene === 'wedding' ? 'env-wedding' : scene === 'barmitzvah' ? 'env-barmitzvah' : scene === 'surprise' ? 'env-surprise' : scene === 'thankyou' ? 'env-thankyou' : scene === 'getwell' ? 'env-getwell' : scene === 'graduation' ? 'env-graduation' : scene === 'baby' ? 'env-baby' : scene === 'christmas' ? 'env-christmas' : scene === 'balloonpop' ? 'env-balloonpop' : scene === 'W29' ? 'env-snowglobe' : scene === 'pinata' ? 'env-pinata' : scene === 'ocean' ? 'env-ocean' : scene === 'bloom' ? 'env-bloom' : scene === 'treasure' ? 'env-treasure' : scene === 'firefly' ? 'env-firefly' : scene === 'wellness' ? 'env-wellness' : scene === 'dreamsauna' ? 'env-dreamsauna' : scene === 'dream1' ? 'env-dream1' : scene === 'dream2' ? 'env-dream2' : scene === 'healthworks1' ? 'env-healthworks1' : scene === 'healthworks2' ? 'env-healthworks2' : scene === 'healthworks3' ? 'env-healthworks3' : scene === 'possibility' ? 'env-possibility' : scene === 'healthcoach' ? 'env-healthcoach' : scene === 'race1' ? 'env-race1' : scene === 'race2' ? 'env-race2' : scene === 'pool2' ? 'env-pool2' : scene === 'pool' ? 'env-pool' : scene === 'hotair' ? 'env-hotair' : scene === 'lantern' ? 'env-lantern' : scene === 'biglove' ? 'env-biglove' : scene === 'balloonburst' ? 'env-balloonpop' : ({'W01':'env-sp-gameday','W02':'env-sp-holes','W03':'env-sp-fishing','W04':'env-sp-hoops','W05':'env-sp-pickle','W06':'env-sp-homerun','W07':'env-sp-goal','W08':'env-sp-tropical','W09':'env-sp-beachday','W10':'env-sp-desert','W11':'env-sp-pond','W12':'env-sp-racers','W13':'env-sp-champions','W14':'env-sp-coach','W15':'env-sp-fans','W16':'env-sp-fairway','W17':'env-sp-tightlines','W18':'env-sp-deepsea','W19':'env-sp-shore','W20':'env-sp-rainforest','W21':'env-sp-wetlands','W22':'env-sp-desertday','W23':'env-sp-partytime','W24':'env-sp-celebrate','W25':'env-sp-withlove','W26':'env-sp-garden','W27':'env-sp-homer','W28':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate',}[scene] || 'env-formal')));
     var to = clean(q.get('to'), 60) || 'Sofia';
     var from = clean(q.get('from'), 60) || 'James';
     var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
@@ -2620,7 +2547,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
       : scene === 'healthcoach' ? ('Stronger every day, ' + to + '!')
       : scene === 'race1' || scene === 'race2' ? ('To the finish line, ' + to + '!')
       : scene === 'goal' ? ('GOAL, ' + to + '!')
-      : scene === 'vinyl' ? ('Turn it up, ' + to + '!')
       : scene === 'tropical' ? ('For ' + to + ', from the rainforest.')
       : scene === 'beachday' ? ('For ' + to + ', with sunshine.')
       : scene === 'desert' ? ('For ' + to + ', under desert stars.')
@@ -2706,7 +2632,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
       : scene === 'pickle' ? 'Great rally'
       : scene === 'homerun' ? 'Home run'
       : scene === 'goal' ? 'GOAL'
-      : scene === 'vinyl' ? 'Turn it up'
       : scene === 'tropical' ? 'Pura vida'
       : scene === 'beachday' ? 'Sunshine for you'
       : scene === 'desert' ? 'Desert stars'
@@ -2934,7 +2859,6 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     INSIDE.partytime = ['birthday-scene', 'Birthday'];
     INSIDE.celebrate = ['living-cards/celebrate-scene', 'Dolphin Cove'];
     INSIDE.withlove = ['living-cards/withlove-scene', 'Hands Around the World'];
-    INSIDE.vinyl = ['living-cards/vinyl-scene', 'Music Room'];
     window.__lcWorldPick = INSIDE[window.__lcPickId] ? INSIDE[window.__lcPickId].slice() : null;
     var STAGES = {
       gameday: ['st-falls', [['rainbow',16,10,64,'sp-tw'],['sparkle-big',7,26,84,'sp-tw'],['sparkle-small',6,44,20,'sp-tw']]],
@@ -3018,7 +2942,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   if (rBtn) rBtn.addEventListener('click', function(){ if (organOn) setOrgan(false); document.body.classList.remove('musical'); });
   var front = document.getElementById('front');
   var settleTimer = null;
-  var MIDDLE_MS = 11300; /* living middle, a firework finale, then the scene settles to rest */
+  var MIDDLE_MS = 11300; /* living middle; the finale fires near its end. The photo NEVER settles to rest (Gary Nov 9): living + writing + replay are the end state. */
   var finaleTimer = null;
 
   /* the box openings: butterflies flutter out, or dollar bills burst and rain */
@@ -3321,22 +3245,22 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     popBurst();
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
     if (!window.__lcScene || window.__lcScene === 'bigview' || window.__lcScene === 'chilling' || window.__lcScene === 'biglove' || window.__lcScene === 'balloonburst' || window.__lcScene === 'lantern' || window.__lcScene === 'homerun' || window.__lcScene === 'homer') finaleTimer = setTimeout(finale, MIDDLE_MS - 1900);
-    settleTimer = setTimeout(function(){
-      document.body.classList.add('settled');
-    }, MIDDLE_MS);
   }
   function reseal(){
     clearTimeout(settleTimer); clearTimeout(finaleTimer);
     var cv = document.getElementById('fx');
     if (cv) { var cx = cv.getContext('2d'); if (cx) cx.clearRect(0, 0, cv.width, cv.height); }
     document.body.classList.remove('settled');
+    document.body.classList.remove('showStill');
+    var _bs = document.getElementById('btnStill'), _bl = document.getElementById('btnLiving');
+    if (_bs) _bs.classList.remove('on'); if (_bl) _bl.classList.add('on');
     document.body.classList.remove('open');
     document.body.classList.remove('opening');
     document.body.classList.remove('fxgo');
     document.body.classList.remove('staged');
     window.scrollTo(0,0);
   }
-  /* the finale: three bursts over the living fireworks, then the photo comes to rest */
+  /* the finale: three bursts over the living fireworks (the photo keeps living after) */
 
   /* MUSICAL LIVING CARDS — the first tier: the Home Run card carries the ballpark organ.
      "Take Me Out to the Ball Game" (1908) is public domain; this is our own synthesized
@@ -3512,14 +3436,14 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     document.body.classList.add('ptTen');
     openOrig();
     /* UNIVERSAL SEQUENCE beat 2 (Nov 9 rollout): the signature animation
-       starts only once the envelope has opened - fxgo lands at 2300ms,
+       starts only once the envelope has opened - fxgo lands at 1800ms,
        as the front begins its crossfade over the stage. Formal (ptQuiet)
        has no animation beat at all. */
     if (!document.body.classList.contains('ptQuiet')) {
       clearTimeout(fxTimer);
       fxTimer = setTimeout(function(){
         if (document.body.classList.contains('open')) document.body.classList.add('fxgo');
-      }, 2300);
+      }, 1800); /* tightened -0.5s (Gary Nov 9): fxgo lands as the front begins its crossfade */
     }
   };
   /* the canvas confetti (popBurst: birthday/biglove at the tap, the
@@ -3528,11 +3452,24 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   var popBurstOrig = popBurst;
   popBurst = function(){
     if (document.body.classList.contains('ptQuiet')) return;
-    if (document.body.classList.contains('ptTen')) { setTimeout(popBurstOrig, 2300); }
+    if (document.body.classList.contains('ptTen')) { setTimeout(popBurstOrig, 1800); }
     else popBurstOrig();
   };
   front.addEventListener('click', open);
-  document.getElementById('replay').addEventListener('click', reseal);
+  document.getElementById('replay').addEventListener('click', function(){
+    /* REPLAY (Gary Nov 9): the closed envelope returns and the WHOLE opening
+       re-runs - seal, gold creases, flap, animation, card. */
+    reseal();
+    setTimeout(function(){ if (!document.body.classList.contains('open')) open(); }, 1250); /* 1250ms: the envelope face fully re-materializes (closed) before the sequence re-runs */
+  });
+  var _bS = document.getElementById('btnStill'), _bL = document.getElementById('btnLiving');
+  function setStill(on){
+    document.body.classList.toggle('showStill', on);
+    if (_bS) _bS.classList.toggle('on', on);
+    if (_bL) _bL.classList.toggle('on', !on);
+  }
+  if (_bS) _bS.addEventListener('click', function(){ setStill(true); });
+  if (_bL) _bL.addEventListener('click', function(){ setStill(false); });
 </script>
 </body>
 </html>
