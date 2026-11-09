@@ -71,6 +71,8 @@
     <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
     <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
     <img id="lyrHeld" class="heldv" src="held.png" alt="" style="opacity:0">
+    <img id="lyrHeldGolden" class="heldv" src="held-golden.png" alt="" style="opacity:0">
+    <img id="lyrHeldGlow" class="heldv" src="held-glow.png" alt="" style="opacity:0">
   </div>
 
   <div class="controls">
@@ -94,12 +96,16 @@
     <img id="fsBgGolden" alt="" style="opacity:0">
     <img id="fsBgGlow" alt="" style="opacity:0">
     <img id="fsBgHeld" alt="" style="opacity:0">
+    <img id="fsBgHeldGolden" alt="" style="opacity:0">
+    <img id="fsBgHeldGlow" alt="" style="opacity:0">
   </div>
   <img id="fsStill"  src="still.jpg" alt="">
   <img id="fsDay"    src="day.jpg" alt="" style="opacity:0">
   <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
   <img id="fsGlow"   src="glow.jpg" alt="" style="opacity:0">
   <img id="fsHeld" class="heldv" src="held.png" alt="" style="opacity:0">
+  <img id="fsHeldGolden" class="heldv" src="held-golden.png" alt="" style="opacity:0">
+  <img id="fsHeldGlow" class="heldv" src="held-glow.png" alt="" style="opacity:0">
   <div id="fsBar">
     <button id="fsStillB">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&#10005;</button>
   </div>
@@ -134,7 +140,9 @@
              day: document.getElementById(p+'Day'),
              golden: document.getElementById(p+'Golden'),
              glow: document.getElementById(p+'Glow'),
-             held: document.getElementById(p+'Held') };
+             held: document.getElementById(p+'Held'),
+             heldGolden: document.getElementById(p+'HeldGolden'),
+             heldGlow: document.getElementById(p+'HeldGlow') };
   }
   var page = stack('lyr'), fs = stack('fs');
   var fsEl = document.getElementById('fs');
@@ -154,11 +162,17 @@
     var u = 1-(t-18.0)/2.0;
     return { day:u, golden:u, glow:u };
   }
-  // The held layer: ONE solid group silhouette (Prom Night construction).
-  // The kids and the counselor are the ORIGINAL pixels at every moment of
-  // every grade — the silhouette never changes between states; its tight
-  // outer band simply blends original pixels against the same content
-  // globally graded underneath, so no per-state repainting can ring it.
+  // The held layer: ONE solid group silhouette (Prom Night geometry —
+  // the silhouette and its inward band never change), carried as three
+  // state variants crossfaded with the SAME weights as the plates.
+  // Faces, skin and hair are the original bytes in all three variants;
+  // only clothing and large bright areas travel partway with each
+  // state's light (v4, subject-aware held grading). Under v3's single
+  // raw-original held, the counselor's white tee printed ~103 levels
+  // brighter than the night sky around it — a white hole. Prom Night
+  // never shows this because its night grade is only ~14 levels deep;
+  // Camp's is ~64-91, so Camp's held layer has to lean into the light
+  // a little. The cycle timing (T=20) is unchanged.
   function apply(st, so, living){
     st.still.style.opacity = 1;
     st.day.style.opacity = so.day;
@@ -166,21 +180,30 @@
     st.glow.style.opacity = so.glow;
     st.held.style.opacity = living ? 1 : 0;
     st.held.style.display = living ? 'block' : 'none';
+    st.heldGolden.style.opacity = living ? so.golden : 0;
+    st.heldGolden.style.display = living ? 'block' : 'none';
+    st.heldGlow.style.opacity = living ? so.glow : 0;
+    st.heldGlow.style.display = living ? 'block' : 'none';
   }
   var fsBg = { still: document.getElementById('fsBgStill'),
                day: document.getElementById('fsBgDay'),
                golden: document.getElementById('fsBgGolden'),
                glow: document.getElementById('fsBgGlow'),
-               held: document.getElementById('fsBgHeld') };
+               held: document.getElementById('fsBgHeld'),
+               heldGolden: document.getElementById('fsBgHeldGolden'),
+               heldGlow: document.getElementById('fsBgHeldGlow') };
   fsBg.still.src = fs.still.src; fsBg.day.src = fs.day.src;
   fsBg.golden.src = fs.golden.src; fsBg.glow.src = fs.glow.src;
   fsBg.held.src = fs.held.src;
+  fsBg.heldGolden.src = fs.heldGolden.src; fsBg.heldGlow.src = fs.heldGlow.src;
   function applyBg(so, living){
     fsBg.still.style.opacity = 1;
     fsBg.day.style.opacity = so.day;
     fsBg.golden.style.opacity = so.golden;
     fsBg.glow.style.opacity = so.glow;
     fsBg.held.style.opacity = living ? 1 : 0;
+    fsBg.heldGolden.style.opacity = living ? so.golden : 0;
+    fsBg.heldGlow.style.opacity = living ? so.glow : 0;
   }
   function frame(now){
     var t = frozen !== null ? frozen : phaseNow(now);
