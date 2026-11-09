@@ -11,9 +11,9 @@
          -webkit-font-smoothing:antialiased; }
   main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
          padding:34px 18px 30px; }
-  .stage { position:relative; width:100%;
+  .stage { position:relative; width:min(1120px, 100%);
            aspect-ratio: 971 / 685; cursor:pointer; background:#000;
-           box-shadow: inset 0 0 0 1px #000, 0 6px 24px rgba(0,0,0,.6); }
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
   .stage img { position:absolute; inset:0; width:100%; height:100%;
                object-fit:contain; display:block; }
   .controls { margin-top:22px; display:flex; justify-content:center; }
@@ -38,11 +38,12 @@
   /* Museum Frame: the framed presentation — black outer frame around the
      photo, title + subtitle on the frame, bottom strip with a line about
      the piece and thelivingphotos.com. */
-  .museum { margin-top:6px; width:min(1060px, 100%); background:#060607;
+  .museum { margin-top:26px; width:min(1060px, 100%); background:#060607;
             border:1px solid #2c2c30; outline:10px solid #101013;
             box-shadow:0 30px 80px rgba(0,0,0,.8), inset 0 0 0 1px #000;
             padding:clamp(18px, 3.4vw, 34px) clamp(14px, 3vw, 30px) 0; }
-  .museum .stage { margin-top:14px; }
+  .museum .stage { width:100%; margin-top:14px;
+            box-shadow:inset 0 0 0 1px #000, 0 6px 24px rgba(0,0,0,.6); }
   .m-title { font-size:clamp(24px, 3.8vw, 38px); font-weight:normal;
              letter-spacing:.14em; text-transform:uppercase; color:#f2ead6;
              text-align:center; }
@@ -64,10 +65,10 @@
   <div class="m-sub">August 1996</div>
 
   <div class="stage" id="stage" title="Tap for full screen">
-    <img id="lyrDay"    src="still.jpg" alt="The original photo, untouched">
-    <img id="lyrRevive" src="revive.jpg" alt="" style="opacity:0">
-    <img id="lyrDeep"   src="deep.jpg" alt="" style="opacity:0">
-    <img id="lyrHeld"   src="held.png" alt="" style="opacity:0">
+    <img id="lyrStill"  src="still.jpg" alt="The original photo, untouched">
+    <img id="lyrDay"    src="revive.jpg" alt="" style="opacity:0">
+    <img id="lyrGolden" src="golden.jpg" alt="" style="opacity:0">
+    <img id="lyrGlow"   src="glow.jpg" alt="" style="opacity:0">
     <img id="lyrAccCandle" src="acc-candle.png" alt="" style="opacity:0">
   </div>
 
@@ -87,25 +88,27 @@
 
 <div id="fs">
   <div id="fsBg">
-    <img id="fsBgDay" alt="">
-    <img id="fsBgRevive" alt="" style="opacity:0">
-    <img id="fsBgDeep" alt="" style="opacity:0">
-    <img id="fsBgHeld" alt="" style="opacity:0">
+    <img id="fsBgStill" alt="">
+    <img id="fsBgDay" alt="" style="opacity:0">
+    <img id="fsBgGolden" alt="" style="opacity:0">
+    <img id="fsBgGlow" alt="" style="opacity:0">
   </div>
-  <img id="fsDay" src="still.jpg" alt="">
-  <img id="fsRevive" src="revive.jpg" alt="" style="opacity:0">
-  <img id="fsDeep" src="deep.jpg" alt="" style="opacity:0">
-  <img id="fsHeld" src="held.png" alt="" style="opacity:0">
+  <img id="fsStill"  src="still.jpg" alt="">
+  <img id="fsDay"    src="revive.jpg" alt="" style="opacity:0">
+  <img id="fsGolden" src="golden.jpg" alt="" style="opacity:0">
+  <img id="fsGlow"   src="glow.jpg" alt="" style="opacity:0">
   <img id="fsAccCandle" src="acc-candle.png" alt="" style="opacity:0">
   <div id="fsBar">
-    <button id="fsStill">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&#10005;</button>
+    <button id="fsStillB">Still</button><button id="fsLiving" class="on">Living</button><button id="fsClose" class="x" aria-label="Close">&#10005;</button>
   </div>
 </div>
 
 <script>
 (function(){
   "use strict";
-  var T = 20;                 // evening loop, seconds (COLOR-LED LIFT Nov 9: 28s -> 20s, boundaries x5/7)
+  var T = 20;                 // scene loop, seconds — GENTLE TRAVEL for real
+                              // photos (Gary, Nov 8): doubled from T=10,
+                              // every crossfade twice as long and soft.
   var state = 'still';        // 'still' | 'living'
   var ignited = false;
   var frozen = null;          // QA: freeze the phase at this many seconds
@@ -117,7 +120,7 @@
 
   function phaseNow(now){
     if (!ignited) return 0;
-    if (rate !== 1 && now - anchorT >= 1500){
+    if (rate !== 1 && now - anchorT >= 750){
       anchorP = anchorP + (now - anchorT) / 1000 * rate;
       anchorT = now; rate = 1;
     }
@@ -125,47 +128,75 @@
   }
 
   function stack(p){
-    return { day: document.getElementById(p+'Day'),
-             revive: document.getElementById(p+'Revive'),
-             deep: document.getElementById(p+'Deep'),
-             held: document.getElementById(p+'Held'),
-             candle: document.getElementById(p+'AccCandle') };
+    return { still: document.getElementById(p+'Still'),
+             day: document.getElementById(p+'Day'),
+             golden: document.getElementById(p+'Golden'),
+             glow: document.getElementById(p+'Glow'),
+             candle: (p === 'lyr' ? document.getElementById('lyrAccCandle')
+                                   : document.getElementById('fsAccCandle')) };
   }
   var page = stack('lyr'), fs = stack('fs');
   var fsEl = document.getElementById('fs');
-  var fsOpen = false, priorState = 'still', fsSaved = null;
+  var fsOpen = false, priorState = 'still';
 
-  // Evening timeline (20s; boundaries scaled x5/7 from the 28s gentle pass): the faded original holds -> the photo's true
-  // colors wake -> the night deepens around the candle and breathes ->
-  // everything softly lets go back to the photograph as it was.
+  // Candlelight timeline (Camp construction): the faded original holds
+  // first (the before IS the point) -> the photo's true colors wake ->
+  // golden candlelight -> the dusk settles -> all grades lift and the
+  // faded photo returns, ready to live again.
   function opacities(t){
     t = ((t % T) + T) % T;
-    if (t < 3.5714)  return { day:1, revive:0, deep:0 };
-    if (t < 7.1429)  return { day:1, revive:(t-3.5714)/3.5714, deep:0 };
-    if (t < 9.2857)  return { day:1, revive:1, deep:0 };
-    if (t < 13.5714) return { day:1, revive:1, deep:(t-9.2857)/4.2857 };
-    if (t < 17.1429) return { day:1, revive:1, deep:1 };
-    return { day:1, revive:1-(t-17.1429)/2.8571, deep:1-(t-17.1429)/2.8571 };
+    if (t < 4)       return { day:0, golden:0, glow:0 };
+    if (t < 7.3333)  return { day:(t-4)/3.3333, golden:0, glow:0 };
+    if (t < 10.0)    return { day:1, golden:0, glow:0 };
+    if (t < 12.6667) return { day:1, golden:(t-10)/2.6667, glow:0 };
+    if (t < 15.3333) return { day:1, golden:1, glow:0 };
+    if (t < 18.0)    return { day:1, golden:1, glow:(t-15.3333)/2.6667 };
+    var u = 1-(t-18.0)/2.0;
+    return { day:u, golden:u, glow:u };
   }
+  // CAMP-METHOD (v5): NO HELD LAYER. The plates are complete global
+  // grades of the photo and the living view is their crossfade alone —
+  // no silhouette, no alpha, nothing pinned over the world. The held
+  // layer is permanently retired: on this photo it printed as a white
+  // outline around both people (the guided-filter mask's ~±14px
+  // translucent band at alpha<1 let the darkened deep plate darken the
+  // fringe while the alpha=1 side kept blown flash-falloff pixels, and
+  // the wide soft band smeared a pale haze around the silhouettes).
+  // The people travel exactly as much as the world immediately around
+  // them, which is what light does — the same construction as Camp Days
+  // v5 and Prom Night's plates. Whole-frame travel ~39 levels, in Camp's
+  // measured family (40.35). Cycle timing (T=20) is Camp's.
   // The one accent: the candle flame's glow, breathing on its own slow
-  // clock, present only while the deep grade is up.
+  // clock, present only while the dusk grade is up.
   function candlePulse(t){
     var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / 2.6333);
     p = p * p * (3 - 2 * p);                    // smoothstep ease
     return 0.80 + 0.20 * p;
   }
   function apply(st, so, living, t){
+    st.still.style.opacity = 1;
     st.day.style.opacity = so.day;
-    st.revive.style.opacity = living ? so.revive : 0;
-    st.deep.style.opacity = living ? so.deep : 0;
-    st.held.style.opacity = living ? 1 : 0;
-    st.candle.style.opacity = living ? so.deep * candlePulse(t) : 0;
+    st.golden.style.opacity = so.golden;
+    st.glow.style.opacity = so.glow;
+    st.candle.style.opacity = living ? so.glow * candlePulse(t) : 0;
+  }
+  var fsBg = { still: document.getElementById('fsBgStill'),
+               day: document.getElementById('fsBgDay'),
+               golden: document.getElementById('fsBgGolden'),
+               glow: document.getElementById('fsBgGlow') };
+  fsBg.still.src = fs.still.src; fsBg.day.src = fs.day.src;
+  fsBg.golden.src = fs.golden.src; fsBg.glow.src = fs.glow.src;
+  function applyBg(so, living){
+    fsBg.still.style.opacity = 1;
+    fsBg.day.style.opacity = so.day;
+    fsBg.golden.style.opacity = so.golden;
+    fsBg.glow.style.opacity = so.glow;
   }
   function frame(now){
     var t = frozen !== null ? frozen : phaseNow(now);
     var so = opacities(t);
     var living = state === 'living';
-    if (!living) so = { day:1, revive:0, deep:0 };
+    if (!living) so = { day:0, golden:0, glow:0 };
     apply(page, so, living, t);
     if (fsOpen){ apply(fs, so, fsSaved !== 'still', t); applyBg(so, fsSaved !== 'still'); }
     requestAnimationFrame(frame);
@@ -206,7 +237,8 @@
   // Full-screen controls: STILL shows the untouched photo, LIVING the
   // living version, X (or Esc) exits — flipping inside full screen never
   // changes the stage state underneath.
-  document.getElementById('fsStill').addEventListener('click', function(e){
+  var fsSaved = null;
+  document.getElementById('fsStillB').addEventListener('click', function(e){
     e.stopPropagation(); fsSaved = 'still'; applyFsMode();
   });
   document.getElementById('fsLiving').addEventListener('click', function(e){
@@ -217,24 +249,8 @@
   });
   function applyFsMode(){
     var living = fsSaved !== 'still';
-    document.getElementById('fsStill').classList.toggle('on', !living);
+    document.getElementById('fsStillB').classList.toggle('on', !living);
     document.getElementById('fsLiving').classList.toggle('on', living);
-  }
-
-  // Full-screen surround: the photo shows WHOLE (contain); behind it, a
-  // blurred, darkened copy of the same plates fills the frame (whole-photo
-  // hierarchy — size changes, never the fit).
-  var fsBg = { day: document.getElementById('fsBgDay'),
-               revive: document.getElementById('fsBgRevive'),
-               deep: document.getElementById('fsBgDeep'),
-               held: document.getElementById('fsBgHeld') };
-  fsBg.day.src = fs.day.src; fsBg.revive.src = fs.revive.src;
-  fsBg.deep.src = fs.deep.src; fsBg.held.src = fs.held.src;
-  function applyBg(so, living){
-    fsBg.day.style.opacity = so.day;
-    fsBg.revive.style.opacity = living ? so.revive : 0;
-    fsBg.deep.style.opacity = living ? so.deep : 0;
-    fsBg.held.style.opacity = living ? 1 : 0;
   }
 
   function closeFs(){
