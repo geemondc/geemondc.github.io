@@ -188,10 +188,24 @@ footer .mark .star{color:var(--gold-deep)}
 .cmp-cell{font-family:inherit;display:block;width:100%;padding:0;border:1px solid var(--gold-b);border-radius:18px;overflow:hidden;background:#14100c;cursor:pointer;box-shadow:0 14px 30px rgba(59,42,18,.20);text-align:center;-webkit-tap-highlight-color:transparent}
 .cmp-cell .cmp-media{display:block;overflow:hidden}
 .cmp-cell .cmp-media img{width:100%;height:100%;object-fit:cover}
+.cmp-media img{opacity:0}
+.cmp-media img.lpimgok{opacity:1}
 .cmp-tag{display:block;padding:8px 6px;font-size:12px;font-weight:700;letter-spacing:.22em;background:#2b2118;color:#f3e5bd;border-top:1px solid var(--gold-b)}
 .cmp-tag.living{background:var(--teal);color:#eafaf7}
 .cmp-cell.on{outline:3px solid var(--gold);outline-offset:2px}
 .cmp-cell:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+/* The Hammock exhibit - tap readiness (twin-LPe072134e): a flip lands only when the
+   target is actually ready to show (still decoded / living embed
+   loaded); lazy cell paint stays invisible until decoded, so no
+   window can strand a void under the frame-catcher. */
+/* The Hammock exhibit - whole-photo fit (scoped to this exhibit only):
+   every window shows the ENTIRE painting; any window whose shape
+   differs from the painting letterboxes over a blurred copy of the
+   same plate instead of slicing its edges. */
+.fit-ed803a9d .ex-frame .stage-still{object-fit:fill}
+.fit-ed803a9d .cmp-cell .cmp-media{position:relative;background:#14100c}
+.fit-ed803a9d .cmp-cell .cmp-media::before{content:"";position:absolute;inset:0;background-image:var(--hk);background-size:cover;background-position:center;filter:blur(14px) brightness(.72) saturate(1.06);transform:scale(1.12)}
+.fit-ed803a9d .cmp-cell .cmp-media img{position:relative;z-index:1;object-fit:fill}
 
 /* ---------- THE WALL (full-screen tour) ---------- */
 .wall-invite{margin-top:30px;text-align:center}
@@ -749,14 +763,14 @@ snapTo(null);
 <div class="exhibit">
     <h3 data-en="The Hammock" data-es="La Hamaca">The Hammock</h3>
     <p class="exhibit-cap" data-en="A painted view from a hammock by the sea — leaves overhead, the water below, and the whole day passing over you: bright morning, golden sunset, and a night full of color." data-es="Una vista pintada desde una hamaca junto al mar: hojas arriba, el agua abajo y todo el día pasando sobre ti: mañana brillante, atardecer dorado y una noche llena de color.">A painted view from a hammock by the sea — leaves overhead, the water below, and the whole day passing over you: bright morning, golden sunset, and a night full of color.</p>
-    <div class="lp3" data-lp3>
+    <div class="lp3 fit-ed803a9d" data-lp3>
       <div class="ex-frame" style="aspect-ratio:1600/1200">
         <span class="chip" data-en="Painting" data-es="Pintura">Painting</span>
-        <iframe scrolling="no" data-live="https://geemondc.github.io/hammock/#wall" title="Living Photo — The Hammock, playing" loading="lazy" allow="autoplay; fullscreen" allowfullscreen style="aspect-ratio:1600/1200"></iframe>
-        <img class="ph stage-still" src="https://geemondc.github.io/hammock/still.jpg" alt="The Hammock" hidden loading="lazy">
+        <iframe scrolling="no" data-live="https://geemondc.github.io/hammock/#wallnb" title="Living Photo — The Hammock, playing" loading="eager" allow="autoplay; fullscreen" allowfullscreen style="aspect-ratio:1600/1200"></iframe>
+        <img class="ph stage-still" src="https://geemondc.github.io/hammock/still.jpg" alt="The Hammock" hidden loading="eager">
       <div class="frame-catch" data-fs-open aria-hidden="true"></div></div>
       <div class="stage-title"><span class="st st-living" data-en="LIVING" data-es="VIVA">LIVING</span><span class="st st-still" data-en="STILL" data-es="QUIETA" hidden>STILL</span></div>
-      <div class="cmp-row"><button type="button" class="cmp-cell" data-put="still" aria-pressed="false"><span class="cmp-media" style="aspect-ratio:1600/1200"><img src="https://geemondc.github.io/hammock/still.jpg" alt="The Hammock" loading="lazy"></span><span class="cmp-tag" data-en="STILL" data-es="QUIETA">STILL</span></button><button type="button" class="cmp-cell on" data-put="living" aria-pressed="true"><span class="cmp-media" style="aspect-ratio:1600/1200"><img src="https://geemondc.github.io/hammock/night.jpg" alt="The Hammock — the living photo" loading="lazy"></span><span class="cmp-tag living" data-en="LIVING" data-es="VIVA">LIVING</span></button></div>
+      <div class="cmp-row"><button type="button" class="cmp-cell" data-put="still" aria-pressed="false"><span class="cmp-media" style="aspect-ratio:1600/1200;--hk:url(https://geemondc.github.io/hammock/still.jpg)"><img src="https://geemondc.github.io/hammock/still.jpg" alt="The Hammock" loading="eager"></span><span class="cmp-tag" data-en="STILL" data-es="QUIETA">STILL</span></button><button type="button" class="cmp-cell on" data-put="living" aria-pressed="true"><span class="cmp-media" style="aspect-ratio:1600/1200;--hk:url(https://geemondc.github.io/hammock/night.jpg)"><img src="https://geemondc.github.io/hammock/night.jpg" alt="The Hammock — the living photo" loading="eager"></span><span class="cmp-tag living" data-en="LIVING" data-es="VIVA">LIVING</span></button></div>
     </div>
   </div>
 
@@ -1388,7 +1402,25 @@ snapTo(null);
       });
     }
     box.querySelectorAll('.cmp-cell').forEach(function(cell){
-      cell.addEventListener('click', function(){ setMode(cell.getAttribute('data-put') === 'still'); });
+      cell.addEventListener('click', function(){
+        // A flip lands only when the target is ready to show: still needs
+        // its painting decoded, living needs the embed's document loaded.
+        // (Lazy media + a blind flip used to strand a void under the
+        // frame-catcher and swallow the tap - the Hammock exhibit catch.)
+        var want = cell.getAttribute('data-put');
+        if (want === 'still'){
+          if (stillLayer && !(stillLayer.complete && stillLayer.naturalWidth)) return;
+        } else if (fr){
+          var live = fr.getAttribute('data-live'), ready = false;
+          try { ready = (fr.getAttribute('src') === live) && !!fr.contentWindow && !!fr.contentWindow.LP; } catch(e){ ready = false; }
+          if (!ready) return;
+        }
+        setMode(want === 'still');
+      });
+    });
+    box.querySelectorAll('img').forEach(function(im){
+      function ok(){ if (im.complete && im.naturalWidth) im.classList.add('lpimgok'); }
+      im.addEventListener('load', ok); im.addEventListener('error', ok); ok();
     });
     setMode(box.getAttribute('data-default') !== 'living'); /* pieces rest on their still unless the box is a living showcase */
   });
