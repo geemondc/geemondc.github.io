@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Living Notes — a folded note, passed hand to hand</title>
+<meta name="description" content="A Living Note: a folded piece of notebook paper (or a yellow pad sheet) that unfolds in your hands to reveal a handwritten note. No envelope, no occasion — just a note, passed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0; padding:0; box-sizing:border-box}
+  html,body{background:#faf5ea}
+  body{font-family:Didot,"Playfair Display",Georgia,serif; color:#3a2c22; min-height:100vh; display:flex; flex-direction:column}
+  .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px 2px; max-width:680px; width:100%; margin:0 auto}
+  .wordmark{font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:#a08b62}
+  .sendbtn{font-family:Georgia,serif; font-size:14.5px; color:#5d1220; background:#fffdf6; border:1.5px solid #c9a24d; border-radius:999px; padding:8px 18px; cursor:pointer; box-shadow:0 3px 8px rgba(60,30,10,.12)}
+  .sendbtn:active{transform:translateY(1px)}
+  .stage{flex:1; display:flex; align-items:center; justify-content:center; perspective:1600px; padding:16px 8px 4px; -webkit-tap-highlight-color:transparent; overflow:hidden}
+  .hint{text-align:center; font-family:Georgia,serif; font-style:italic; font-size:15.5px; color:#8a6d2f; padding:12px 18px 2px; min-height:26px}
+  .underbar{text-align:center; padding:4px 18px 34px}
+  .replaybtn{font-family:Georgia,serif; font-style:italic; font-size:14.5px; color:#8a6d2f; background:none; border:none; border-bottom:1px dotted #c9a24d; padding:2px 4px; cursor:pointer; visibility:hidden}
+  .replaybtn.on{visibility:visible}
+  footer{text-align:center; padding:0 18px 26px; font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:#a08b62}
+
+  /* ============ THE SHEET ============ */
+  .sheetwrap{transform:translate(25%,-25%); will-change:transform}
+  .sheetwrap.ypwrap{transform:translate(0,0)}
+  .sheetwrap.centered{transform:translate(0,0); transition:transform 2.7s cubic-bezier(.4,.06,.3,1)}
+  .sheet{position:relative; --u:3.5px; filter:drop-shadow(0 10px 16px rgba(60,40,10,.30)); transition:filter .8s ease}
+  .sheet.open{filter:drop-shadow(0 18px 30px rgba(60,40,10,.22))}
+  .sheet.nb{width:min(88vw,360px); aspect-ratio:85/110; --lh:calc(var(--u)*4.977); --ink:#2B3A55}
+  .sheet.yp{width:min(84vw,332px); aspect-ratio:100/150; --lh:calc(var(--u)*4.545); --ink:#33302A}
+
+  .quad{position:absolute}
+  .face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:2px; box-shadow:inset 0 0 22px rgba(96,74,32,.07)}
+  .face::before{content:""; position:absolute; inset:0; background:linear-gradient(118deg, rgba(255,255,255,.12), transparent 42%, rgba(60,40,10,.05) 88%); pointer-events:none}
+  .face::after{content:""; position:absolute; inset:0; background:#2e2008; opacity:var(--fsh,0); pointer-events:none}
+  .fold{position:absolute; transform-style:preserve-3d; will-change:transform}
+  .fold .quad{position:relative; width:100%; height:100%; transform-style:preserve-3d}
+
+  /* ---- notebook panel placement ---- */
+  .nb .qBL{left:0; bottom:0; width:50%; height:50%; z-index:1}
+  .nb .foldH{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .nb .qTL{width:50%; height:100%; float:left}
+  .nb .foldV2{left:50%; top:0; width:50%; height:100%; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb .foldV{left:50%; bottom:0; width:50%; height:50%; z-index:3; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb.go1 .foldV{transform:rotateY(0deg)}
+  .nb.go2 .foldH{transform:rotateX(0deg)}
+  .nb.go3 .foldV2{transform:rotateY(0deg)}
+  .nb .face.backX{transform:rotateX(180deg)}
+  .nb .face.backY{transform:rotateY(180deg)}
+
+  /* ---- yellow pad panel placement (thirds) ---- */
+  .yp .qMID{left:0; top:33.333%; width:100%; height:33.334%; z-index:1}
+  .yp .foldTop{left:0; top:0; width:100%; height:33.333%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .yp .foldBot{left:0; bottom:0; width:100%; height:33.334%; z-index:3; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .yp.go1 .foldBot{transform:rotateX(0deg)}
+  .yp.go2 .foldTop{transform:rotateX(0deg)}
+  .yp .face.backX{transform:rotateX(180deg)}
+
+  /* ---- paper art: notebook ---- */
+  .noise{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .nbfront{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:200% 200%, 200% var(--lh), 200% 200%}
+  .nbfront.noise{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:200% 200%, 200% var(--lh), 200% 200%, 200% 200%}
+  .nbback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #faf7ee 0%, #f6f2e7 60%, #f3efe1 100%);
+    background-size:200% var(--lh), 200% 200%}
+  .posTL{background-position:0% 0%, 0% 0%, 0% 0%, 0% 0%}
+  .posTR{background-position:100% 0%, 100% 0%, 100% 0%, 100% 0%}
+  .posBL{background-position:0% 100%, 0% 100%, 0% 100%, 0% 100%}
+  .posBR{background-position:100% 100%, 100% 100%, 100% 100%, 100% 100%}
+  .nbback.posTL,.nbback.posTR,.nbback.posBL,.nbback.posBR{background-position:0% 0%, 0% 0%}
+  .hole{position:absolute; width:calc(var(--u)*4.4); height:calc(var(--u)*4.4); border-radius:50%; left:calc(var(--u)*2.5); transform:translateY(-50%);
+    background:radial-gradient(circle at 42% 38%, #fdfaf2 38%, #efe9da 66%, #d8d0ba 88%, rgba(90,75,45,.35) 100%);
+    box-shadow:inset 0 1px 3px rgba(90,75,45,.45), 0 0 0 1px rgba(120,105,70,.10)}
+  .midhole{position:absolute; top:50%; z-index:6; opacity:0; transition:opacity .55s ease}
+  .sheet.settled .midhole{opacity:1}
+
+  /* ---- paper art: yellow pad ---- */
+  .ypfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,130,165,.34) calc(var(--lh) - 1px), rgba(110,130,165,.34) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fff6b8 0%, #fff3a6 55%, #fdf09c 100%);
+    background-size:200% var(--lh), 200% 300%, 200% 300%}
+  .ypback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,130,165,.14) calc(var(--lh) - 1px), rgba(110,130,165,.14) var(--lh)),
+    linear-gradient(170deg, #f9ec9d 0%, #f6e98f 60%, #f3e488 100%);
+    background-size:200% var(--lh), 200% 300%}
+  .tposT{background-position:0% 0%, 0% 0%, 0% 0%}
+  .tposM{background-position:0% 50%, 0% 50%, 0% 50%}
+  .tposB{background-position:0% 100%, 0% 100%, 0% 100%}
+  .ypback.tposT,.ypback.tposM,.ypback.tposB{background-position:0% 0%, 0% 0%}
+  .padstrip{position:absolute; left:0; right:0; top:0; height:10%; z-index:2;
+    background:linear-gradient(180deg, #eccf74 0%, #e0ba5e 42%, #cd9750 76%, #b4713d 100%);
+    box-shadow:0 1px 2px rgba(120,70,20,.35), inset 0 -2px 3px rgba(120,60,10,.35), inset 0 2px 2px rgba(255,244,200,.5);
+    border-bottom:1px solid rgba(140,80,30,.5)}
+
+  /* ---- creases that stay, faintly ---- */
+  .creases{position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .7s ease; z-index:6}
+  .sheet.settled .creases{opacity:.55}
+  .nb .creases{background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .yp .creases{background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(70,55,25,.16) 33.333%, rgba(255,255,255,.5) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(70,55,25,.16) 66.666%, rgba(255,255,255,.5) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+
+  /* ---- the writing ---- */
+  .notetext{position:absolute; inset:0; z-index:7; opacity:0; transition:opacity .55s ease; pointer-events:none;
+    font-family:Caveat,"Segoe Script","Bradley Hand",cursive; color:var(--ink)}
+  .sheet.settled .notetext{opacity:1}
+  .nb .notetext{padding:calc(var(--lh)*1.62) calc(var(--u)*3.5) 0 calc(var(--u)*15)}
+  .yp .notetext{padding:calc(var(--lh)*3.35) calc(var(--u)*6) 0 calc(var(--u)*7.5)}
+  .notetext .greet{font-size:calc(var(--u)*6.7); font-weight:600; line-height:calc(var(--lh)*2)}
+  .notetext .body{font-size:calc(var(--u)*6.0); font-weight:500; line-height:calc(var(--lh)*2); white-space:pre-wrap; margin-top:calc(var(--lh)*0)}
+  .notetext .sign{font-size:calc(var(--u)*6.4); font-weight:600; line-height:calc(var(--lh)*2); text-align:right; padding-right:calc(var(--u)*3)}
+
+  /* ---- the name on the folded face ---- */
+  .packname{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(var(--u)*1.4);
+    transform:rotate(-2deg); font-family:Caveat,"Segoe Script","Bradley Hand",cursive; text-align:center; padding:0 8%}
+  .nb .packname{color:#6B655C}
+  .yp .packname{color:#33302A}
+  .packname .pk-to{font-size:calc(var(--u)*9.2); font-weight:600; line-height:1.05}
+  .packname .pk-from{font-size:calc(var(--u)*6.2); font-weight:500}
+  .packcrease{position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(118deg, rgba(255,255,255,.14), transparent 45%, rgba(60,40,10,.06) 90%)}
+
+  /* ---- composer ---- */
+  .composer{max-width:520px; margin:6px auto 8px; background:#fffdf6; border:1.5px solid #e5d5a8; border-radius:14px;
+    box-shadow:0 10px 24px rgba(60,30,10,.12); padding:20px 20px 16px; width:calc(100% - 36px)}
+  .composer h3{font-size:19px; color:#5d1220; text-align:center}
+  .composer .csub{font-family:Georgia,serif; font-style:italic; font-size:13.5px; color:#8a6d2f; text-align:center; margin-top:5px; line-height:1.45}
+  .composer label{display:block; font-family:Georgia,serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8a6d2f; margin-top:14px}
+  .composer input[type=text], .composer textarea, .composer select{width:100%; margin-top:5px; font-family:Caveat,"Segoe Script",cursive; font-size:21px; color:#2B3A55;
+    background:#fffef9; border:1px solid #ddd2b2; border-radius:8px; padding:7px 11px; outline:none}
+  .composer select{font-family:Georgia,serif; font-size:15.5px; color:#3a2c22}
+  .composer input:focus, .composer textarea:focus{border-color:#c9a24d}
+  .composer textarea{resize:vertical; min-height:84px; line-height:1.35}
+  .crow{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap}
+  .crow .ccount{font-family:Georgia,serif; font-style:italic; font-size:12.5px; color:#a08b62; margin-right:auto}
+  .cbtn{font-family:Georgia,serif; font-size:14.5px; border-radius:999px; padding:9px 18px; cursor:pointer; border:1.5px solid #c9a24d; background:#2b1218; color:#f5e7c8}
+  .cbtn.ghost{background:#fffdf6; color:#5d1220}
+  .cnote{font-family:Georgia,serif; font-style:italic; font-size:13px; color:#8a6d2f; margin-top:12px; line-height:1.5; text-align:center}
+  .noanim, .noanim *{transition:none !important}
+  .rm .fold, .rm .sheetwrap.centered, .rm .notetext, .rm .creases, .rm .midhole{transition-duration:.01s !important}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wordmark">Photo Letters by Living Photos</div>
+  <button class="sendbtn" id="sendToggle" type="button">Send a note ✎</button>
+</header>
+
+<main class="stage" id="stage" aria-label="A folded note. Tap to unfold it.">
+  <!-- NOTEBOOK NOTE A -->
+  <div class="sheetwrap" id="wrapNB">
+    <div class="sheet nb" id="sheetNB" role="button" tabindex="0" aria-label="Folded notebook note. Activate to unfold.">
+      <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:calc(var(--lh)*10.66)"></div></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:calc(var(--lh)*2.34)"></div></div><div class="face backX nbback posTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD NOTE -->
+  <div class="sheetwrap ypwrap" id="wrapYP" hidden>
+    <div class="sheet yp" id="sheetYP" role="button" tabindex="0" aria-label="Folded yellow pad note. Activate to unfold.">
+      <div class="quad qMID"><div class="face front ypfront tposM"></div></div>
+      <div class="fold foldTop"><div class="quad"><div class="face front ypfront tposT"><div class="padstrip"></div></div><div class="face backX ypback tposT"></div></div></div>
+      <div class="fold foldBot"><div class="quad"><div class="face front ypfront tposB"></div><div class="face backX ypback tposB"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+</main>
+
+<div class="hint" id="hint">Tap the note to unfold it</div>
+<div class="underbar"><button class="replaybtn" id="replay" type="button">↩ fold it back up</button></div>
+
+<section class="composer" id="composer" hidden>
+  <h3>Pass a note of your own</h3>
+  <p class="csub">Your words, your names — the link carries them. Send the link yourself, any way you like.</p>
+  <label>Paper
+    <select id="cNote">
+      <option value="notebook">Notebook Note A — folded notebook paper</option>
+      <option value="yellow">Yellow Pad Note — the longer yellow sheet</option>
+    </select>
+  </label>
+  <label>To <input type="text" id="cTo" maxlength="40" autocomplete="off"></label>
+  <label>From <input type="text" id="cFrom" maxlength="40" autocomplete="off"></label>
+  <label>Your note <textarea id="cBody" maxlength="280"></textarea></label>
+  <div class="crow">
+    <span class="ccount" id="cCount"></span>
+    <button class="cbtn ghost" id="cCopy" type="button">Copy link</button>
+    <button class="cbtn" id="cMail" type="button">Open in my email</button>
+  </div>
+  <p class="cnote">No account, no sending service — the note travels in the link, and you pass it hand to hand.</p>
+</section>
+
+<footer>Living Notes · Living Photos</footer>
+
+<script>
+(function(){
+  "use strict";
+  var q = new URLSearchParams(location.search);
+  var isYellow = q.get("note") === "yellow";
+  var DEMO = {
+    notebook: { to:"Friend", from:"Me",
+      body:"Psst — nice save in the game yesterday. Nobody saw it coming.\nSit with us at lunch tomorrow? We're planning the whole weekend.\nAnd don't show this to anybody!!" },
+    yellow: { to:"Friend", from:"Me",
+      body:"Quick one — the meeting moved to 3, so don't rush back.\nYour coffee money is on the counter, and the spare keys are with the front desk.\nSee you at dinner." }
+  };
+  var kind = isYellow ? "yellow" : "notebook";
+  var demo = DEMO[kind];
+  function clamp(s, n){ s = (s == null ? "" : String(s)); return s.length > n ? s.slice(0, n) : s; }
+  var to   = clamp(q.get("to")   || demo.to,   40);
+  var from = clamp(q.get("from") || demo.from, 40);
+  var body = clamp(q.get("body") || demo.body, 280);
+
+  var wrapNB = document.getElementById("wrapNB"), wrapYP = document.getElementById("wrapYP");
+  var sheet  = document.getElementById(isYellow ? "sheetYP" : "sheetNB");
+  var wrap   = isYellow ? wrapYP : wrapNB;
+  if (isYellow){ wrapNB.hidden = true; wrapYP.hidden = false; document.title = "Yellow Pad Note — a folded note"; }
+  else { document.title = "Notebook Note A — a folded note"; }
+
+  /* fill the words */
+  sheet.querySelector(".pk-to").textContent   = "To: " + to;
+  sheet.querySelector(".pk-from").textContent = "from " + from;
+  sheet.querySelector(".greet").textContent   = to + ",";
+  sheet.querySelector(".body").textContent    = body;
+  sheet.querySelector(".sign").textContent    = "— " + from;
+
+  /* scale unit: --u = sheet width / 100 */
+  function setU(){ var w = sheet.clientWidth; if (w) sheet.style.setProperty("--u", (w/100) + "px"); }
+  setU(); window.addEventListener("resize", setU);
+
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) document.documentElement.classList.add("rm");
+  var T = reduced ? 0.06 : 1;
+  var hint = document.getElementById("hint"), replay = document.getElementById("replay");
+  var opened = false, busy = false;
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  /* soft shading that follows each fold as it swings */
+  function shade(el, dur){
+    if (reduced || !el) return;
+    var t0 = performance.now();
+    (function frame(t){
+      var p = Math.min(1, (t - t0) / dur);
+      el.style.setProperty("--fsh", (Math.sin(p * Math.PI) * 0.30).toFixed(3));
+      if (p < 1) requestAnimationFrame(frame); else el.style.setProperty("--fsh", 0);
+    })(t0);
+  }
+
+  async function open(){
+    if (opened || busy) return; busy = true;
+    wrap.classList.add("centered");
+    hint.textContent = "";
+    await wait(120 * T);
+    if (isYellow){
+      var bot = sheet.querySelector(".foldBot"), top = sheet.querySelector(".foldTop");
+      shade(bot, 1150 * T); sheet.classList.add("go1"); await wait(1180 * T);
+      shade(top, 1150 * T); sheet.classList.add("go2"); await wait(1150 * T);
+    } else {
+      var br = sheet.querySelector(".foldV"), fh = sheet.querySelector(".foldH"), tr = sheet.querySelector(".foldV2");
+      shade(br, 1050 * T); sheet.classList.add("go1"); await wait(1020 * T);
+      shade(fh, 1250 * T); sheet.classList.add("go2"); await wait(1200 * T);
+      shade(tr, 1050 * T); sheet.classList.add("go3"); await wait(980 * T);
+    }
+    sheet.classList.add("open", "settled");
+    hint.textContent = isYellow ? "A yellow pad note — a little longer, a little bigger."
+                                : "Passed in class, the old way — now by link.";
+    replay.classList.add("on");
+    opened = true; busy = false;
+  }
+  function reset(){
+    if (busy) return;
+    sheet.classList.add("noanim"); wrap.classList.add("noanim");
+    sheet.classList.remove("go1","go2","go3","open","settled");
+    wrap.classList.remove("centered");
+    sheet.querySelectorAll(".fold").forEach(function(f){ f.style.setProperty("--fsh", 0); });
+    void sheet.offsetWidth;
+    sheet.classList.remove("noanim"); wrap.classList.remove("noanim");
+    hint.textContent = "Tap the note to unfold it";
+    replay.classList.remove("on");
+    opened = false;
+  }
+  document.getElementById("stage").addEventListener("click", function(e){
+    if (e.target.closest(".composer") || e.target.closest("button")) return;
+    open();
+  });
+  sheet.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+  replay.addEventListener("click", reset);
+
+  /* ---------- composer: the sender's three things, nothing more ---------- */
+  var composer = document.getElementById("composer");
+  var cNote = document.getElementById("cNote"), cTo = document.getElementById("cTo"),
+      cFrom = document.getElementById("cFrom"), cBody = document.getElementById("cBody"),
+      cCount = document.getElementById("cCount");
+  cNote.value = kind; cTo.value = to; cFrom.value = from; cBody.value = body;
+  function updCount(){ cCount.textContent = cBody.value.length + " / 280"; }
+  cBody.addEventListener("input", updCount); updCount();
+  function buildLink(){
+    var u = new URL(location.href);
+    u.search = "";
+    if (cNote.value === "yellow") u.searchParams.set("note", "yellow");
+    if (cTo.value.trim())   u.searchParams.set("to", cTo.value.trim());
+    if (cFrom.value.trim()) u.searchParams.set("from", cFrom.value.trim());
+    if (cBody.value.trim()) u.searchParams.set("body", cBody.value.trim());
+    return u.toString();
+  }
+  document.getElementById("sendToggle").addEventListener("click", function(){
+    composer.hidden = !composer.hidden;
+    if (!composer.hidden) composer.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"nearest"});
+  });
+  document.getElementById("cMail").addEventListener("click", function(){
+    var link = buildLink();
+    var subj = "A note for " + (cTo.value.trim() || "you");
+    var text = "I folded you a note:\n\n" + link + "\n\n— " + (cFrom.value.trim() || "Me");
+    location.href = "mailto:?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(text);
+  });
+  document.getElementById("cCopy").addEventListener("click", function(){
+    var link = buildLink(), btn = this;
+    function done(){ btn.textContent = "Copied ✓"; setTimeout(function(){ btn.textContent = "Copy link"; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(done, done); }
+    else { var ta = document.createElement("textarea"); ta.value = link; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e){} ta.remove(); done(); }
+  });
+})();
+</script>
+</body>
+</html>
