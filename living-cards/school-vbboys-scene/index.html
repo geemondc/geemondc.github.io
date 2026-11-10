@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Volleyball — Boys</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    background:#10233f;
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* soft blurred gym glow filling the letterbox on tall phones */
+  .backdrop {
+    position:fixed; inset:-40px;
+    background:url('frames/frame1-dig.webp') center/cover no-repeat;
+    filter: blur(28px) brightness(.55) saturate(1.2);
+  }
+  .stage {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* the scene: 16:9 painted gym (the master's own shape), one screen, no scroll */
+  .scene {
+    position:relative;
+    width:min(100vw, calc(100dvh * 1.7778));
+    aspect-ratio: 16 / 9;
+    overflow:hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.5);
+  }
+  /* perspective drift: the whole world breathes — slow scale + pan,
+     10s out-and-back so it never jumps at the loop seam. The drift moves
+     the ENTIRE painted world (net and players together), so it can never
+     push a player across the net. Kept a touch gentler than the other
+     loops for this redo, per the side-lock rule. */
+  .drift {
+    position:absolute; inset:0;
+    animation: drift 10s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes drift {
+    from { transform: scale(1.012) translate(0.3%, 0.15%); }
+    to   { transform: scale(1.055) translate(-0.75%, -0.5%); }
+  }
+  /* impact pulse on the beat after contact */
+  .pulse { animation: pulse .45s ease-out; }
+  @keyframes pulse {
+    0% { transform: scale(1); } 30% { transform: scale(1.018); } 100% { transform: scale(1); }
+  }
+  .frame {
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    opacity:0;
+    transition: opacity .28s ease-in-out;
+  }
+  .frame.on { opacity:1; }
+  /* impact burst at the strike — sits in the drift layer so it rides the
+     world, centered on the ball in the v4 strike frame (62% / 17%) */
+  .burst {
+    position:absolute; z-index:3;
+    left:62%; top:17%;
+    width:23%; aspect-ratio:1;
+    transform: translate(-50%,-50%) scale(.5);
+    opacity:0; pointer-events:none;
+  }
+  .burst.pop { animation: burstpop .55s ease-out; }
+  @keyframes burstpop {
+    0%   { opacity:0; transform:translate(-50%,-50%) scale(.5) rotate(-6deg); }
+    22%  { opacity:1; transform:translate(-50%,-50%) scale(1.02) rotate(0deg); }
+    100% { opacity:0; transform:translate(-50%,-50%) scale(1.22) rotate(3deg); }
+  }
+  /* quiet furniture riding on top */
+  .chip {
+    position:absolute; left:14px; bottom:12px; z-index:5;
+    background:rgba(10,24,46,.55); color:#ffe9b8;
+    border:1px solid rgba(255,233,184,.35);
+    padding:6px 12px; border-radius:999px;
+    font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    backdrop-filter: blur(4px);
+    pointer-events:none;
+  }
+  .hint {
+    position:absolute; right:14px; bottom:12px; z-index:5;
+    color:rgba(255,255,255,.75); font-size:12px; letter-spacing:.08em;
+    pointer-events:none; text-shadow:0 1px 4px rgba(0,0,0,.6);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drift { animation:none; }
+  }
+  /* on narrow phones the long chip leaves no room for the hint — drop the hint */
+  @media (max-width: 560px) {
+    .hint { display:none; }
+  }
+  /* the closing title beat (v5, Gary's note; wording set to GOOD SPIKE
+     in v6, Gary's note): after the play resolves,
+     GOOD SPIKE fades/scales in across the TOP of the final frame —
+     big red letters, Baloo 2 ExtraBold (bold rounded festive), cream
+     outline + soft shadow so it pops against the gym. It lives outside
+     the drift layer: it sits ON the picture, it doesn't ride it. */
+  @font-face {
+    font-family:'Baloo 2';
+    src:url('frames/baloo2.ttf') format('truetype');
+    font-weight: 400 800;
+  }
+  .scene { container-type: inline-size; }
+  .gametitle {
+    position:absolute; left:0; right:0; top:3.2%; z-index:6;
+    text-align:center; pointer-events:none;
+    font-family:'Baloo 2', 'Arial Rounded MT Bold', 'Helvetica Rounded', sans-serif;
+    font-weight:800; letter-spacing:.01em; white-space:nowrap;
+    font-size:64px; font-size:10.7cqw;
+    color:#e8232a;
+    -webkit-text-stroke:.045em #fff3d6;
+    paint-order:stroke fill;
+    text-shadow: 0 .03em 0 rgba(122,10,16,.45), 0 .07em .18em rgba(0,0,0,.35);
+    opacity:0; transform: scale(.82) translateY(-6px);
+    transition: opacity .28s ease-in-out, transform .28s ease-in-out;
+  }
+  .gametitle.show {
+    opacity:1; transform: scale(1) translateY(0);
+    transition: opacity .3s ease-out, transform .5s cubic-bezier(.2,1.4,.35,1);
+  }
+
+  .cap{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(10,12,24,.55);color:#f3e9d2;padding:7px 16px;border-radius:999px;font-size:13px;letter-spacing:.04em;backdrop-filter:blur(4px);white-space:nowrap}
+  .cap{display:none}
+  body.wallmode .cap{display:none}
+</style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div class="stage">
+    <div class="scene" id="scene">
+      <div class="drift" id="drift">
+        <img class="frame" src="frames/frame1-dig.webp" alt="Goggles digs the ball off his forearms, low near the floor, as Beanie waits behind him and the blue team watches from their side">
+        <img class="frame" src="frames/frame2-set.webp" alt="Goggles sets the ball up toward the net as Beanie coils into his approach and the blue blockers rise">
+        <img class="frame" src="frames/frame3-rising.webp" alt="Beanie rises at the net, one arm reaching up, the ball at the top of its arc above his hand">
+        <img class="frame" src="frames/frame4-windup.webp" alt="Beanie at the top of his jump, hitting arm cocked back behind his head, the ball floating untouched in front of his face">
+        <img class="frame" src="frames/frame5-strike.webp" alt="Beanie's hitting arm snaps over the top of the ball, wrist whipped over, hand driving it down — the spike strike">
+        <img class="frame" src="frames/frame6-follow.webp" alt="Beanie's arm swings through and finishes low as the ball dives down over the net, already past it and dropping steeply toward the deep middle of the blue court">
+        <img class="frame" src="frames/frame7-hooray.webp" alt="Hooray — Beanie lands on his own side with both arms up as the ball lands deep in the middle of the blue court, up by the net on the far side, and both blue players dive after it">
+        <img class="frame" src="frames/frame8-final.webp" alt="Both blue players stretched out flat on their own floor after their dives, the ball resting far beyond them deep in the middle of their court, up under the net on the far side, while the yellow team celebrates on their side">
+        <img class="burst" id="burst" src="frames/burst.png" alt="">
+      </div>
+      <div class="gametitle" id="gametitle">GOOD SPIKE</div>
+    </div>
+  </div>
+<script>
+(function () {
+  var frames = Array.prototype.slice.call(document.querySelectorAll('.frame'));
+  var scene  = document.getElementById('scene');
+  var burst  = document.getElementById('burst');
+  var title  = document.getElementById('gametitle');
+  /* one ~5.8-second loop, v6 (Nov 10): the dig, the set, the rise, the
+     WIND-UP, the SPIKE STRIKE (derived from the master — same instant,
+     arm snapped over the ball so it reads as a strike, not a catch),
+     the follow-through — the ball dives down OVER the net and LANDS
+     DEEP in the middle of the blue court, up by the net — the HOORAY
+     (Beanie landed, both arms up, both blue players diving after the
+     landed ball), the FINAL frame (both blue players flat on their
+     own floor, the ball resting far beyond them, deep in their court),
+     and a ninth TITLE beat: the final frame holds while GOOD SPIKE
+     fades/scales in across the top in big red letters — then the title
+     melts away as frame 8 crossfades back into frame 1.
+     Wind-up → strike → follow-through plays as one fast strike (~1.15s). */
+  var holds  = [850, 650, 450, 400, 300, 450, 950, 650, 1100]; /* ms — sums to 5800; beat 9 is the title over frame 8 */
+  var CONTACT_FRAME = 4; /* 0-based: frame 5, the strike */
+  var FOLLOW_FRAME  = 5; /* 0-based: frame 6 */
+  var TITLE_BEAT    = 8; /* 0-based beat 9: frame 8 stays up, the title shows */
+  var i = 0, timer = null, paused = false;
+
+  function show(n) {
+    var d = Math.min(n, frames.length - 1); /* the title beat keeps the final frame up */
+    frames.forEach(function (f, k) {
+      f.classList.toggle('on', k === d);
+      f.style.zIndex = (k === d) ? 2 : 1;
+    });
+    title.classList.toggle('show', n === TITLE_BEAT);
+    if (n === CONTACT_FRAME) {            /* the strike lands — burst at the hand/ball */
+      burst.classList.remove('pop'); void burst.offsetWidth; burst.classList.add('pop');
+    }
+    if (n === FOLLOW_FRAME) {             /* the beat right after the strike lands */
+      scene.classList.remove('pulse'); void scene.offsetWidth; scene.classList.add('pulse');
+    }
+  }
+  function step() {
+    show(i);
+    timer = setTimeout(function () { i = (i + 1) % (frames.length + 1); step(); }, holds[i]);
+  }
+  function start() { if (!timer) step(); }
+  function stop()  { clearTimeout(timer); timer = null; }
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { show(0); }
+  else {
+    /* start only once the first two frames are ready, so there's no blank flash */
+    var ready = 0;
+    [0, 1].forEach(function (k) {
+      if (frames[k].complete) { if (++ready === 2) start(); }
+      else frames[k].addEventListener('load', function () { if (++ready === 2) start(); });
+    });
+    if (!timer && ready < 2) setTimeout(start, 900); /* never sit blank */
+  }
+
+})();
+</script>
+<div class="cap">Volleyball — Boys &middot; a living card scene</div>
+<script>
+if (location.hash.indexOf('wall') >= 0) document.body.classList.add('wallmode');
+window.LP = { state: function(){ return document.body.className; } };
+</script>
+</body>
+</html>
