@@ -3,6 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+/* Decoupled demo modes (Nov 10): ?env= shows the envelope alone, ?card= the
+   card alone. Classes land on <html> before first paint so neither half
+   flashes; the personalization script mirrors them onto <body>. */
+(function(){ try {
+  var q = new URLSearchParams(location.search);
+  if (q.has('env') && !q.has('scene')) document.documentElement.classList.add('envonly');
+  if (q.has('card') && !q.has('scene')) document.documentElement.classList.add('cardonly');
+} catch(e){} })();
+</script>
 <title>A Living Card — Happy New Year, Sofia (sample)</title>
 <meta name="description" content="A Living Card: a sealed greeting that opens onto a living photo — a beginning, a middle, and an end. Personalized, sendable, one link.">
 <style>
@@ -2397,6 +2407,50 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   body.env-dreamsauna #flap{background:linear-gradient(180deg, var(--fx1) 0%, var(--fx2) 100%)}
   body.env-wellness #flap{background:linear-gradient(180deg, var(--fx1) 0%, var(--fx2) 100%)}
 </style>
+<style>
+/* ================= DECOUPLING (Nov 10) =================
+   ?env=<scene> : envelope-only demo. The sealed front opens with its own
+   animation and the demo ends on the opened, EMPTY envelope — the card
+   never arrives, no message, no STILL/LIVING bar.
+   ?card=<scene> : card-only demo. The living card with its message and the
+   STILL · LIVING · REPLAY bar, no envelope anywhere.
+   ?scene=<scene> (delivered pair links) is untouched. */
+html.cardonly #front, body.cardonly #front{ display:none!important; }
+body.cardonly #musicBtn{ display:none!important; }
+body.cardonly.open #ctrlbar{ transition:opacity .6s ease .9s, visibility 0s linear .9s; }
+body.envonly #card, body.envonly #ctrlbar, body.envonly #musicBtn{ display:none!important; }
+/* envelope-only: the front must STAY as the opened empty envelope */
+body.ptTen.envonly.open #front{ opacity:1; visibility:visible; }
+/* envelope-only control bar: REPLAY (reseal, wait for the tap) + CLOSE */
+#envbar{ display:none; }
+body.envonly #envbar{ display:flex; gap:10px; justify-content:center; align-items:center;
+  position:fixed; left:0; right:0; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:60;
+  visibility:hidden; opacity:0; }
+body.envonly.open #envbar{ visibility:visible; opacity:1;
+  transition:opacity .7s ease 2.5s, visibility 0s linear 2.5s; }
+#envbar button, #envbar a{ font:inherit; font-size:13px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; text-decoration:none; cursor:pointer;
+  background:rgba(250,245,234,.96); color:#5d1220; border:1.5px solid #c9a227; border-radius:999px;
+  padding:11px 22px; box-shadow:0 4px 14px rgba(30,10,40,.18); }
+
+/* ---- Cream Satin Bow (luxcream): the flap edges must READ on cream ---- */
+/* The sealed face IS the two gatefold doors: each is a full-size layer
+   carrying the front art, clipped to its half. Lay the warm-gold flap V —
+   the burgundy formal's edge treatment — across both doors so the flap
+   boundary reads on cream, over a soft shadow seam where the doors meet. */
+body.ptTen.env-lux-cream .ptp-l, body.ptTen.env-lux-cream .ptp-r{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100' preserveAspectRatio='none'%3E%3Cpath d='M1 1 L100 54 L199 1' fill='none' stroke='rgba(184,145,47,.30)' stroke-width='8'/%3E%3Cpath d='M1 1 L100 54 L199 1' fill='none' stroke='%23a87f24' stroke-width='3'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, transparent calc(50% - 6px), rgba(122,90,20,.17) 50%, transparent calc(50% + 6px)),
+    var(--frontBg);
+}
+/* the gatefold glow is born at the SEAL: a seal-centered bloom, not the
+   full-height bright line that read as a cut through the middle */
+body.ptTen.env-lux-cream #ptGlowFx .seam.h{
+  display:block!important; left:50%; right:auto; top:29%; width:3px; height:42%; margin:0;
+  transform:translateX(-50%);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255,244,200,.95), rgba(255,226,140,.45) 55%, rgba(255,233,168,0) 78%);
+}
+</style>
 </head>
 <body>
 <div id="scene">
@@ -2791,6 +2845,7 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     <div id="ctrlbar" role="group" aria-label="Photo controls"><button id="btnStill" type="button">Still</button><button id="btnLiving" type="button" class="on">Living</button><button id="replay" type="button">Replay</button></div>
   </main>
   <button id="musicBtn" type="button" title="Play the ballpark organ" aria-label="Play the ballpark organ">&#127929;</button>
+  <div id="envbar"><button id="envReplay" type="button">&#8635; Replay</button><a href="https://geemondc.github.io/living-cards-site/envelopes.html">Close</a></div>
 
   <button id="front" type="button" aria-label="Sealed card for Sofia, from James. Tap the seal to open.">
     <div id="flapIn" aria-hidden="true"></div>
@@ -2817,9 +2872,9 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
       if (v == null) return '';
       return String(v).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, cap);
     }
-    var hasParams = ['to','from','line','scene'].some(function(k){ return q.has(k); });
+    var hasParams = ['to','from','line','scene','env','card'].some(function(k){ return q.has(k); });
     if (!hasParams) return;
-    var sc = clean(q.get('scene'), 24).toLowerCase();
+    var sc = clean(q.get('scene') || q.get('env') || q.get('card'), 24).toLowerCase();
     if (/^w[0-9][0-9]$/.test(sc)) sc = sc.toUpperCase();
     var scene = (sc === 'chilling' || sc === 'birthday' || sc === 'heart' || sc === 'butterfly' || sc === 'money' || sc === 'origami' || sc === 'origamibird' || sc === 'origamiboat' || sc === 'origamifrog' || sc === 'origamiflower' || sc === 'wedding' || sc === 'barmitzvah' || sc === 'surprise' || sc === 'thankyou' || sc === 'getwell' || sc === 'graduation' || sc === 'baby' || sc === 'christmas' || sc === 'elegant' || sc === 'xmas' || sc === 'balloonpop' || sc === 'snowglobe' || sc === 'luxburgundy' || sc === 'luxcream' || sc === 'luxnavy' || sc === 'luxnoir' || sc === 'luxchampagne' || sc === 'luxamethyst' || sc === 'pinata' || sc === 'ocean' || sc === 'bloom' || sc === 'treasure' || sc === 'firefly' || sc === 'pool' || sc === 'hotair' || sc === 'lantern' || sc === 'biglove' || sc === 'pool2' || sc === 'race1' || sc === 'race2' || sc === 'possibility' || sc === 'healthcoach' || sc === 'dream1' || sc === 'dream2' || sc === 'healthworks1' || sc === 'healthworks2' || sc === 'healthworks3' || sc === 'dreamsauna' || sc === 'wellness' || sc === 'balloonburst' || sc === 'tempsnow' || sc === 'bkboys' || sc === 'bkgirls' || sc === 'scboys' || sc === 'scgirls' || sc === 'fbboys' || sc === 'fbgirls' || sc === 'bsa' || sc === 'bsb' || sc === 'sba' || sc === 'sbb' || sc === 'swboys' || sc === 'swgirls' || sc === 'tkboys' || sc === 'tkgirls' || sc === 'cheer' || ['gameday','holes','fishing','hoops','pickle','homerun','goal','tropical','beachday','desert','pond','racers','champions','coach','fans','fairway','tightlines','deepsea','shore','rainforest','wetlands','desertday','partytime','celebrate','withlove','garden','homer','striker','trainride','dayflight','W01','W02','W03','W04','W05','W06','W07','W08','W09','W10','W11','W12','W13','W14','W15','W16','W17','W18','W19','W20','W21','W22','W23','W24','W25','W26','W27','W28','W29'].indexOf(sc) >= 0) ? sc : 'bigview';
     window.__lcScene = scene;
@@ -2828,6 +2883,8 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     window.__lcEnvKey = sc;
     scene = ({W01:'gameday',W02:'holes',W03:'fishing',W04:'hoops',W05:'pickle',W06:'homerun',W07:'goal',W08:'tropical',W09:'beachday',W10:'desert',W11:'pond',W12:'racers',W13:'champions',W14:'coach',W15:'fans',W16:'fairway',W17:'tightlines',W18:'deepsea',W19:'shore',W20:'rainforest',W21:'wetlands',W22:'desertday',W23:'partytime',W24:'celebrate',W25:'withlove',W26:'garden',W27:'homer',W28:'striker',W29:'tempsnow'}[scene] || scene); window.__lcScene = scene; window.__lcEnvKey = scene; window.__lcPickId = scene;
     document.body.classList.add(({'elegant':'env-amethyst','xmas':'env-burgundy','bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','bkboys':'env-sc-bkboys','bkgirls':'env-sc-bkgirls','scboys':'env-sc-scboys','scgirls':'env-sc-scgirls','fbboys':'env-sc-fbboys','fbgirls':'env-sc-fbgirls','bsa':'env-sc-bsa','bsb':'env-sc-bsb','sba':'env-sc-sba','sbb':'env-sc-sbb','swboys':'env-sc-swboys','swgirls':'env-sc-swgirls','tkboys':'env-sc-tkboys','tkgirls':'env-sc-tkgirls','cheer':'env-sc-cheer','gameday':'env-sp-gameday','holes':'env-sp-holes','fishing':'env-sp-fishing','hoops':'env-sp-hoops','pickle':'env-sp-pickle','homerun':'env-sp-homerun','goal':'env-sp-goal','tropical':'env-sp-tropical','beachday':'env-sp-beachday','desert':'env-sp-desert','pond':'env-sp-pond','racers':'env-sp-racers','champions':'env-sp-champions','coach':'env-sp-coach','fans':'env-sp-fans','fairway':'env-sp-fairway','tightlines':'env-sp-tightlines','deepsea':'env-sp-deepsea','shore':'env-sp-shore','rainforest':'env-sp-rainforest','wetlands':'env-sp-wetlands','desertday':'env-sp-desertday','partytime':'env-sp-partytime','celebrate':'env-sp-celebrate','withlove':'env-sp-withlove','garden':'env-sp-garden','homer':'env-sp-homer','striker':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate','luxburgundy':'env-lux-burgundy','luxcream':'env-lux-cream','luxnavy':'env-lux-navy','luxnoir':'env-lux-noir','luxchampagne':'env-lux-champagne','luxamethyst':'env-lux-amethyst'})[window.__lcEnvKey] || (scene === 'snowglobe' ? 'env-snowglobe' : scene === 'birthday' ? 'env-kid' : scene === 'heart' ? 'env-love' : scene === 'butterfly' ? 'env-butterfly' : scene === 'money' ? 'env-money' : scene === 'origami' ? 'env-origami' : scene === 'origamibird' ? 'env-origamibird' : scene === 'origamiboat' ? 'env-origamiboat' : scene === 'origamifrog' ? 'env-origamifrog' : scene === 'origamiflower' ? 'env-origamiflower' : scene === 'wedding' ? 'env-wedding' : scene === 'barmitzvah' ? 'env-barmitzvah' : scene === 'surprise' ? 'env-surprise' : scene === 'thankyou' ? 'env-thankyou' : scene === 'getwell' ? 'env-getwell' : scene === 'graduation' ? 'env-graduation' : scene === 'baby' ? 'env-baby' : scene === 'christmas' ? 'env-christmas' : scene === 'balloonpop' ? 'env-balloonpop' : scene === 'W29' ? 'env-snowglobe' : scene === 'pinata' ? 'env-pinata' : scene === 'ocean' ? 'env-ocean' : scene === 'bloom' ? 'env-bloom' : scene === 'treasure' ? 'env-treasure' : scene === 'firefly' ? 'env-firefly' : scene === 'wellness' ? 'env-wellness' : scene === 'dreamsauna' ? 'env-dreamsauna' : scene === 'dream1' ? 'env-dream1' : scene === 'dream2' ? 'env-dream2' : scene === 'healthworks1' ? 'env-healthworks1' : scene === 'healthworks2' ? 'env-healthworks2' : scene === 'healthworks3' ? 'env-healthworks3' : scene === 'possibility' ? 'env-possibility' : scene === 'healthcoach' ? 'env-healthcoach' : scene === 'race1' ? 'env-race1' : scene === 'race2' ? 'env-race2' : scene === 'pool2' ? 'env-pool2' : scene === 'pool' ? 'env-pool' : scene === 'hotair' ? 'env-hotair' : scene === 'lantern' ? 'env-lantern' : scene === 'biglove' ? 'env-biglove' : scene === 'balloonburst' ? 'env-balloonpop' : ({'W01':'env-sp-gameday','W02':'env-sp-holes','W03':'env-sp-fishing','W04':'env-sp-hoops','W05':'env-sp-pickle','W06':'env-sp-homerun','W07':'env-sp-goal','W08':'env-sp-tropical','W09':'env-sp-beachday','W10':'env-sp-desert','W11':'env-sp-pond','W12':'env-sp-racers','W13':'env-sp-champions','W14':'env-sp-coach','W15':'env-sp-fans','W16':'env-sp-fairway','W17':'env-sp-tightlines','W18':'env-sp-deepsea','W19':'env-sp-shore','W20':'env-sp-rainforest','W21':'env-sp-wetlands','W22':'env-sp-desertday','W23':'env-sp-partytime','W24':'env-sp-celebrate','W25':'env-sp-withlove','W26':'env-sp-garden','W27':'env-sp-homer','W28':'env-sp-striker','trainride':'env-sp-celebrate','dayflight':'env-sp-celebrate',}[scene] || 'env-formal')));
+    if (q.has('env') && !q.has('scene')){ document.body.classList.add('envonly'); window.__lcEnvOnly = true; }
+    if (q.has('card') && !q.has('scene')){ document.body.classList.add('cardonly'); window.__lcCardOnly = true; }
     var to = clean(q.get('to'), 60) || 'Sofia';
     var from = clean(q.get('from'), 60) || 'James';
     var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
@@ -3830,11 +3887,55 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
   (function(){
     var card = document.getElementById('card');
     if (!card) return;
+    /* FIT-WITH-MESSAGE (Gary, Nov 10): the whole card — headline, the FULL
+       message block, closing, name — must sit on one screen, no scrolling.
+       Measure the card's full content height (scrollHeight sees past the
+       max-height clamp that used to hide a long message's last lines),
+       unclamp when the content is taller than the box, tighten the message
+       type a step or two if that buys back the fit, then scale so the last
+       line of the message is on screen. */
+    var msgEl = card.querySelector('.message'), closeEl = card.querySelector('.closing');
+    var msgBase = null, closeBase = null;
+    function setType(f){
+      if (!msgEl) return;
+      if (msgBase === null){
+        msgBase = parseFloat(getComputedStyle(msgEl).fontSize) || 20;
+        closeBase = closeEl ? (parseFloat(getComputedStyle(closeEl).fontSize) || 20) : 0;
+      }
+      if (f >= 1){
+        msgEl.style.fontSize = ''; msgEl.style.lineHeight = '';
+        if (closeEl) closeEl.style.fontSize = '';
+      } else {
+        msgEl.style.fontSize = (msgBase * f).toFixed(1) + 'px';
+        msgEl.style.lineHeight = '1.38';
+        if (closeEl) closeEl.style.fontSize = (closeBase * Math.min(1, f + 0.08)).toFixed(1) + 'px';
+      }
+    }
+    function fullH(){ return Math.max(card.scrollHeight, card.offsetHeight); }
+    var cssClamp = null, clampIsVh = false;
     function fit(){
-      var w = card.offsetWidth, h = card.offsetHeight;
-      if (!w || !h) return;
-      var s = Math.min(1.5, (window.innerWidth - 4) / w, (window.innerHeight - 10) / h);
-      if (s < 1) s = 1;
+      var w = card.offsetWidth;
+      if (!w) return;
+      /* capture the stylesheet's max-height clamp once (it is 94dvh, so
+         track it as a viewport ratio and re-derive it on resize) */
+      if (cssClamp === null){
+        var mh = parseFloat(getComputedStyle(card).maxHeight);
+        cssClamp = isNaN(mh) ? Infinity : mh;
+        clampIsVh = Math.abs(mh - 0.94 * window.innerHeight) < 8;
+      }
+      var clampNow = clampIsVh ? 0.94 * window.innerHeight : cssClamp;
+      var hFull = fullH();
+      /* if the message overflows the clamped box, unclamp so the whole
+         card renders and the scale — not a scrollbar — does the fitting.
+         The decision compares against the STYLESHEET clamp, never the
+         live box, so it cannot flap off again on the next refit. */
+      card.style.maxHeight = (hFull > clampNow + 2) ? 'none' : '';
+      hFull = fullH();
+      var availW = window.innerWidth - 4, availH = window.innerHeight - 10;
+      var s = Math.min(1.5, availW / w, availH / hFull), f = 1;
+      if (s < 0.86){ f = 0.88; setType(f); hFull = fullH(); s = Math.min(1.5, availW / w, availH / hFull); }
+      if (s < 0.78){ f = 0.78; setType(f); hFull = fullH(); s = Math.min(1.5, availW / w, availH / hFull); }
+      if (f === 1) setType(1);
       card.style.transformOrigin = '50% 50%';
       card.style.transform = 'scale(' + s + ')';
       window.__cardScale = s;
@@ -3845,6 +3946,32 @@ body.fxgo .sigfx, body.fxgo #origamiFx{
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
     if (window.MutationObserver) new MutationObserver(fit).observe(document.body, { attributes:true, attributeFilter:['class'] });
   })();
+</script>
+<script>
+/* Decoupled demo modes (Nov 10): ?env= ends on the opened empty envelope;
+   ?card= shows the card alone. ?scene= pair links never take this branch. */
+(function(){
+  var isEnv = document.body.classList.contains('envonly');
+  var isCard = document.body.classList.contains('cardonly');
+  if (isCard){
+    /* no envelope, no seal tap: the card simply arrives, living */
+    document.body.classList.add('open');
+  }
+  var er = document.getElementById('envReplay');
+  if (er) er.addEventListener('click', function(){ if (typeof reseal === 'function') reseal(); });
+  if (isCard){
+    /* the pair-mode REPLAY reseals an envelope that isn't here — in
+       card-only mode replay just re-arrives the card */
+    document.addEventListener('click', function(ev){
+      if (ev.target && ev.target.id === 'replay'){
+        ev.stopPropagation(); ev.preventDefault();
+        document.body.classList.remove('open');
+        void document.body.offsetWidth;
+        document.body.classList.add('open');
+      }
+    }, true);
+  }
+})();
 </script>
 </body>
 </html>
