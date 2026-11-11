@@ -2198,9 +2198,9 @@ let BEACH_G=null, CITY_G=null;
    birds are. Load-guarded; seatless, the stack below carries on. */
 const beachSeats={ hero:new Image(), wetland:new Image(), broadwalk:new Image(), aerial:new Image(), command:new Image() };
 beachSeats.hero.src='assets/seats/guitar-hero.webp'; beachSeats.wetland.src='assets/seats/wetland.webp';
-beachSeats.broadwalk.src='assets/seats/broadwalk.webp'; beachSeats.aerial.src='assets/seats/guitar-aerial.webp';
+beachSeats.broadwalk.src='assets/seats/broadwalk.webp'; beachSeats.aerial.src='assets/hr-aerial.webp';   /* Nov 11 (#589): the HR-AERIAL v2 painting (Gary's Manus run, Nov 11) — guitar LARGE and unmistakable, painterly; replaces the pulled glitter-wash aerial in the same seat slot, load-guarded like every seat */
 beachSeats.command.src='assets/seats/beach-command.webp';   /* Nov 4 — THE COMMAND CENTER (Gary's master, fed Nov 3): his desk at night, three charts up, the guitar hotel lit over his golf course — AS IS; his home seat in the Hollywood family (note: the painting centers the guitar — Gary's real window has it LEFT; his call when he flies it) */
-const BEACH_SEAT_ORDER=['hero','wetland','broadwalk','command'];   /* Nov 8 (#588, Gary): the dusk AERIAL seat is OUT of the rotation — its glitter-wash aerial buried the guitar hotel ("you can't even see the hard rock"). A replacement aerial with the guitar large and unmistakable is queued for the next Manus session; the painting itself stays in the bank, unshipped as a seat until then. */
+const BEACH_SEAT_ORDER=['hero','wetland','broadwalk','aerial','command'];   /* Nov 8 (#588, Gary): the dusk AERIAL seat was pulled — its glitter-wash aerial buried the guitar hotel ("you can't even see the hard rock"). Nov 11 (#589): the replacement HR-AERIAL v2 painting (guitar large, left-of-center, painterly) takes the SAME slot back; the old glitter-wash painting stays in the bank, unshipped as a seat. */
 let beachEnterT=-99;
 function beachSeatReady(){ for(const k of BEACH_SEAT_ORDER){ const im=beachSeats[k]; if(im.complete&&im.naturalWidth>0)return true; } return false; }
 function beachSeatWeights(){   /* REBUILD: stop-driven — this visit's chosen seat, or nothing (the stack flies) */
@@ -2217,7 +2217,7 @@ function drawBeachVista(RP,hy,cx){
     if(S.biomeBlend<1)beachEnterT=S.flyT;
     const sw0=beachSeatWeights(); const sw=sw0?{list:sw0.list,w:sharpW(sw0.w)}:null; let gSeat=null, drawn=false;   /* #567: sharpened */
     if(sw){ for(const k of sw.list){ const wgt=sw.w[k]||0; if(wgt<=0.003)continue;
-        const g2=drawSeatCover(beachSeats[k],wgt); if(g2){ gSeat=g2; drawn=true; } } }
+        const g2=drawSeatCover(beachSeats[k],wgt,k==='aerial'?0.32:null); if(g2){ gSeat=g2; drawn=true; } } }   /* #589: the aerial's guitar sits at ~0.32 of its painting — focal-anchor it so the phone's narrow crop keeps the guitar in frame */
     if(drawn&&gSeat){ BEACH_G=gSeat; window.__beachSeatW=sw;
       /* living light, per seat: fireflies breathing in the wetland's
          reeds (they are painted in its art — these are their living
@@ -2287,7 +2287,7 @@ function drawBeachVista(RP,hy,cx){
   if(beachImgs.dusk.complete&&beachImgs.dusk.naturalWidth&&BEACH_G){ const skD=skyAt(S.hour); const duskF=clamp(skD.warm,0,1)*(1-clamp(RP.nightF,0,1));
     if(duskF>0.004){ const soft=pfFeather(beachImgs.dusk);
       if(soft){ ctx.globalAlpha=duskF*0.99; ctx.drawImage(soft,BEACH_G.left,BEACH_G.top,BEACH_G.pw,BEACH_G.ph); ctx.globalAlpha=1; } } }
-  { const _sf=window.__seatFocus||0; if(_sf>0&&_sf<=0.5&&S.seatKey&&beachSeats[S.seatKey]&&beachSeats[S.seatKey].complete)drawSeatCover(beachSeats[S.seatKey],_sf*1.7); }   /* REBUILD ramp: the seat melts in over the stack, then the branch above owns it */
+  { const _sf=window.__seatFocus||0; if(_sf>0&&_sf<=0.5&&S.seatKey&&beachSeats[S.seatKey]&&beachSeats[S.seatKey].complete)drawSeatCover(beachSeats[S.seatKey],_sf*1.7,S.seatKey==='aerial'?0.32:null); }   /* REBUILD ramp: the seat melts in over the stack, then the branch above owns it */
 }
 /* the beach's living layer, drawn late (over the ground) like the
    underwater near life: the paintings' subjects live in their lower
@@ -3280,10 +3280,10 @@ function drawSeatFit(img,alpha){   /* REBUILD: a seat drawn WHOLE — fit inside
   ctx.globalAlpha=clamp(alpha,0,1); ctx.drawImage(img,left,top,dw,dh); ctx.globalAlpha=1;
   return {left:left,top:top,pw:dw,ph:dh};
 }
-function drawSeatCover(img,alpha){   /* a LIVING painting as the world: full-frame cover, centered, still */
+function drawSeatCover(img,alpha,fx){   /* a LIVING painting as the world: full-frame cover, centered, still. Nov 11 (#589): optional fx = focal center as a fraction of the painting's width (default 0.5 = the centered behavior every seat has always had) — a seat whose subject sits off-center can keep it in frame on a tall phone, where the cover crop is a narrow window. */
   if(!img.complete||!img.naturalWidth||alpha<=0.003)return null;
   const iw=img.naturalWidth, ih=img.naturalHeight, sc=Math.max(W/iw,H/ih);
-  const dw=iw*sc, dh=ih*sc, left=(W-dw)/2, top=(H-dh)/2;
+  const dw=iw*sc, dh=ih*sc, left=Math.max(W-dw,Math.min(0,W/2-(fx==null?0.5:fx)*dw)), top=(H-dh)/2;
   ctx.globalAlpha=clamp(alpha,0,1); ctx.drawImage(img,left,top,dw,dh); ctx.globalAlpha=1;
   return {left:left,top:top,pw:dw,ph:dh};
 }
