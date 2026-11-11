@@ -1183,6 +1183,152 @@ body.dark #fcIntro .fcb a{color:#e9cf8f}
   document.getElementById('fcClose').addEventListener('click', dismiss);
 })();
 </script>
+<style>
+/* ===== FIRST CLASS NAV FIX (Nov 11, Gary's phone walk): the picker bar
+   clipped 9 (number only, the name cut off) and hid 10 entirely; the
+   counter pill vanished while a card was open; and there was no way to
+   see all ten at a glance. Added only: arrow buttons flanking the stage
+   (one design per tap), a bigger counter that never hides and carries
+   the occasion, picker auto-scroll so the active name is always fully
+   in view, and the full list of ten — a rail beside the stage on wide
+   screens, a compact grid under the stage on phones. */
+#fcCount{font-size:17px;padding:10px 20px;background:rgba(20,16,12,.82);border:1px solid rgba(201,162,39,.7);color:#f7ead0;bottom:calc(84px + env(safe-area-inset-bottom))}
+body.open #fcCount, body.opening #fcCount{opacity:1}
+@media (max-width:1279px){#fcCount{font-size:16px;padding:9px 18px}}
+.fcNav{position:fixed;top:50%;transform:translateY(-50%);z-index:12;width:52px;height:52px;margin:0;padding:0 0 4px;border-radius:50%;border:1.5px solid rgba(201,162,39,.85);background:rgba(20,16,12,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#f0e3bb;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1;text-align:center;cursor:pointer;box-shadow:0 8px 22px rgba(20,10,0,.35);-webkit-tap-highlight-color:transparent}
+.fcNav:active{transform:translateY(-50%) scale(.94)}
+.fcNav.off{opacity:.25;pointer-events:none}
+#fcList{position:fixed;left:8px;right:8px;top:110%;z-index:9;display:grid;grid-template-columns:1fr 1fr;gap:3px 6px;font-family:Georgia,'Times New Roman',serif;transition:opacity .35s ease}
+.fcRow{display:flex;align-items:baseline;gap:5px;width:100%;min-height:24px;margin:0;padding:4px 8px;text-align:left;appearance:none;cursor:pointer;border:1px solid transparent;border-radius:10px;background:rgba(20,16,12,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#e9e2d2;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.fcRow .fcN{min-width:13px;color:#d9b64f;font-size:11px;font-weight:700}
+.fcRow .fcNm{font-size:12px;letter-spacing:.04em;white-space:nowrap}
+.fcRow .fcOc{font-size:10.5px;font-style:italic;color:#cbbd93;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcRow.on{background:rgba(233,226,210,.92);color:#241c11;border-color:rgba(201,162,39,.8)}
+.fcRow.on .fcN{color:#8a6d2f}
+.fcRow.on .fcOc{color:#6d5518}
+@media (max-width:1279px){body.open #fcList, body.opening #fcList{opacity:0;pointer-events:none}}
+@media (min-width:1280px){
+  #fcList{left:auto;right:14px;top:50%;transform:translateY(-50%);width:228px;display:flex;flex-direction:column;gap:5px}
+  .fcRow{padding:8px 12px;border-radius:12px;flex-wrap:wrap;min-height:0}
+  .fcRow .fcNm{font-size:14px}
+  .fcRow .fcOc{font-size:11.5px;flex-basis:100%;padding-left:18px}
+}
+</style>
+<button id="fcPrev" class="fcNav" type="button" aria-label="Previous envelope">&#8249;</button>
+<button id="fcNext" class="fcNav" type="button" aria-label="Next envelope">&#8250;</button>
+<nav id="fcList" aria-label="All ten First Class designs">
+  <button class="fcRow" type="button" data-env="emerald"><span class="fcN">1</span><span class="fcNm">Emerald</span><span class="fcOc" data-occ="thankyou">Thank You</span></button>
+  <button class="fcRow" type="button" data-env="burgundy"><span class="fcN">2</span><span class="fcNm">Burgundy</span><span class="fcOc" data-occ="sympathy">With Sympathy</span></button>
+  <button class="fcRow" type="button" data-env="ivory"><span class="fcN">3</span><span class="fcNm">Ivory</span><span class="fcOc" data-occ="congrats">Congratulations</span></button>
+  <button class="fcRow" type="button" data-env="navy"><span class="fcN">4</span><span class="fcNm">Navy</span><span class="fcOc" data-occ="anniversary">Happy Anniversary</span></button>
+  <button class="fcRow" type="button" data-env="amethyst"><span class="fcN">5</span><span class="fcNm">Amethyst</span><span class="fcOc" data-occ="birthday">Happy Birthday</span></button>
+  <button class="fcRow" type="button" data-env="champagne"><span class="fcN">6</span><span class="fcNm">Champagne</span><span class="fcOc" data-occ="congrats">Congratulations</span></button>
+  <button class="fcRow" type="button" data-env="creambow"><span class="fcN">7</span><span class="fcNm">Cream</span><span class="fcOc" data-occ="thankyou">Thank You</span></button>
+  <button class="fcRow" type="button" data-env="noir"><span class="fcN">8</span><span class="fcNm">Noir</span><span class="fcOc" data-occ="sympathy">With Sympathy</span></button>
+  <button class="fcRow" type="button" data-env="midnight"><span class="fcN">9</span><span class="fcNm">Midnight</span><span class="fcOc" data-occ="withlove">With Love</span></button>
+  <button class="fcRow" type="button" data-env="velvet"><span class="fcN">10</span><span class="fcNm">Velvet</span><span class="fcOc" data-occ="anniversary">Happy Anniversary</span></button>
+</nav>
+<script>
+/* First Class nav fix (Nov 11): arrows step one design at a time in
+   picker order via the driver's own pick(); the picker bar scrolls
+   itself (never the page) so the active number AND name are fully
+   visible; the counter pill — restyled above — is placed just under
+   the stage on smaller screens, gains the design's occasion, and
+   never hides; the list of ten stays in sync and jumps on tap.
+   Language follows the page's own toggle via <html lang>. */
+(function(){
+  var picker = document.getElementById('picker');
+  var stage = document.getElementById('phxStage');
+  var countEl = document.getElementById('fcCount');
+  var listEl = document.getElementById('fcList');
+  var prev = document.getElementById('fcPrev'), next = document.getElementById('fcNext');
+  if (!picker || !stage || !prev || !next || !listEl) return;
+  var btns = Array.prototype.slice.call(picker.querySelectorAll('button'));
+  var rows = Array.prototype.slice.call(listEl.querySelectorAll('.fcRow'));
+  var ORDER = btns.map(function(b){ return b.getAttribute('data-env'); });
+  var NAMES = {};
+  btns.forEach(function(b){
+    NAMES[b.getAttribute('data-env')] = b.textContent.replace(/\s+/g, ' ').trim().replace(/^\d+\s*\u00b7\s*/, '');
+  });
+  var OCC = {
+    thankyou:    { en: 'Thank You',         es: 'Gracias' },
+    sympathy:    { en: 'With Sympathy',     es: 'Con P\u00e9same' },
+    congrats:    { en: 'Congratulations',   es: 'Felicitaciones' },
+    anniversary: { en: 'Happy Anniversary', es: 'Feliz Aniversario' },
+    birthday:    { en: 'Happy Birthday',    es: 'Feliz Cumplea\u00f1os' },
+    withlove:    { en: 'With Love',         es: 'Con Cari\u00f1o' }
+  };
+  var ENV_OCC = { emerald: 'thankyou', burgundy: 'sympathy', ivory: 'congrats', navy: 'anniversary',
+    amethyst: 'birthday', champagne: 'congrats', creambow: 'thankyou', noir: 'sympathy',
+    midnight: 'withlove', velvet: 'anniversary' };
+  function lang(){ return document.documentElement.lang === 'es' ? 'es' : 'en'; }
+  function currentIdx(){
+    for (var i = 0; i < ORDER.length; i++)
+      if (document.body.classList.contains('env-phx-' + ORDER[i])) return i;
+    return 0;
+  }
+  var lastLang = null;
+  function renderOcc(){
+    var l = lang(); if (l === lastLang) return; lastLang = l;
+    rows.forEach(function(r){
+      var s = r.querySelector('.fcOc'), k = s && s.getAttribute('data-occ');
+      if (s && OCC[k]) s.textContent = OCC[k][l];
+    });
+  }
+  function fixCount(){
+    if (!countEl) return;
+    var idx = currentIdx(), env = ORDER[idx], l = lang();
+    var want = NAMES[env] + ' \u00b7 ' + OCC[ENV_OCC[env]][l] + ' \u00b7 ' + (idx + 1) + (l === 'es' ? ' de 10' : ' of 10');
+    if (countEl.textContent.replace(/\s+/g, ' ').trim() !== want) countEl.textContent = want;
+  }
+  function layout(){
+    var r = stage.getBoundingClientRect();
+    if (!r.width) return;
+    var cy = (r.top + r.height / 2) + 'px';
+    prev.style.top = cy; next.style.top = cy;
+    prev.style.left = Math.max(4, Math.min(window.innerWidth - 56, r.left - 58)) + 'px';
+    next.style.left = Math.max(4, Math.min(window.innerWidth - 56, r.right + 6)) + 'px';
+    if (window.innerWidth < 1280){
+      var ch = countEl ? countEl.offsetHeight : 40;
+      if (countEl){ countEl.style.top = (r.bottom + 6) + 'px'; countEl.style.bottom = 'auto'; }
+      listEl.style.top = (r.bottom + 6 + ch + 6) + 'px';
+    } else {
+      if (countEl){ countEl.style.top = ''; countEl.style.bottom = ''; }
+      listEl.style.top = '';
+    }
+  }
+  function sync(behavior){
+    var idx = currentIdx();
+    prev.classList.toggle('off', idx <= 0);
+    next.classList.toggle('off', idx >= ORDER.length - 1);
+    prev.disabled = idx <= 0; next.disabled = idx >= ORDER.length - 1;
+    rows.forEach(function(r, i){ r.classList.toggle('on', i === idx); });
+    var b = btns[idx];
+    if (b){
+      var target = b.offsetLeft - (picker.clientWidth - b.offsetWidth) / 2;
+      try { picker.scrollTo({ left: Math.max(0, target), behavior: behavior || 'smooth' }); }
+      catch (e) { picker.scrollLeft = Math.max(0, target); }
+    }
+    layout();
+  }
+  function step(d){
+    var idx = currentIdx() + d;
+    if (idx < 0 || idx >= ORDER.length) return;
+    if (typeof window.pick === 'function') window.pick(ORDER[idx]);
+  }
+  prev.addEventListener('click', function(){ step(-1); });
+  next.addEventListener('click', function(){ step(1); });
+  rows.forEach(function(r){
+    r.addEventListener('click', function(){ if (typeof window.pick === 'function') window.pick(r.getAttribute('data-env')); });
+  });
+  new MutationObserver(function(){ renderOcc(); fixCount(); sync('smooth'); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(function(){ renderOcc(); fixCount(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  if (countEl) new MutationObserver(function(){ fixCount(); }).observe(countEl, { childList: true, characterData: true, subtree: true });
+  window.addEventListener('resize', function(){ sync('auto'); });
+  renderOcc(); fixCount(); sync('auto');
+})();
+</script>
+
 
 </body>
 </html>
