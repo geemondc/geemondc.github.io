@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dance</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    background:#2b060b;
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* soft blurred stadium glow filling the letterbox on tall phones */
+  .backdrop {
+    position:fixed; inset:-40px;
+    background:url('frames/frame1-routine.webp') center/cover no-repeat;
+    filter: blur(28px) brightness(.55) saturate(1.2);
+  }
+  .stage {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* the scene: 16:9 painted stadium (the Cheer master's own shape), one screen, no scroll */
+  .scene {
+    position:relative;
+    width:min(100vw, calc(100dvh * 1.7778));
+    aspect-ratio: 16 / 9;
+    overflow:hidden;
+    box-shadow: 0 18px 60px rgba(0,0,0,.5);
+  }
+  /* perspective drift: the whole world breathes — slow scale + pan,
+     10s out-and-back so it never jumps at the loop seam */
+  .drift {
+    position:absolute; inset:0;
+    animation: drift 10s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes drift {
+    from { transform: scale(1.015) translate(0.35%, 0.2%); }
+    to   { transform: scale(1.065) translate(-0.9%, -0.6%); }
+  }
+  /* impact pulse on the stuck-stunt beat */
+  .pulse { animation: pulse .45s ease-out; }
+  @keyframes pulse {
+    0% { transform: scale(1); } 30% { transform: scale(1.018); } 100% { transform: scale(1); }
+  }
+  .frame {
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    opacity:0;
+    transition: opacity .28s ease-in-out;
+  }
+  .frame.on { opacity:1; }
+  /* quiet furniture riding on top */
+  .chip {
+    position:absolute; left:14px; bottom:12px; z-index:5;
+    background:rgba(43,6,11,.55); color:#ffe9b8;
+    border:1px solid rgba(255,233,184,.35);
+    padding:6px 12px; border-radius:999px;
+    font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    backdrop-filter: blur(4px);
+    pointer-events:none;
+  }
+  .hint {
+    position:absolute; right:14px; bottom:12px; z-index:5;
+    color:rgba(255,255,255,.75); font-size:12px; letter-spacing:.08em;
+    pointer-events:none; text-shadow:0 1px 4px rgba(0,0,0,.6);
+  }
+
+  /* closing title beat (the GOOD SPIKE standard):
+     after the play resolves, the closing words fade/scale in across the TOP
+     of the final frame — Baloo 2 ExtraBold, red #E8232A, cream outline —
+     hold ~1.1 s, then melt away as the loop resets. The title is a rendered
+     overlay in frames/ (same asset the preview uses); it lives outside the
+     drift layer: it sits ON the picture, it doesn't ride it. */
+  .gametitle-img {
+    position:absolute; inset:0; z-index:6;
+    width:100%; height:100%;
+    pointer-events:none;
+    opacity:0; transform: scale(.82) translateY(-6px);
+    transition: opacity .28s ease-in-out, transform .28s ease-in-out;
+  }
+  .gametitle-img.show {
+    opacity:1; transform: scale(1) translateY(0);
+    transition: opacity .3s ease-out, transform .5s cubic-bezier(.2,1.4,.35,1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drift { animation:none; }
+  }
+
+  .cap{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(10,12,24,.55);color:#f3e9d2;padding:7px 16px;border-radius:999px;font-size:13px;letter-spacing:.04em;backdrop-filter:blur(4px);white-space:nowrap}
+  .cap{display:none}
+  body.wallmode .cap{display:none}
+</style>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div class="stage">
+    <div class="scene" id="scene">
+      <div class="drift" id="drift">
+        <img class="frame" src="frames/frame1-routine.webp" alt="The dance team mid-routine on the school stage — spread wide in matching coral-red and gold, dancing in sync">
+        <img class="frame" src="frames/frame2-steps.webp" alt="Traveling steps — the formation tightens as the team dances forward, fists pumping">
+        <img class="frame" src="frames/frame3-turn.webp" alt="One clean synchronized spin — hair and skirts flaring">
+        <img class="frame" src="frames/frame4-leap.webp" alt="The leap — Puff in a full split leap over the kneeling team reaching up, the first confetti falling">
+        <img class="frame" src="frames/frame5-finish.webp" alt="Everyone lands the finish pose together — the original Dance painting">
+        <img class="frame" src="frames/frame6-celebrate.webp" alt="The celebration — the finish pose held under a confetti storm, fists pumping, biggest cheers">
+      </div>
+      <img class="gametitle-img" id="gametitle" src="frames/title-great-finish.png" alt="">
+    </div>
+  </div>
+<script>
+(function () {
+  var frames = Array.prototype.slice.call(document.querySelectorAll('.frame'));
+  var scene  = document.getElementById('scene');
+  /* one 6.1-second loop: the routine, the steps, the turn, the leap,
+     the finish landed together (the master), the celebration. Frame 6's
+     celebration crossfades back into frame 1's routine — the next show. */
+  var holds  = [900, 700, 500, 450, 1250, 1200, 1100]; /* ms — sums to 6100; the last beat is the title over the final frame */
+  var CONTACT_FRAME = 3; /* 0-based: frame 4, the leap — the pulse lands as the team lands the finish */
+  var title  = document.getElementById('gametitle');
+  var TITLE_BEAT = frames.length; /* one past the last frame: the final frame stays up, the title shows */
+  var i = 0, timer = null, paused = false;
+
+  function show(n) {
+    var d = Math.min(n, frames.length - 1); /* the title beat keeps the final frame up */
+    frames.forEach(function (f, k) {
+      f.classList.toggle('on', k === d);
+      f.style.zIndex = (k === d) ? 2 : 1;
+    });
+    title.classList.toggle('show', n === TITLE_BEAT);
+    if (n === CONTACT_FRAME + 1) {        /* the beat right after the extension, as the stunt sticks */
+      scene.classList.remove('pulse'); void scene.offsetWidth; scene.classList.add('pulse');
+    }
+  }
+  function step() {
+    show(i);
+    timer = setTimeout(function () { i = (i + 1) % (frames.length + 1); step(); }, holds[i]);
+  }
+  function start() { if (!timer) step(); }
+  function stop()  { clearTimeout(timer); timer = null; }
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { show(0); }
+  else {
+    /* start only once the first two frames are ready, so there's no blank flash */
+    var ready = 0;
+    [0, 1].forEach(function (k) {
+      if (frames[k].complete) { if (++ready === 2) start(); }
+      else frames[k].addEventListener('load', function () { if (++ready === 2) start(); });
+    });
+    if (!timer && ready < 2) setTimeout(start, 900); /* never sit blank */
+  }
+
+})();
+</script>
+<div class="cap">Dance &middot; a living card scene</div>
+<script>
+if (location.hash.indexOf('wall') >= 0) document.body.classList.add('wallmode');
+window.LP = { state: function(){ return document.body.className; } };
+</script>
+</body>
+</html>
