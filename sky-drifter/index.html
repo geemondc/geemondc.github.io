@@ -2250,14 +2250,20 @@ function drawBeachVista(RP,hy,cx){
       return;
     }
   }
+  /* Nov 12 (Gary — KILLED, and killed sections stay killed): the flown
+     BACK SCENE is OUT of the Hollywood rotation — the four-painting
+     vista stack whose blends meshed into a fuzzy composite, carrying
+     the HR panel with its dotted light-show circles and fireworks
+     (his desktop photo: pelicans + mesh + rings around the guitar).
+     A Hollywood drift stop now flies the clean procedural shore; the
+     world's views are its SEATS (the branch above — the praised clean
+     aerial among them), and the seat melt-in ramp at the bottom of
+     this function still runs, over the shore. The stack code below is
+     bypassed, not restored: BEACH_G stays null on drift stops, which
+     also keeps the HR panel, the dusk layer and the whole
+     drawBeachLife show machinery (all gated on BEACH_G) off. */
   const B=beachWeights();
-  const g=drawVistaStack([
-    {img:beachImgs.high, w:B.high, anch:0.50, scale:1.00, asp:imgAsp(beachImgs.high,ASP_169)},
-    {img:beachImgs.life, w:B.life, anch:0.72, scale:1.02, asp:ASP_169},
-    {img:beachImgs.low,  w:B.low,  anch:0.70, scale:1.04, asp:ASP_169},
-    {img:beachImgs.walk, w:B.walk, anch:0.72, scale:1.05, asp:ASP_169}
-  ],RP,hy);
-  BEACH_G=g;
+  BEACH_G=null;
   /* HR1 (WOW Oct 28): seated in the very same panel, feathered like
      every vista — from golden hour it warms in, and by full night it
      OWNS the panel so the guitar show has its stage. A breath of the
@@ -2668,13 +2674,14 @@ function spaceWeights(){
    space they are not a backdrop, they are the world itself */
 function drawSpaceVista(RP){
   const wV=SPACE_W.vista, wF=SPACE_W.fun;
+  const spHand=sstep(0.54,0.74,S.spaceF);   /* Nov 12: the pages' handoff factor — no Space page fades in until the Climb painting has left; one screen at a time, like every other world */
   /* THE CLIMB (NEW): the band between sky and space is a PLACE now —
      M11, the edge of the atmosphere: the Earth's curve swelling below,
      the light thinning orange to black, the first stars pricking
      through. Climb out of any world's sky and you pass through it;
      keep climbing and it hands you over to the deep */
   const climbA=(S.uwF<0.4&&spImgs.climb.complete&&spImgs.climb.naturalWidth)
-    ? sstep(0.16,0.40,S.spaceF)*(1-sstep(0.60,0.86,S.spaceF)) : 0;
+    ? sstep(0.16,0.40,S.spaceF)*(1-sstep(0.44,0.58,S.spaceF)) : 0;   /* Nov 12: the Climb hands off FIRST — fully out by spaceF 0.58, before the pages fade in (Gary: screens meshed at Space's start) */
   if(climbA>0.003)drawSpacePaint(spImgs.climb,climbA*0.98,1.06,0.008);
   if(wV<=0.003&&wF<=0.003)return;
   const t=S.flyT;
@@ -2690,7 +2697,7 @@ function drawSpaceVista(RP){
     if(spaceImgs.fun.complete&&spaceImgs.fun.naturalWidth)pages.push(spaceImgs.fun);
     if(spaceSeats.deep.complete&&spaceSeats.deep.naturalWidth)pages.push(spaceSeats.deep);
     if(spaceSeats.climbS.complete&&spaceSeats.climbS.naturalWidth)pages.push(spaceSeats.climbS);
-    if(pages.length>=3){ const A=clamp(wV+wF,0,1);
+    if(pages.length>=3){ const A=clamp(wV+wF,0,1)*spHand;
       const ph=(t*0.06/(Math.PI*2))%pages.length;   /* REBUILD: slower page turns — each Space page gets a real watch, seams still dissolve fast */
       /* weights sharpened (^2.2, renormalized): each page sits PURE for
          most of its watch, and the seam crossing is a quick dissolve —
@@ -2707,8 +2714,8 @@ function drawSpaceVista(RP){
       if(wF>0.35)drawSpaceLife(RP,wF);
       return;
     } }
-  drawSpacePaint(spaceImgs.vista,wV*(1-wF),1.05,0.012);
-  if(wF>0.003)drawSpacePaint(spaceImgs.fun,wF,1.08,0.020);
+  drawSpacePaint(spaceImgs.vista,wV*(1-wF)*spHand,1.05,0.012);
+  if(wF>0.003)drawSpacePaint(spaceImgs.fun,wF*spHand,1.08,0.020);
   /* the engine's own star points over the paintings: sharp, twinkling,
      never round — Gary's rule */
   const starShow=sstep(0.45,0.85,S.spaceF);
@@ -4700,6 +4707,36 @@ function drawUwNear(RP,hy,cx,t){
           ctx.strokeStyle='rgba(215,246,255,'+(0.55*(1-bu)*dEnv*uwA*bandW)+')';
           ctx.beginPath(); ctx.arc(bx3,by4,1.1+bu*3.0,0,TAU); ctx.stroke(); }
         ctx.restore(); } }
+
+    /* THE PARTNER (Gary, Nov 12 — "maybe you could have a couple scuba
+       divers"): a second diver on her own offset schedule. She trails
+       the lead's line lower and farther off — smaller, hazier with the
+       distance, an indigo suit and orange/gold fins, kicking to her own
+       phase, her own regulator bubbles, a shorter dimmer light in the
+       deep. When both passes cross they read as a pair exploring
+       together; when hers comes alone, the reef still gets a visitor. */
+    const divP2=wowU(t, WOWTEST?26:97, WOWTEST?24:34, 41);
+    if(divP2>=0)window.SD_WOW.diver=(divP>=0)?2:1;
+    if(divP2>=0){ const bandW2=clamp(UW_BAND.mid+UW_BAND.shallow+UW_BAND.deep*0.8,0,1);
+      if(bandW2>0.03){ const dEnv2=Math.sin(Math.min(1,divP2*1.05)*Math.PI);
+        const dxv2=lerp(-0.15,1.15,divP2)*W - uwPanS()*W*0.012;
+        const dyv2=H*0.455+Math.sin(t*0.42+1.3)*H*0.012-Math.sin(divP2*Math.PI)*H*0.022;
+        if(UW_BAND.deep>0.28){ /* her light too — shorter and dimmer, she's farther off */
+          ctx.save(); ctx.globalCompositeOperation='screen';
+          const bg3=ctx.createLinearGradient(dxv2+24*H*0.00092,dyv2,dxv2+W*0.22,dyv2+H*0.08);
+          bg3.addColorStop(0,'rgba(255,244,190,'+(0.13*dEnv2*uwA*UW_BAND.deep)+')'); bg3.addColorStop(1,'rgba(255,244,190,0)');
+          ctx.fillStyle=bg3;
+          ctx.beginPath(); ctx.moveTo(dxv2+24*H*0.00092,dyv2-2.4); ctx.lineTo(dxv2+W*0.22,dyv2+H*0.044); ctx.lineTo(dxv2+W*0.22,dyv2+H*0.12); ctx.lineTo(dxv2+24*H*0.00092,dyv2+4); ctx.closePath(); ctx.fill();
+          ctx.restore(); }
+        uwDiver(dxv2,dyv2,H*0.00092,1,0.88*dEnv2*uwA*bandW2,t+1.7,{tank:'178,190,202',finA:'255,122,60',finB:'255,214,90',suit0:'36,44,74',suit1:'16,20,40'}); UW_COUNT.diver++;
+        /* her regulator bubbles: born at her mouth, on her own rhythm */
+        ctx.save(); ctx.lineWidth=1;
+        for(let bi=0;bi<6;bi++){ const bu=((t*0.38+0.4)+(bi/6))%1;
+          const bx4=dxv2+(33-bu*6)*H*0.00092+Math.sin(t*2.1+bi*2.3)*W*0.004;
+          const by5=dyv2+2.4-bu*H*0.12;
+          ctx.strokeStyle='rgba(215,246,255,'+(0.45*(1-bu)*dEnv2*uwA*bandW2)+')';
+          ctx.beginPath(); ctx.arc(bx4,by5,0.9+bu*2.4,0,TAU); ctx.stroke(); }
+        ctx.restore(); } }
   }
   /* publish the frame's census: the scene is whichever water holds
      the most of the tank right now — shallows / blue / deep */
@@ -4854,11 +4891,12 @@ function uwTang(x,y,len,dir,alpha,t){
   ctx.beginPath(); ctx.arc(6.7*u,-1.2*u,0.85*u,0,TAU); ctx.fill();
   ctx.restore();
 }
-function uwDiver(x,y,s,dir,alpha,t){
+function uwDiver(x,y,s,dir,alpha,t,pal){
   ctx.save(); ctx.translate(x,y); ctx.scale(dir*s,s);
   ctx.rotate(Math.sin(t*0.9)*0.03);
+  const cTank=pal?pal.tank:'196,204,212', cFinA=pal?pal.finA:'255,196,60', cFinB=pal?pal.finB:'60,200,190', cS0=pal?pal.suit0:'30,52,68', cS1=pal?pal.suit1:'12,24,34';
   /* the tank on his back */
-  ctx.fillStyle='rgba(196,204,212,'+alpha+')';
+  ctx.fillStyle='rgba('+cTank+','+alpha+')';
   ctx.beginPath(); ctx.roundRect(-17,-14.5,32,8.5,4); ctx.fill();
   ctx.fillStyle='rgba(120,130,140,'+alpha+')'; ctx.fillRect(13,-13.5,4,5);
   /* legs and fins: the kick alternates, unhurried */
@@ -4868,15 +4906,15 @@ function uwDiver(x,y,s,dir,alpha,t){
   ctx.beginPath(); ctx.moveTo(-26,-1.5); ctx.lineTo(-40,-1.5+k1*4.4); ctx.stroke();
   ctx.lineWidth=4.6;
   ctx.beginPath(); ctx.moveTo(-26,2.6); ctx.lineTo(-39,2.6+k2*4.4); ctx.stroke();
-  ctx.fillStyle='rgba(255,196,60,'+alpha+')';   /* fins, tipped with the kick */
+  ctx.fillStyle='rgba('+cFinA+','+alpha+')';   /* fins, tipped with the kick */
   ctx.save(); ctx.translate(-41,-1.5+k1*4.4); ctx.rotate(0.25+k1*0.30);
   ctx.beginPath(); ctx.moveTo(0,-2.6); ctx.lineTo(-15,-3.6); ctx.lineTo(-15,2.8); ctx.lineTo(0,2.4); ctx.closePath(); ctx.fill(); ctx.restore();
-  ctx.fillStyle='rgba(60,200,190,'+alpha+')';
+  ctx.fillStyle='rgba('+cFinB+','+alpha+')';
   ctx.save(); ctx.translate(-40,2.6+k2*4.4); ctx.rotate(0.25+k2*0.30);
   ctx.beginPath(); ctx.moveTo(0,-2.4); ctx.lineTo(-14,-3.2); ctx.lineTo(-14,2.6); ctx.lineTo(0,2.2); ctx.closePath(); ctx.fill(); ctx.restore();
   /* torso */
   const bg=ctx.createLinearGradient(0,-8,0,7);
-  bg.addColorStop(0,'rgba(30,52,68,'+alpha+')'); bg.addColorStop(1,'rgba(12,24,34,'+alpha+')');
+  bg.addColorStop(0,'rgba('+cS0+','+alpha+')'); bg.addColorStop(1,'rgba('+cS1+','+alpha+')');
   ctx.fillStyle=bg;
   ctx.beginPath(); ctx.ellipse(-4,0,27,7.2,0,0,TAU); ctx.fill();
   /* the forward arm, reaching easy */
@@ -5051,7 +5089,7 @@ function render(){
   ctx.save();
   ctx.translate(cx,H*0.52); ctx.rotate(-S.bankD*0.115);
   ctx.scale(fov,fov); ctx.translate(-cx,-H*0.52);
-  ctx.translate(-S.lookYaw*W*0.08, -S.lookPitch*H*0.09 + Math.sin(t*1.3)*1.2);   /* #466b: gentler look shift — at 0.15 the vista panels and ground could not cover the frame at a hard side-look and bared a void slab at the edge; the look-BACK layer owns the far range */
+  ctx.translate(-S.lookYaw*W*0.08, -S.lookPitch*H*0.09);   /* Nov 12 (STABLE SCREEN LAW): the 1.3 Hz look bob is OUT — the frame no longer breathes up and down */   /* #466b: gentler look shift — at 0.15 the vista panels and ground could not cover the frame at a hard side-look and bared a void slab at the edge; the look-BACK layer owns the far range */
   if(S.throttle>0.8&&S.mode==='fly'){ const jk=2.2*(1-S.uwF); ctx.translate((rng()-0.5)*jk,(rng()-0.5)*jk); }   /* the full-throttle shudder fades out as the water takes over — underwater there is nothing to mask it, so at full uwF it is gone entirely; in air it is exactly as it was */
 
   /* ---- sky ---- */
@@ -5221,74 +5259,13 @@ function render(){
   if(SEAT_BIOMES[S.biome]&&inSpace<0.42)drawSeatBiomeVista(RP,hy,cx);   /* #567 */
   if(S.biome==='desert'&&inSpace<0.42)drawDesertVista(RP,hy,cx);
   if(S.biome==='north'&&inSpace<0.42)drawNorthVista(RP,hy,cx);
-  /* ---- NORTH POLE FIREWORKS — NP-FIREWORKS-2026-10-27 (Daily WOW Oct 27):
-         Gary's Oct 25 direction for the next North Pole pass — "more of a
-         colorful FIREWORKS feel, a real LIGHT SHOW, not just curtains."
-         Five rockets on a slow 44-second cycle, staggered so the sky is
-         never a barrage: one rises on a spark trail, then blooms into a
-         colored starburst that drifts, droops and twinkles out, with a
-         faint wash of its color reflected on the snowfields below.
-         NORTH POLE ONLY — the Aurora Horizon keeps its own curtains while
-         its redundancy question stays open. It sits AFTER the vista
-         paintings in paint order, so the bursts stay in front of the
-         R2 painting (which otherwise paints over the sky) and behind
-         the ground and sprites. Night-gated like the curtains
-         and faded out as you climb toward space; deterministic (no
-         per-frame rng), so the show never flickers or stutters. ---- */
-  if(S.biome==='north'&&RP.starF>0.06&&inSpace<0.42){
-    const fwFade=clamp(1-inSpace*3.2,0,1)*(0.55+0.45*RP.starF);   /* #558: the old (1-NORTH_NEAR_F) gate existed only to hide the show behind the np3 box; the box is gone and the animals now draw AFTER this block (drawNorthLife, life phase) — solid, on top, and the bursts themselves are capped inside the sky below */   /* #466: out early in the climb, never ghosting over space. #466c (defect 4): the show also sits out while the near painting owns the view — the screen-anchored bursts straddled the contained panel's edge; in the full-bleed bands they stay inside the painting's sky */
-    const FW=[{x:0.24,off:0,rot:0.0},{x:0.40,off:9,rot:1.3},{x:0.56,off:18,rot:2.6},{x:0.72,off:27,rot:0.7},{x:0.88,off:36,rot:2.0}];
-    const FWC=['255,215,106','255,106,213','106,232,255','183,140,255','125,255,176'];
-    const FWCYC=44, RISE=2.4, BURST=3.6;
-    ctx.save();   /* NOTE: deliberately NOT 'lighter' like the aurora curtains:
-      'lighter' can only add light, and over the North Pole's already-bright
-      teal halo the sparks washed out to near-white and vanished (verified
-      by frame probe Oct 27: the block ran, zero warm pixels reached the
-      canvas). Fireworks are sparks, not light — normal compositing keeps
-      their gold/magenta/cyan colors readable against the bright sky. */
-    for(let fi=0;fi<FW.length;fi++){ const fw=FW[fi];
-      const p=((t+fw.off)%FWCYC+FWCYC)%FWCYC;
-      const _fwSeat=(window.__seatFocus>0.5); const bx=fw.x*W, apexY=_fwSeat? Math.min(hy*0.34,H*0.13) : hy*0.34;   /* REBUILD (Gary: fireworks on sky, not on polar bear): while a Pole seat owns the frame, bursts apex in the painting's top sky and stay small — nothing blooms down at the animals */   /* #562: raised — over the seat paintings the mountains climb to a third of the frame; bursts apex higher so the whole bloom stays in open sky. Anchored to the visible sky, not a
-        fixed drop from the horizon: hy rides with pitch, so a fixed offset
-        used to push the burst off the top of the screen (or behind the HUD
-        pills) whenever the flyer pitched up — the show now lives at 42% of
-        the way from the horizon to the top, whatever the pitch */
-      if(p<RISE){ /* the climb: a bright head on a fading spark trail */
-        const k=p/RISE, ry=hy+(apexY-hy)*(k*k*0.9+k*0.1);
-        ctx.strokeStyle='rgba(255,240,200,'+(0.55*fwFade*(1-k*0.4))+')'; ctx.lineWidth=Math.max(1,H*0.0016);
-        ctx.beginPath(); ctx.moveTo(bx,ry+H*0.05); ctx.lineTo(bx,ry+H*0.012+Math.sin(t*9+fi)*2); ctx.stroke();
-        ctx.fillStyle='rgba(255,250,220,'+(0.95*fwFade)+')';
-        ctx.beginPath(); ctx.arc(bx,ry,Math.max(2,H*0.0045),0,TAU); ctx.fill();
-        for(let e=0;e<5;e++){ const ey=ry+H*(0.012+e*0.014);
-          ctx.fillStyle='rgba(255,210,120,'+(0.5*fwFade*(1-e/6))+')';
-          ctx.fillRect(bx-1+Math.sin(t*7+e*2.1+fi)*3,ey,2,2); }
-      } else if(p<RISE+BURST){ /* the bloom: golden-angle sparks, drifting out and drooping */
-        const a=p-RISE, k=a/BURST, ease=1-Math.exp(-a*1.5);
-        if(a<0.7){ const fg=ctx.createRadialGradient(bx,apexY,0,bx,apexY,H*0.17);
-          fg.addColorStop(0,'rgba(255,245,210,'+(0.5*fwFade*(1-a/0.7))+')'); fg.addColorStop(1,'rgba(255,245,210,0)');
-          ctx.fillStyle=fg; ctx.fillRect(bx-H*0.17,apexY-H*0.17,H*0.34,H*0.34); }
-        /* #558: the horizon WASH is deleted — a radial smear of burst
-           color centered ON the horizon washes over the ice, the water
-           and anything standing there (Gary: "fireworks landing on
-           seal"). The show lives in the sky now, full stop. */
-        for(let i=0;i<60;i++){
-          const ang=i*2.39996+fw.rot, sp=0.35+0.65*(0.5+0.5*Math.sin(i*12.9898+fi*78.233));
-          const R=(_fwSeat? Math.min(H*0.055,hy*0.13) : Math.min(H*0.10,hy*0.24))*sp*ease;   /* #562: tightened again over the seats — lowest spark dies at ~0.27 of the frame height, well above the ice line */
-          const sx=bx+Math.cos(ang)*R, sy=apexY+Math.sin(ang)*R+a*a*H*0.006;   /* #558: droop halved, same reason */
-          const tw=0.8+0.2*Math.sin(a*9+i*1.7);
-          const sa=fwFade*(1-k*0.6)*tw;
-          /* streaks, not just dots: a short trail behind each spark is what
-             reads as FIREWORKS at phone size — dots alone vanished into the
-             bright aurora sky (probe Oct 27) */
-          ctx.strokeStyle='rgba('+FWC[(i+fi)%5]+','+sa+')'; ctx.lineWidth=Math.max(1.2,H*0.0022);
-          ctx.beginPath(); ctx.moveTo(sx-Math.cos(ang)*H*0.012,sy-Math.sin(ang)*H*0.012); ctx.lineTo(sx,sy); ctx.stroke();
-          ctx.fillStyle='rgba('+FWC[(i+fi)%5]+','+sa+')';
-          const sr=Math.max(1.8,H*0.0045*(0.7+0.6*sp));
-          ctx.beginPath(); ctx.arc(sx,sy,sr,0,TAU); ctx.fill(); }
-      }
-    }
-    ctx.restore();
-  }
+  /* ---- NORTH POLE FIREWORKS — REMOVED Nov 12 (Gary, on his desktop
+     photo of the walrus seat: a colorful starburst blooming ON the big
+     walrus's face): the show is out of the Pole completely — a
+     non-native element in the wrong place, however carefully it was
+     capped over the seats. The Pole keeps its aurora curtains, its
+     stars and its snow; the owl, the little white dogs, the orca fins
+     and the walrus own the ice, un-bombed. ---- */
 
   if(profF>0.01){ ctx.save(); ctx.globalAlpha=profF;
   drawProfile(PROFILES[S.biomeFrom].mid,RP,hy,H*0.045,0.22,RP.midHaze);
@@ -5684,10 +5661,27 @@ function nextBiome(){
   S.pendingKind=nx.kind;
   return nx.b;
 }
+/* SEA BEFORE THE DEEP (Gary, Nov 12: "you got to transition to
+   underwater, you can't jump from sea to underwater" — entering the
+   tank must come THROUGH the sea): if the tour's next stop is
+   Underwater and we are not already over the sea, the tour first skims
+   the ocean surface on a short BEACH transit stop, then dives from
+   there through the splash gate — world, sea, dive, the deep. The
+   lap's planned beach visit still comes in its own turn. */
+let tourBridge=null;
+function tourNext(){
+  if(tourBridge){ const b=tourBridge; tourBridge=null; S.pendingKind='drift'; return b; }
+  const nx=nextBiome();
+  if(nx==='underwater'&&S.biome!=='underwater'&&S.biome!=='beach'&&S.biome!=='boardwalk'){
+    tourBridge='underwater'; S.pendingKind='drift'; S.transitStop=true; return 'beach';
+  }
+  return nx;
+}
 /* a stop begins: record its kind and, for a seat stop, choose this
    visit's seat (visits rotate through a world's seats in order) */
 const seatVisitIdx={};
 function beginStop(b,kind){
+  if(b!=='beach')S.transitStop=false;   /* Nov 12: the sea-before-the-deep transit ends when any other stop begins */
   S.stopKind=kind||'drift'; S.pendingKind=null;
   if(S.stopKind==='seat'&&SEAT_ORDERS[b]){ const ord=SEAT_ORDERS[b], i=seatVisitIdx[b]||0; S.seatKey=ord[i%ord.length]; seatVisitIdx[b]=i+1; }
   else S.seatKey=null;
@@ -5700,6 +5694,7 @@ function beginStop(b,kind){
    LESS stationary. A QA override (__setTourDur) still wins outright. */
 function tourDwellFor(b,kind){
   if(window.__tourDurSet)return window.__tourDur;
+  if(S.transitStop&&b==='beach')return 9;   /* Nov 12: the sea transit is a skim across the surface, not a visit */
   /* Nov 8 (#588, Gary): every dwell cut ~30% — "we're spending too long
      in some of these spots" (85->59.5 · 48->33.6 · 40->28 · 36->25.2) */
   if(b==='underwater')return 59.5;
@@ -5906,8 +5901,8 @@ function update(dt){
          tank a dreamy MID/DEEP drift that never breaks the surface */
       let altT=S.biome==='underwater' ? uwTourAlt(S.uwClock) : S.biome==='beach' ? beachTourAlt(S.ptourT) : S.biome==='aurora' ? 1.14+0.05*Math.sin(t*0.05) : 0.45+0.30*Math.sin(t*0.045+1.0);   /* aurora = the tour's SPACE leg (Gary, Oct 26: land, sea, SP
       if(hovF>0.01&&S.biome!=='underwater'&&S.biome!=='aurora')altT=lerp(altT, S.biome==='north'?0.16:0.44, hovF);   /* #561: the hover holds its altitude; the Pole's hover is the iceberg landing */
-      const pitchT=clamp(Math.sin(t*0.09+1.3)*0.20+(altT-S.alt)*1.15,-0.42,0.42);
-      S.bank=lerp(S.bank,lerp(Math.sin(t*0.11)*0.5, Math.sin(t*0.05)*0.20, hovF),dt*0.9);   /* #561: hovering, the bank becomes a slow PIVOT — looking around, not flying */
+      const pitchT=clamp((altT-S.alt)*1.15,-0.42,0.42);   /* Nov 12 (STABLE SCREEN LAW): the slow sine pitch wave is OUT — pitch answers altitude only */
+      S.bank=lerp(S.bank,0,dt*0.9);   /* Nov 12 (Gary — STABLE SCREEN LAW): no scenic banking, no hover pivot. The tour flies LEVEL and a watched scene sits STILL — the old sine bank rocked the whole frame and made him nauseous. The worlds' own life keeps moving; the camera does not. */
       S.pitch=lerp(S.pitch,pitchT,dt*0.9);
     } else if(spaceRun){
       S.bank=lerp(S.bank,0,dt*2.2); S.pitch=lerp(S.pitch,0.62,dt*1.9);
@@ -5928,8 +5923,8 @@ function update(dt){
       if(S.bank*JOY.tx<0&&Math.abs(JOY.tx)>0.08)S.bank=0;
       S.bank=lerp(S.bank,JOY.tx,mr); S.pitch=lerp(S.pitch,JOY.ty,mr);
     } else if(S.drift){
-      S.bank=lerp(S.bank,Math.sin(t*0.13)*0.55,dt*0.8);
-      S.pitch=lerp(S.pitch,Math.sin(t*0.09+1.3)*0.34,dt*0.8);
+      S.bank=lerp(S.bank,0,dt*0.8);   /* Nov 12 (STABLE SCREEN LAW): idle drift no longer weaves bank/pitch on sines — it settles level and still */
+      S.pitch=lerp(S.pitch,0,dt*0.8);
     } else if(steerTouch){
       /* THE HELD FINGER IS THE STICK — the touch twin of press-and-point.
          Steering used to be integrated from pointermove DELTAS, so the
@@ -6109,7 +6104,7 @@ function update(dt){
     /* 🔀 Auto (Gary, Oct 24): the worlds ROTATE on a plain 15-second
        clock while you steer — no altitude tricks, no surprises. A
        world picked by hand is a lock and never rotates. */
-    S.tourT+=dt; if(S.tourT>=tourDwell(S.biome)){ S.tourT=0; startChange(nextBiome(),true); }   /* #561: relaxed per-world dwell, shuffled order */
+    S.tourT+=dt; if(S.tourT>=tourDwell(S.biome)){ S.tourT=0; startChange(tourNext(),true); }   /* #561: relaxed per-world dwell, shuffled order */
   }
   /* FLY WITH ME tour travel: ~40 s a world, in CYCLE order from wherever
      the flight is, through the same gates manual flight uses — startChange
@@ -6117,7 +6112,7 @@ function update(dt){
      out of the underwater world, so the tank gets its full stop too */
   if(flying&&S.pilot&&!S.gate){
     S.ptourT+=dt;
-    if(S.ptourT>=tourDwell(S.biome)){ S.ptourT=0; startChange(nextBiome(),true); }   /* #561 */
+    if(S.ptourT>=tourDwell(S.biome)){ S.ptourT=0; startChange(tourNext(),true); }   /* #561 */
   }
 
   swTick(dt);   /* skywriting: schedule and advance the little plane's passes */
