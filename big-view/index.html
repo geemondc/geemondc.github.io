@@ -292,7 +292,7 @@ body.lp-infs #lpFsBar{display:flex}
   var FW_COLORS = ['#ff5da2','#ffffff','#7fe7ff','#ffd166','#b388ff','#ff8a5c'];
   function makeFw(canvas){
     return { cv: canvas, cx: canvas.getContext('2d'), rockets: [], parts: [],
-             nextIn: 0.3, seeded: false };
+             nextIn: 0.3, seeded: false, volley: 2, volleyT: 0.9 };
   }
   var fwPage = makeFw(page.fw), fwFs = makeFw(fs.fw);
   function fwSize(f){
@@ -339,6 +339,15 @@ body.lp-infs #lpFsBar{display:flex}
       fwLaunch(f);
       f.nextIn = 0.24 + Math.random() * (1.65 - 1.25 * wave);
     }
+    // Opening volley (Nov 12 fix): two extra big bursts in the first
+    // seconds, so the show is unmissable from the moment LIVING starts.
+    if (f.volley > 0){
+      f.volleyT -= dt;
+      if (f.volleyT <= 0){
+        fwBurst(f, 0.45 + Math.random() * 0.45, 0.10 + Math.random() * 0.16, true);
+        f.volley--; f.volleyT = 1.15;
+      }
+    }
     cx.clearRect(0, 0, W, H);
     cx.globalCompositeOperation = 'lighter';
     var i, p, r;
@@ -363,11 +372,13 @@ body.lp-infs #lpFsBar{display:flex}
     cx.globalAlpha = 1;
     cx.globalCompositeOperation = 'source-over';
   }
-  function fwClear(f){ if (f.cv.width) f.cx.clearRect(0, 0, f.cv.width, f.cv.height); f.rockets.length = 0; f.parts.length = 0; }
+  function fwClear(f){ if (f.cv.width) f.cx.clearRect(0, 0, f.cv.width, f.cv.height); f.rockets.length = 0; f.parts.length = 0; f.seeded = false; f.volley = 2; f.volleyT = 0.9; f.nextIn = 0.3; }
   function fwSeed(f){
     // the show is already on when the living scene opens — first bursts land fast
     fwBurst(f, 0.70 + Math.random() * 0.2, 0.13 + Math.random() * 0.1, true);
     fwBurst(f, 0.38 + Math.random() * 0.06, 0.16 + Math.random() * 0.08, false);
+    fwBurst(f, 0.55 + Math.random() * 0.15, 0.20 + Math.random() * 0.08, false);
+    f.nextIn = 0.2;
     f.seeded = true;
   }
 
