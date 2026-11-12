@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:," />
+  <title>Immersive Fish Tank</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap');
+    :root {
+      color-scheme: light dark;
+      --ink: #062438;
+      --paper: rgba(238, 252, 255, .94);
+      --paper-solid: #effcff;
+      --line: rgba(255,255,255,.34);
+      --muted: #486878;
+      --accent: #ffbe3f;
+      --focus: #ffe08a;
+      --shadow: 0 16px 46px rgba(0,30,48,.26);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #eafaff;
+        --paper: rgba(5,31,46,.94);
+        --paper-solid: #092b3f;
+        --line: rgba(255,255,255,.18);
+        --muted: #b6d2df;
+        --shadow: 0 18px 54px rgba(0,0,0,.45);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#087db2; }
+    body { font-family:"DM Sans", sans-serif; touch-action:none; overscroll-behavior:none; color:white; }
+    button, input { font:inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+    #tank { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+    .vignette { pointer-events:none; position:fixed; inset:0; box-shadow:inset 0 0 150px rgba(0,22,45,.18); }
+    .top-left { position:fixed; top:max(14px,env(safe-area-inset-top)); left:max(14px,env(safe-area-inset-left)); display:flex; align-items:flex-start; gap:9px; z-index:10; }
+    .clock-wrap { display:flex; gap:8px; align-items:center; }
+    .clock {
+      border:1px solid rgba(255,255,255,.26); color:white; background:rgba(2,43,66,.28);
+      text-shadow:0 1px 10px rgba(0,24,45,.45); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+      box-shadow:0 6px 22px rgba(0,37,60,.12); border-radius:16px; padding:9px 13px 8px; line-height:1;
+      font-family:"Nunito",sans-serif; font-weight:800; letter-spacing:-.04em; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start;
+    }
+    .clock.small .time { font-size:19px; } .clock.medium .time { font-size:28px; } .clock.large .time { font-size:40px; }
+    .clock .date { font:700 9px/1.25 "DM Sans",sans-serif; letter-spacing:.1em; text-transform:uppercase; margin-top:5px; opacity:.8; }
+    .round-btn {
+      width:44px; height:44px; border:1px solid rgba(255,255,255,.3); border-radius:50%; background:rgba(2,43,66,.32); color:white;
+      display:grid; place-items:center; cursor:pointer; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); box-shadow:0 6px 20px rgba(0,37,60,.15);
+    }
+    .round-btn:focus-visible,.clock:focus-visible,.choice:focus-visible,.close:focus-visible,.action:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+    .round-btn svg { width:20px; height:20px; }
+    .round-btn.running .pause { display:block; } .round-btn.running .play { display:none; }
+    .round-btn:not(.running) .pause { display:none; } .round-btn:not(.running) .play { display:block; }
+    .top-right { position:fixed; top:max(14px,env(safe-area-inset-top)); right:max(14px,env(safe-area-inset-right)); display:flex; gap:9px; z-index:10; }
+    .menu-btn { background:rgba(2,43,66,.3); }
+    .hint {
+      position:fixed; left:50%; bottom:max(24px,calc(env(safe-area-inset-bottom) + 16px)); transform:translateX(-50%); z-index:8;
+      padding:9px 14px; border:1px solid rgba(255,255,255,.22); border-radius:999px; background:rgba(2,43,66,.25); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+      font-size:12px; font-weight:700; letter-spacing:.02em; white-space:nowrap; transition:opacity .7s ease, transform .7s ease;
+    }
+    .hint.hide { opacity:0; transform:translate(-50%,10px); pointer-events:none; }
+    .brand {
+      position:fixed; right:max(16px,env(safe-area-inset-right)); bottom:max(18px,calc(env(safe-area-inset-bottom) + 12px)); z-index:9;
+      color:white; text-decoration:none; font:800 10px/1 "Nunito",sans-serif; letter-spacing:.11em; text-transform:uppercase;
+      opacity:.72; text-shadow:0 1px 8px rgba(0,25,42,.5); padding:8px 10px; border-radius:999px;
+    }
+    .brand:hover { opacity:1; background:rgba(0,30,48,.18); }
+    .panel {
+      position:fixed; z-index:30; top:0; right:0; width:min(380px,calc(100vw - 22px)); height:100%;
+      color:var(--ink); background:var(--paper); box-shadow:-20px 0 60px rgba(0,26,43,.28); backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+      padding:max(22px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom)); overflow-y:auto; overscroll-behavior:contain;
+      transform:translateX(105%); transition:transform .32s cubic-bezier(.2,.75,.2,1);
+    }
+    .panel.open { transform:translateX(0); }
+    .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; }
+    .panel h2 { margin:0; font:800 25px/1.1 "Nunito",sans-serif; letter-spacing:-.025em; }
+    .close { border:0; width:40px; height:40px; border-radius:50%; background:rgba(74,129,150,.12); color:var(--ink); display:grid; place-items:center; cursor:pointer; font-size:24px; }
+    .control { margin:0 0 23px; }
+    .control-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .control label,.control-title { font-weight:700; font-size:13px; }
+    output { color:var(--muted); font-size:12px; }
+    input[type=range] { width:100%; accent-color:#00a7b7; height:24px; }
+    .choices { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .choice { border:1px solid rgba(56,111,130,.18); background:rgba(110,180,200,.1); color:var(--ink); padding:11px 10px; border-radius:12px; cursor:pointer; text-align:left; font-size:12px; font-weight:700; }
+    .choice[aria-pressed=true] { background:#087d9d; border-color:#087d9d; color:white; }
+    .swatch { width:10px; height:10px; display:inline-block; border-radius:50%; margin-right:7px; vertical-align:-1px; box-shadow:0 0 0 2px rgba(255,255,255,.35); }
+    .switch-row { display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(56,111,130,.13); padding:17px 0; }
+    .switch { position:relative; width:48px; height:28px; border:0; padding:0; background:rgba(74,129,150,.24); border-radius:99px; cursor:pointer; }
+    .switch::after { content:""; position:absolute; width:22px; height:22px; top:3px; left:3px; border-radius:50%; background:white; box-shadow:0 2px 5px rgba(0,0,0,.2); transition:transform .2s; }
+    .switch[aria-checked=true] { background:#0ba995; } .switch[aria-checked=true]::after { transform:translateX(20px); }
+    .panel-note { color:var(--muted); font-size:12px; line-height:1.5; margin:3px 0 0; }
+    .clock-card {
+      position:fixed; z-index:25; top:86px; left:max(14px,env(safe-area-inset-left)); color:var(--ink); background:var(--paper); box-shadow:var(--shadow);
+      width:230px; border-radius:18px; padding:14px; display:none;
+    }
+    .clock-card.open { display:block; }
+    .clock-card strong { font:800 14px "Nunito"; display:block; margin-bottom:10px; }
+    .clock-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .action { border:0; border-radius:10px; padding:9px 6px; color:var(--ink); background:rgba(65,128,151,.12); cursor:pointer; font-size:11px; font-weight:700; }
+    .action.active { color:white; background:#078ca0; }
+    .lock-action { width:100%; margin-top:8px; display:flex; align-items:center; justify-content:center; gap:7px; }
+    .modal-backdrop { position:fixed; inset:0; z-index:39; background:rgba(0,22,38,.46); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:none; place-items:center; padding:18px; }
+    .modal-backdrop.open { display:grid; }
+    .about { color:var(--ink); background:var(--paper-solid); width:min(520px,100%); max-height:min(680px,calc(100vh - 36px)); overflow:auto; border-radius:26px; box-shadow:0 28px 100px rgba(0,18,32,.42); padding:23px; }
+    .about .panel-head { margin-bottom:14px; }
+    .about-grid { display:grid; grid-template-columns:1fr 150px; gap:24px; align-items:center; }
+    .about h2 { margin:0; font:800 27px/1.05 "Nunito"; }
+    .about p { color:var(--muted); line-height:1.55; font-size:14px; margin:0 0 14px; }
+    .about .lead { color:var(--ink); font-size:16px; }
+    .qr-link { display:block; text-align:center; color:var(--muted); font-size:10px; font-weight:700; text-decoration:none; }
+    .qr-link img { display:block; width:150px; height:150px; border-radius:17px; margin-bottom:8px; }
+    .legend { display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:14px; color:var(--muted); font-size:11px; font-weight:700; }
+    .legend span { display:flex; align-items:center; gap:6px; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#ffbe3f; }
+    .toast { position:fixed; z-index:50; left:50%; top:22%; transform:translate(-50%,-10px); background:rgba(3,35,52,.8); color:white; border:1px solid rgba(255,255,255,.2); padding:10px 15px; border-radius:999px; font-size:12px; font-weight:700; opacity:0; pointer-events:none; transition:.25s; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (max-width:560px) {
+      .clock.medium .time { font-size:23px; } .clock.large .time { font-size:32px; }
+      .clock { padding:8px 11px 7px; border-radius:14px; }
+      .round-btn { width:40px; height:40px; }
+      .top-left,.top-right { gap:7px; }
+      .hint { max-width:calc(100vw - 150px); overflow:hidden; text-overflow:ellipsis; font-size:11px; }
+      .about-grid { grid-template-columns:1fr; text-align:left; }
+      .qr-link { width:150px; margin:0 auto; }
+      .brand { font-size:9px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .panel,.hint,.toast { transition:none; } }
+  </style>
+</head>
+<body>
+  <canvas id="tank" aria-label="A living aquarium with colorful fish. Tap the water to feed the fish and create ripples."></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="top-left">
+    <div class="clock-wrap">
+      <button class="clock medium" id="clock" aria-label="Current time. Open clock settings">
+        <span class="time" id="time">3:29</span><span class="date" id="date">MON · OCT 12</span>
+      </button>
+      <button class="round-btn" id="timelapseBtn" aria-label="Start day timelapse" title="Start day timelapse">
+        <svg class="play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="top-right">
+    <button class="round-btn menu-btn" id="aboutBtn" aria-label="About and share" title="About and share">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>
+    </button>
+    <button class="round-btn menu-btn" id="settingsBtn" aria-label="Open aquarium settings" title="Aquarium settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.88L4.2 7.06l2.83-2.83.06.06A1.7 1.7 0 0 0 8.97 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08A1.7 1.7 0 0 0 15.03 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9 1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+    </button>
+  </div>
+
+  <div class="hint" id="hint">Tap the water to feed the fish</div>
+  <a class="brand" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener">Future Ready</a>
+  <div class="toast" id="toast" role="status"></div>
+
+  <section class="clock-card" id="clockCard" aria-label="Clock settings">
+    <strong>Clock size</strong>
+    <div class="clock-actions">
+      <button class="action" data-size="small">Small</button>
+      <button class="action active" data-size="medium">Medium</button>
+      <button class="action" data-size="large">Large</button>
+    </div>
+    <button class="action lock-action active" id="lockBtn">● Locked in place</button>
+  </section>
+
+  <aside class="panel" id="panel" aria-hidden="true">
+    <div class="panel-head"><h2>Shape the water</h2><button class="close" id="closePanel" aria-label="Close settings">×</button></div>
+    <div class="control">
+      <div class="control-head"><label for="fishCount">Fish in the tank</label><output id="fishOut">14</output></div>
+      <input type="range" id="fishCount" min="6" max="26" value="14" />
+    </div>
+    <div class="control">
+      <div class="control-head"><span class="control-title">Water color</span></div>
+      <div class="choices" id="themeChoices">
+        <button class="choice" data-theme="tropical" aria-pressed="true"><i class="swatch" style="background:#1fd7df"></i>Tropical blue</button>
+        <button class="choice" data-theme="deep" aria-pressed="false"><i class="swatch" style="background:#176f9e"></i>Deep sea</button>
+        <button class="choice" data-theme="sunset" aria-pressed="false"><i class="swatch" style="background:#f58a80"></i>Sunset reef</button>
+        <button class="choice" data-theme="midnight" aria-pressed="false"><i class="swatch" style="background:#132b63"></i>Midnight</button>
+      </div>
+    </div>
+    <div class="control">
+      <div class="control-head"><span class="control-title">Lighting mood</span></div>
+      <div class="choices" id="moodChoices">
+        <button class="choice" data-mood="soft" aria-pressed="true">Soft shimmer</button>
+        <button class="choice" data-mood="bright" aria-pressed="false">Sunlit</button>
+        <button class="choice" data-mood="calm" aria-pressed="false">Quiet blue</button>
+        <button class="choice" data-mood="moon" aria-pressed="false">Moon glow</button>
+      </div>
+    </div>
+    <div class="control">
+      <div class="control-head"><label for="timeSlider">Scene time</label><output id="sceneOut">Now</output></div>
+      <input type="range" id="timeSlider" min="0" max="1439" value="0" />
+      <p class="panel-note">Changes the aquarium light only. The clock always shows your actual time.</p>
+    </div>
+    <div class="control">
+      <div class="control-head"><label for="speedSlider">Timelapse speed</label><output id="speedOut">Gentle</output></div>
+      <input type="range" id="speedSlider" min="1" max="3" value="1" />
+    </div>
+    <div class="switch-row"><div><div class="control-title">Water ambience</div><p class="panel-note">Gentle bubbles and current</p></div><button class="switch" id="soundSwitch" role="switch" aria-checked="false" aria-label="Toggle water ambience"></button></div>
+  </aside>
+
+  <div class="modal-backdrop" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <section class="about">
+      <div class="panel-head"><h2 id="aboutTitle">A little water to sit beside</h2><button class="close" id="closeAbout" aria-label="Close about">×</button></div>
+      <div class="about-grid">
+        <div>
+          <p class="lead">A living aquarium that follows the light of day.</p>
+          <p>Drop food with a tap. Watch the school gather, then wander home. Start the day cycle beside the clock, or leave the tank moving at the pace of the real world.</p>
+          <div class="legend"><span><i class="dot"></i> Tap to feed</span><span><i class="dot" style="background:#70e7ff"></i> Tap for ripples</span></div>
+        </div>
+        <a class="qr-link" href="https://ready-future-hub-life.lovable.app/" target="_blank" rel="noopener"><img src="data:image/png;base64,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" alt="QR code for Future Ready" />Explore Future Ready</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  (function(){
+    'use strict';
+    const canvas=document.getElementById('tank'), ctx=canvas.getContext('2d');
+    const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W=0,H=0,DPR=1,t=0,last=performance.now(), visualHour=new Date().getHours()+new Date().getMinutes()/60;
+    let timelapse=false, fishTarget=14, theme='tropical', mood='soft', speed=1;
+    const fishes=[], bubbles=[], foods=[], ripples=[];
+    const palettes={
+      tropical:{top:'#55edeb',mid:'#08acd1',bottom:'#0878a7',sand:'#f3ce83',deep:'#075b80'},
+      deep:{top:'#2daac8',mid:'#087ba8',bottom:'#07527f',sand:'#cbb47b',deep:'#064366'},
+      sunset:{top:'#ff9a8d',mid:'#a576c2',bottom:'#35699d',sand:'#edc58e',deep:'#294e7a'},
+      midnight:{top:'#244a82',mid:'#173d75',bottom:'#0c285a',sand:'#80787b',deep:'#0a1e4a'}
+    };
+    const fishColors=['#ffcf45','#ff735d','#69e38d','#73d9ff','#f39ee4','#fff4c4','#ff9f43'];
+    function resize(){ DPR=Math.min(devicePixelRatio||1,2); W=innerWidth; H=innerHeight; canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); if(!fishes.length) seed(); }
+    function seed(){ for(let i=0;i<fishTarget;i++) fishes.push(makeFish(i)); for(let i=0;i<Math.max(20,Math.floor(W/35));i++) bubbles.push(makeBubble(true)); }
+    function makeFish(i){ const dir=Math.random()<.5?-1:1; return {x:Math.random()*W,y:H*(.16+Math.random()*.58),vx:dir*(.35+Math.random()*.7),vy:(Math.random()-.5)*.18,size:Math.min(W,H)*(.022+Math.random()*.026),color:fishColors[i%fishColors.length],accent:fishColors[(i+3)%fishColors.length],variant:i%4,phase:Math.random()*6.28,turn:0}; }
+    function makeBubble(initial){ return {x:Math.random()*W,y:initial?Math.random()*H:H+10,r:1+Math.random()*4,v:.25+Math.random()*.65,w:Math.random()*6.28}; }
+    function syncFish(){ while(fishes.length<fishTarget) fishes.push(makeFish(fishes.length)); while(fishes.length>fishTarget) fishes.pop(); }
+    function hexRgb(hex){ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+    function mix(a,b,p){ const A=hexRgb(a),B=hexRgb(b); return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*p)).join(',')})`; }
+    function dayFactor(){ const h=(visualHour+24)%24; const sun=Math.max(0,Math.sin((h-6)/12*Math.PI)); return .46+.54*sun; }
+    function drawBackground(){ const p=palettes[theme], d=dayFactor(); let top=mix('#061a42',p.top,d), mid=mix('#071c3e',p.mid,d), bot=mix('#06132e',p.bottom,Math.max(.25,d)); if(mood==='bright'){top=mix(top,'#9cf9ef',.22);mid=mix(mid,'#22cbd0',.15);} if(mood==='calm'){top=mix(top,'#235d8e',.35);mid=mix(mid,'#173f72',.25);} if(mood==='moon'){top=mix(top,'#111d4f',.6);mid=mix(mid,'#0a2455',.52);}
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,top); g.addColorStop(.48,mid); g.addColorStop(1,bot); ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      // moving caustic surface
+      ctx.save();ctx.globalAlpha=.18*d;ctx.strokeStyle='#d9ffff';ctx.lineWidth=2;
+      for(let j=0;j<5;j++){ctx.beginPath(); for(let x=-30;x<W+30;x+=20){const y=12+j*11+Math.sin(x*.022+t*.00045+j)*5; x===-30?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke();}ctx.restore();
+      // light rays
+      ctx.save();ctx.globalCompositeOperation='screen'; const rayAlpha=(mood==='moon'?.055:.085)*d; for(let i=0;i<6;i++){ const x=((i*0.21+0.04)*W + Math.sin(t*.00008+i)*W*.05); const gr=ctx.createLinearGradient(x,0,x+W*.13,H*.78);gr.addColorStop(0,`rgba(226,255,247,${rayAlpha})`);gr.addColorStop(1,'rgba(226,255,247,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+W*.09,0);ctx.lineTo(x+W*.28,H*.82);ctx.lineTo(x+W*.04,H*.82);ctx.closePath();ctx.fill();}ctx.restore();
+      drawBackRock(); drawPlants(true); drawSand(p.sand,d); drawDecor();
+    }
+    function drawSand(color,d){ const y=H*.82; const g=ctx.createLinearGradient(0,y,0,H);g.addColorStop(0,mix('#7a6c62',color,d));g.addColorStop(1,mix('#574c4b',color,d*.8));ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(0,y+8);for(let x=0;x<=W;x+=24)ctx.lineTo(x,y+Math.sin(x*.017+t*.00008)*5+Math.sin(x*.041)*4);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+      ctx.globalAlpha=.24;for(let i=0;i<Math.floor(W/11);i++){let x=(i*43)%W,y=H*.84+((i*67)%Math.max(20,H*.15));ctx.fillStyle=i%3?'#fff0bf':'#765c51';ctx.beginPath();ctx.ellipse(x,y,1.2+(i%3),.8+(i%2),0,0,7);ctx.fill();}ctx.globalAlpha=1;
+    }
+    function drawBackRock(){ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#083d56';for(let i=0;i<7;i++){let x=i*W/6-40,y=H*.72+(i%2)*20;ctx.beginPath();ctx.ellipse(x,y,70+(i%3)*20,45+(i%2)*18,-.2,0,7);ctx.fill();}ctx.restore();}
+    function drawPlants(back){ const base=H*.88; ctx.save();ctx.lineCap='round'; for(let i=0;i<10;i++){if((i%2===0)!==back)continue;const x=(i+.45)*W/10;const h=H*(.11+(i%4)*.035);const sway=Math.sin(t*.0007+i)*12;ctx.strokeStyle=i%3===0?'#35b878':i%3===1?'#087a62':'#67c763';ctx.lineWidth=5+(i%3)*2;ctx.beginPath();ctx.moveTo(x,base);ctx.bezierCurveTo(x-10,base-h*.45,x+sway,base-h*.7,x+sway,base-h);ctx.stroke();for(let j=1;j<4;j++){const yy=base-h*j/4,xx=x+sway*j/4;ctx.fillStyle=i%2?'#59c66d':'#20a681';ctx.beginPath();ctx.ellipse(xx+(j%2?8:-8),yy,11,4.5,(j%2?-.5:.5),0,7);ctx.fill();}}ctx.restore();}
+    function drawDecor(){ const base=H*.865; ctx.save();
+      // weathered stone arch with a clearly open cave
+      const ax=W*.75, aw=Math.max(86,W*.145), ah=Math.max(96,H*.16), stone=mix('#345f64','#94b99b',dayFactor()*.55);
+      ctx.fillStyle='rgba(3,40,55,.62)';ctx.beginPath();ctx.roundRect(ax,base-ah,aw,ah,aw*.44);ctx.fill();
+      ctx.strokeStyle=stone;ctx.lineWidth=Math.max(10,aw*.12);ctx.beginPath();ctx.moveTo(ax+6,base);ctx.lineTo(ax+6,base-ah*.48);ctx.bezierCurveTo(ax+6,base-ah*.92,ax+aw-6,base-ah*.92,ax+aw-6,base-ah*.48);ctx.lineTo(ax+aw-6,base);ctx.stroke();
+      ctx.strokeStyle='rgba(218,235,183,.34)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ax+2,base-ah*.55);ctx.bezierCurveTo(ax+aw*.18,base-ah,ax+aw*.82,base-ah,ax+aw-2,base-ah*.55);ctx.stroke();
+      // orange fan coral
+      const cx=W*.15, cy=base+2;ctx.strokeStyle='#f06d58';ctx.lineCap='round';ctx.lineWidth=4;
+      for(let i=0;i<7;i++){const ex=cx+(i-3)*11, ey=cy-H*(.055+Math.abs(i-3)*.007);ctx.beginPath();ctx.moveTo(cx,cy);ctx.quadraticCurveTo(ex*.55+cx*.45,ey+22,ex,ey);ctx.stroke();ctx.beginPath();ctx.moveTo(ex,ey+18);ctx.lineTo(ex+(i%2?9:-9),ey+6);ctx.stroke();}
+      // purple anemone and yellow sponge
+      const nx=W*.47;ctx.strokeStyle='#b374d4';ctx.lineWidth=5;for(let i=0;i<9;i++){ctx.beginPath();ctx.moveTo(nx,base);ctx.quadraticCurveTo(nx+(i-4)*5,base-24,nx+(i-4)*8,base-38-(i%3)*8);ctx.stroke();}
+      ctx.fillStyle='#efb642';ctx.beginPath();ctx.roundRect(W*.59,base-43,31,45,9);ctx.fill();ctx.fillStyle='rgba(80,65,30,.35)';for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(W*.596+(i%2)*15,base-34+i*7,2.3,0,7);ctx.fill();}
+      // driftwood
+      ctx.strokeStyle='#7b5139';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(W*.28,base+4);ctx.quadraticCurveTo(W*.35,base-46,W*.43,base-12);ctx.stroke();ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(W*.35,base-29);ctx.lineTo(W*.32,base-64);ctx.stroke();
+      for(let i=0;i<11;i++){const x=(i*79+31)%W,y=H*.855+(i%3)*13;ctx.fillStyle=i%3===0?'#df8f58':i%3===1?'#7c9ba0':'#a37c66';ctx.beginPath();ctx.ellipse(x,y,12+i%3*3,7+i%2*3,i,0,7);ctx.fill();}ctx.restore(); }
+    function drawPlantsFront(){ drawPlants(false); }
+    function drawBubble(b,dt){ b.y-=b.v*dt*.06; b.x+=Math.sin(t*.001+b.w)*.12; if(b.y<-10){Object.assign(b,makeBubble(false));}ctx.save();ctx.globalAlpha=.3;ctx.strokeStyle='#dffeff';ctx.lineWidth=1;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.stroke();ctx.beginPath();ctx.arc(b.x-b.r*.25,b.y-b.r*.25,Math.max(.4,b.r*.2),0,7);ctx.fillStyle='#fff';ctx.fill();ctx.restore(); }
+    function nearestFood(f){let best=null,dist=Infinity;for(const p of foods){const d=Math.hypot(p.x-f.x,p.y-f.y);if(d<dist&&p.life>0){dist=d;best=p;}}return dist<Math.min(W,H)*.42?best:null;}
+    function updateFish(f,dt){const food=nearestFood(f); if(food){const dx=food.x-f.x,dy=food.y-f.y,d=Math.max(1,Math.hypot(dx,dy));f.vx+=dx/d*.025*dt;f.vy+=dy/d*.018*dt;if(d<f.size*.7){food.life-=dt*.006;f.vx*=.8;}} else {f.vx+=Math.sin(t*.00035+f.phase)*.002*dt;f.vy+=Math.sin(t*.00052+f.phase)*.0017*dt;}
+      const max=food?1.85:1.05,s=Math.hypot(f.vx,f.vy);if(s>max){f.vx=f.vx/s*max;f.vy=f.vy/s*max;}if(Math.abs(f.vx)<.18)f.vx+=(Math.random()<.5?-1:1)*.04;f.x+=f.vx*dt*.06;f.y+=f.vy*dt*.06;const margin=f.size*1.7;if(f.x<-margin){f.x=W+margin;}if(f.x>W+margin){f.x=-margin;}if(f.y<H*.12){f.y=H*.12;f.vy=Math.abs(f.vy)}if(f.y>H*.78){f.y=H*.78;f.vy=-Math.abs(f.vy)};f.turn+=dt*.006;}
+    function drawFish(f){const dir=f.vx>=0?1:-1,s=f.size;ctx.save();ctx.translate(f.x,f.y);ctx.scale(dir,1);ctx.rotate(Math.max(-.22,Math.min(.22,f.vy*.16)));ctx.globalAlpha=.98;ctx.shadowColor='rgba(0,30,48,.25)';ctx.shadowBlur=10;ctx.shadowOffsetY=4;
+      const grad=ctx.createLinearGradient(-s,0,s,0);grad.addColorStop(0,f.accent);grad.addColorStop(.48,f.color);grad.addColorStop(1,mix(f.color,'#ffffff',.48));
+      // Four recognizable silhouettes: butterflyfish, neon tetra, angelfish, puffer
+      if(f.variant===0){
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.56,0);ctx.lineTo(-s*1.15,-s*.58);ctx.lineTo(-s*1.02,0);ctx.lineTo(-s*1.15,s*.58);ctx.closePath();ctx.fill();
+        ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(0,0,s*.82,s*.53,0,0,7);ctx.fill();
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.08,-s*.42);ctx.lineTo(s*.1,-s*.82);ctx.lineTo(s*.28,-s*.4);ctx.fill();
+      } else if(f.variant===1){
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.72,0);ctx.lineTo(-s*1.13,-s*.3);ctx.lineTo(-s*1.03,0);ctx.lineTo(-s*1.13,s*.3);ctx.closePath();ctx.fill();
+        ctx.fillStyle=grad;ctx.beginPath();ctx.ellipse(0,0,s*.92,s*.3,0,0,7);ctx.fill();ctx.fillStyle='rgba(47,239,255,.86)';ctx.fillRect(-s*.55,-s*.06,s*1.15,s*.11);
+      } else if(f.variant===2){
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.52,0);ctx.lineTo(-s*1.02,-s*.48);ctx.lineTo(-s*.92,0);ctx.lineTo(-s*1.02,s*.48);ctx.closePath();ctx.fill();
+        ctx.fillStyle=grad;ctx.beginPath();ctx.moveTo(-s*.62,0);ctx.quadraticCurveTo(-s*.08,-s*1.02,s*.67,-s*.05);ctx.quadraticCurveTo(s*.18,s*.95,-s*.62,0);ctx.fill();
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.05,s*.54);ctx.lineTo(-s*.02,s*1.12);ctx.lineTo(s*.22,s*.5);ctx.fill();ctx.beginPath();ctx.moveTo(-s*.16,-s*.55);ctx.lineTo(-s*.02,-s*1.1);ctx.lineTo(s*.22,-s*.53);ctx.fill();
+      } else {
+        ctx.fillStyle=f.accent;ctx.beginPath();ctx.moveTo(-s*.55,0);ctx.lineTo(-s*.98,-s*.38);ctx.lineTo(-s*.88,0);ctx.lineTo(-s*.98,s*.38);ctx.closePath();ctx.fill();
+        ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,s*.61,0,7);ctx.fill();ctx.fillStyle='rgba(255,255,255,.55)';for(let i=0;i<7;i++){const a=i*.9;ctx.beginPath();ctx.arc(Math.cos(a)*s*.35,Math.sin(a)*s*.35,s*.045,0,7);ctx.fill();}
+      }
+      // side fin and species pattern
+      ctx.fillStyle=f.accent;ctx.globalAlpha=.66;ctx.beginPath();ctx.moveTo(s*.02,s*.04);ctx.lineTo(-s*.18,s*.43);ctx.lineTo(s*.3,s*.2);ctx.fill();ctx.globalAlpha=.98;
+      if(f.variant===0){ctx.strokeStyle='rgba(35,44,55,.42)';ctx.lineWidth=Math.max(1,s*.1);ctx.beginPath();ctx.moveTo(-s*.18,-s*.46);ctx.lineTo(-s*.18,s*.46);ctx.stroke();}
+      ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s*.46,-s*.13,s*.11,0,7);ctx.fill();ctx.fillStyle='#102537';ctx.beginPath();ctx.arc(s*.5,-s*.13,s*.054,0,7);ctx.fill();ctx.strokeStyle='rgba(44,48,55,.58)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(s*.7,s*.04,s*.11,-.55,.7);ctx.stroke();ctx.restore();}
+    function drawFood(dt){for(let i=foods.length-1;i>=0;i--){const p=foods[i];p.y+=.018*dt;p.x+=Math.sin(t*.002+p.seed)*.04;p.life-=dt*.00008;ctx.fillStyle=`rgba(244,178,69,${Math.max(0,Math.min(1,p.life))})`;ctx.beginPath();ctx.ellipse(p.x,p.y,p.r,p.r*.65,p.seed,0,7);ctx.fill();if(p.y>H*.82||p.life<=0)foods.splice(i,1);}}
+    function drawRipple(dt){for(let i=ripples.length-1;i>=0;i--){const r=ripples[i];r.rad+=dt*.09;r.a-=dt*.0007;ctx.strokeStyle=`rgba(221,255,255,${Math.max(0,r.a)})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(r.x,r.y,r.rad,r.rad*.38,0,0,7);ctx.stroke();if(r.a<=0)ripples.splice(i,1);}}
+    function frame(now){const dt=Math.min(34,now-last);last=now;t=now;if(timelapse&&!reduceMotion){visualHour=(visualHour+dt*.00025*speed)%24;updateSlider(false);}drawBackground();bubbles.forEach(b=>drawBubble(b,dt));drawFood(dt);fishes.forEach(f=>{updateFish(f,dt);drawFish(f)});drawPlantsFront();drawRipple(dt);requestAnimationFrame(frame);}
+    function dropFood(x,y){for(let i=0;i<7;i++)foods.push({x:x+(Math.random()-.5)*24,y:y+(Math.random()-.5)*12,r:2+Math.random()*2,life:1.6,seed:Math.random()*6});ripples.push({x,y,rad:5,a:.55});showToast('Dinner time');document.getElementById('hint').classList.add('hide');}
+    canvas.addEventListener('pointerdown',e=>{dropFood(e.clientX,e.clientY);});
+    function updateClock(){const d=new Date();document.getElementById('time').textContent=d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});document.getElementById('date').textContent=d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'}).replace(',',' ·').toUpperCase();}
+    updateClock();setInterval(updateClock,1000);
+    const panel=document.getElementById('panel');
+    function setPanel(open){panel.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));}
+    document.getElementById('settingsBtn').onclick=()=>setPanel(true);document.getElementById('closePanel').onclick=()=>setPanel(false);
+    document.getElementById('fishCount').oninput=e=>{fishTarget=+e.target.value;document.getElementById('fishOut').value=fishTarget;syncFish();};
+    function selectChoice(container,attr,val){document.querySelectorAll(`#${container} .choice`).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[attr]===val)));}
+    document.getElementById('themeChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;theme=b.dataset.theme;selectChoice('themeChoices','theme',theme);};
+    document.getElementById('moodChoices').onclick=e=>{const b=e.target.closest('.choice');if(!b)return;mood=b.dataset.mood;selectChoice('moodChoices','mood',mood);};
+    const timeSlider=document.getElementById('timeSlider');
+    function sceneLabel(){const h=Math.floor(visualHour),m=Math.floor((visualHour-h)*60);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+    function updateSlider(force=true){if(force)timeSlider.value=Math.round(visualHour*60);document.getElementById('sceneOut').value=timelapse?sceneLabel():sceneLabel();}
+    timeSlider.addEventListener('input',e=>{visualHour=+e.target.value/60;timelapse=false;syncTimeBtn();updateSlider(false);});
+    document.getElementById('speedSlider').oninput=e=>{speed=+e.target.value;document.getElementById('speedOut').value=['Gentle','Flowing','Swift'][speed-1];};
+    function syncTimeBtn(){const b=document.getElementById('timelapseBtn');b.classList.toggle('running',timelapse);b.setAttribute('aria-label',timelapse?'Pause day timelapse':'Start day timelapse');b.title=timelapse?'Pause day timelapse':'Start day timelapse';}
+    document.getElementById('timelapseBtn').onclick=e=>{e.stopPropagation();timelapse=!timelapse;syncTimeBtn();showToast(timelapse?'The day is flowing':'Daylight paused');};
+    let audioCtx,noise,filter,gain;
+    function startAudio(){audioCtx=new(window.AudioContext||window.webkitAudioContext)();const len=audioCtx.sampleRate*2,buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(.4+.6*Math.sin(i/850));noise=audioCtx.createBufferSource();noise.buffer=buf;noise.loop=true;filter=audioCtx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=520;gain=audioCtx.createGain();gain.gain.value=.035;noise.connect(filter).connect(gain).connect(audioCtx.destination);noise.start();}
+    document.getElementById('soundSwitch').onclick=function(){const on=this.getAttribute('aria-checked')!=='true';this.setAttribute('aria-checked',String(on));if(on){if(!audioCtx)startAudio();else audioCtx.resume();if(gain)gain.gain.setTargetAtTime(.035,audioCtx.currentTime,.2);}else if(gain)gain.gain.setTargetAtTime(0,audioCtx.currentTime,.2);showToast(on?'Water ambience on':'Water ambience off');};
+    const clock=document.getElementById('clock'),clockCard=document.getElementById('clockCard');let locked=true;
+    clock.onclick=e=>{e.stopPropagation();clockCard.classList.toggle('open');};
+    document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{clock.classList.remove('small','medium','large');clock.classList.add(b.dataset.size);document.querySelectorAll('[data-size]').forEach(x=>x.classList.toggle('active',x===b));});
+    document.getElementById('lockBtn').onclick=function(){locked=!locked;this.classList.toggle('active',locked);this.textContent=locked?'● Locked in place':'○ Drag to reposition';showToast(locked?'Clock locked':'Clock unlocked');};
+    let drag=null; clock.addEventListener('pointerdown',e=>{if(locked)return;drag={x:e.clientX,y:e.clientY,left:clock.getBoundingClientRect().left,top:clock.getBoundingClientRect().top};clock.setPointerCapture(e.pointerId);});
+    clock.addEventListener('pointermove',e=>{if(!drag)return;const wrap=document.querySelector('.top-left');wrap.style.left=Math.max(6,Math.min(W-clock.offsetWidth-56,drag.left+e.clientX-drag.x))+'px';wrap.style.top=Math.max(6,Math.min(H-clock.offsetHeight-6,drag.top+e.clientY-drag.y))+'px';});clock.addEventListener('pointerup',()=>drag=null);
+    document.addEventListener('pointerdown',e=>{if(!clockCard.contains(e.target)&&!clock.contains(e.target))clockCard.classList.remove('open');});
+    const about=document.getElementById('aboutModal');document.getElementById('aboutBtn').onclick=()=>about.classList.add('open');document.getElementById('closeAbout').onclick=()=>about.classList.remove('open');about.addEventListener('pointerdown',e=>{if(e.target===about)about.classList.remove('open');});
+    let toastTimer;function showToast(s){const el=document.getElementById('toast');el.textContent=s;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1300);}
+    addEventListener('keydown',e=>{if(e.key==='Escape'){setPanel(false);about.classList.remove('open');clockCard.classList.remove('open');}});
+    resize();updateSlider();addEventListener('resize',resize);requestAnimationFrame(frame);
+    setTimeout(()=>document.getElementById('hint').classList.add('hide'),7000);
+  })();
+  </script>
+</body>
+</html>
