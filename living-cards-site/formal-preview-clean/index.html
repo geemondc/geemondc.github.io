@@ -1286,16 +1286,23 @@ body.open #fcCount, body.opening #fcCount{opacity:1}
   function layout(){
     var r = stage.getBoundingClientRect();
     if (!r.width) return;
-    var cy = (r.top + r.height / 2) + 'px';
+    var phone = window.innerWidth < 1280;
+    var sy = phone ? (window.scrollY || window.pageYOffset || 0) : 0;
+    var cy = (r.top + sy + r.height / 2) + 'px';
     prev.style.top = cy; next.style.top = cy;
     prev.style.left = Math.max(4, Math.min(window.innerWidth - 56, r.left - 58)) + 'px';
     next.style.left = Math.max(4, Math.min(window.innerWidth - 56, r.right + 6)) + 'px';
-    if (window.innerWidth < 1280){
-      var ch = countEl ? countEl.offsetHeight : 40;
-      if (countEl){ countEl.style.top = (r.bottom + 6) + 'px'; countEl.style.bottom = 'auto'; }
-      listEl.style.top = (r.bottom + 6 + ch + 6) + 'px';
+    var pillEl = document.getElementById('fsPill');
+    if (phone){
+      var ch = (countEl && countEl.offsetHeight) || 40;
+      var ph = (pillEl && pillEl.offsetHeight) || 48;
+      var top1 = r.bottom + sy + 6;
+      if (countEl){ countEl.style.top = top1 + 'px'; countEl.style.bottom = 'auto'; }
+      if (pillEl){ pillEl.style.top = (top1 + ch + 8) + 'px'; pillEl.style.bottom = 'auto'; }
+      listEl.style.top = (top1 + ch + 8 + ph + 8) + 'px';
     } else {
       if (countEl){ countEl.style.top = ''; countEl.style.bottom = ''; }
+      if (pillEl){ pillEl.style.top = ''; pillEl.style.bottom = ''; }
       listEl.style.top = '';
     }
   }
@@ -1642,6 +1649,26 @@ body.open #fsPill{display:none}
 })();
 </script>
 
+<style>
+/* ===== PHONE SCROLL FIX (Nov 11, Gary's phone walk): the page was locked to
+   one screen (overflow hidden, everything pinned to the screen), so on a
+   phone the list of ten ran off the bottom with no way to scroll, and the
+   gold Send pill, anchored to the screen's bottom edge, hid behind the
+   browser's own bar. On phones the page now scrolls like a normal page:
+   the caption, the Send pill and the list of ten live in the page under
+   the stage (placed by the nav script in page coordinates); a drag scrolls,
+   a tap still opens the envelope; the opened card centers on the screen,
+   not the page. Desktop keeps its fixed rail layout, untouched. ===== */
+@media (max-width:1279px){
+  html,body{height:auto; min-height:100dvh; overflow:visible}
+  #tapZone{touch-action:auto}
+  #fcCount{position:absolute}
+  #fcList{position:absolute}
+  #fsPill{position:absolute}
+  .fcNav{position:absolute}
+  #typeCard{position:fixed}
+}
+</style>
 </body>
 </html>
 
