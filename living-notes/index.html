@@ -257,6 +257,16 @@
   .notetext .greet{font-size:calc(var(--u)*6.7); font-weight:600; line-height:calc(var(--lh)*2)}
   .notetext .body{font-size:calc(var(--u)*6.0); font-weight:500; line-height:calc(var(--lh)*2); white-space:pre-wrap; margin-top:calc(var(--lh)*0)}
   .notetext .sign{font-size:calc(var(--u)*6.4); font-weight:600; line-height:calc(var(--lh)*2); text-align:right; padding-right:calc(var(--u)*3)}
+  /* the wave note: a little moving doodle taped in the corner of the paper */
+  .loopbox{position:absolute; z-index:8; right:calc(var(--u)*2.5); bottom:calc(var(--u)*3); width:calc(var(--u)*31); opacity:0; visibility:hidden; transform:rotate(-2deg) scale(.92); transition:opacity .6s ease .15s, transform .6s ease .15s, visibility 0s .8s; pointer-events:none}
+  .sheet.settled .loopbox{opacity:1; visibility:visible; transform:rotate(-2deg) scale(1); pointer-events:auto; transition:opacity .6s ease .15s, transform .6s ease .15s, visibility 0s 0s}
+  .loopbox .lb-frame{background:#fff; padding:calc(var(--u)*1.1); border-radius:3px; box-shadow:0 2px 8px rgba(60,45,20,.28)}
+  .loopbox img, .loopbox canvas{display:block; width:100%; height:auto; border-radius:2px}
+  .loopbox canvas{display:none}
+  .loopbox .lb-bar{display:flex; gap:6px; justify-content:flex-end; margin-top:calc(var(--u)*1.4)}
+  .loopbox .lb-bar button{font:600 11px/1 system-ui,sans-serif; letter-spacing:.04em; padding:5px 9px; border-radius:999px; border:1px solid rgba(96,78,45,.45); background:rgba(255,255,255,.85); color:#6b5722; cursor:pointer}
+  .loopbox .lb-bar button.on{background:#6b5722; color:#fff}
+  .sheet.hasloop .notetext{padding-right:calc(var(--u)*36)}
 
   /* ---- the name on the folded face ---- */
   .packname{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(var(--u)*1.4);
@@ -521,6 +531,10 @@
       <div class="hole midhole"></div>
       <div class="creases"></div>
       <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      <div class="loopbox" hidden>
+        <div class="lb-frame"><img src="../living-cards-site/thumbs/welcome-loop.webp" alt="The eight friends, waving hello"><canvas aria-hidden="true"></canvas></div>
+        <div class="lb-bar"><button type="button" class="lb-still">Still</button><button type="button" class="lb-live on">Living</button></div>
+      </div>
     </div>
   </div>
 
@@ -716,6 +730,7 @@
   <label>Paper &amp; fold
     <select id="cNote">
       <option value="notebook">Notebook — Quarters</option>
+      <option value="wave">Notebook — the Wave Note (Quarters, moving)</option>
       <option value="notebook2">Notebook — the Rolled-Up Note</option>
       <option value="notebook3">Notebook — the Letter Fold</option>
       <option value="notebook6">Notebook — the Secret Note</option>
@@ -757,6 +772,7 @@
     notebook4: { wrap:"wrapNB4", sheet:"sheetNB4", title:"Notebook — the triangle fold — a folded note", machine:"triangle" },
     notebook5: { wrap:"wrapNB5", sheet:"sheetNB5", title:"Notebook — the Crumpled Ball Note — a folded note", machine:"ball" },
     notebook6: { wrap:"wrapNB6", sheet:"sheetNB6", title:"Notebook — the Secret Note — a folded note", machine:"secret" },
+    wave:      { wrap:"wrapNB",  sheet:"sheetNB",  title:"Notebook — the Wave Note — a folded note", machine:"quarters", loop:"wave", hint:"A hello, with a little wave inside." },
     notebook7: { wrap:"wrapNB7", sheet:"sheetNB7", title:"Notebook — the Concertina — a folded note", machine:"concertina" },
     yellow:    { wrap:"wrapYP",  sheet:"sheetYP",  title:"Yellow Pad Note — a folded note", machine:"classic" },
     yellowq:   { wrap:"wrapYQ",  sheet:"sheetYQ",  title:"Yellow Pad — Quarters — a folded note", machine:"quarters" },
@@ -777,6 +793,8 @@
     yellow: { to:"Friend", from:"Me",
       body:"Quick one — the meeting moved to 3, so don't rush back.\nYour coffee money is on the counter, and the spare keys are with the front desk.\nSee you at dinner." }
   };
+  DEMO.wave = { to:"Friend", from:"Me",
+      body:"Just saying hi \u2014 properly, not in a text.\nHope today is treating you kindly.\nWave back when you can." };
   DEMO.ivoryl = { to:"Friend", from:"Me",
       body:"Thank you for the lovely dinner \u2014 and for thinking of me.\nThe flowers are on the table now, and they make the whole room kinder.\nYou are a good friend." };
   DEMO.ivoryq = { to:"Friend", from:"Me",
@@ -801,6 +819,32 @@
   sheet.querySelector(".greet").textContent   = to + ",";
   sheet.querySelector(".body").textContent    = body;
   sheet.querySelector(".sign").textContent    = "— " + from;
+
+  /* the wave note: words first, and a little wave doodling in the corner */
+  var loopbox = sheet.querySelector(".loopbox");
+  if (loopbox && V.loop === "wave"){
+    loopbox.hidden = false;
+    sheet.classList.add("hasloop");
+    var limg = loopbox.querySelector("img"), lcan = loopbox.querySelector("canvas"),
+        bStill = loopbox.querySelector(".lb-still"), bLive = loopbox.querySelector(".lb-live"),
+        living = true;
+    function setLiving(on){
+      living = on;
+      if (on){ lcan.style.display = "none"; limg.style.display = "block"; }
+      else {
+        try {
+          lcan.width = limg.naturalWidth || 800; lcan.height = limg.naturalHeight || 600;
+          lcan.getContext("2d").drawImage(limg, 0, 0, lcan.width, lcan.height);
+        } catch(e){}
+        limg.style.display = "none"; lcan.style.display = "block";
+      }
+      bStill.classList.toggle("on", !on); bLive.classList.toggle("on", on);
+    }
+    bStill.addEventListener("click", function(e){ e.stopPropagation(); setLiving(false); });
+    bLive.addEventListener("click", function(e){ e.stopPropagation(); setLiving(true); });
+    limg.addEventListener("click", function(e){ e.stopPropagation(); setLiving(!living); });
+  }
+
 
   /* scale unit: --u = sheet width / 100 */
   function setU(){ var w = sheet.clientWidth; if (w) sheet.style.setProperty("--u", (w/100) + "px"); }
@@ -964,6 +1008,7 @@
     var u = new URL(location.href);
     u.search = "";
     if (cNote.value === "yellow") u.searchParams.set("note", "yellow");
+    if (cNote.value === "wave") u.searchParams.set("note", "wave");
     if (cNote.value === "notebook2") u.searchParams.set("note", "notebook2");
     if (cNote.value === "notebook3") u.searchParams.set("note", "notebook3");
     if (cNote.value === "notebook4") u.searchParams.set("note", "notebook4");
