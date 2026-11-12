@@ -789,6 +789,34 @@
   @keyframes dgER{0%{transform:rotate(0deg)} 45%{transform:rotate(72deg)} 100%{transform:rotate(126deg)}}
   @keyframes dgChin{0%{transform:scale(1,1)} 52%{transform:scale(1,1)} 100%{transform:scale(1,1.09)}}
   @keyframes dgFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.04,.97)}}
+
+  /* ---- menu preview: three-step composer (paper / fold / words) ---- */
+  .mp-steps{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:14px; font-family:Georgia,serif; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:#b39b5e}
+  .mp-steps span{padding:4px 11px; border-radius:999px; border:1px solid #e5d5a8}
+  .mp-steps span.on{color:#5d1220; border-color:#c9a24d; background:#fdf6dd; font-weight:bold}
+  .mp-steplabel{font-family:Georgia,serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8a6d2f; margin-top:18px; text-align:center}
+  .mp-doors{display:flex; flex-direction:column; gap:10px; margin-top:12px}
+  .mp-door{display:block; width:100%; text-align:left; background:#fffef9; border:1.5px solid #e5d5a8; border-radius:12px; padding:13px 16px; cursor:pointer; box-shadow:0 2px 6px rgba(60,30,10,.07)}
+  .mp-door:hover{border-color:#c9a24d}
+  .mp-doorname{display:block; font-family:Caveat,"Segoe Script",cursive; font-size:25px; font-weight:700; color:#5d1220; line-height:1.1}
+  .mp-doorsub{display:block; font-family:Georgia,serif; font-style:italic; font-size:13px; color:#8a6d2f; margin-top:3px; line-height:1.4}
+  .mp-folds{display:flex; flex-direction:column; gap:10px; margin-top:12px}
+  .mp-fold{display:flex; align-items:center; gap:13px; width:100%; text-align:left; background:#fffef9; border:1.5px solid #e5d5a8; border-radius:12px; padding:9px 14px; cursor:pointer; box-shadow:0 2px 6px rgba(60,30,10,.07)}
+  .mp-fold:hover{border-color:#c9a24d}
+  .mp-fold.sel{border-color:#c9a24d; background:#fdf6dd}
+  .mp-foldname{font-family:Caveat,"Segoe Script",cursive; font-size:24px; font-weight:700; color:#3a2c22; line-height:1.1}
+  .mp-thumb{position:relative; flex:0 0 auto; width:50px; height:62px}
+  .mp-thumb svg{position:absolute; inset:0; width:100%; height:100%}
+  .mp-colors{display:flex; align-items:center; gap:9px; margin-top:15px; justify-content:center}
+  .mp-colors[hidden]{display:none}
+  .mp-colorslabel{font-family:Georgia,serif; font-style:italic; font-size:13.5px; color:#8a6d2f}
+  .mp-dots{display:inline-flex; gap:8px}
+  .mp-dot{width:27px; height:27px; border-radius:50%; border:2px solid #d8c48c; cursor:pointer; padding:0; box-shadow:0 1px 3px rgba(60,30,10,.18)}
+  .mp-dot.sel{border-color:#5d1220; box-shadow:0 0 0 2px #fdf6dd, 0 0 0 4px #c9a24d}
+  .mp-back{margin-top:16px; font-family:Georgia,serif; font-style:italic; font-size:14px; color:#8a6d2f; background:none; border:none; border-bottom:1px dotted #c9a24d; cursor:pointer; padding:2px 4px}
+  .mp-chosen{font-family:Georgia,serif; font-style:italic; font-size:13.5px; color:#8a6d2f; text-align:center; margin-top:9px}
+  .mp-doorlink{text-align:center; padding:4px 18px 12px; font-family:Georgia,serif; font-style:italic; font-size:15.5px}
+  .mp-doorlink a{color:#5d1220; text-decoration:none; border-bottom:1px dotted #c9a24d}
 </style>
 </head>
 <body>
@@ -1463,10 +1491,10 @@
 <div class="hint" id="hint">Tap the note to unfold it</div>
 <div class="underbar"><button class="replaybtn" id="replay" type="button">↩ fold it back up</button></div>
 
-<section class="composer" id="composer" hidden>
+<section class="composer" id="composer">
   <h3>Pass a note of your own</h3>
-  <p class="csub">Your words, your names — the link carries them. Send the link yourself, any way you like.</p>
-  <label>Paper &amp; fold
+  <p class="csub">Three little choices, that&rsquo;s all &mdash; your paper, your fold, your words. The link carries the note; you pass it hand to hand.</p>
+  <div style="display:none">
     <select id="cNote">
       <option value="notebook">Notebook — Quarters</option>
       <option value="wave">Notebook — the Wave Note (Quarters, moving)</option>
@@ -1504,17 +1532,56 @@
       <option value="ivoryl">Ivory — Thank-You Note (the Letter Fold)</option>
       <option value="ivoryq">Ivory — Sympathy Note (Quarters)</option>
     </select>
-  </label>
-  <label>To <input type="text" id="cTo" maxlength="40" autocomplete="off"></label>
-  <label>From <input type="text" id="cFrom" maxlength="40" autocomplete="off"></label>
-  <label>Your note <textarea id="cBody" maxlength="280"></textarea></label>
-  <div class="crow">
-    <span class="ccount" id="cCount"></span>
-    <button class="cbtn ghost" id="cCopy" type="button">Copy link</button>
-    <button class="cbtn" id="cMail" type="button">Open in my email</button>
   </div>
-  <p class="cnote">No account, no sending service — the note travels in the link, and you pass it hand to hand.</p>
+
+  <div class="mp-steps" id="mpSteps"><span data-s="1" class="on">1 &middot; Paper</span><span data-s="2">2 &middot; Fold</span><span data-s="3">3 &middot; Words</span></div>
+
+  <div class="mp-panel" id="mpStep1">
+    <p class="mp-steplabel">Step 1 &middot; Your paper</p>
+    <div class="mp-doors">
+      <button type="button" class="mp-door" data-paper="white">
+        <span class="mp-doorname">White school paper</span>
+        <span class="mp-doorsub">The notebook sheet &mdash; ruled lines, red margin, passed in class.</span>
+      </button>
+      <button type="button" class="mp-door" data-paper="yellow">
+        <span class="mp-doorname">Yellow school paper</span>
+        <span class="mp-doorsub">The yellow pad &mdash; straight off the legal pad, desk to desk.</span>
+      </button>
+      <button type="button" class="mp-door" data-paper="origami">
+        <span class="mp-doorname">Origami paper</span>
+        <span class="mp-doorsub">Colored paper folded into shapes &mdash; color outside, white inside.</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="mp-panel" id="mpStep2" hidden>
+    <p class="mp-steplabel">Step 2 &middot; The fold</p>
+    <div class="mp-folds" id="mpFolds"></div>
+    <div class="mp-colors" id="mpColors" hidden>
+      <span class="mp-colorslabel">Paper color</span>
+      <span class="mp-dots" id="mpDots"></span>
+    </div>
+    <button type="button" class="mp-back" id="mpBack1">&larr; Choose a different paper</button>
+  </div>
+
+  <div class="mp-panel" id="mpStep3" hidden>
+    <p class="mp-steplabel">Step 3 &middot; Your words</p>
+    <p class="mp-chosen" id="mpChosen"></p>
+    <label>To <input type="text" id="cTo" maxlength="40" autocomplete="off"></label>
+    <label>From <input type="text" id="cFrom" maxlength="40" autocomplete="off"></label>
+    <label>Your note <textarea id="cBody" maxlength="280"></textarea></label>
+    <div class="crow">
+      <span class="ccount" id="cCount"></span>
+      <button class="cbtn ghost" id="cCopy" type="button">Copy link</button>
+      <button class="cbtn" id="cMail" type="button">Open in my email</button>
+    </div>
+    <button type="button" class="mp-back" id="mpBack2">&larr; Pick a different fold</button>
+  </div>
+
+  <p class="cnote">No account, no sending service &mdash; the note travels in the link, and you pass it hand to hand.</p>
 </section>
+
+<p class="mp-doorlink"><a href="../folds-preview/">Want to see other folds we&rsquo;re working on?</a></p>
 
 <footer>Living Notes · Living Photos</footer>
 
@@ -1898,6 +1965,7 @@
     if (cTo.value.trim())   u.searchParams.set("to", cTo.value.trim());
     if (cFrom.value.trim()) u.searchParams.set("from", cFrom.value.trim());
     if (cBody.value.trim()) u.searchParams.set("body", cBody.value.trim());
+    if (window.__mpColor) u.searchParams.set("color", window.__mpColor);
     return u.toString();
   }
   document.getElementById("sendToggle").addEventListener("click", function(){
@@ -1916,6 +1984,165 @@
     if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(done, done); }
     else { var ta = document.createElement("textarea"); ta.value = link; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e){} ta.remove(); done(); }
   });
+})();
+</script>
+
+<script>
+/* ---- menu preview wizard: paper -> fold -> words (Chipotle rule: <=5 choices a step) ---- */
+(function(){
+  "use strict";
+  var q = new URLSearchParams(location.search);
+  var FOLDS = {
+    white:  [ ["notebook","Quarters"], ["notebook3","Letter Fold"], ["notebook2","Rolled-Up"], ["notebook6","Secret Note"] ],
+    yellow: [ ["yellowq","Quarters"], ["yellowl","Letter Fold"], ["yellowr","Rolled-Up"], ["yellows","Secret Note"] ],
+    origami:[ ["crane","Crane"], ["heart","Heart"], ["fortune","Fortune Teller"], ["boat","Boat"], ["star","Star"] ]
+  };
+  var WRAPS = { fortune:"wrapFT", crane:"wrapCR", boat:"wrapBT", heart:"wrapHT", star:"wrapST",
+                butterfly:"wrapBF", flower:"wrapFL", pinwheel:"wrapPW", airplane:"wrapAP",
+                hat:"wrapHA", balloon:"wrapBA", dog:"wrapDG" };
+  var PAPERNAME = { white:"White school paper", yellow:"Yellow school paper", origami:"Origami paper" };
+  var COLORS = [ ["white","#f7f2e2"], ["blue","#6ea8e8"], ["green","#7cc489"], ["pink","#f0a3ba"], ["orange","#f4a940"] ];
+  var paper = q.get("paper"); if (!FOLDS[paper]) paper = null;
+  var color = q.get("color") || "white";
+  if (!COLORS.some(function(c){ return c[0] === color; })) color = "white";
+  var step = parseInt(q.get("step") || "1", 10); if (!(step >= 1 && step <= 3)) step = 1;
+  var noteKey = q.get("note") || "notebook";
+  if (!paper) step = 1; else if (step === 1) step = 2;
+
+  var composer = document.getElementById("composer");
+  composer.hidden = false;
+  window.__mpColor = (paper === "origami") ? color : null;
+
+  function hexRgb(h){ h = h.replace("#",""); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
+  function colorHex(id){ for (var i = 0; i < COLORS.length; i++) if (COLORS[i][0] === id) return COLORS[i][1]; return "#ffffff"; }
+  /* tint a shape svg toward a paper color by multiplying the engine's own gradient facet shading */
+  function tintSvg(svg, hex){
+    if (!svg) return;
+    var base = hexRgb(hex);
+    svg.querySelectorAll("stop").forEach(function(st){
+      if (!st.dataset.oc) st.dataset.oc = st.getAttribute("stop-color") || "#ffffff";
+      var o = hexRgb(st.dataset.oc);
+      st.setAttribute("stop-color", "rgb(" + Math.round(o[0]*base[0]/255) + "," + Math.round(o[1]*base[1]/255) + "," + Math.round(o[2]*base[2]/255) + ")");
+    });
+  }
+  function cloneSvg(svg, suffix){
+    var c = svg.cloneNode(true), ids = {};
+    c.querySelectorAll("[id]").forEach(function(el){ ids[el.id] = el.id + suffix; });
+    Object.keys(ids).forEach(function(old){ c.querySelector("#" + CSS.escape(old)).id = ids[old]; });
+    c.querySelectorAll("*").forEach(function(el){
+      ["fill","stroke"].forEach(function(at){
+        var v = el.getAttribute(at);
+        if (v && v.indexOf("url(#") === 0){ var old = v.slice(5, -1); if (ids[old]) el.setAttribute(at, "url(#" + ids[old] + ")"); }
+      });
+    });
+    return c;
+  }
+  function tintStage(){
+    if (!WRAPS[noteKey]) return;
+    var w = document.getElementById(WRAPS[noteKey]);
+    if (w) tintSvg(w.querySelector("svg"), color === "white" ? "#ffffff" : colorHex(color));
+  }
+  tintStage();
+
+  var panels = { 1: document.getElementById("mpStep1"), 2: document.getElementById("mpStep2"), 3: document.getElementById("mpStep3") };
+  var stepSpans = document.querySelectorAll("#mpSteps span");
+  function showStep(n){
+    step = n;
+    [1,2,3].forEach(function(i){ panels[i].hidden = (i !== n); });
+    stepSpans.forEach(function(s){ s.classList.toggle("on", +s.dataset.s === n); });
+  }
+
+  var foldsBox = document.getElementById("mpFolds"),
+      colorsRow = document.getElementById("mpColors"),
+      dotsBox = document.getElementById("mpDots");
+
+  function retintThumbs(){
+    var hex = color === "white" ? "#ffffff" : colorHex(color);
+    foldsBox.querySelectorAll(".mp-thumb svg").forEach(function(svg){ tintSvg(svg, hex); });
+  }
+  function renderDots(){
+    dotsBox.innerHTML = "";
+    COLORS.forEach(function(c){
+      var d = document.createElement("button");
+      d.type = "button"; d.className = "mp-dot" + (c[0] === color ? " sel" : "");
+      d.style.background = c[1]; d.title = "Origami paper: " + c[0];
+      d.setAttribute("aria-label", "Origami paper color: " + c[0]);
+      d.addEventListener("click", function(){
+        color = c[0]; window.__mpColor = color;
+        renderDots(); retintThumbs(); tintStage();
+      });
+      dotsBox.appendChild(d);
+    });
+  }
+  function renderFolds(){
+    foldsBox.innerHTML = "";
+    FOLDS[paper].forEach(function(f){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "mp-fold"; b.dataset.key = f[0];
+      if (f[0] === noteKey) b.classList.add("sel");
+      if (paper === "origami"){
+        var src = document.getElementById(WRAPS[f[0]]);
+        var svg = src && src.querySelector("svg");
+        if (svg){
+          var t = document.createElement("span"); t.className = "mp-thumb";
+          t.appendChild(cloneSvg(svg, "-mp-" + f[0]));
+          b.appendChild(t);
+        }
+      }
+      var n = document.createElement("span"); n.className = "mp-foldname"; n.textContent = f[1];
+      b.appendChild(n);
+      b.addEventListener("click", function(){ goWords(f[0]); });
+      foldsBox.appendChild(b);
+    });
+    colorsRow.hidden = paper !== "origami";
+    if (paper === "origami"){ renderDots(); retintThumbs(); }
+  }
+  var seed = { to: document.getElementById("cTo").value,
+               from: document.getElementById("cFrom").value,
+               body: document.getElementById("cBody").value };
+  function carryWords(u){
+    var t = document.getElementById("cTo").value,
+        f = document.getElementById("cFrom").value,
+        b = document.getElementById("cBody").value;
+    if (t.trim() && t !== seed.to) u.searchParams.set("to", t.trim());
+    if (f.trim() && f !== seed.from) u.searchParams.set("from", f.trim());
+    if (b.trim() && b !== seed.body) u.searchParams.set("body", b.trim());
+  }
+  function goWords(key){
+    var u = new URL(location.href); u.search = "";
+    u.searchParams.set("note", key);
+    u.searchParams.set("paper", paper);
+    if (paper === "origami") u.searchParams.set("color", color);
+    u.searchParams.set("step", "3");
+    carryWords(u);
+    location.href = u.toString();
+  }
+  document.querySelectorAll(".mp-door").forEach(function(d){
+    d.addEventListener("click", function(){
+      paper = d.dataset.paper;
+      window.__mpColor = (paper === "origami") ? color : null;
+      renderFolds(); showStep(2);
+    });
+  });
+  document.getElementById("mpBack1").addEventListener("click", function(){ showStep(1); });
+  document.getElementById("mpBack2").addEventListener("click", function(){
+    var u = new URL(location.href); u.search = "";
+    u.searchParams.set("note", noteKey);
+    u.searchParams.set("paper", paper);
+    if (paper === "origami") u.searchParams.set("color", color);
+    u.searchParams.set("step", "2");
+    carryWords(u);
+    location.href = u.toString();
+  });
+
+  if (paper) renderFolds();
+  if (step === 3 && paper){
+    var nm = null;
+    FOLDS[paper].forEach(function(f){ if (f[0] === noteKey) nm = f[1]; });
+    document.getElementById("mpChosen").textContent =
+      (nm || "Your note") + " \u00b7 " + PAPERNAME[paper] + (paper === "origami" ? " (" + color + ")" : "");
+  }
+  showStep(step);
 })();
 </script>
 </body>
