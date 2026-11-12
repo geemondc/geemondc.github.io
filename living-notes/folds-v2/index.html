@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Living Notes — the folds, rebuilt (preview)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#2B3A55; --burg:#5d1220; --gold:#8a6d2f; --cream:#faf5ea; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{ height:100dvh; overflow:hidden; display:flex; flex-direction:column;
+    background:var(--cream); color:var(--ink);
+    font-family:Georgia, 'Times New Roman', serif;
+    background-image:radial-gradient(ellipse at 50% 38%, #fffdf6 0%, #faf5ea 55%, #f3ecd9 100%); }
+  header{ text-align:center; padding:10px 12px 2px; }
+  header h1{ font-size:19px; color:var(--burg); letter-spacing:.02em; font-weight:700; }
+  header .tag{ display:inline-block; margin-top:3px; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--gold); border:1px solid #d9c48a; border-radius:20px; padding:2px 10px; }
+  nav.tabs{ display:flex; justify-content:center; gap:6px; flex-wrap:wrap; padding:8px 8px 2px; }
+  nav.tabs button{ font-family:Georgia,serif; font-size:13.5px; color:#6b5320; background:#fffdf6;
+    border:1.5px solid #d9c48a; border-radius:20px; padding:6px 13px; cursor:pointer; }
+  nav.tabs button.on{ background:var(--burg); border-color:var(--burg); color:#fdf6dd; }
+  #stage{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; }
+  #noteWrap{ position:relative; filter:drop-shadow(0 14px 16px rgba(74,54,16,.28)); }
+  #noteWrap.idle{ animation:breathe 3.6s ease-in-out infinite; }
+  @keyframes breathe{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.014);} }
+  svg.note{ display:block; }
+  .fac{ stroke:rgba(96,78,45,.40); stroke-width:1.1; stroke-linejoin:round; }
+  .ovl{ position:absolute; inset:0; pointer-events:none; }
+  #words{ position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; opacity:0; padding:4% 7%;
+    font-family:Caveat,'Segoe Script','Comic Sans MS',cursive; color:var(--ink); }
+  #words .wto{ font-size:clamp(15px,2.6vmin,21px); font-weight:700; margin-bottom:2%; }
+  #words .wbody{ font-size:clamp(17px,3.4vmin,27px); line-height:1.32; font-weight:500; white-space:pre-line; }
+  #words .wfrom{ font-size:clamp(15px,2.6vmin,21px); font-weight:700; margin-top:3%; }
+  #forLabel{ position:absolute; transform:translate(-50%,0); text-align:center;
+    font-family:Caveat,'Segoe Script',cursive; font-weight:700; color:#7a2d1d;
+    font-size:clamp(15px,2.8vmin,22px); text-shadow:0 1px 0 rgba(255,255,255,.5); }
+  #forLabel .heart{ color:#c0392b; }
+  #pullMark{ position:absolute; transform:translate(-50%,-50%); text-align:center; line-height:1;
+    color:#c0392b; font-family:Caveat,cursive; font-weight:700; pointer-events:none; }
+  #pullMark .arr{ display:block; font-size:.95em; margin-top:-.08em; }
+  footer{ text-align:center; padding:4px 14px 12px; }
+  #caption{ font-style:italic; font-size:15px; color:#6d5a33; min-height:20px; }
+  #dots{ display:none; justify-content:center; gap:8px; padding:2px 0 4px; }
+  #dots.on{ display:flex; }
+  #dots button{ width:26px; height:26px; border-radius:50%; border:2px solid rgba(96,78,45,.35); cursor:pointer; padding:0; }
+  #dots button.on{ border-color:var(--burg); box-shadow:0 0 0 2px #fdf6dd, 0 0 0 4px var(--burg); }
+  .tapzone{ position:absolute; inset:0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Living Notes — the folds, rebuilt</h1>
+  <span class="tag">Preview · each fold opens by its own real creases</span>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-fold="writetuck" class="on">Write &amp; Tuck</button>
+  <button data-fold="pullhere">“Pull Here” Tab</button>
+  <button data-fold="heart">Heart Fold</button>
+  <button data-fold="balloon">Balloon</button>
+</nav>
+<div id="stage">
+  <div id="noteWrap">
+    <!-- svg + overlays injected by script -->
+  </div>
+  <div class="tapzone" id="tapzone"></div>
+</div>
+<div id="dots" aria-label="Origami paper color"></div>
+<footer><div id="caption"></div></footer>
+
+<script>
+"use strict";
+var DATA = {"writetuck": {"id": "writetuck", "box": [400, 460], "times": [0, 0.15, 0.3, 0.58, 0.8, 1], "captions": ["Folded tight \u2014 the corner's tucked in. Tap to open it.", "The tucked corner slides out of the pocket\u2026", "Turn the packet over\u2026", "The thirds unfold \u2014 down comes the long band\u2026", "The band opens sideways, the big corner still folded\u2026", "The big corner opens \u2014 flat. Tap to fold it back."], "offsets": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "facets": [{"id": "B3", "z": 1, "keys": [[[140, 207], [263, 207], [263, 262], [140, 262]], [[140, 207], [263, 207], [263, 262], [140, 262]], [[260.0, 207.0], [137.0, 207.0], [137.0, 262.0], [260.0, 262.0]], [[134, 286], [266, 286], [266, 392], [134, 392]], [[80, 283], [200, 283], [200, 390], [80, 390]], [[80, 283], [200, 283], [200, 390], [80, 390]]], "fills": ["#ece3c8", "#ece3c8", "#e9e0c6", "#fbf7ea", "#fdfaf0", "#fffef9"]}, {"id": "BRc", "z": 2, "keys": [[[148, 217], [240, 217], [240, 247], [183, 247], [148, 237]], [[148, 217], [240, 217], [240, 247], [183, 247], [148, 237]], [[252.0, 217.0], [160.0, 217.0], [160.0, 247.0], [217.0, 247.0], [252.0, 237.0]], [[158, 304], [242, 304], [242, 350], [158, 350], [158, 327]], [[200, 283], [292, 283], [320, 320], [320, 390], [200, 390]], [[200, 283], [292, 283], [320, 320], [320, 390], [200, 390]]], "fills": ["#ece3c8", "#ece3c8", "#e9e0c6", "#f3ecd9", "#fbf7ea", "#fffef9"]}, {"id": "B2", "z": 3, "keys": [[[125, 190], [278, 190], [278, 280], [125, 280]], [[125, 190], [278, 190], [278, 280], [125, 280]], [[275.0, 190.0], [122.0, 190.0], [122.0, 280.0], [275.0, 280.0]], [[134, 180], [266, 180], [266, 286], [134, 286]], [[80, 177], [200, 177], [200, 283], [80, 283]], [[80, 177], [200, 177], [200, 283], [80, 283]]], "fills": ["#ece3c8", "#ece3c8", "#e9e0c6", "#fbf7ea", "#fdfaf0", "#fffef9"]}, {"id": "BRb", "z": 4, "keys": [[[195, 197], [260, 230], [260, 255], [195, 255]], [[195, 197], [260, 230], [260, 255], [195, 255]], [[205.0, 197.0], [140.0, 230.0], [140.0, 255.0], [205.0, 255.0]], [[152, 198], [248, 198], [248, 268], [152, 268]], [[200, 177], [213, 177], [292, 283], [200, 283]], [[200, 177], [213, 177], [292, 283], [200, 283]]], "fills": ["#ece3c8", "#ece3c8", "#e9e0c6", "#f3ecd9", "#fbf7ea", "#fffef9"]}, {"id": "BRa", "z": 5, "keys": [[[185, 217], [208, 237], [185, 237]], [[185, 217], [208, 237], [185, 237]], [[215.0, 217.0], [192.0, 237.0], [215.0, 237.0]], [[152, 190], [206, 190], [152, 214]], [[200, 160], [213, 177], [200, 177]], [[200, 160], [213, 177], [200, 177]]], "fills": ["#ece3c8", "#ece3c8", "#e9e0c6", "#f3ecd9", "#fbf7ea", "#fffef9"]}, {"id": "F4", "z": 6, "keys": [[[238, 250], [273, 250], [255, 275]], [[238, 250], [273, 250], [255, 275]], [[162.0, 250.0], [127.0, 250.0], [145.0, 275.0]], [[218, 320], [248, 320], [233, 340]], [[292.4, 282.7], [284.5, 309.5], [320.0, 320.0]], [[292, 283], [320, 283], [320, 320]]], "fills": ["#efe7d0", "#efe7d0", "#eee5cb", "#fbf7ea", "#f6f1de", "#fffef9"]}, {"id": "A1", "z": 7, "keys": [[[106, 167], [278, 298], [294, 298], [188, 298], [106, 298]], [[106, 167], [278, 298], [294, 298], [188, 298], [106, 298]], [[294.0, 167.0], [122.0, 298.0], [106.0, 298.0], [212.0, 298.0], [294.0, 298.0]], [[134, 74], [248, 180], [266, 180], [200, 180], [134, 180]], [[80, 70], [133, 70], [200, 160], [200, 177], [80, 177]], [[80, 70], [133, 70], [200, 160], [200, 177], [80, 177]]], "fills": ["#fdfaf0", "#fdfaf0", "#f5efe0", "#f5efe0", "#fdfaf0", "#fffef9"]}, {"id": "TIP", "z": 8, "keys": [[[204, 242], [252, 232], [238, 268], [196, 272]], [[239, 215], [287, 205], [273, 241], [231, 245]], [[161.0, 215.0], [113.0, 205.0], [127.0, 241.0], [169.0, 245.0]], [[162, 98], [192, 92], [184, 120], [158, 122]], [[97.1, 191.8], [80.2, 249.4], [182.8, 279.6], [197.5, 229.7]], [[260, 70], [320, 70], [320, 177], [268, 177]]], "fills": ["#eadfc0", "#eadfc0", "#eee5cb", "#eee5cb", "#f6f1de", "#fffef9"]}, {"id": "F1", "z": 9, "keys": [[[106, 167], [188, 167], [188, 230]], [[106, 167], [188, 167], [188, 230]], [[294.0, 167.0], [212.0, 167.0], [212.0, 230.0]], [[134, 74], [188, 74], [188, 126]], [[133.0, 70.0], [114.1, 134.3], [200.4, 159.7]], [[133, 70], [200, 70], [200, 160]]], "fills": ["#f7f1de", "#f7f1de", "#f3edda", "#f7f1de", "#f6f1de", "#fffef9"]}, {"id": "F3a", "z": 10, "keys": [[[195, 242], [278, 298], [170, 277]], [[195, 242], [278, 298], [170, 277]], [[205.0, 242.0], [122.0, 298.0], [230.0, 277.0]], [[194, 118], [248, 180], [176, 142]], [[199.8, 222.1], [182.8, 279.6], [199.1, 284.4]], [[260, 177], [320, 177], [320, 194]]], "fills": ["#f1e9d2", "#f1e9d2", "#eee5cb", "#f1e9d2", "#f6f1de", "#fffef9"]}, {"id": "F2b", "z": 11, "keys": [[[181, 167], [294, 167], [285, 298], [188, 230], [181, 223]], [[181, 167], [294, 167], [285, 298], [188, 230], [181, 223]], [[219.0, 167.0], [106.0, 167.0], [115.0, 298.0], [212.0, 230.0], [219.0, 223.0]], [[186, 74], [266, 74], [258, 180], [188, 126], [186, 122]], [[114.1, 134.3], [97.1, 191.8], [197.5, 229.7], [213.0, 177.0], [200.4, 159.7]], [[200, 70], [260, 70], [268, 177], [213, 177], [200, 160]]], "fills": ["#f7f1de", "#f7f1de", "#f3edda", "#f7f1de", "#f6f1de", "#fffef9"]}, {"id": "F3b", "z": 12, "keys": [[[238, 167], [294, 167], [294, 298], [278, 298], [245, 237]], [[238, 167], [294, 167], [294, 298], [278, 298], [245, 237]], [[162.0, 167.0], [106.0, 167.0], [106.0, 298.0], [122.0, 298.0], [155.0, 237.0]], [[220, 74], [266, 74], [266, 180], [248, 180], [224, 126]], [[213.0, 177.0], [199.8, 222.1], [199.1, 284.4], [284.5, 309.5], [292.4, 282.7]], [[213, 177], [260, 177], [320, 194], [320, 283], [292, 283]]], "fills": ["#f7f1de", "#f7f1de", "#f3edda", "#f7f1de", "#f6f1de", "#fffef9"]}]}, "pullhere": {"id": "pullhere", "box": [400, 460], "times": [0, 0.13, 0.32, 0.51, 0.68, 0.85, 1], "captions": ["See the diamond? The note tells you how to open it \u2014 tap it.", "The tucked points pop free\u2026", "The top third unfolds\u2026", "The bottom third unfolds \u2014 the long strip.", "The points lay back\u2026", "The sides open out\u2026", "The corners lay back \u2014 flat. Tap to fold it back."], "offsets": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "facets": [{"id": "CM", "z": 1, "keys": [[[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]], [[140, 177], [260, 177], [260, 283], [140, 283]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "CB", "z": 2, "keys": [[[140.0, 283.0], [260.0, 283.0], [260.0, 236.0], [200.0, 176.0], [140.0, 236.0]], [[140.0, 283.0], [260.0, 283.0], [260.0, 236.0], [200.0, 176.0], [140.0, 236.0]], [[140.0, 283.0], [260.0, 283.0], [260.0, 236.0], [200.0, 176.0], [140.0, 236.0]], [[140, 283], [260, 283], [260, 330], [200, 390], [140, 330]], [[140, 283], [260, 283], [260, 330], [200, 390], [140, 330]], [[140, 283], [260, 283], [260, 330], [200, 390], [140, 330]], [[140, 283], [260, 283], [260, 330], [200, 390], [140, 330]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "CT", "z": 3, "keys": [[[140.0, 224.0], [200.0, 284.0], [260.0, 224.0], [260.0, 177.0], [140.0, 177.0]], [[140.0, 224.0], [200.0, 284.0], [260.0, 224.0], [260.0, 177.0], [140.0, 177.0]], [[140, 70], [200, 70], [260, 70], [260, 177], [140, 177]], [[140, 70], [200, 70], [260, 70], [260, 177], [140, 177]], [[140, 70], [200, 70], [260, 70], [260, 177], [140, 177]], [[140, 130], [200, 70], [260, 130], [260, 177], [140, 177]], [[140, 130], [200, 70], [260, 130], [260, 177], [140, 177]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "Lmid", "z": 4, "keys": [[[200.0, 190.0], [140.0, 190.0], [140.0, 270.0], [200.0, 270.0]], [[200.0, 190.0], [140.0, 190.0], [140.0, 270.0], [200.0, 270.0]], [[200.0, 190.0], [140.0, 190.0], [140.0, 270.0], [200.0, 270.0]], [[200.0, 190.0], [140.0, 190.0], [140.0, 270.0], [200.0, 270.0]], [[200.0, 190.0], [140.0, 190.0], [140.0, 270.0], [200.0, 270.0]], [[80, 190], [140, 190], [140, 270], [80, 270]], [[80, 190], [140, 190], [140, 270], [80, 270]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "Rmid", "z": 5, "keys": [[[260.0, 190.0], [200.0, 190.0], [200.0, 270.0], [260.0, 270.0]], [[260.0, 190.0], [200.0, 190.0], [200.0, 270.0], [260.0, 270.0]], [[260.0, 190.0], [200.0, 190.0], [200.0, 270.0], [260.0, 270.0]], [[260.0, 190.0], [200.0, 190.0], [200.0, 270.0], [260.0, 270.0]], [[260.0, 190.0], [200.0, 190.0], [200.0, 270.0], [260.0, 270.0]], [[260, 190], [320, 190], [320, 270], [260, 270]], [[260, 190], [320, 190], [320, 270], [260, 270]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "L2a", "z": 6, "keys": [[[140.0, 224.0], [140.0, 164.0], [200.0, 164.0], [187.0, 177.0]], [[140.0, 224.0], [140.0, 164.0], [200.0, 164.0], [187.0, 177.0]], [[140, 130], [140, 190], [80, 190], [93, 177]], [[140, 130], [140, 190], [80, 190], [93, 177]], [[140, 130], [140, 190], [80, 190], [93, 177]], [[140, 130], [140, 190], [80, 190], [93, 177]], [[140, 130], [140, 190], [80, 190], [93, 177]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "L2b", "z": 7, "keys": [[[200.0, 177.0], [187.0, 177.0], [200.0, 190.0]], [[200.0, 177.0], [187.0, 177.0], [200.0, 190.0]], [[80, 177], [93, 177], [80, 190]], [[80, 177], [93, 177], [80, 190]], [[80, 177], [93, 177], [80, 190]], [[80, 177], [93, 177], [80, 190]], [[80, 177], [93, 177], [80, 190]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "R2a", "z": 8, "keys": [[[260.0, 224.0], [213.0, 177.0], [200.0, 164.0], [260.0, 164.0]], [[260.0, 224.0], [213.0, 177.0], [200.0, 164.0], [260.0, 164.0]], [[260, 130], [307, 177], [320, 190], [260, 190]], [[260, 130], [307, 177], [320, 190], [260, 190]], [[260, 130], [307, 177], [320, 190], [260, 190]], [[260, 130], [307, 177], [320, 190], [260, 190]], [[260, 130], [307, 177], [320, 190], [260, 190]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "R2b", "z": 9, "keys": [[[200.0, 177.0], [200.0, 190.0], [213.0, 177.0]], [[200.0, 177.0], [200.0, 190.0], [213.0, 177.0]], [[320, 177], [320, 190], [307, 177]], [[320, 177], [320, 190], [307, 177]], [[320, 177], [320, 190], [307, 177]], [[320, 177], [320, 190], [307, 177]], [[320, 177], [320, 190], [307, 177]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "L3a", "z": 10, "keys": [[[200.0, 296.0], [140.0, 296.0], [140.0, 236.0], [187.0, 283.0], [200.0, 283.0]], [[200.0, 296.0], [140.0, 296.0], [140.0, 236.0], [187.0, 283.0], [200.0, 283.0]], [[200.0, 296.0], [140.0, 296.0], [140.0, 236.0], [187.0, 283.0], [200.0, 283.0]], [[80, 270], [140, 270], [140, 330], [93, 283], [80, 283]], [[80, 270], [140, 270], [140, 330], [93, 283], [80, 283]], [[80, 270], [140, 270], [140, 330], [93, 283], [80, 283]], [[80, 270], [140, 270], [140, 330], [93, 283], [80, 283]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "L3b", "z": 11, "keys": [[[200.0, 270.0], [187.0, 283.0], [200.0, 283.0]], [[200.0, 270.0], [187.0, 283.0], [200.0, 283.0]], [[200.0, 270.0], [187.0, 283.0], [200.0, 283.0]], [[80, 270], [93, 283], [80, 283]], [[80, 270], [93, 283], [80, 283]], [[80, 270], [93, 283], [80, 283]], [[80, 270], [93, 283], [80, 283]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "R3a", "z": 12, "keys": [[[260.0, 296.0], [200.0, 296.0], [200.0, 283.0], [213.0, 283.0], [260.0, 236.0]], [[260.0, 296.0], [200.0, 296.0], [200.0, 283.0], [213.0, 283.0], [260.0, 236.0]], [[260.0, 296.0], [200.0, 296.0], [200.0, 283.0], [213.0, 283.0], [260.0, 236.0]], [[260, 270], [320, 270], [320, 283], [307, 283], [260, 330]], [[260, 270], [320, 270], [320, 283], [307, 283], [260, 330]], [[260, 270], [320, 270], [320, 283], [307, 283], [260, 330]], [[260, 270], [320, 270], [320, 283], [307, 283], [260, 330]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "R3b", "z": 13, "keys": [[[200.0, 270.0], [200.0, 283.0], [213.0, 283.0]], [[200.0, 270.0], [200.0, 283.0], [213.0, 283.0]], [[200.0, 270.0], [200.0, 283.0], [213.0, 283.0]], [[320, 270], [320, 283], [307, 283]], [[320, 270], [320, 283], [307, 283]], [[320, 270], [320, 283], [307, 283]], [[320, 270], [320, 283], [307, 283]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdfaf1", "#fdfaf1", "#fdfaf1", "#fffef9", "#fffef9"]}, {"id": "TL1", "z": 14, "keys": [[[80.0, 173.0], [80.0, 233.0], [140.0, 233.0], [200.0, 173.0]], [[80.0, 160.0], [80.0, 220.0], [140.0, 220.0], [200.0, 160.0]], [[80, 70], [140, 70], [140, 177], [80, 177]], [[80, 70], [140, 70], [140, 177], [80, 177]], [[80, 70], [140, 70], [140, 177], [80, 177]], [[200.0, 190.0], [200.0, 130.0], [140.0, 130.0], [80.0, 190.0]], [[80, 70], [140, 70], [140, 130], [80, 190]]], "fills": ["#f8f3e2", "#f8f3e2", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "TL2", "z": 15, "keys": [[[200.0, 233.0], [200.0, 293.0], [140.0, 233.0]], [[200.0, 220.0], [200.0, 280.0], [140.0, 220.0]], [[170, 86], [200, 70], [200, 102]], [[170, 86], [200, 70], [200, 102]], [[140, 70], [200, 70], [140, 130]], [[200.0, 130.0], [200.0, 70.0], [140.0, 130.0]], [[140, 70], [200, 70], [140, 130]]], "fills": ["#f8f3e2", "#f8f3e2", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "TR1", "z": 16, "keys": [[[320.0, 233.0], [320.0, 173.0], [200.0, 173.0], [260.0, 233.0]], [[320.0, 220.0], [320.0, 160.0], [200.0, 160.0], [260.0, 220.0]], [[260, 70], [320, 70], [320, 177], [260, 177]], [[260, 70], [320, 70], [320, 177], [260, 177]], [[260, 70], [320, 70], [320, 177], [260, 177]], [[200.0, 130.0], [200.0, 190.0], [320.0, 190.0], [260.0, 130.0]], [[260, 70], [320, 70], [320, 190], [260, 130]]], "fills": ["#f8f3e2", "#f8f3e2", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "TR2", "z": 17, "keys": [[[200.0, 293.0], [200.0, 233.0], [260.0, 233.0]], [[200.0, 280.0], [200.0, 220.0], [260.0, 220.0]], [[230, 86], [200, 102], [200, 70]], [[230, 86], [200, 102], [200, 70]], [[200, 70], [260, 70], [260, 130]], [[200.0, 70.0], [200.0, 130.0], [260.0, 130.0]], [[200, 70], [260, 70], [260, 130]]], "fills": ["#f8f3e2", "#f8f3e2", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "BL1", "z": 18, "keys": [[[200.0, 287.0], [140.0, 227.0], [80.0, 227.0], [80.0, 287.0]], [[200.0, 300.0], [140.0, 240.0], [80.0, 240.0], [80.0, 300.0]], [[200.0, 300.0], [140.0, 240.0], [80.0, 240.0], [80.0, 300.0]], [[80, 283], [140, 283], [140, 390], [80, 390]], [[80, 283], [140, 283], [140, 390], [80, 390]], [[80.0, 270.0], [140.0, 330.0], [200.0, 330.0], [200.0, 270.0]], [[80, 270], [140, 330], [140, 390], [80, 390]]], "fills": ["#f3edda", "#f3edda", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "BL2", "z": 19, "keys": [[[140.0, 227.0], [200.0, 167.0], [200.0, 227.0]], [[140.0, 240.0], [200.0, 180.0], [200.0, 240.0]], [[140.0, 240.0], [200.0, 180.0], [200.0, 240.0]], [[140, 330], [200, 390], [140, 390]], [[140, 330], [200, 390], [140, 390]], [[140.0, 330.0], [200.0, 390.0], [200.0, 330.0]], [[140, 330], [200, 390], [140, 390]]], "fills": ["#f3edda", "#f3edda", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "BR1", "z": 20, "keys": [[[260.0, 227.0], [200.0, 287.0], [320.0, 287.0], [320.0, 227.0]], [[260.0, 240.0], [200.0, 300.0], [320.0, 300.0], [320.0, 240.0]], [[260.0, 240.0], [200.0, 300.0], [320.0, 300.0], [320.0, 240.0]], [[260, 283], [320, 283], [320, 390], [260, 390]], [[260, 283], [320, 283], [320, 390], [260, 390]], [[260.0, 330.0], [320.0, 270.0], [200.0, 270.0], [200.0, 330.0]], [[260, 330], [320, 270], [320, 390], [260, 390]]], "fills": ["#f3edda", "#f3edda", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}, {"id": "BR2", "z": 21, "keys": [[[260.0, 227.0], [200.0, 167.0], [200.0, 227.0]], [[260.0, 240.0], [200.0, 180.0], [200.0, 240.0]], [[260.0, 240.0], [200.0, 180.0], [200.0, 240.0]], [[260, 330], [200, 390], [260, 390]], [[260, 330], [200, 390], [260, 390]], [[260.0, 330.0], [200.0, 390.0], [200.0, 330.0]], [[260, 330], [200, 390], [260, 390]]], "fills": ["#f3edda", "#f3edda", "#f6f1de", "#f6f1de", "#f6f1de", "#f7f1de", "#fffef9"]}]}, "heart": {"id": "heart", "box": [400, 460], "times": [0, 0.12, 0.3, 0.44, 0.62, 1], "captions": ["A heart, folded from a notebook sheet \u2014 tap to open it.", "The tucked points let go\u2026", "The bottom points drop\u2026", "Turn it over\u2026", "The bottom edge unfolds and the sides open out\u2026", "The squash pops open \u2014 flat. Tap to fold it back."], "offsets": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], "facets": [{"id": "SL1", "z": 1, "keys": [[[150, 262], [186, 262], [186, 290], [150, 290]], [[150, 262], [186, 262], [186, 290], [150, 290]], [[150, 262], [186, 262], [186, 290], [150, 290]], [[168, 318], [200, 318], [200, 352], [168, 352]], [[80, 310], [140, 310], [140, 350], [80, 350]], [[80.0, 310.0], [140.0, 310.0], [140.0, 350.0], [80.0, 350.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "SR1", "z": 1, "keys": [[[214, 262], [250, 262], [250, 290], [214, 290]], [[214, 262], [250, 262], [250, 290], [214, 290]], [[214, 262], [250, 262], [250, 290], [214, 290]], [[238, 262], [268, 262], [268, 290], [238, 290]], [[260, 310], [320, 310], [320, 350], [260, 350]], [[260.0, 310.0], [320.0, 310.0], [320.0, 350.0], [260.0, 350.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "SL2", "z": 2, "keys": [[[158, 290], [190, 290], [190, 312], [158, 312]], [[158, 290], [190, 290], [190, 312], [158, 312]], [[158, 290], [190, 290], [190, 312], [158, 312]], [[168, 352], [200, 352], [200, 386], [168, 386]], [[80, 350], [140, 350], [140, 390], [80, 390]], [[80.0, 350.0], [140.0, 350.0], [140.0, 390.0], [80.0, 390.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "SR2", "z": 2, "keys": [[[210, 290], [242, 290], [242, 312], [210, 312]], [[210, 290], [242, 290], [242, 312], [210, 312]], [[210, 290], [242, 290], [242, 312], [210, 312]], [[132, 262], [162, 262], [162, 290], [132, 290]], [[260, 350], [320, 350], [320, 390], [260, 390]], [[260.0, 350.0], [320.0, 350.0], [320.0, 390.0], [260.0, 390.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "SC1", "z": 3, "keys": [[[186, 262], [214, 262], [214, 290], [186, 290]], [[186, 262], [214, 262], [214, 290], [186, 290]], [[186, 262], [214, 262], [214, 290], [186, 290]], [[200, 318], [232, 318], [232, 352], [200, 352]], [[140, 310], [260, 310], [260, 350], [140, 350]], [[140.0, 310.0], [260.0, 310.0], [260.0, 350.0], [140.0, 350.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "t4", "z": 4, "keys": [[[304, 150], [300, 215], [200, 215]], [[304, 150], [300, 215], [200, 215]], [[304, 150], [300, 215], [200, 215]], [[96.0, 150.0], [100.0, 215.0], [200.0, 215.0]], [[304, 150], [300, 215], [200, 215]], [[320.0, 190.0], [320.0, 310.0], [200.0, 190.0]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdf8ec", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "t7", "z": 5, "keys": [[[100, 215], [96, 150], [200, 215]], [[100, 215], [96, 150], [200, 215]], [[100, 215], [96, 150], [200, 215]], [[300.0, 215.0], [304.0, 150.0], [200.0, 215.0]], [[100, 215], [96, 150], [200, 215]], [[80.0, 310.0], [80.0, 190.0], [200.0, 190.0]]], "fills": ["#fdf8ec", "#fdf8ec", "#fdf8ec", "#f6f1df", "#fffef9", "#fffef9"]}, {"id": "t5", "z": 6, "keys": [[[300, 215], [200, 332], [200, 215]], [[310, 220], [210, 337], [200, 215]], [[300, 215], [200, 356], [200, 215]], [[100.0, 215.0], [200.0, 356.0], [200.0, 215.0]], [[300, 215], [200, 356], [200, 215]], [[83.0, 74.0], [203.0, 74.0], [203.0, 194.0]]], "fills": ["#f8f3e2", "#f8f3e2", "#f8f3e2", "#f3edda", "#f6f1de", "#fffef9"]}, {"id": "t6", "z": 7, "keys": [[[200, 332], [100, 215], [200, 215]], [[190, 337], [90, 220], [200, 215]], [[200, 356], [100, 215], [200, 215]], [[200.0, 356.0], [300.0, 215.0], [200.0, 215.0]], [[200, 356], [100, 215], [200, 215]], [[197.0, 74.0], [317.0, 74.0], [197.0, 194.0]]], "fills": ["#f8f3e2", "#f8f3e2", "#f8f3e2", "#f3edda", "#f6f1de", "#fffef9"]}, {"id": "t3", "z": 8, "keys": [[[260, 112], [304, 150], [200, 215]], [[260, 112], [304, 150], [200, 215]], [[260, 112], [304, 150], [200, 215]], [[140.0, 112.0], [96.0, 150.0], [200.0, 215.0]], [[260, 112], [304, 150], [200, 215]], [[320.0, 70.0], [320.0, 190.0], [200.0, 190.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#f6f1de", "#fffef9"]}, {"id": "t8", "z": 9, "keys": [[[96, 150], [140, 112], [200, 215]], [[96, 150], [140, 112], [200, 215]], [[96, 150], [140, 112], [200, 215]], [[304.0, 150.0], [260.0, 112.0], [200.0, 215.0]], [[96, 150], [140, 112], [200, 215]], [[80.0, 190.0], [80.0, 70.0], [200.0, 190.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#f6f1de", "#fffef9"]}, {"id": "t1", "z": 10, "keys": [[[140, 112], [200, 150], [200, 215]], [[140, 112], [200, 150], [200, 215]], [[140, 112], [200, 140], [200, 215]], [[260.0, 112.0], [200.0, 140.0], [200.0, 215.0]], [[140, 112], [200, 140], [200, 215]], [[80.0, 70.0], [200.0, 70.0], [200.0, 190.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#f6f1de", "#fffef9"]}, {"id": "t2", "z": 11, "keys": [[[200, 150], [260, 112], [200, 215]], [[200, 150], [260, 112], [200, 215]], [[200, 140], [260, 112], [200, 215]], [[200.0, 140.0], [140.0, 112.0], [200.0, 215.0]], [[200, 140], [260, 112], [200, 215]], [[200.0, 70.0], [320.0, 70.0], [200.0, 190.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#f6f1de", "#fffef9"]}, {"id": "SC2", "z": 12, "keys": [[[186, 296], [214, 296], [200, 330], [200, 330]], [[186, 296], [214, 296], [200, 330], [200, 330]], [[188, 318], [212, 318], [200, 354], [200, 354]], [[200, 352], [232, 352], [232, 386], [200, 386]], [[140, 350], [260, 350], [260, 390], [140, 390]], [[140.0, 350.0], [260.0, 350.0], [260.0, 390.0], [140.0, 390.0]]], "fills": ["#fdfaf1", "#fdfaf1", "#fdfaf1", "#f6f1df", "#fffef9", "#fffef9"]}]}, "balloon": {"id": "balloon", "box": [400, 400], "times": [0, 0.45, 1], "captions": ["A flat packet. Tap it \u2014 it pops to life.", "The flaps untuck, the corners spread\u2026", "The waterbomb opens \u2014 flat. Tap to fold it back."], "offsets": [[0, -6], [0, 0], [0, 0]], "facets": [{"id": "T5", "z": 1, "keys": [[[228, 270], [200, 322], [200, 215]], [[273.8, 295.9], [200.0, 323.8], [200.0, 207.7]], [[310, 310], [200, 310], [200, 200]]], "fills": ["L0.22", "L0.45", "W"]}, {"id": "T6", "z": 2, "keys": [[[200, 322], [172, 270], [200, 215]], [[200.0, 323.8], [126.2, 295.9], [200.0, 207.7]], [[200, 310], [90, 310], [200, 200]]], "fills": ["L0.08", "L0.40", "W"]}, {"id": "T4", "z": 3, "keys": [[[252, 215], [228, 270], [200, 215]], [[286.7, 207.7], [273.8, 295.9], [200.0, 207.7]], [[310, 200], [310, 310], [200, 200]]], "fills": ["L0.02", "L0.40", "W"]}, {"id": "T7", "z": 4, "keys": [[[172, 270], [148, 215], [200, 215]], [[126.2, 295.9], [113.3, 207.7], [200.0, 207.7]], [[90, 310], [90, 200], [200, 200]]], "fills": ["L0.26", "L0.45", "W"]}, {"id": "T3", "z": 5, "keys": [[[228, 160], [252, 215], [200, 215]], [[273.8, 119.4], [286.7, 207.7], [200.0, 207.7]], [[310, 90], [310, 200], [200, 200]]], "fills": ["L0.30", "L0.45", "W"]}, {"id": "T8", "z": 6, "keys": [[[148, 215], [172, 160], [200, 215]], [[113.3, 207.7], [126.2, 119.4], [200.0, 207.7]], [[90, 200], [90, 90], [200, 200]]], "fills": ["L0.12", "L0.40", "W"]}, {"id": "T2", "z": 7, "keys": [[[200, 118], [228, 160], [200, 215]], [[200.0, 96.9], [273.8, 119.4], [200.0, 207.7]], [[200, 90], [310, 90], [200, 200]]], "fills": ["L0.18", "L0.40", "W"]}, {"id": "T1", "z": 8, "keys": [[[172, 160], [200, 118], [200, 215]], [[126.2, 119.4], [200.0, 96.9], [200.0, 207.7]], [[90, 90], [200, 90], [200, 200]]], "fills": ["L0.34", "L0.45", "W"]}, {"id": "HOLE", "z": 20, "keys": [[[192, 306], [208, 306], [200, 322]], [[200, 322], [200, 322], [200, 322]], [[200, 322], [200, 322], [200, 322]]], "fills": ["L-9.00", "L-9.00", "W"]}]}};
+var q = new URLSearchParams(location.search);
+function clamp(s, n){ s = (s == null ? "" : String(s)); return s.length > n ? s.slice(0, n) : s; }
+
+var DEMOS = {
+  writetuck: { body:"Psst — this is the real one. Corner tucked, passed hand to hand, just like junior high.\nDon’t let the teacher see it." },
+  pullhere:  { body:"You pulled the tab — that’s the whole trick. The note tells you how to open it.\nNow it’s yours." },
+  heart:     { body:"Folded into a heart, the way we used to.\nEvery crease in it is a real one — count them on the way open." },
+  balloon:   { body:"A little surprise, folded round.\nIt pops to life — then it opens, and it’s a note after all." }
+};
+var TO = clamp(q.get("to") || "Friend", 40);
+var FROM = clamp(q.get("from") || "Me", 40);
+var BODY = clamp(q.get("body") || "", 280);
+
+/* origami papers (crane preview palette + friends) */
+var PAPERS = { white:"#f2ecdc", blue:"#6aa9e8", green:"#69b96f", rose:"#f191a7",
+               yellow:"#f2c14e", lilac:"#9a7fd0", orange:"#f09a56" };
+var paperName = (q.get("color") || "rose").toLowerCase();
+if (!PAPERS[paperName]) paperName = "rose";
+
+function hexRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function rgbHex(r,g,b){ function c(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?"0":"")+v.toString(16); } return "#"+c(r)+c(g)+c(b); }
+function shadeHex(h, amt){ var rgb = hexRgb(h), t = amt < 0 ? 0 : 255, p = Math.abs(amt);
+  return rgbHex(rgb[0]+(t-rgb[0])*p, rgb[1]+(t-rgb[1])*p, rgb[2]+(t-rgb[2])*p); }
+function lerp(a,b,p){ return a+(b-a)*p; }
+function lerpColor(c1, c2, p){ var a=hexRgb(c1), b=hexRgb(c2);
+  return rgbHex(lerp(a[0],b[0],p), lerp(a[1],b[1],p), lerp(a[2],b[2],p)); }
+function smooth(p){ return p<=0?0:p>=1?1:p*p*(3-2*p); }
+function easeIO(p){ return p<.5 ? 4*p*p*p : 1-Math.pow(-2*p+2,3)/2; }
+var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ------------ per-fold stage layout (percent of stage box) ------------ */
+var LAYOUT = {
+  writetuck: { words:{l:20, t:15.2, w:60, h:69.6}, label:{l:50, t:56.5}, pull:null },
+  pullhere:  { words:{l:20, t:15.2, w:60, h:69.6}, label:{l:50, t:58.5}, pull:{l:50, t:48.9} },
+  heart:     { words:{l:20, t:15.2, w:60, h:69.6}, label:{l:50, t:63}, pull:null },
+  balloon:   { words:{l:22.5, t:22.5, w:55, h:55}, label:{l:50, t:76}, pull:null }
+};
+/* crease patterns + ruled lines shown on the flat sheet */
+var CREASES = {
+  writetuck: ["M133,70 L320,320", "M200,70 L200,390", "M80,177 L320,177", "M80,283 L320,283"],
+  pullhere:  ["M80,190 L200,70", "M320,190 L200,70", "M80,270 L200,390", "M320,270 L200,390",
+              "M140,70 L140,390", "M260,70 L260,390", "M80,177 L320,177", "M80,283 L320,283"],
+  heart:     ["M80,70 L320,310", "M320,70 L80,310", "M200,70 L200,310", "M80,190 L320,190",
+              "M80,310 L320,310", "M140,310 L140,390", "M260,310 L260,390", "M80,350 L320,350"],
+  balloon:   ["M90,90 L310,310", "M310,90 L90,310", "M200,90 L200,310", "M90,200 L310,200"]
+};
+
+/* ------------ note instance ------------ */
+var wrap = document.getElementById("noteWrap");
+var captionEl = document.getElementById("caption");
+var dotsEl = document.getElementById("dots");
+var cur = null;   // current note instance
+
+function fillTrack(spec, baseHex){
+  /* spec: "#hex" | "W" (reading white) | "L<lvl>" shade-of-base */
+  if (spec === "W") return "#fffef9";
+  if (spec.charAt(0) === "L") return shadeHex(baseHex, parseFloat(spec.slice(1)));
+  return spec;
+}
+
+function buildNote(fid){
+  var fold = DATA[fid];
+  var W = fold.box[0], H = fold.box[1];
+  var size = Math.min(window.innerWidth * 0.94, (window.innerHeight - 190) * (W / H), W * 1.35);
+  var isBal = fid === "balloon";
+  var baseHex = isBal ? PAPERS[paperName] : "#ffffff";
+
+  var html = "";
+  html += '<svg class="note" width="' + size + '" height="' + (size * H / W) + '" viewBox="0 0 ' + W + ' ' + H + '">';
+  html += '<g id="noteG">';
+  fold.facets.forEach(function(f){
+    html += '<polygon class="fac" data-id="' + f.id + '" points=""/>';
+  });
+  html += '</g>';
+  /* flat-state dressing: ruled lines (notebook) + crease marks */
+  html += '<g id="dress" opacity="0">';
+  if (!isBal){
+    for (var y = 104; y <= 372; y += 26)
+      html += '<line x1="88" y1="' + y + '" x2="312" y2="' + y + '" stroke="#b9c8e8" stroke-width="1.4" opacity=".55"/>';
+    html += '<line x1="102" y1="76" x2="102" y2="384" stroke="#e8a0a0" stroke-width="1.4" opacity=".6"/>';
+  }
+  (CREASES[fid] || []).forEach(function(d){
+    html += '<path d="' + d + '" stroke="rgba(96,78,45,.28)" stroke-width="1" fill="none"/>';
+  });
+  html += '</g>';
+  if (isBal){
+    html += '<g id="balloonG" opacity="0" style="transform-origin:200px 208px;">'
+      + '<ellipse cx="200" cy="322" rx="64" ry="11" fill="rgba(60,40,10,.20)"/>'
+      + '<path id="baBody" d="M200,116 C246,116 270,158 270,206 C270,256 241,294 200,294 C159,294 130,256 130,206 C130,158 154,116 200,116 Z"/>'
+      + '<path id="baTop" d="M200,116 C231,116 254,139 264,166 C236,150 164,150 136,166 C146,139 169,116 200,116 Z"/>'
+      + '<path d="M136,166 C164,150 236,150 264,166" stroke="rgba(70,45,20,.35)" stroke-width="1.4" fill="none"/>'
+      + '<path d="M200,116 L200,294 M130,206 L270,206" stroke="rgba(70,45,20,.22)" stroke-width="1.2" fill="none"/>'
+      + '<path d="M200,206 L152,146 M200,206 L248,146 M200,206 L150,262 M200,206 L250,262" stroke="rgba(70,45,20,.16)" stroke-width="1.1" fill="none"/>'
+      + '<ellipse cx="167" cy="158" rx="15" ry="25" fill="rgba(255,255,255,.38)" transform="rotate(-18 167 158)"/>'
+      + '<polygon points="192,288 208,288 200,302" fill="rgba(50,32,14,.55)"/>'
+      + '</g>';
+  }
+  html += '</svg>';
+  var lay = LAYOUT[fid];
+  html += '<div id="words" style="left:' + lay.words.l + '%;top:' + lay.words.t + '%;width:' + lay.words.w + '%;height:' + lay.words.h + '%;">'
+    + '<div class="wto">To: ' + esc(TO) + '</div>'
+    + '<div class="wbody">' + esc(BODY || DEMOS[fid].body) + '</div>'
+    + '<div class="wfrom">— ' + esc(FROM) + '</div></div>';
+  html += '<div id="forLabel" style="left:' + lay.label.l + '%;top:' + lay.label.t + '%;">For ' + esc(TO) + ' <span class="heart">♥</span></div>';
+  if (lay.pull)
+    html += '<div id="pullMark" style="left:' + lay.pull.l + '%;top:' + lay.pull.t + '%;font-size:clamp(14px,2.6vmin,21px);">♥<span class="arr">↓</span></div>';
+  wrap.innerHTML = html;
+
+  var svgG = wrap.querySelector("#noteG");
+  var polys = {};
+  wrap.querySelectorAll(".fac").forEach(function(p){ polys[p.getAttribute("data-id")] = p; });
+  /* resolve fill tracks to hex */
+  fold.facets.forEach(function(f){
+    f._fills = f.fills.map(function(s){ return fillTrack(s, baseHex); });
+  });
+  if (isBal) paintBalloon();
+
+  var inst = { fid: fid, fold: fold, t: 0, state: "closed", anim: null,
+               polys: polys, svgG: svgG,
+               words: wrap.querySelector("#words"),
+               label: wrap.querySelector("#forLabel"),
+               pull: wrap.querySelector("#pullMark"),
+               dress: wrap.querySelector("#dress"),
+               balloonG: wrap.querySelector("#balloonG") };
+  wrap.classList.add("idle");
+  pose(inst, 0);
+  captionEl.textContent = fold.captions[0];
+  dotsEl.classList.toggle("on", isBal);
+  return inst;
+}
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+function paintBalloon(){
+  var b = wrap.querySelector("#baBody"), t = wrap.querySelector("#baTop");
+  if (b) b.setAttribute("fill", shadeHex(PAPERS[paperName], .06));
+  if (t) t.setAttribute("fill", shadeHex(PAPERS[paperName], .34));
+}
+
+function pose(inst, t){
+  inst.t = t;
+  var fold = inst.fold, times = fold.times, K = times.length;
+  /* find segment */
+  var seg = K - 2;
+  for (var i = 0; i < K - 1; i++){ if (t <= times[i + 1]){ seg = i; break; } }
+  var a = times[seg], b = times[seg + 1];
+  var p = b > a ? smooth(Math.max(0, Math.min(1, (t - a) / (b - a)))) : 1;
+  var off = [lerp(fold.offsets[seg][0], fold.offsets[seg + 1][0], p),
+             lerp(fold.offsets[seg][1], fold.offsets[seg + 1][1], p)];
+  inst.svgG.setAttribute("transform", "translate(" + off[0].toFixed(1) + "," + off[1].toFixed(1) + ")");
+  fold.facets.forEach(function(f){
+    var k0 = f.keys[seg], k1 = f.keys[seg + 1], out = [];
+    for (var j = 0; j < k0.length; j++)
+      out.push(lerp(k0[j][0], k1[j][0], p).toFixed(1) + "," + lerp(k0[j][1], k1[j][1], p).toFixed(1));
+    var el = inst.polys[f.id];
+    el.setAttribute("points", out.join(" "));
+    el.setAttribute("fill", lerpColor(f._fills[seg], f._fills[seg + 1], p));
+  });
+  var flat = smooth((t - times[K - 2]) / (1 - times[K - 2]));
+  inst.words.style.opacity = flat.toFixed(3);
+  inst.dress.setAttribute("opacity", (flat * .9).toFixed(3));
+  inst.label.style.opacity = (1 - smooth(t / .12)).toFixed(3);
+  if (inst.pull) inst.pull.style.opacity = (1 - smooth(t / .10)).toFixed(3);
+  return seg;
+}
+
+function setCaption(inst, idx){ captionEl.textContent = inst.fold.captions[Math.max(0, Math.min(inst.fold.captions.length - 1, idx))]; }
+
+function tween(inst, toT, dur, done){
+  if (inst.anim) cancelAnimationFrame(inst.anim);
+  var fromT = inst.t, t0 = performance.now();
+  wrap.classList.remove("idle");
+  function frame(now){
+    var p = dur <= 0 ? 1 : Math.min(1, (now - t0) / dur);
+    var seg = pose(inst, lerp(fromT, toT, easeIO(p)));
+    setCaption(inst, toT > fromT ? seg + 1 : seg);
+    if (p < 1) inst.anim = requestAnimationFrame(frame);
+    else { inst.anim = null; if (done) done(); }
+  }
+  inst.anim = requestAnimationFrame(frame);
+}
+
+function openNote(inst){
+  if (inst.state !== "closed") return;
+  if (inst.fid === "balloon"){ inflate(inst); return; }
+  inst.state = "opening";
+  tween(inst, 1, REDUCED ? 1 : 3200, function(){
+    inst.state = "open"; setCaption(inst, inst.fold.captions.length - 1);
+  });
+}
+function closeNote(inst){
+  if (inst.state !== "open") return;
+  inst.state = "closing";
+  tween(inst, 0, REDUCED ? 1 : 2900, function(){
+    inst.state = "closed"; setCaption(inst, 0); wrap.classList.add("idle");
+  });
+}
+/* balloon: inflate / deflate around the same pose track */
+function inflate(inst){
+  inst.state = "inflating";
+  var g = inst.balloonG, t0 = performance.now(), dur = REDUCED ? 1 : 780;
+  captionEl.textContent = "It inflates — a paper balloon!";
+  (function frame(now){
+    var p = Math.min(1, (now - t0) / dur);
+    var s = p < .55 ? lerp(.55, 1.06, easeIO(p / .55)) : lerp(1.06, 1, smooth((p - .55) / .45));
+    g.setAttribute("opacity", Math.min(1, p * 1.6).toFixed(2));
+    g.style.transform = "scale(" + s.toFixed(3) + ")";
+    inst.svgG.style.opacity = (1 - p).toFixed(2);
+    inst.label.style.opacity = (1 - p).toFixed(2);
+    if (p < 1) inst.anim = requestAnimationFrame(frame);
+    else { inst.anim = null; inst.state = "inflated"; captionEl.textContent = "Tap again — let the air out and open it."; }
+  })(t0);
+}
+function deflateThenOpen(inst){
+  inst.state = "deflating";
+  var g = inst.balloonG, t0 = performance.now(), dur = REDUCED ? 1 : 430;
+  (function frame(now){
+    var p = Math.min(1, (now - t0) / dur);
+    g.setAttribute("opacity", (1 - p).toFixed(2));
+    g.style.transform = "scale(" + lerp(1, .8, p).toFixed(3) + ")";
+    inst.svgG.style.opacity = p.toFixed(2);
+    if (p < 1) inst.anim = requestAnimationFrame(frame);
+    else {
+      inst.anim = null; inst.state = "opening";
+      tween(inst, 1, REDUCED ? 1 : 2600, function(){
+        inst.state = "open"; setCaption(inst, inst.fold.captions.length - 1);
+      });
+    }
+  })(t0);
+}
+
+document.getElementById("tapzone").addEventListener("click", function(){
+  if (!cur) return;
+  if (cur.state === "closed") openNote(cur);
+  else if (cur.state === "open") closeNote(cur);
+  else if (cur.state === "inflated") deflateThenOpen(cur);
+});
+
+/* tabs */
+document.querySelectorAll("#tabs button").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    document.querySelectorAll("#tabs button").forEach(function(b){ b.classList.remove("on"); });
+    btn.classList.add("on");
+    cur = buildNote(btn.getAttribute("data-fold"));
+  });
+});
+/* color dots */
+Object.keys(PAPERS).forEach(function(name){
+  var b = document.createElement("button");
+  b.style.background = PAPERS[name];
+  b.title = name;
+  if (name === paperName) b.classList.add("on");
+  b.addEventListener("click", function(){
+    paperName = name;
+    dotsEl.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    if (cur && cur.fid === "balloon") cur = buildNote("balloon");
+  });
+  dotsEl.appendChild(b);
+});
+
+window.addEventListener("resize", function(){ if (cur) cur = buildNote(cur.fid); });
+var startFold = DATA[q.get("fold")] ? q.get("fold") : "writetuck";
+document.querySelectorAll("#tabs button").forEach(function(b){
+  b.classList.toggle("on", b.getAttribute("data-fold") === startFold);
+});
+cur = buildNote(startFold);
+</script>
+</body>
+</html>
