@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Ready Beach — A Living Photo</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#000; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#e8e2d4;
+         -webkit-font-smoothing:antialiased; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+         padding:34px 18px 30px; }
+  h1 { font-size:clamp(28px, 4.5vw, 44px); font-weight:normal; letter-spacing:.14em;
+       text-transform:uppercase; color:#f2ead6; text-align:center; }
+  .statement { margin-top:8px; font-style:italic; font-size:clamp(14px, 2vw, 18px);
+               color:#b9b09a; text-align:center; }
+  .stage { position:relative; width:min(1120px, 100%); margin-top:26px;
+           aspect-ratio: 1920 / 1088; cursor:pointer; background:#000;
+           box-shadow: 0 18px 60px rgba(0,0,0,.65); }
+  .stage img { position:absolute; inset:0; width:100%; height:100%;
+               object-fit:contain; display:block; }
+  .stage img.acc { inset:auto; object-fit:fill; }
+  .controls { margin-top:22px; display:flex; justify-content:center; }
+  button { font-family:inherit; cursor:pointer; background:transparent;
+           color:#e8e2d4; border:1px solid #8a7f63; letter-spacing:.12em; }
+  #ignite { font-size:17px; padding:13px 34px; border-radius:999px;
+            text-transform:uppercase; }
+  #ignite:hover { background:#1c1a14; }
+  .toggle { display:none; border:1px solid #8a7f63; border-radius:999px; overflow:hidden; }
+  .toggle button { border:none; font-size:15px; padding:11px 30px;
+                   text-transform:uppercase; background:transparent; }
+  .toggle button.on { background:#e8e2d4; color:#141310; }
+  footer { padding:26px 18px 40px; text-align:center; font-size:14px; color:#8f887a; }
+  footer a { color:#b9b09a; }
+  #fs { position:fixed; inset:0; background:#000; display:none; z-index:50; cursor:pointer; }
+  #fs .wrap { position:absolute; inset:0; }
+  #fs img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }
+  #fs img.acc { inset:auto; object-fit:fill; }
+</style>
+
+<style id="lp-fsbar-css">
+#fsBar{position:absolute;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 12px;background:rgba(8,8,10,.72)}
+#fsBar button{font-size:14px;padding:9px 22px;border-radius:999px;cursor:pointer}
+#fsBar .x{padding:9px 16px}
+#fs.lp-wallnb #fsBar{display:none}
+</style>
+
+<style id="lp-hdr-css">
+.lp-pagenav{position:fixed;top:0;left:0;right:0;z-index:9000;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;padding:7px 10px;background:rgba(10,10,12,.88);backdrop-filter:blur(6px);font-family:Georgia,'Times New Roman',serif}
+.lp-pagenav.lp-flow{position:sticky}
+body.lp-bpad{padding-top:108px;box-sizing:border-box}
+@media (min-width:700px){body.lp-bpad{padding-top:56px}}
+.lp-pagenav a,.lp-pagenav button{color:#e8e2d4;text-decoration:none;font-size:13.5px;padding:6px 11px;border-radius:999px;border:1px solid rgba(232,226,212,.35);background:transparent;cursor:pointer;font-family:inherit;line-height:1.2}
+.lp-pagenav a:hover,.lp-pagenav button:hover{border-color:#e8e2d4}
+.lp-pagenav .lp-brand{font-weight:bold;border-color:transparent}
+#lpQrPanel{position:fixed;top:52px;right:10px;z-index:9001;background:#fdfaf2;color:#14120e;border-radius:14px;padding:14px 16px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.55);font-family:Georgia,serif}
+#lpQrPanel svg{width:148px;height:148px;display:block;margin:0 auto 8px}
+#lpQrPanel p{margin:2px 0;font-size:12.5px;word-break:break-all;max-width:190px}
+#lpQrPanel .lp-qrt{font-size:13.5px;font-weight:bold}
+#lpQrClose{position:absolute;top:4px;right:9px;border:0;background:transparent;font-size:19px;cursor:pointer;color:#14120e}
+html.lp-light body{background:#f2ecdd!important;color:#1c1a16!important}
+html.lp-light h1,html.lp-light .statement,html.lp-light #titlebar,html.lp-light #titlebar p,html.lp-light footer{color:#1c1a16!important}
+html.lp-light footer a,html.lp-light main a{color:#0b5a56!important}
+html.lp-embed .lp-pagenav,html.lp-embed #lpQrPanel{display:none!important}
+html.lp-embed #fsBar{display:none!important}
+#lpFsBar{position:fixed;left:0;right:0;bottom:0;z-index:9500;display:none;align-items:center;justify-content:center;gap:14px;padding:14px 12px;background:rgba(8,8,10,.78);font-family:Georgia,serif}
+body.lp-infs #lpFsBar{display:flex}
+#lpFsBar button,.lp-pair button{font-size:14px;padding:9px 22px;border-radius:999px;cursor:pointer;font-family:inherit}
+#lpFsBar button.on,.lp-pair button.on{outline:2px solid #ffd166}
+#lpFsBar .x{padding:9px 16px}
+.lp-pair{display:inline-flex;gap:8px;margin-left:8px}
+</style>
+</head>
+<body>
+<nav class="lp-pagenav lp-flow" aria-label="Living Photos pages">
+<a class="lp-brand" href="https://thelivingphotos.com/" data-lp-en="Living Photos" data-lp-es="Fotos Vivientes">Living Photos</a>
+<a href="https://thelivingphotos.com/theater.html" data-lp-en="The Theater" data-lp-es="El Teatro">The Theater</a>
+<a href="https://thelivingphotos.com/envelopes.html" data-lp-en="Cards &amp; Envelopes" data-lp-es="Tarjetas y Sobres">Cards &amp; Envelopes</a>
+<a href="https://thelivingphotos.com/envelopes.html#notes" data-lp-en="Living Notes" data-lp-es="Notas Vivientes">Living Notes</a>
+<button type="button" id="lpLang">Espa&ntilde;ol</button>
+<button type="button" id="lpDark" aria-pressed="true" data-lp-en="Dark" data-lp-es="Oscuro">Dark</button>
+<button type="button" id="lpQr" aria-pressed="false">&#9646; QR</button>
+</nav>
+<div id="lpQrPanel" hidden>
+<button id="lpQrClose" type="button" aria-label="Close">&times;</button>
+<svg xmlns="http://www.w3.org/2000/svg" width="165" height="165" class="segno"><g transform="scale(5)"><path fill="#fff" d="M0 0h33v33h-33z"/><path class="qrline" stroke="#14120e" d="M2 2.5h7M10 2.5h1M13 2.5h4M19 2.5h2M24 2.5h7M2 3.5h1M8 3.5h1M10 3.5h3M14 3.5h1M18 3.5h2M22 3.5h1M24 3.5h1M30 3.5h1M2 4.5h1M4 4.5h3M8 4.5h1M12 4.5h4M17 4.5h1M19 4.5h3M24 4.5h1M26 4.5h3M30 4.5h1M2 5.5h1M4 5.5h3M8 5.5h1M12 5.5h1M15 5.5h2M19 5.5h1M22 5.5h1M24 5.5h1M26 5.5h3M30 5.5h1M2 6.5h1M4 6.5h3M8 6.5h1M10 6.5h4M15 6.5h2M20 6.5h1M24 6.5h1M26 6.5h3M30 6.5h1M2 7.5h1M8 7.5h1M10 7.5h1M13 7.5h1M16 7.5h1M19 7.5h2M24 7.5h1M30 7.5h1M2 8.5h7M10 8.5h1M12 8.5h1M14 8.5h1M16 8.5h1M18 8.5h1M20 8.5h1M22 8.5h1M24 8.5h7M10 9.5h1M12 9.5h3M17 9.5h1M2 10.5h3M7 10.5h2M10 10.5h3M17 10.5h1M22 10.5h5M29 10.5h2M2 11.5h1M5 11.5h3M10 11.5h3M15 11.5h5M21 11.5h2M24 11.5h2M29 11.5h2M3 12.5h2M8 12.5h3M13 12.5h1M15 12.5h3M19 12.5h4M26 12.5h3M30 12.5h1M3 13.5h2M6 13.5h2M9 13.5h3M16 13.5h1M18 13.5h1M20 13.5h1M22 13.5h6M4 14.5h5M11 14.5h1M13 14.5h2M16 14.5h1M18 14.5h1M21 14.5h1M24 14.5h2M30 14.5h1M2 15.5h1M5 15.5h1M10 15.5h1M14 15.5h2M17 15.5h1M19 15.5h1M21 15.5h2M24 15.5h2M29 15.5h2M2 16.5h1M5 16.5h1M7 16.5h3M11 16.5h1M14 16.5h2M17 16.5h1M21 16.5h1M26 16.5h1M30 16.5h1M2 17.5h2M5 17.5h1M7 17.5h1M11 17.5h1M13 17.5h2M16 17.5h1M18 17.5h1M20 17.5h1M24 17.5h2M2 18.5h2M5 18.5h1M7 18.5h2M10 18.5h1M12 18.5h1M14 18.5h1M17 18.5h2M20 18.5h1M22 18.5h1M24 18.5h2M30 18.5h1M4 19.5h3M9 19.5h4M17 19.5h3M21 19.5h2M24 19.5h2M28 19.5h3M2 20.5h2M8 20.5h1M11 20.5h3M16 20.5h3M21 20.5h1M24 20.5h1M26 20.5h2M30 20.5h1M4 21.5h4M10 21.5h1M12 21.5h3M17 21.5h1M20 21.5h3M25 21.5h1M2 22.5h2M5 22.5h2M8 22.5h4M14 22.5h1M17 22.5h1M21 22.5h7M29 22.5h1M10 23.5h1M12 23.5h2M17 23.5h2M22 23.5h1M26 23.5h3M30 23.5h1M2 24.5h7M11 24.5h5M17 24.5h1M22 24.5h1M24 24.5h1M26 24.5h1M30 24.5h1M2 25.5h1M8 25.5h1M10 25.5h2M16 25.5h1M18 25.5h1M21 25.5h2M26 25.5h1M30 25.5h1M2 26.5h1M4 26.5h3M8 26.5h1M11 26.5h2M14 26.5h1M17 26.5h1M21 26.5h7M2 27.5h1M4 27.5h3M8 27.5h1M11 27.5h1M13 27.5h2M17 27.5h2M20 27.5h1M22 27.5h2M26 27.5h3M30 27.5h1M2 28.5h1M4 28.5h3M8 28.5h1M10 28.5h2M13 28.5h1M15 28.5h5M23 28.5h1M26 28.5h1M29 28.5h2M2 29.5h1M8 29.5h1M10 29.5h1M13 29.5h1M16 29.5h1M18 29.5h1M20 29.5h1M22 29.5h1M25 29.5h3M2 30.5h7M10 30.5h5M17 30.5h1M21 30.5h2M26 30.5h2M30 30.5h1"/></g></svg>
+<p class="lp-qrt" data-lp-en="Scan to open this page" data-lp-es="Escanea para abrir esta p&aacute;gina">Scan to open this page</p>
+<p>https://geemondc.github.io/future-ready-beach/</p>
+</div>
+<script id="lp-hdr-js">
+(function(){
+  "use strict";
+  
+  if (/(^|[#&])(wall|embed)/.test(location.hash || '')) document.documentElement.classList.add('lp-embed');
+  var ES = {'ignite':'\u2726 Dale vida','btnStill':'Still','fsStill':'Still','lpStill':'Still','lpFsStill':'Still','btnLiving':'Living','fsLiving':'Living','lpLiving':'Living','lpFsLiving':'Living'};
+  var ESVAL = {'Still':'Quieta','Living':'Viva','STILL':'QUIETA','LIVING':'VIVA','\u2726 Bring it to life':'\u2726 Dale vida'};
+  var lang = 'en';
+  function swap(id, toEs){
+    var el = document.getElementById(id); if (!el) return;
+    if (el.dataset.lpOrig === undefined) el.dataset.lpOrig = el.textContent;
+    var orig = el.dataset.lpOrig;
+    el.textContent = toEs ? (ESVAL[orig] || orig) : orig;
+  }
+  function setLang(l){
+    lang = l;
+    document.querySelectorAll('[data-lp-en]').forEach(function(el){ el.textContent = (l === 'es') ? el.dataset.lpEs : el.dataset.lpEn; });
+    ['ignite','btnStill','btnLiving','fsStill','fsLiving','lpStill','lpLiving','lpFsStill','lpFsLiving'].forEach(function(id){ swap(id, l === 'es'); });
+    document.getElementById('lpLang').textContent = (l === 'es') ? 'English' : 'Espa\u00f1ol';
+  }
+  document.getElementById('lpLang').addEventListener('click', function(){ setLang(lang === 'en' ? 'es' : 'en'); });
+  var dk = document.getElementById('lpDark');
+  dk.addEventListener('click', function(){
+    var light = document.documentElement.classList.toggle('lp-light');
+    dk.setAttribute('aria-pressed', light ? 'false' : 'true');
+  });
+  var qb = document.getElementById('lpQr'), panel = document.getElementById('lpQrPanel');
+  qb.addEventListener('click', function(){
+    var show = panel.hidden; panel.hidden = !show;
+    qb.setAttribute('aria-pressed', show ? 'true' : 'false');
+  });
+  document.getElementById('lpQrClose').addEventListener('click', function(){ panel.hidden = true; qb.setAttribute('aria-pressed','false'); });
+  document.addEventListener('fullscreenchange', function(){
+    document.body.classList.toggle('lp-infs', !!document.fullscreenElement);
+  });
+})();
+</script>
+
+<main>
+  <h1>Future Ready Beach</h1>
+  <div class="statement">Palms and cafés along the shore</div>
+
+  <div class="stage" id="stage" title="Tap for full screen">
+    <img id="lyrDay" src="still.svg" alt="The original painting, untouched">
+    <img id="lyrGolden" src="golden.svg" alt="" style="opacity:0">
+    <img id="lyrDusk" src="dusk.svg" alt="" style="opacity:0">
+    <img id="lyrNight" src="night.svg" alt="" style="opacity:0">
+    <img class="acc" id="lyrAccGlowA" src="acc-glowa.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="lyrAccGlowB" src="acc-glowb.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="lyrAccStars" src="acc-stars.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="lyrAccSparkA" src="acc-sparka.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="lyrAccSparkB" src="acc-sparkb.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+  </div>
+
+  <div class="controls">
+    <button id="ignite">&#10022; Bring it to life</button>
+    <div class="toggle" id="toggle">
+      <button id="btnStill">Still</button><button id="btnLiving" class="on">Living</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <a href="https://thelivingphotos.com" target="_blank" rel="noopener">Living Photos</a>
+  — Future Ready
+</footer>
+
+<div id="fs"><div class="wrap" id="fsWrap">
+    <img id="fsDay" src="still.svg" alt="The original painting, untouched">
+    <img id="fsGolden" src="golden.svg" alt="" style="opacity:0">
+    <img id="fsDusk" src="dusk.svg" alt="" style="opacity:0">
+    <img id="fsNight" src="night.svg" alt="" style="opacity:0">
+    <img class="acc" id="fsAccGlowA" src="acc-glowa.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="fsAccGlowB" src="acc-glowb.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="fsAccStars" src="acc-stars.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="fsAccSparkA" src="acc-sparka.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+    <img class="acc" id="fsAccSparkB" src="acc-sparkb.svg" alt="" style="opacity:0;left:0.0000%;top:0.0000%;width:100.0000%;height:100.0000%">
+<div id="fsBar"><button id="fsStill" type="button">Still</button><button id="fsLiving" type="button" class="on">Living</button><button id="fsClose" type="button" class="x" aria-label="Close">&times;</button></div></div></div>
+
+<script>
+(function(){
+  "use strict";
+  var T = 20;                 // scene loop, seconds
+  var state = 'still';        // 'still' | 'living'
+  var ignited = false;
+  var clockStarted = false;   // the 20s clock runs once anything ignites it
+  var fsFromStill = false;    // fullscreen was opened from STILL -> FS is living
+  var frozen = null;          // QA: freeze the clock at this many seconds
+  var forcedAcc = null;       // QA: force all accents to this opacity factor
+  var anchor = 0;             // scene seconds at anchorNow (phase anchor)
+  var anchorNow = 0;          // performance.now() at the anchor
+  var clock = 0;              // current scene clock, seconds (QA state)
+
+  function stack(p){
+    return {
+             day: document.getElementById(p+'Day'),
+             golden: document.getElementById(p+'Golden'),
+             dusk: document.getElementById(p+'Dusk'),
+             night: document.getElementById(p+'Night'),
+             accGlowA: document.getElementById(p+'AccGlowA'),
+             accGlowB: document.getElementById(p+'AccGlowB'),
+             accStars: document.getElementById(p+'AccStars'),
+             accSparkA: document.getElementById(p+'AccSparkA'),
+             accSparkB: document.getElementById(p+'AccSparkB')
+    };
+  }
+  var page = stack('lyr'), fs = stack('fs');
+  var fsEl = document.getElementById('fs');
+  var fsWrap = document.getElementById('fsWrap');
+  var fsOpen = false;
+
+  // Fullscreen letterbox geometry: the wrap is sized to the whole picture
+  // fitted inside the screen (contain), centred, so the cropped accent
+  // layers (positioned in % of the picture) line up at any screen shape.
+  function fitFs(){
+    var vw = window.innerWidth, vh = window.innerHeight, ar = 1920 / 1088;
+    var w = vw, h = vw / ar;
+    if (h > vh) { h = vh; w = vh * ar; }
+    fsWrap.style.left = ((vw - w) / 2) + 'px';
+    fsWrap.style.top = ((vh - h) / 2) + 'px';
+    fsWrap.style.width = w + 'px';
+    fsWrap.style.height = h + 'px';
+  }
+  window.addEventListener('resize', function(){ if (fsOpen) fitFs(); });
+
+  // The journey (20s): as painted -> GOLDEN (sun side swells) -> DUSK
+  // (blue half takes the frame, valley deepens to teal, lanterns wake) ->
+  // NIGHT (moon side wins, the valley's own lights take over) -> gold return.
+  // Nested plates: golden under dusk under night; the return fades them
+  // out in reverse order with overlaps. t=20 wraps exactly to t=0.
+  function opacities(t){
+    t = ((t % T) + T) % T;
+    var golden = 0, dusk = 0, night = 0;
+    if (t >= 1.3333 && t < 4) golden = (t - 1.3333) / 2.6667;
+    else if (t >= 4 && t < 16.6667) golden = 1;
+    else if (t >= 16.6667) golden = 1 - (t - 16.6667) / 2.6667;
+    if (t >= 5.3333 && t < 8.3333) dusk = (t - 5.3333) / 3;
+    else if (t >= 8.3333 && t < 17.3333) dusk = 1;
+    else if (t >= 17.3333) dusk = 1 - (t - 17.3333) / 2.6667;
+    if (t >= 10 && t < 12.6667) night = (t - 10) / 2.6667;
+    else if (t >= 12.6667 && t < 17.3333) night = 1;
+    else if (t >= 17.3333) night = 1 - (t - 17.3333) / 2.6667;
+    return { day:1, golden:golden, dusk:dusk, night:night };
+  }
+  // Accents, each in its own colour on its own slow rhythm. Envelopes:
+  // 'lamp' - flames, windows, lanterns and strings wake through dusk and
+  // stand out most at night; 'moon' - a gentle brightening only as night
+  // deepens; 'deep2' - STAR-DOSE LAW: star points gain nothing until
+  // night itself (night^2 gate), point size never changes; 'spark' - the
+  // river's own flecks shimmer with the sun glitter at golden, quieten
+  // at dusk, and answer the moon at night.
+  // [key, period, phase, max, envelope, pulse floor]
+  var ACC = [ ['accGlowA',  4, 0, 0.92, 'lamp', 0.45],
+              ['accGlowB',  5.3333, 1.7667, 0.95, 'lamp', 0.45],
+              ['accStars',  4.3333, 0, 0.90, 'deep2', 0.55],
+              ['accSparkA', 3, 0, 0.95, 'spark', 0.30],
+              ['accSparkB', 4.3333, 1.4, 0.95, 'spark', 0.30] ];
+  function accOpacities(t){
+    var so = opacities(t);
+    var env = { lamp: 0.10 + 0.90 * Math.max(0.45 * so.dusk, so.night),
+                moon: Math.pow(so.night, 1.5),
+                deep2: so.night * so.night,
+                spark: Math.max(0.70 * so.golden, 0.55 * so.dusk, 0.90 * so.night) };
+    var o = {};
+    for (var i = 0; i < ACC.length; i++){
+      var a = ACC[i];
+      var p = 0.5 - 0.5 * Math.cos(2 * Math.PI * (t + a[2]) / a[1]);
+      p = p * p * (3 - 2 * p);
+      o[a[0]] = a[3] * env[a[4]] * (a[5] + (1 - a[5]) * p);
+    }
+    if (forcedAcc !== null){ for (var k in o) o[k] = forcedAcc; }
+    return o;
+  }
+  function apply(st, so, ao, living){
+    st.day.style.opacity = so.day;
+    st.golden.style.opacity = living ? so.golden : 0;
+    st.dusk.style.opacity = living ? so.dusk : 0;
+    st.night.style.opacity = living ? so.night : 0;
+    for (var i = 0; i < ACC.length; i++){
+      var k = ACC[i][0];
+      st[k].style.opacity = living ? ao[k] : 0;
+    }
+  }
+  function frame(now){
+    // Scene time is a pure function of wall time (performance.now) since
+    // ignition: frame rate or throttling can never stretch the 20s cycle,
+    // and entering/leaving fullscreen never touches the clock.
+    if (clockStarted && frozen === null) clock = anchor + (now - anchorNow) / 1000;
+    var t = frozen !== null ? frozen : clock;
+    var so = opacities(t), ao = accOpacities(t);
+    var living = state === 'living';
+    apply(page, so, ao, living);
+    if (fsOpen) apply(fs, so, ao, living || fsFromStill);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function ignite(){
+    if (!ignited){ ignited = true; clockStarted = true; anchor = 0; anchorNow = performance.now(); clock = 0; }
+    state = 'living';
+    document.getElementById('ignite').style.display = 'none';
+    document.getElementById('toggle').style.display = 'flex';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  function setStill(){
+    state = 'still';
+    document.getElementById('btnStill').classList.add('on');
+    document.getElementById('btnLiving').classList.remove('on');
+  }
+  function setLiving(){
+    if (!ignited){ ignite(); return; }
+    state = 'living';
+    document.getElementById('btnStill').classList.remove('on');
+    document.getElementById('btnLiving').classList.add('on');
+  }
+  document.getElementById('ignite').addEventListener('click', ignite);
+  document.getElementById('btnStill').addEventListener('click', setStill);
+  document.getElementById('btnLiving').addEventListener('click', setLiving);
+
+  // Fullscreen law: tapping the photo opens it edge-to-edge on black.
+  // From STILL, fullscreen opens LIVING - the loop ignites and runs; from
+  // LIVING it continues at the same phase. Exit restores the exact prior
+  // page state (a page that was STILL is STILL again, untouched).
+  function openFs(){
+    fsFromStill = (state === 'still');
+    if (fsFromStill && !clockStarted){ clockStarted = true; anchor = 0; anchorNow = performance.now(); clock = 0; }
+    fsOpen = true; fitFs(); fsEl.style.display = 'block';
+  }
+  function closeFs(){
+    fsOpen = false; fsFromStill = false; fsEl.style.display = 'none';
+  }
+  document.getElementById('stage').addEventListener('click', openFs);
+  fsEl.addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){
+    if (fsOpen && (e.key === 'Escape')) closeFs();
+  });
+
+  // QA hooks (invisible in normal use).
+  window.LP = {
+    ignite: ignite, setStill: setStill, setLiving: setLiving,
+    openFs: openFs, closeFs: closeFs,
+    setPhase: function(sec){ frozen = sec; },
+    unfreeze: function(){ if (frozen !== null){ frozen = null; anchor = clock; anchorNow = performance.now(); } },
+    forceAccents: function(v){ forcedAcc = v; },
+    accOpacities: function(){ return accOpacities(frozen !== null ? frozen : clock); },
+    state: function(){ return { state: state, fsOpen: fsOpen, fsFromStill: fsFromStill, clock: clock }; },
+    opacities: opacities
+  };
+})();
+</script>
+<style>
+  /* Wall mode fit (added for the Living Photos wall): whole photo, with
+     the photo's own blurred plates filling any surround. */
+  #fs .lp-wallbg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  #fs .lp-wallbg img { position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; filter:blur(26px) brightness(.7) saturate(1.06);
+    transform:scale(1.14); display:block; }
+  #fs.lp-wallfit img:not(.acc):not(.crop):not(.lp-bgimg) { object-fit:contain !important; }
+</style>
+<script>
+(function(){
+  "use strict";
+  // Wall mode: embedded in the Living Photos wall (#wall), open directly
+  // on the full-screen living view, framed whole — the wall owns taps
+  // and keys, so the usual tap/key exits are disarmed in this mode only.
+  if (!/(^|[#&])wall([&#]|$)/.test(location.hash || '')) return;
+  var fsEl = document.getElementById('fs');
+  if (!fsEl || !window.LP) return;
+  // Blurred-extension surround: blurred copies of this piece's own
+  // photographic plates (the .jpg layers), crossfaded in step with them.
+  var plates = [];
+  fsEl.querySelectorAll('img').forEach(function(im){
+    if (/\.svg($|\?)/i.test(im.getAttribute('src') || '')) plates.push(im);
+  });
+  if (plates.length){
+    var bg = document.createElement('div');
+    bg.className = 'lp-wallbg';
+    var clones = plates.map(function(im){
+      var c = document.createElement('img');
+      c.src = im.src; c.alt = ''; c.className = 'lp-bgimg';
+      c.style.opacity = getComputedStyle(im).opacity;
+      bg.appendChild(c);
+      return [c, im];
+    });
+    fsEl.insertBefore(bg, fsEl.firstChild);
+    (function mirror(){
+      for (var i = 0; i < clones.length; i++){
+        var o = clones[i][1].style.opacity;
+        if (o !== '') clones[i][0].style.opacity = o;
+      }
+      requestAnimationFrame(mirror);
+    })();
+  }
+  fsEl.classList.add('lp-wallfit');
+  if (LP.ignite){ try { LP.ignite(); } catch(e){} }
+  if (LP.openFs){ try { LP.openFs(); } catch(e){} }
+  document.addEventListener('keydown', function(e){ e.stopImmediatePropagation(); }, true);
+  fsEl.addEventListener('click', function(e){ e.stopImmediatePropagation(); }, true);
+})();
+</script>
+
+<script id="lp-fsbar-js">
+(function(){
+  "use strict";
+  var API = window.LP || window.HS;
+  var bar = document.getElementById('fsBar');
+  var b = document.getElementById('fsStill'), c = document.getElementById('fsLiving'), x = document.getElementById('fsClose');
+  if (!API || !bar || !b || !c || !x) return;
+  function sync(){ try { var st = API.state().state; b.classList.toggle('on', st === 'still'); c.classList.toggle('on', st !== 'still'); } catch(e){} }
+  bar.addEventListener('click', function(e){ e.stopPropagation(); });
+  b.addEventListener('click', function(e){ e.stopPropagation(); API.setStill(); sync(); });
+  c.addEventListener('click', function(e){ e.stopPropagation(); API.setLiving(); sync(); });
+  x.addEventListener('click', function(e){ e.stopPropagation(); API.closeFs(); });
+  var st = document.getElementById('stage');
+  if (st) st.addEventListener('click', function(){ setTimeout(sync, 30); });
+  if (/(^|[#&])wall/.test(location.hash || '')){ [b, c, x].forEach(function(el){ el.setAttribute('disabled',''); el.setAttribute('tabindex','-1'); }); }
+  sync();
+})();
+</script>
+</body>
+</html>
