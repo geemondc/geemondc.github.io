@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Living Notes — Origami Surprise (preview)</title>
+<meta name="description" content="A Living Note: a folded piece of notebook paper (or a yellow pad sheet) that unfolds in your hands to reveal a handwritten note. No envelope, no occasion — just a note, passed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0; padding:0; box-sizing:border-box}
+  html,body{background:#faf5ea}
+  body{font-family:Didot,"Playfair Display",Georgia,serif; color:#3a2c22; min-height:100vh; display:flex; flex-direction:column}
+  .topbar{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px 2px; max-width:680px; width:100%; margin:0 auto}
+  .wordmark{font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:#a08b62}
+  .sendbtn{font-family:Georgia,serif; font-size:14.5px; color:#5d1220; background:#fffdf6; border:1.5px solid #c9a24d; border-radius:999px; padding:8px 18px; cursor:pointer; box-shadow:0 3px 8px rgba(60,30,10,.12)}
+  .sendbtn:active{transform:translateY(1px)}
+  .stage{flex:1; display:flex; align-items:center; justify-content:center; perspective:1600px; padding:16px 8px 4px; -webkit-tap-highlight-color:transparent; overflow:hidden}
+  .hint{text-align:center; font-family:Georgia,serif; font-style:italic; font-size:15.5px; color:#8a6d2f; padding:12px 18px 2px; min-height:26px}
+  .underbar{text-align:center; padding:4px 18px 34px}
+  .replaybtn{font-family:Georgia,serif; font-style:italic; font-size:14.5px; color:#8a6d2f; background:none; border:none; border-bottom:1px dotted #c9a24d; padding:2px 4px; cursor:pointer; visibility:hidden}
+  .replaybtn.on{visibility:visible}
+  footer{text-align:center; padding:0 18px 26px; font-size:10.5px; letter-spacing:.28em; text-transform:uppercase; color:#a08b62}
+
+  /* ============ THE SHEET ============ */
+  .sheetwrap{transform:translate(25%,-25%); will-change:transform}
+  #wrapNB{transform:translate(25%,calc(-25% - 6px))}
+  #wrapNB.centered{transform:translate(0,-6px)}
+  .sheetwrap.ypwrap{transform:translate(0,0)}
+  .sheetwrap.centered{transform:translate(0,0); transition:transform 2.7s cubic-bezier(.4,.06,.3,1)}
+  .sheet{position:relative; --u:3.5px; filter:drop-shadow(0 10px 16px rgba(60,40,10,.30)); transition:filter .8s ease}
+  .sheet.open{filter:drop-shadow(0 18px 30px rgba(60,40,10,.22))}
+  .sheet.nb{width:min(88vw,360px); aspect-ratio:85/110; --lh:calc(var(--u)*4.977); --ink:#2B3A55}
+  .sheet.yp{width:min(84vw,332px); aspect-ratio:100/150; --lh:calc(var(--u)*4.545); --ink:#2B2413}
+
+  .quad{position:absolute}
+  .face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:2px; box-shadow:inset 0 0 22px rgba(96,74,32,.07)}
+  .face::before{content:""; position:absolute; inset:0; background:linear-gradient(118deg, rgba(255,255,255,.12), transparent 42%, rgba(60,40,10,.05) 88%); pointer-events:none}
+  .face::after{content:""; position:absolute; inset:0; background:#2e2008; opacity:var(--fsh,0); pointer-events:none}
+  .fold{position:absolute; transform-style:preserve-3d; will-change:transform}
+  .fold .quad{position:relative; width:100%; height:100%; transform-style:preserve-3d}
+
+  /* ---- notebook panel placement ---- */
+  .nb .qBL{left:0; bottom:0; width:50%; height:50%; z-index:1}
+  .nb .foldH{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .nb .qTL{width:50%; height:100%; float:left}
+  .nb .foldV2{left:50%; top:0; width:50%; height:100%; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb .foldV{left:50%; bottom:0; width:50%; height:50%; z-index:3; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb.go1 .foldV{transform:rotateY(0deg)}
+  .nb.go2 .foldH{transform:rotateX(0deg)}
+  .nb.go3 .foldV2{transform:rotateY(0deg)}
+
+  /* ---- notebook, the pull-out (notebook2): a slim folded packet; one sideways unfurl lays the whole sheet flat ---- */
+  #wrapNB2{transform:translate(35%,0); transition:none}
+  .nb2 .faceFull{z-index:1; clip-path:inset(0 100% 0 0)}
+  .nb2 .sweep{position:absolute; top:0; bottom:0; width:38px; transform:translateX(-50%); z-index:2; opacity:0; pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(70,55,25,.20) 42%, rgba(255,255,255,.38) 60%, transparent)}
+  .nb2 .roll{position:absolute; left:0; top:0; bottom:0; width:30%; z-index:3; border-radius:2px; transform-origin:100% 50%;
+    background-size:333% var(--lh), 333% 200%;
+    box-shadow:inset -6px 0 10px rgba(90,75,45,.12), 3px 2px 10px rgba(60,40,10,.20)}
+  .nb2 .rollshadow{position:absolute; top:0; bottom:0; left:-48px; width:48px; opacity:0; pointer-events:none;
+    background:linear-gradient(90deg, rgba(60,40,10,0), rgba(60,40,10,.30))}
+  .nb2 .rollround{position:absolute; inset:0; border-radius:2px; opacity:0; pointer-events:none; background-size:220% 100%;
+    background-image:linear-gradient(90deg, rgba(60,40,10,.36) 0%, rgba(255,255,255,.22) 28%, rgba(60,40,10,.04) 52%, rgba(60,40,10,.40) 86%, rgba(255,255,255,.38) 100%)}
+  .nb2 .packetedge{position:absolute; inset:0; border-radius:2px; pointer-events:none;
+    background:linear-gradient(90deg, transparent calc(100% - 8px), rgba(90,75,45,.20) calc(100% - 8px), rgba(90,75,45,.20) calc(100% - 7px), transparent calc(100% - 7px), transparent calc(100% - 4.5px), rgba(90,75,45,.14) calc(100% - 4.5px), rgba(90,75,45,.14) calc(100% - 3.5px), transparent calc(100% - 3.5px))}
+  .nb2 .packname{padding:0 4%}
+  .nb2 .packname .pk-to{font-size:calc(var(--u)*7.4); line-height:1.1}
+  .nb2 .creases{background:
+    linear-gradient(90deg, transparent calc(33.333% - 1px), rgba(70,55,25,.17) 33.333%, rgba(255,255,255,.55) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(90deg, transparent calc(66.666% - 1px), rgba(70,55,25,.17) 66.666%, rgba(255,255,255,.55) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+
+  /* ---- notebook, the letter fold (notebook3): middle band stays, top third flips up, bottom third flips down ---- */
+  #wrapNB3{transform:translate(0,0)}
+  .nb3 .qMID3{left:0; top:33.333%; width:100%; height:33.334%; z-index:1}
+  .nb3 .foldTop3{left:0; top:0; width:100%; height:33.333%; z-index:3; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .nb3 .foldBot3{left:0; bottom:0; width:100%; height:33.334%; z-index:2; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .nb3.go1 .foldTop3{transform:rotateX(0deg)}
+  .nb3.go2 .foldBot3{transform:rotateX(0deg)}
+  .nb3 .creases{background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(70,55,25,.16) 33.333%, rgba(255,255,255,.5) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(70,55,25,.16) 66.666%, rgba(255,255,255,.5) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+  .nb3front{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:200% 300%, 200% var(--lh), 200% 300%, 200% 300%}
+  .nb3back{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #faf7ee 0%, #f6f2e7 60%, #f3efe1 100%);
+    background-size:200% var(--lh), 200% 300%}
+  .pT3{background-position:0% 0%, 0% 0, 0% 0%, 0% 0%}
+  .pM3{background-position:0% 50%, 0% calc(var(--lh)*-.6667), 0% 50%, 0% 50%}
+  .pB3{background-position:0% 100%, 0% calc(var(--lh)*-.3333), 0% 100%, 0% 100%}
+  .bT3{background-position:0% 0, 0% 0%}
+  .bM3{background-position:0% calc(var(--lh)*-.6667), 0% 50%}
+  .bB3{background-position:0% calc(var(--lh)*-.3333), 0% 100%}
+
+  /* ---- notebook, the crumpled ball (notebook5): a ball of notebook paper that unwraps in stages ---- */
+  #wrapNB5{transform:translate(0,0)}
+  .nb5 .faceFull{z-index:1; opacity:0; transition:opacity .6s ease}
+  .nb5.go4 .faceFull{opacity:1}
+  .nb5 .ballstage{position:absolute; inset:0; z-index:4}
+  .nb5 .ball{position:absolute; left:50%; top:50%; width:56%; aspect-ratio:1/1; transform:translate(-50%,-50%);
+    filter:drop-shadow(0 14px 14px rgba(60,40,10,.28));
+    transition:transform 1.05s cubic-bezier(.45,.05,.3,1), opacity .5s ease}
+  .nb5 .ballface{position:absolute; inset:0; border-radius:47% 53% 50% 50%/52% 48% 52% 48%; overflow:hidden;
+    background:
+      repeating-linear-gradient(24deg, transparent 0, transparent calc(var(--lh)*1.7 - 1px), rgba(110,155,205,.62) calc(var(--lh)*1.7 - 1px), rgba(110,155,205,.62) calc(var(--lh)*1.7)),
+      linear-gradient(150deg, transparent 0, transparent calc(38% - 1px), rgba(233,128,128,.7) 38%, rgba(233,128,128,.7) calc(38% + 1.5px), transparent calc(38% + 3px)),
+      #f7f3e6}
+  .nb5 .ballshade{position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255,255,255,.95), rgba(255,255,255,0) 46%),
+      radial-gradient(circle at 76% 70%, rgba(70,55,25,.34), rgba(70,55,25,0) 52%),
+      radial-gradient(circle at 58% 88%, rgba(70,55,25,.22), rgba(70,55,25,0) 44%),
+      linear-gradient(160deg, rgba(255,255,255,.20), rgba(70,55,25,.16) 88%)}
+  .nb5 .wad{position:absolute; inset:0; opacity:0; transition:opacity .01s; pointer-events:none}
+  .nb5 .wadface{position:absolute; inset:0; border-radius:12px; overflow:hidden;
+    box-shadow:inset 0 0 18px rgba(96,74,32,.10)}
+  .nb5 .wadshade{position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    background:
+      radial-gradient(circle at 30% 24%, rgba(255,255,255,.75), rgba(255,255,255,0) 48%),
+      radial-gradient(circle at 74% 72%, rgba(70,55,25,.20), rgba(70,55,25,0) 50%),
+      linear-gradient(165deg, rgba(255,255,255,.14), rgba(70,55,25,.07) 90%)}
+  .nb5 .wad1{left:7%; top:9%; width:86%; height:82%; transform:rotate(-3deg)}
+  .nb5 .wad2{left:4%; top:5%; width:92%; height:90%; transform:rotate(1.6deg)}
+  .nb5 .wadcrease{position:absolute; inset:0; pointer-events:none}
+  .nb5 .crumpletex{position:absolute; inset:0; pointer-events:none; opacity:.85;
+    background:
+      linear-gradient(28deg, transparent 46.8%, rgba(70,55,25,.30) 47.4%, rgba(255,255,255,.65) 48.2%, transparent 49.2%),
+      linear-gradient(112deg, transparent 55.8%, rgba(70,55,25,.26) 56.4%, rgba(255,255,255,.6) 57.2%, transparent 58.2%),
+      linear-gradient(196deg, transparent 34.8%, rgba(70,55,25,.28) 35.4%, rgba(255,255,255,.62) 36.2%, transparent 37.2%),
+      linear-gradient(318deg, transparent 63.8%, rgba(70,55,25,.24) 64.4%, rgba(255,255,255,.58) 65.2%, transparent 66.2%),
+      linear-gradient(75deg, transparent 24.8%, rgba(70,55,25,.22) 25.4%, rgba(255,255,255,.55) 26.2%, transparent 27.2%)}
+  .nb5 .crumpleset{position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .8s ease; z-index:6;
+    background:
+      linear-gradient(28deg, transparent 46.8%, rgba(70,55,25,.20) 47.4%, rgba(255,255,255,.5) 48.2%, transparent 49.2%),
+      linear-gradient(112deg, transparent 55.8%, rgba(70,55,25,.18) 56.4%, rgba(255,255,255,.48) 57.2%, transparent 58.2%),
+      linear-gradient(196deg, transparent 34.8%, rgba(70,55,25,.19) 35.4%, rgba(255,255,255,.5) 36.2%, transparent 37.2%),
+      linear-gradient(318deg, transparent 63.8%, rgba(70,55,25,.17) 64.4%, rgba(255,255,255,.46) 65.2%, transparent 66.2%),
+      linear-gradient(75deg, transparent 24.8%, rgba(70,55,25,.16) 25.4%, rgba(255,255,255,.44) 26.2%, transparent 27.2%),
+      radial-gradient(circle at 78% 20%, rgba(70,55,25,.10), rgba(70,55,25,0) 30%),
+      radial-gradient(circle at 18% 82%, rgba(70,55,25,.10), rgba(70,55,25,0) 32%)}
+  .nb5.settled .crumpleset{opacity:.6}
+  .nb5 .creases{background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.14) 50%, rgba(255,255,255,.45) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.14) 50%, rgba(255,255,255,.45) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .nb5 .ballname{position:absolute; left:50%; top:calc(50% + 33%); transform:translateX(-50%) rotate(-2deg); z-index:5;
+    font-family:Caveat,"Segoe Script","Bradley Hand",cursive; color:#6B655C; text-align:center; white-space:nowrap;
+    transition:opacity .35s ease}
+  .nb5 .ballname .pk-to{font-size:calc(var(--u)*8.6); font-weight:600; line-height:1.05}
+  .nb5 .ballname .pk-from{font-size:calc(var(--u)*5.8); font-weight:500}
+  .nb5.go1 .ball{transform:translate(-50%,-50%) scale(1.3) rotate(7deg)}
+  .nb5.go1 .ballname{opacity:0}
+  .nb5.go2 .ball{opacity:0; transform:translate(-50%,-50%) scale(1.55) rotate(12deg)}
+  .nb5.go2 .wad{transition:opacity .45s ease}
+  .nb5.go2 .wad1{opacity:1}
+  .nb5.go3 .wad1{opacity:0}
+  .nb5.go3 .wad2{opacity:1}
+  .nb5.go4 .wad{transition:opacity .55s ease}
+  .nb5.go4 .wad2{opacity:0}
+
+  /* ---- notebook, the triangle (notebook4): the quarters packet wearing a triangle face; the flap flips back first ---- */
+  #wrapNB4{transform:translate(25%,calc(-25% - 6px))}
+  #wrapNB4.centered{transform:translate(0,-6px)}
+  .nb4 .triflap{left:0; bottom:0; width:50%; height:50%; z-index:5; transform-origin:50% 100%; transition:transform .95s cubic-bezier(.46,.06,.28,1), opacity .5s ease}
+  .nb4 .triflap .packname{transform:rotate(-21deg); align-items:flex-start; text-align:left; inset:auto; left:6%; top:56%}
+  .nb.nb4.go1:not(.go2) .foldV{transform:rotateY(-180deg)}
+  .nb.nb4.go1 .triflap{transform:rotateX(179deg)}
+  .nb.nb4.go2:not(.go3) .foldH{transform:rotateX(-180deg)}
+  .nb.nb4.go3 .triflap{opacity:0}
+  .nb.nb4.go3:not(.go4) .foldV2{transform:rotateY(-180deg)}
+  .nb.nb4.go4 .foldV2{transform:rotateY(0deg)}
+  .nb4 .triface{clip-path:polygon(50% 3%, 97% 97%, 3% 97%)}
+  .nb4 .triclip{clip-path:polygon(50% 3%, 97% 97%, 3% 97%)}
+  .nb.nb4.go1 .triclip{clip-path:none}
+  .nb .face.backX{transform:rotateX(180deg)}
+  .nb .face.backY{transform:rotateY(180deg)}
+
+  /* ---- yellow pad panel placement (thirds) ---- */
+  .yp .qMID{left:0; top:33.333%; width:100%; height:33.334%; z-index:1}
+  .yp .foldTop{left:0; top:0; width:100%; height:33.333%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .yp .foldBot{left:0; bottom:0; width:100%; height:33.334%; z-index:3; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .yp.go1 .foldBot{transform:rotateX(0deg)}
+  .yp.go2 .foldTop{transform:rotateX(0deg)}
+  .yp .face.backX{transform:rotateX(180deg)}
+
+  /* ---- paper art: notebook ---- */
+  .noise{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .nbfront{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:200% 200%, 200% var(--lh), 200% 200%}
+  .nbfront.noise{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:200% 200%, 200% var(--lh), 200% 200%, 200% 200%}
+  .nbback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #faf7ee 0%, #f6f2e7 60%, #f3efe1 100%);
+    background-size:200% var(--lh), 200% 200%}
+  .posTL{background-position:0% 0%, 0% 0%, 0% 0%, 0% 0%}
+  .posTR{background-position:100% 0%, 100% 0%, 100% 0%, 100% 0%}
+  .posBL{background-position:0% 100%, 0% 100%, 0% 100%, 0% 100%}
+  .posBR{background-position:100% 100%, 100% 100%, 100% 100%, 100% 100%}
+  .nbback.posTL,.nbback.posTR,.nbback.posBL,.nbback.posBR{background-position:0% 0%, 0% 0%}
+  .hole{position:absolute; width:calc(var(--u)*4.4); height:calc(var(--u)*4.4); border-radius:50%; left:calc(var(--u)*2.5); transform:translateY(-50%);
+    background:radial-gradient(circle at 42% 38%, #fdfaf2 38%, #efe9da 66%, #d8d0ba 88%, rgba(90,75,45,.35) 100%);
+    box-shadow:inset 0 1px 3px rgba(90,75,45,.45), 0 0 0 1px rgba(120,105,70,.10)}
+  .midhole{position:absolute; top:50%; z-index:6; opacity:0; transition:opacity .55s ease}
+  .sheet.settled .midhole{opacity:1}
+
+  /* ---- paper art: yellow pad ---- */
+  .ypfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.46) calc(var(--lh) - 1px), rgba(92,116,152,.46) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fcea85 0%, #f9e478 48%, #f6dc60 80%, #f2d54f 100%);
+    background-size:200% var(--lh), 200% 300%, 200% 300%}
+  .ypback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f8e173 0%, #f5da5a 55%, #efcf47 100%);
+    background-size:200% var(--lh), 200% 300%}
+  .tposT{background-position:0% 0%, 0% 0%, 0% 0%}
+  .tposM{background-position:0% 50%, 0% 50%, 0% 50%}
+  .tposB{background-position:0% 100%, 0% 100%, 0% 100%}
+  .ypback.tposT,.ypback.tposM,.ypback.tposB{background-position:0% 0%, 0% 0%}
+  .padstrip{position:absolute; left:0; right:0; top:0; height:10%; z-index:2;
+    background:linear-gradient(180deg, #eccf74 0%, #e0ba5e 42%, #cd9750 76%, #b4713d 100%);
+    box-shadow:0 1px 2px rgba(120,70,20,.35), inset 0 -2px 3px rgba(120,60,10,.35), inset 0 2px 2px rgba(255,244,200,.5);
+    border-bottom:1px solid rgba(140,80,30,.5)}
+  .yp .face{box-shadow:inset 0 0 26px rgba(150,104,8,.24), inset 0 0 5px rgba(150,104,8,.12)}
+  .yp .face::before{background:linear-gradient(118deg, rgba(255,252,214,.10), transparent 42%, rgba(122,80,8,.10) 88%)}
+
+  /* ---- creases that stay, faintly ---- */
+  .creases{position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .7s ease; z-index:6}
+  .sheet.settled .creases{opacity:.55}
+  .nb .creases{background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .yp .creases{background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(70,55,25,.16) 33.333%, rgba(255,255,255,.5) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(70,55,25,.16) 66.666%, rgba(255,255,255,.5) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+
+  /* ---- the writing ---- */
+  .notetext{position:absolute; inset:0; z-index:7; opacity:0; transition:opacity .55s ease; pointer-events:none;
+    font-family:Caveat,"Segoe Script","Bradley Hand",cursive; color:var(--ink)}
+  .sheet.settled .notetext{opacity:1}
+  .nb .notetext{padding:calc(var(--lh)*1.62) calc(var(--u)*3.5) 0 calc(var(--u)*15)}
+  .yp .notetext{padding:calc(var(--lh)*3.35) calc(var(--u)*6) 0 calc(var(--u)*7.5)}
+  .notetext .greet{font-size:calc(var(--u)*6.7); font-weight:600; line-height:calc(var(--lh)*2)}
+  .notetext .body{font-size:calc(var(--u)*6.0); font-weight:500; line-height:calc(var(--lh)*2); white-space:pre-wrap; margin-top:calc(var(--lh)*0)}
+  .notetext .sign{font-size:calc(var(--u)*6.4); font-weight:600; line-height:calc(var(--lh)*2); text-align:right; padding-right:calc(var(--u)*3)}
+  /* the wave note: a little moving doodle taped in the corner of the paper */
+  .loopbox{position:absolute; z-index:8; right:calc(var(--u)*2.5); bottom:calc(var(--u)*3); width:calc(var(--u)*31); opacity:0; visibility:hidden; transform:rotate(-2deg) scale(.92); transition:opacity .6s ease .15s, transform .6s ease .15s, visibility 0s .8s; pointer-events:none}
+  .sheet.settled .loopbox{opacity:1; visibility:visible; transform:rotate(-2deg) scale(1); pointer-events:auto; transition:opacity .6s ease .15s, transform .6s ease .15s, visibility 0s 0s}
+  .loopbox .lb-frame{background:#fff; padding:calc(var(--u)*1.1); border-radius:3px; box-shadow:0 2px 8px rgba(60,45,20,.28)}
+  .loopbox img, .loopbox canvas{display:block; width:100%; height:auto; border-radius:2px}
+  .loopbox canvas{display:none}
+  .loopbox .lb-bar{display:flex; gap:6px; justify-content:flex-end; margin-top:calc(var(--u)*1.4)}
+  .loopbox .lb-bar button{font:600 11px/1 system-ui,sans-serif; letter-spacing:.04em; padding:5px 9px; border-radius:999px; border:1px solid rgba(96,78,45,.45); background:rgba(255,255,255,.85); color:#6b5722; cursor:pointer}
+  .loopbox .lb-bar button.on{background:#6b5722; color:#fff}
+  .sheet.hasloop .notetext{padding-right:calc(var(--u)*36)}
+
+  /* ---- the name on the folded face ---- */
+  .packname{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(var(--u)*1.4);
+    transform:rotate(-2deg); font-family:Caveat,"Segoe Script","Bradley Hand",cursive; text-align:center; padding:0 8%}
+  .nb .packname{color:#6B655C}
+  .yp .packname{color:#2B2413}
+  .packname .pk-to{font-size:calc(var(--u)*9.2); font-weight:600; line-height:1.05}
+  .packname .pk-from{font-size:calc(var(--u)*6.2); font-weight:500}
+  .packcrease{position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(118deg, rgba(255,255,255,.14), transparent 45%, rgba(60,40,10,.06) 90%)}
+
+  /* ---- composer ---- */
+  .composer{max-width:520px; margin:6px auto 8px; background:#fffdf6; border:1.5px solid #e5d5a8; border-radius:14px;
+    box-shadow:0 10px 24px rgba(60,30,10,.12); padding:20px 20px 16px; width:calc(100% - 36px)}
+  .composer h3{font-size:19px; color:#5d1220; text-align:center}
+  .composer .csub{font-family:Georgia,serif; font-style:italic; font-size:13.5px; color:#8a6d2f; text-align:center; margin-top:5px; line-height:1.45}
+  .composer label{display:block; font-family:Georgia,serif; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#8a6d2f; margin-top:14px}
+  .composer input[type=text], .composer textarea, .composer select{width:100%; margin-top:5px; font-family:Caveat,"Segoe Script",cursive; font-size:21px; color:#2B3A55;
+    background:#fffef9; border:1px solid #ddd2b2; border-radius:8px; padding:7px 11px; outline:none}
+  .composer select{font-family:Georgia,serif; font-size:15.5px; color:#3a2c22}
+  .composer input:focus, .composer textarea:focus{border-color:#c9a24d}
+  .composer textarea{resize:vertical; min-height:84px; line-height:1.35}
+  .crow{display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap}
+  .crow .ccount{font-family:Georgia,serif; font-style:italic; font-size:12.5px; color:#a08b62; margin-right:auto}
+  .cbtn{font-family:Georgia,serif; font-size:14.5px; border-radius:999px; padding:9px 18px; cursor:pointer; border:1.5px solid #c9a24d; background:#2b1218; color:#f5e7c8}
+  .cbtn.ghost{background:#fffdf6; color:#5d1220}
+  .cnote{font-family:Georgia,serif; font-style:italic; font-size:13px; color:#8a6d2f; margin-top:12px; line-height:1.5; text-align:center}
+  .noanim, .noanim *{transition:none !important}
+  .rm .fold, .rm .sheetwrap.centered, .rm .notetext, .rm .creases, .rm .midhole, .rm .ball, .rm .ballname, .rm .crumpleset, .rm .faceFull{transition-duration:.01s !important}
+  .rm .slide6, .rm .pocket6{transition-duration:.01s !important}
+
+  /* ---- the secret note (notebook6 / yellows): sheet folded in half, top tucked into the pocket ---- */
+  #wrapNB6{transform:translate(0,calc(-25% - 6px)); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapNB6.centered{transform:translate(0,-6px)}
+  #wrapYS{transform:translate(0,calc(-25% - 6px)); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapYS.centered{transform:translate(0,-6px)}
+  .nb6 .qBOT6, .ys .qBOT6{left:0; bottom:0; width:100%; height:50%; z-index:1}
+  .nb6 .foldTop6, .ys .foldTop6{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .nb6 .slide6, .ys .slide6{position:relative; width:100%; height:100%; transform-style:preserve-3d; transform:translateY(0); transition:transform .85s cubic-bezier(.45,.05,.3,1)}
+  .nb6.go1 .slide6, .ys.go1 .slide6{transform:translateY(-58%)}
+  .nb6.go2 .slide6, .ys.go2 .slide6{transform:translateY(0); transition-duration:1.25s}
+  .nb6.go2 .foldTop6, .ys.go2 .foldTop6{transform:rotateX(0deg)}
+  .pocket6{position:absolute; left:0; top:72%; width:100%; height:28%; z-index:4; box-shadow:0 -7px 14px rgba(60,40,10,.16); transition:opacity .5s ease .5s}
+  .nb6.go2 .pocket6, .ys.go2 .pocket6{opacity:0}
+  .pocket6 .pocketface{position:absolute; inset:0; border-top:2px solid rgba(90,75,45,.35); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), inset 0 0 22px rgba(96,74,32,.08)}
+  .pocket6 .packname{transform:rotate(-1.2deg)}
+  .sheet.nb6 .creases, .sheet.ys .creases{background:linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .nb6front{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:100% 200%, 100% var(--lh), 100% 200%, 100% 200%}
+  .pT6{background-position:0% 0%, 0% 0, 0% 0%, 0% 0%}
+  .pB6{background-position:0% 100%, 0% 0, 0% 100%, 0% 100%}
+  .nb6back{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #faf7ee 0%, #f6f2e7 60%, #f3efe1 100%);
+    background-size:100% var(--lh), 100% 200%}
+  .bT6{background-position:0 0, 0% 0%}
+  .bB6{background-position:0 0, 0% 100%}
+  .nb6pocket{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #f1ebdb 0%, #eae2cd 60%, #e4dbc2 100%);
+    background-size:100% var(--lh), 100% 357%; background-position:0 calc(var(--lh)*-.72), 0% 100%}
+  .ysfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.46) calc(var(--lh) - 1px), rgba(92,116,152,.46) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fcea85 0%, #f9e478 48%, #f6dc60 80%, #f2d54f 100%);
+    background-size:100% var(--lh), 100% 200%, 100% 200%}
+  .ysT{background-position:0 0, 0% 0%, 0% 0%}
+  .ysB{background-position:0 calc(var(--lh)*-.5), 0% 100%, 0% 100%}
+  .ysback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f8e173 0%, #f5da5a 55%, #efcf47 100%);
+    background-size:100% var(--lh), 100% 200%}
+  .ysbT{background-position:0 0, 0% 0%}
+  .ysbB{background-position:0 calc(var(--lh)*-.5), 0% 100%}
+  .yspocket{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f3d95e 0%, #edd24a 55%, #e5c53d 100%);
+    background-size:100% var(--lh), 100% 357%; background-position:0 calc(var(--lh)*-.76), 0% 100%}
+
+  /* ---- the concertina (notebook7 / yellowc): a zigzag stack that stretches open pleat by pleat ---- */
+  #wrapNB7{transform:translate(0,calc(-37.5% - 6px))}
+  #wrapNB7.centered{transform:translate(0,-6px)}
+  #wrapYC{transform:translate(0,calc(-37.5% - 6px))}
+  #wrapYC.centered{transform:translate(0,-6px)}
+  .nb7 .qB4, .yc .qB4{left:0; top:75%; width:100%; height:25%; z-index:1}
+  .nb7 .foldC7, .yc .foldC7{left:0; top:50%; width:100%; height:25%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb7 .foldB7, .yc .foldB7{left:0; top:-100%; width:100%; height:100%; transform-origin:50% 100%; transform:rotateX(180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .nb7 .foldA7, .yc .foldA7{left:0; top:-100%; width:100%; height:100%; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform .95s cubic-bezier(.42,.08,.32,1.28)}
+  .nb7.go1 .foldC7, .yc.go1 .foldC7{transform:rotateX(0deg)}
+  .nb7.go2 .foldB7, .yc.go2 .foldB7{transform:rotateX(0deg)}
+  .nb7.go3 .foldA7, .yc.go3 .foldA7{transform:rotateX(0deg)}
+  .pleatedge{position:absolute; left:0; right:0; bottom:0; height:26px; pointer-events:none;
+    background:repeating-linear-gradient(180deg, rgba(70,55,25,.30) 0, rgba(70,55,25,.30) 1px, rgba(255,255,255,.55) 1px, rgba(255,255,255,.55) 2.5px, transparent 2.5px, transparent 7px)}
+  .pleatside{position:absolute; top:0; bottom:0; right:0; width:16px; pointer-events:none;
+    background:repeating-linear-gradient(180deg, rgba(70,55,25,.26) 0, rgba(70,55,25,.26) 1px, rgba(255,255,255,.5) 1px, rgba(255,255,255,.5) 2.5px, transparent 2.5px, transparent 7px)}
+  .stackname7{position:absolute; left:0; top:75%; width:100%; height:25%; z-index:5; transition:opacity .35s ease}
+  .nb7.go1 .stackname7, .yc.go1 .stackname7{opacity:0}
+  .stackface7{position:absolute; inset:0; box-shadow:inset 0 0 22px rgba(96,74,32,.07)}
+  .stacklines7{position:absolute; inset:0; pointer-events:none; background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(70,55,25,.20) 33.333%, rgba(255,255,255,.55) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(70,55,25,.20) 66.666%, rgba(255,255,255,.55) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+  .sheet.nb7 .creases, .sheet.yc .creases{background:
+    linear-gradient(180deg, transparent calc(25% - 1px), rgba(70,55,25,.16) 25%, rgba(255,255,255,.5) calc(25% + 1px), transparent calc(25% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.16) 50%, rgba(255,255,255,.5) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(75% - 1px), rgba(70,55,25,.16) 75%, rgba(255,255,255,.5) calc(75% + 1px), transparent calc(75% + 2.5px))}
+  .nb7front{background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(11% - 1px), rgba(233,128,128,.8) 11%, rgba(233,128,128,.8) calc(11% + 1.5px), transparent calc(11% + 3px)),
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.55) calc(var(--lh) - 1px), rgba(110,155,205,.55) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fffefb 0%, #fdfcf6 55%, #fbf9ef 100%);
+    background-size:100% 400%, 100% var(--lh), 100% 400%, 100% 400%}
+  .bd1{background-position:0% 0%, 0 0, 0% 0%, 0% 0%}
+  .bd2{background-position:0% 33.333%, 0 calc(var(--lh)*-.5), 0% 33.333%, 0% 33.333%}
+  .bd3{background-position:0% 66.666%, 0 0, 0% 66.666%, 0% 66.666%}
+  .bd4{background-position:0% 100%, 0 calc(var(--lh)*-.5), 0% 100%, 0% 100%}
+  .nb7back{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(110,155,205,.17) calc(var(--lh) - 1px), rgba(110,155,205,.17) var(--lh)),
+    linear-gradient(168deg, #faf7ee 0%, #f6f2e7 60%, #f3efe1 100%);
+    background-size:100% var(--lh), 100% 400%}
+  .bb1{background-position:0 0, 0% 0%}
+  .bb2{background-position:0 calc(var(--lh)*-.5), 0% 33.333%}
+  .bb3{background-position:0 0, 0% 66.666%}
+  .bb4{background-position:0 calc(var(--lh)*-.5), 0% 100%}
+  .ycfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.46) calc(var(--lh) - 1px), rgba(92,116,152,.46) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fcea85 0%, #f9e478 48%, #f6dc60 80%, #f2d54f 100%);
+    background-size:100% var(--lh), 100% 400%, 100% 400%}
+  .ycb1{background-position:0 0, 0% 0%, 0% 0%}
+  .ycb2{background-position:0 calc(var(--lh)*-.25), 0% 33.333%, 0% 33.333%}
+  .ycb3{background-position:0 calc(var(--lh)*-.5), 0% 66.666%, 0% 66.666%}
+  .ycb4{background-position:0 calc(var(--lh)*-.75), 0% 100%, 0% 100%}
+  .ycback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f8e173 0%, #f5da5a 55%, #efcf47 100%);
+    background-size:100% var(--lh), 100% 400%}
+  .ycbb1{background-position:0 0, 0% 0%}
+  .ycbb2{background-position:0 calc(var(--lh)*-.25), 0% 33.333%}
+  .ycbb3{background-position:0 calc(var(--lh)*-.5), 0% 66.666%}
+  .ycbb4{background-position:0 calc(var(--lh)*-.75), 0% 100%}
+
+
+  /* ---- the matchbook (matchbook): the cover flips down, the folded paper slides up, then opens across and up ---- */
+  #wrapMB{transform:translate(0,calc(-25% - 6px)); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapMB.centered{transform:translate(0,-6px)}
+  .mb .qBASE{left:0; bottom:0; width:100%; height:50%; z-index:1}
+  .mb .foldTopMB{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .mb .slideMB{position:relative; width:100%; height:100%; transform-style:preserve-3d; transform:translateY(0); transition:transform .85s cubic-bezier(.45,.05,.3,1)}
+  .mb.go2 .slideMB{transform:translateY(-46%)}
+  .mb.go4 .slideMB{transform:translateY(0); transition-duration:1.25s}
+  .mb.go4 .foldTopMB{transform:rotateX(0deg)}
+  .mb .qTLM{width:50%; height:100%; float:left}
+  .mb .foldV2MB{left:50%; top:0; width:50%; height:100%; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .mb.go3 .foldV2MB{transform:rotateY(0deg)}
+  .mb .coverMB{left:0; bottom:0; width:100%; height:50%; z-index:5; transform-origin:50% 100%; transform:rotateX(0deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1), opacity .5s ease .5s}
+  .mb.go1 .coverMB{transform:rotateX(180deg)}
+  .mb.go2 .coverMB{opacity:0}
+  .mb .strikerMB{position:absolute; left:0; right:0; bottom:0; height:10%; background:repeating-linear-gradient(90deg, rgba(122,62,44,.85) 0, rgba(122,62,44,.85) 3px, rgba(96,46,32,.85) 3px, rgba(96,46,32,.85) 6px); box-shadow:0 -1px 2px rgba(90,50,30,.35)}
+  .mb .stampMB{position:absolute; top:10%; right:8%; transform:rotate(7deg); border:1.5px solid rgba(150,60,50,.55); color:rgba(150,60,50,.8); border-radius:4px; padding:2px 8px; font-family:Caveat,"Segoe Script",cursive; font-size:calc(var(--u)*4.6); font-weight:600}
+  .rm .slideMB{transition-duration:.01s !important}
+
+  /* ---- the double-door gatefold (gatefold): a seal bounce, two doors swing out, then the bottom half unfolds down ---- */
+  #wrapGF{transform:translate(0,calc(25% - 6px)); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapGF.centered{transform:translate(0,-6px)}
+  .gf .qTOPGF{left:0; top:0; width:100%; height:50%; z-index:1}
+  .gf .foldBotGF{left:0; bottom:0; width:100%; height:50%; z-index:0; transform-origin:50% 0; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .gf.go4 .foldBotGF{transform:rotateX(0deg)}
+  .gf .doorL{left:0; top:0; width:50%; height:50%; z-index:4; transform-origin:0 50%; transform:rotateY(0deg); transition:transform 1s cubic-bezier(.46,.06,.28,1), opacity .5s ease}
+  .gf .doorR{left:50%; top:0; width:50%; height:50%; z-index:4; transform-origin:100% 50%; transform:rotateY(0deg); transition:transform 1s cubic-bezier(.46,.06,.28,1), opacity .5s ease}
+  .gf.go2 .doorL{transform:rotateY(-180deg)}
+  .gf.go3 .doorR{transform:rotateY(180deg)}
+  .gf.go4 .doorL, .gf.go4 .doorR{opacity:0}
+  .gf .seamL{position:absolute; top:0; bottom:0; right:0; width:12px; background:linear-gradient(90deg, rgba(70,55,25,0), rgba(70,55,25,.20))}
+  .gf .seamR{position:absolute; top:0; bottom:0; left:0; width:12px; background:linear-gradient(270deg, rgba(70,55,25,0), rgba(70,55,25,.20))}
+  .gf .doornameGF{position:absolute; left:0; top:0; width:100%; height:50%; z-index:6; transition:opacity .35s ease}
+  .gf.go2 .doornameGF{opacity:0}
+  .gf .doornameGF .packname{transform:rotate(-2deg) translateY(26%)}
+  .gf .sealGF{position:absolute; left:50%; top:25%; width:calc(var(--u)*11); height:calc(var(--u)*11); transform:translate(-50%,-50%); z-index:7; border-radius:50%; background:radial-gradient(circle at 38% 32%, #f0d48a, #c9962e 58%, #a8781f); box-shadow:0 2px 6px rgba(90,60,10,.35), inset 0 0 0 2px rgba(255,240,200,.35); display:flex; align-items:center; justify-content:center; color:#fff7dd; font-size:calc(var(--u)*5.2); transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .4s ease}
+  .gf.go1 .sealGF{transform:translate(-50%,-50%) scale(1.22) rotate(-8deg)}
+  .gf.go2 .sealGF{transform:translate(-50%,-50%) scale(1); opacity:0}
+  .sheet.gf .creases{background:linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+
+  /* ---- the pocket map (pocketmap): a map cross-fold — the left half swings open on the center crease, then the top panels follow ---- */
+  #wrapPM{transform:translate(-25%,-6px); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapPM.centered{transform:translate(0,-6px)}
+  .pm .qBRP{left:50%; bottom:0; width:50%; height:50%; z-index:1}
+  .pm .foldTRPM{left:50%; top:0; width:50%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.15s cubic-bezier(.46,.06,.28,1)}
+  .pm.go2 .foldTRPM{transform:rotateX(0deg)}
+  .pm .foldVLPM{left:0; top:0; width:50%; height:100%; z-index:3; transform-origin:100% 50%; transform:rotateY(180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .pm.go1 .foldVLPM{transform:rotateY(0deg)}
+  .pm .qBLP{position:absolute; left:0; bottom:0; width:100%; height:50%}
+  .pm .foldHLPM{left:0; top:0; width:100%; height:50%; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .pm.go3 .foldHLPM{transform:rotateX(0deg)}
+  .pm .mapnamePM{position:absolute; left:50%; top:0; width:50%; height:100%; z-index:6; transition:opacity .35s ease}
+  .pm.go1 .mapnamePM{opacity:0}
+  .pm .mapfacePM{position:absolute; inset:0; box-shadow:inset 0 0 22px rgba(96,74,32,.07); background-position:100% 0, 100% 0}
+  .pm .mapsvg{position:absolute; inset:0; width:100%; height:100%}
+
+  /* ---- the little book (littlebook): the cover swings open once, then the sheet opens across the center ---- */
+  #wrapLB{transform:translate(0,calc(-25% - 6px)); transition:transform 1.8s cubic-bezier(.4,.06,.3,1)}
+  #wrapLB.centered{transform:translate(0,-6px)}
+  .lb .qBOTLB{left:0; bottom:0; width:100%; height:50%; z-index:1}
+  .lb .foldTopLB{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .lb.go2 .foldTopLB{transform:rotateX(0deg)}
+  .lb .coverLB{left:0; bottom:0; width:100%; height:50%; z-index:5; transform-origin:0 50%; transform:rotateY(0deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1), opacity .5s ease .45s}
+  .lb.go1 .coverLB{transform:rotateY(-180deg)}
+  .lb.go2 .coverLB{opacity:0}
+  .lb .coverframe{position:absolute; inset:5.5%; border:1.5px solid rgba(150,120,60,.5); border-radius:3px; pointer-events:none}
+  .lb .booktitle{position:absolute; left:0; right:0; top:12%; text-align:center; font-family:Caveat,"Segoe Script",cursive; font-weight:600; font-size:calc(var(--u)*5.4); color:#7a6248; letter-spacing:.05em}
+  .sheet.lb .creases{background:linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+
+  /* ---- the dog-eared pocket (dogear): the quarters packet with one corner tucked under a triangular pocket ---- */
+  #wrapDE{transform:translate(25%,calc(-25% - 6px))}
+  #wrapDE.centered{transform:translate(0,-6px)}
+  .de .earDE{position:absolute; left:25%; top:50%; width:25%; height:12.5%; z-index:6; transform-origin:50% 0; transform:rotateX(0deg); transition:transform .7s cubic-bezier(.46,.06,.28,1), opacity .4s ease; filter:drop-shadow(-2px 3px 3px rgba(60,40,10,.22))}
+  .de.go1 .earDE{transform:rotateX(-160deg)}
+  .de.go2 .earDE{opacity:0}
+  .de .earface{position:absolute; inset:0; clip-path:polygon(0 0, 100% 0, 100% 100%); background:linear-gradient(to top right, transparent calc(50% - 1px), rgba(70,55,25,.30) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px)), linear-gradient(150deg, #f6f1e3 0%, #efe8d3 60%, #e7ddc2 100%)}
+
+  /* ---- the top-flap memo (memo): the letter fold wearing a modest memo flap ---- */
+  #wrapMF{transform:translate(0,-6px)}
+  .mf .qMID3{left:0; top:33.333%; width:100%; height:33.334%; z-index:1}
+  .mf .foldTop3{left:0; top:0; width:100%; height:33.333%; z-index:3; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .mf .foldBot3{left:0; bottom:0; width:100%; height:33.334%; z-index:2; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .mf.go2 .foldTop3{transform:rotateX(0deg)}
+  .mf.go3 .foldBot3{transform:rotateX(0deg)}
+  .mf .flapMF{left:0; top:33.333%; width:100%; height:15%; z-index:5; transform-origin:50% 0; transform:rotateX(0deg); transition:transform .85s cubic-bezier(.46,.06,.28,1), opacity .45s ease .3s}
+  .mf.go1 .flapMF{transform:rotateX(180deg)}
+  .mf.go2 .flapMF{opacity:0}
+  .mf .flapface{background:linear-gradient(180deg, #f8f3e6 0%, #f1e9d4 70%, #eadfc6 100%); box-shadow:inset 0 0 18px rgba(96,74,32,.08)}
+  .mf .flaplabel{position:absolute; left:6%; bottom:10%; font-family:Caveat,"Segoe Script",cursive; font-weight:600; font-size:calc(var(--u)*4.8); color:#8a6d4a; letter-spacing:.14em}
+  .mf .packname{transform:rotate(-2deg) translateY(20%)}
+  .mf .creases{background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(70,55,25,.16) 33.333%, rgba(255,255,255,.5) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(70,55,25,.16) 66.666%, rgba(255,255,255,.5) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+
+  /* ---- the paper-band wrap (bandwrap): the quarters packet held by a paper band that slides away ---- */
+  #wrapBW{transform:translate(25%,calc(-25% - 6px))}
+  #wrapBW.centered{transform:translate(0,-6px)}
+  .bw .bandBW{position:absolute; left:19%; top:49.2%; width:12%; height:51.6%; z-index:6; background:linear-gradient(90deg, #e2d3ac, #efe3c2 30%, #e7d8b2 70%, #d9c69c); box-shadow:0 2px 8px rgba(60,40,10,.25), inset 0 0 0 1px rgba(120,95,50,.25); display:flex; align-items:center; justify-content:center; transition:transform 1.05s cubic-bezier(.45,.05,.3,1), opacity .55s ease .55s}
+  .bw.go1 .bandBW{transform:translateX(90%) rotate(7deg); opacity:0}
+  .bw .bandmark{font-family:Caveat,"Segoe Script",cursive; font-weight:700; font-size:calc(var(--u)*6.4); color:#a34a3a; line-height:1}
+  .bw .packname{transform:rotate(-2deg) translateX(-15%)}
+
+  /* dogear + bandwrap ride the quarters panels, one beat later than the base .nb go-rules */
+  .de.go1 .foldV, .bw.go1 .foldV{transform:rotateY(-180deg)}
+  .de.go2 .foldV, .bw.go2 .foldV{transform:rotateY(0deg)}
+  .de.go2 .foldH, .bw.go2 .foldH{transform:rotateX(-180deg)}
+  .de.go3 .foldH, .bw.go3 .foldH{transform:rotateX(0deg)}
+  .de.go3 .foldV2, .bw.go3 .foldV2{transform:rotateY(-180deg)}
+  .de.go4 .foldV2, .bw.go4 .foldV2{transform:rotateY(0deg)}
+
+  /* ---- yellow pad, quarters (yellowq): the white quarters machine on the yellow sheet ---- */
+  #wrapYQ{transform:translate(25%,calc(-25% - 6px))}
+  #wrapYQ.centered{transform:translate(0,-6px)}
+  .yq .qBL{left:0; bottom:0; width:50%; height:50%; z-index:1}
+  .yq .foldH{left:0; top:0; width:100%; height:50%; z-index:2; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.25s cubic-bezier(.46,.06,.28,1)}
+  .yq .qTL{width:50%; height:100%; float:left}
+  .yq .foldV2{left:50%; top:0; width:50%; height:100%; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .yq .foldV{left:50%; bottom:0; width:50%; height:50%; z-index:3; transform-origin:0 50%; transform:rotateY(-180deg); transition:transform 1.05s cubic-bezier(.46,.06,.28,1)}
+  .yq.go1 .foldV{transform:rotateY(0deg)}
+  .yq.go2 .foldH{transform:rotateX(0deg)}
+  .yq.go3 .foldV2{transform:rotateY(0deg)}
+  .yq .face.backX{transform:rotateX(180deg)}
+  .yq .face.backY{transform:rotateY(180deg)}
+  .sheet.yq .creases{background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(70,55,25,.17) 50%, rgba(255,255,255,.55) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .yqfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.46) calc(var(--lh) - 1px), rgba(92,116,152,.46) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fcea85 0%, #f9e478 48%, #f6dc60 80%, #f2d54f 100%);
+    background-size:200% var(--lh), 200% 200%, 200% 200%}
+  .yqTL{background-position:0 0, 0% 0%, 0% 0%}
+  .yqTR{background-position:0 0, 100% 0%, 100% 0%}
+  .yqBL{background-position:0 calc(var(--lh)*-.5), 0% 100%, 0% 100%}
+  .yqBR{background-position:0 calc(var(--lh)*-.5), 100% 100%, 100% 100%}
+  .yqback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f8e173 0%, #f5da5a 55%, #efcf47 100%);
+    background-size:200% var(--lh), 200% 200%}
+  .yqbTL{background-position:0 0, 0% 0%}
+  .yqbTR{background-position:0 0, 100% 0%}
+  .yqbBL{background-position:0 calc(var(--lh)*-.5), 0% 100%}
+  .yqbBR{background-position:0 calc(var(--lh)*-.5), 100% 100%}
+
+  /* ---- yellow pad, the rolled-up note (yellowr): the pull-out machine on the yellow sheet ---- */
+  #wrapYR{transform:translate(35%,-6px); transition:none}
+  .yr .faceFull{z-index:1; clip-path:inset(0 100% 0 0)}
+  .yr .sweep{position:absolute; top:0; bottom:0; width:38px; transform:translateX(-50%); z-index:2; opacity:0; pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(70,55,25,.20) 42%, rgba(255,255,255,.38) 60%, transparent)}
+  .yr .roll{position:absolute; left:0; top:0; bottom:0; width:30%; z-index:3; border-radius:2px; transform-origin:100% 50%;
+    background-size:333% var(--lh), 333% 200%;
+    box-shadow:inset -6px 0 10px rgba(90,75,45,.12), 3px 2px 10px rgba(60,40,10,.20)}
+  .yr .rollshadow{position:absolute; top:0; bottom:0; left:-48px; width:48px; opacity:0; pointer-events:none;
+    background:linear-gradient(90deg, rgba(60,40,10,0), rgba(60,40,10,.30))}
+  .yr .rollround{position:absolute; inset:0; border-radius:2px; opacity:0; pointer-events:none; background-size:220% 100%;
+    background-image:linear-gradient(90deg, rgba(60,40,10,.36) 0%, rgba(255,255,255,.22) 28%, rgba(60,40,10,.04) 52%, rgba(60,40,10,.40) 86%, rgba(255,255,255,.38) 100%)}
+  .yr .packetedge{position:absolute; inset:0; border-radius:2px; pointer-events:none;
+    background:linear-gradient(90deg, transparent calc(100% - 8px), rgba(90,75,45,.20) calc(100% - 8px), rgba(90,75,45,.20) calc(100% - 7px), transparent calc(100% - 7px), transparent calc(100% - 4.5px), rgba(90,75,45,.14) calc(100% - 4.5px), rgba(90,75,45,.14) calc(100% - 3.5px), transparent calc(100% - 3.5px))}
+  .yr .packname{padding:0 4%}
+  .yr .packname .pk-to{font-size:calc(var(--u)*7.4); line-height:1.1}
+  .sheet.yr .creases{background:
+    linear-gradient(90deg, transparent calc(33.333% - 1px), rgba(70,55,25,.17) 33.333%, rgba(255,255,255,.55) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(90deg, transparent calc(66.666% - 1px), rgba(70,55,25,.17) 66.666%, rgba(255,255,255,.55) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+  .yrfront{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.46) calc(var(--lh) - 1px), rgba(92,116,152,.46) var(--lh)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #fcea85 0%, #f9e478 48%, #f6dc60 80%, #f2d54f 100%);
+    background-size:100% var(--lh), 100% 100%, 100% 100%}
+  .yrback{background-image:
+    repeating-linear-gradient(180deg, transparent 0, transparent calc(var(--lh) - 1px), rgba(92,116,152,.22) calc(var(--lh) - 1px), rgba(92,116,152,.22) var(--lh)),
+    linear-gradient(170deg, #f8e173 0%, #f5da5a 55%, #efcf47 100%)}
+
+  /* ---- yellow pad, the letter fold (yellowl): the letter machine on the yellow sheet ---- */
+  #wrapYL{transform:translate(0,-6px)}
+  .yl .qMID3{left:0; top:33.333%; width:100%; height:33.334%; z-index:1}
+  .yl .foldTop3{left:0; top:0; width:100%; height:33.333%; z-index:3; transform-origin:50% 100%; transform:rotateX(-180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .yl .foldBot3{left:0; bottom:0; width:100%; height:33.334%; z-index:2; transform-origin:50% 0; transform:rotateX(180deg); transition:transform 1.1s cubic-bezier(.46,.06,.28,1)}
+  .yl.go1 .foldTop3{transform:rotateX(0deg)}
+  .yl.go2 .foldBot3{transform:rotateX(0deg)}
+  .yl .face.backX{transform:rotateX(180deg)}
+
+  /* ---- ivory paper (FORMAL FOUR, Nov 9): warm ivory, NO binder holes, NO ruled
+     lines, NO margin line — the restrained formal paper for the Thank-You Note
+     (Letter Fold) and the Sympathy Note (Quarters). ---- */
+  .ivfront{background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #fdfaf1 0%, #faf3e3 55%, #f5edd9 100%);
+    background-size:200% 300%, 200% 300%}
+  .ivback{background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(168deg, #f7efdb 0%, #f2e7cd 60%, #ecdfc2 100%);
+    background-size:200% 300%, 200% 300%}
+  .iv .notetext{padding:calc(var(--lh)*1.3) calc(var(--u)*7) 0 calc(var(--u)*8)}
+  .iv .packname{color:#7a6a55}
+  /* creases: only the fold's own boundary lines, sitting exactly on the folds —
+     Quarters keeps its center vertical + center horizontal; the Letter Fold keeps
+     its two horizontal thirds. No diagonals, no X. */
+  .iv .creases{background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(96,78,45,.15) 50%, rgba(255,255,255,.5) calc(50% + 1px), transparent calc(50% + 2.5px)),
+    linear-gradient(180deg, transparent calc(50% - 1px), rgba(96,78,45,.15) 50%, rgba(255,255,255,.5) calc(50% + 1px), transparent calc(50% + 2.5px))}
+  .iv.nb3 .creases{background:
+    linear-gradient(180deg, transparent calc(33.333% - 1px), rgba(96,78,45,.14) 33.333%, rgba(255,255,255,.45) calc(33.333% + 1px), transparent calc(33.333% + 2.5px)),
+    linear-gradient(180deg, transparent calc(66.666% - 1px), rgba(96,78,45,.14) 66.666%, rgba(255,255,255,.45) calc(66.666% + 1px), transparent calc(66.666% + 2.5px))}
+  /* SYMPATHY QUIET LAW: no burst, no sparkle — the unfold itself, gentle and slow.
+     The fold swings run long; the JS waits scale with VARIANTS.ivoryq.pace. */
+  .ivq .foldV, .ivq .foldV2{transition-duration:1.65s}
+  .ivq .foldH{transition-duration:1.95s}
+  #wrapIVL{transform:translate(0,0)}
+
+  /* ---- SHAPE NOTES (Nov 12): the closed packet IS a paper object — faceted,
+     shaded notebook paper. The shape unfolds on the go1 beat (keyframed fold
+     steps on believable hinges), then the standard quarters panels beneath
+     take over: go2 foldV · go3 foldH · go4 foldV2 (the dog-ear beat shift),
+     and the shape layer dissolves as the first panel swings. ---- */
+  #wrapFT,#wrapCR,#wrapBT,#wrapBF,#wrapFL,#wrapST,#wrapHT,#wrapPW,#wrapAP,#wrapHA,#wrapBA,#wrapDG{transform:translate(25%,calc(-25% - 6px))}
+  #wrapFT.centered,#wrapCR.centered,#wrapBT.centered,#wrapBF.centered,#wrapFL.centered,#wrapST.centered,#wrapHT.centered,#wrapPW.centered,#wrapAP.centered,#wrapHA.centered,#wrapBA.centered,#wrapDG.centered{transform:translate(0,-6px)}
+  .shp .qBL, .shp .fold{visibility:hidden}
+  .shp.go2 .qBL, .shp.go2 .fold{visibility:visible}
+  .shp.go1 .foldV{transform:rotateY(-180deg)}
+  .shp.go2 .foldV{transform:rotateY(0deg)}
+  .shp.go2 .foldH{transform:rotateX(-180deg)}
+  .shp.go3 .foldH{transform:rotateX(0deg)}
+  .shp.go3 .foldV2{transform:rotateY(-180deg)}
+  .shp.go4 .foldV2{transform:rotateY(0deg)}
+  .shp .shapeLayer{position:absolute; left:0; bottom:0; width:50%; height:50%; z-index:8; transition:opacity .55s ease .30s}
+  .shp.go2 .shapeLayer{opacity:0}
+  .shp .shapeLayer svg{width:100%; height:100%; display:block; overflow:visible; transform-origin:50% 50%}
+  .shp .fac{transform-box:fill-box}
+  .shp .packname{position:static; inset:auto; transform:rotate(-2deg); padding:0; gap:1px}
+  .shp .packname .pk-to{font-size:calc(var(--u)*6.6); line-height:1.05}
+  .shp .packname .pk-from{font-size:calc(var(--u)*4.7); line-height:1.05}
+  .shp .shapename{position:absolute; z-index:9; text-align:center; transition:opacity .35s ease}
+  .shp .shapetag{position:absolute; left:50%; bottom:-12%; transform:translateX(-50%) rotate(-2deg); z-index:9; background:linear-gradient(168deg, #faf7ee 0%, #f0e9d6 100%); box-shadow:0 3px 7px rgba(60,40,10,.25); border-radius:2px; padding:5px 13px 6px; text-align:center; transition:opacity .35s ease; white-space:nowrap}
+  .shp .shapetag .packname{transform:none}
+  .shp.go2 .shapename, .shp.go2 .shapetag{opacity:0}
+  .rm .shapeLayer, .rm .shapeLayer *{animation-duration:.01s !important; transition-duration:.01s !important}
+
+  /* fortune teller: four washed points separate, flaps open, flattens */
+  .ft .shapename{left:15%; right:15%; bottom:6.5%}
+  .ft .ft-p1{transform-origin:0% 100%} .ft .ft-p2{transform-origin:0% 0%}
+  .ft .ft-p3{transform-origin:100% 0%} .ft .ft-p4{transform-origin:100% 100%}
+  .ft.go1 .ft-svg{animation:ftFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .ft.go1 .ft-p{animation:ftPt 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes ftFlat{0%{transform:scale(1,1)} 70%{transform:scale(1.02,1)} 100%{transform:scale(1.07,.94)}}
+  @keyframes ftPt{0%{transform:rotate(0deg) translate(0,0) scale(1,1)} 30%{transform:rotate(var(--r1)) translate(var(--x1),var(--y1)) scale(1.03,1.03)} 72%{transform:rotate(var(--r2)) translate(var(--x2),var(--y2)) scale(1.05,1.05)} 100%{transform:rotate(var(--r2)) translate(var(--x2),var(--y2)) scale(1.08,1.08)}}
+
+  /* crane: wings lift and extend, neck and tail unfold, body spreads */
+  .cr .cr-wing{transform-origin:88% 100%} .cr .cr-wingf{transform-origin:85% 100%}
+  .cr .cr-neck{transform-origin:100% 96%} .cr .cr-tail{transform-origin:0% 85%}
+  .cr.go1 .cr-svg{animation:crFlat 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .cr.go1 .cr-wing{animation:crWing 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .cr.go1 .cr-wingf{animation:crWingF 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .cr.go1 .cr-neck{animation:crNeck 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .cr.go1 .cr-tail{animation:crTail 2.5s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes crFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.05,.96)}}
+  @keyframes crWing{0%{transform:rotate(0deg)} 35%{transform:rotate(-12deg)} 72%{transform:rotate(-24deg)} 100%{transform:rotate(-28deg)}}
+  @keyframes crWingF{0%{transform:rotate(0deg)} 35%{transform:rotate(-8deg)} 72%{transform:rotate(-15deg)} 100%{transform:rotate(-18deg)}}
+  @keyframes crNeck{0%{transform:rotate(0deg)} 45%{transform:rotate(2deg)} 82%{transform:rotate(13deg)} 100%{transform:rotate(16deg)}}
+  @keyframes crTail{0%{transform:rotate(0deg)} 50%{transform:rotate(-6deg)} 100%{transform:rotate(-13deg)}}
+
+  /* boat: one gentle rock, the two hull sides open, the sail center rises */
+  .bt .shapename{left:23%; right:23%; top:59.5%}
+  .bt .packname .pk-to{font-size:calc(var(--u)*6.0)}
+  .bt .bt-rock{transform-origin:50% 82%} .bt .bt-hulll{transform-origin:100% 0%}
+  .bt .bt-hullr{transform-origin:0% 0%} .bt .bt-sails{transform-origin:50% 100%}
+  .bt.go1 .bt-svg{animation:btFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bt.go1 .bt-rock{animation:btRock 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bt.go1 .bt-hulll{animation:btHL 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bt.go1 .bt-hullr{animation:btHR 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bt.go1 .bt-sails{animation:btSail 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes btRock{0%{transform:rotate(0deg)} 10%{transform:rotate(2.6deg)} 22%{transform:rotate(-2.2deg)} 34%{transform:rotate(0deg)} 100%{transform:rotate(0deg)}}
+  @keyframes btHL{0%{transform:rotate(0deg)} 38%{transform:rotate(0deg)} 78%{transform:rotate(-10deg)} 100%{transform:rotate(-12deg)}}
+  @keyframes btHR{0%{transform:rotate(0deg)} 38%{transform:rotate(0deg)} 78%{transform:rotate(10deg)} 100%{transform:rotate(12deg)}}
+  @keyframes btSail{0%{transform:translateY(0) scale(1,1)} 45%{transform:translateY(-3px) scale(1,1)} 82%{transform:translateY(-9px) scale(1.03,1.03)} 100%{transform:translateY(-9px) scale(1.03,1.03)}}
+  @keyframes btFlat{0%{transform:scale(1,1)} 72%{transform:scale(1.01,1)} 100%{transform:scale(1.06,.95)}}
+
+  /* butterfly: one paper flutter, upper wings spread, lower wings unfold */
+  .bf .bf-ul{transform-origin:100% 92%} .bf .bf-ur{transform-origin:0% 92%}
+  .bf .bf-ll{transform-origin:100% 8%} .bf .bf-lr{transform-origin:0% 8%}
+  .bf.go1 .bf-ul{animation:bfUL 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bf.go1 .bf-ur{animation:bfUR 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bf.go1 .bf-ll{animation:bfLL 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bf.go1 .bf-lr{animation:bfLR 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .bf.go1 .bf-svg{animation:bfFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes bfUL{0%{transform:rotate(0deg)} 6%{transform:rotate(-7deg)} 12%{transform:rotate(0deg)} 18%{transform:rotate(-7deg)} 26%{transform:rotate(0deg)} 62%{transform:rotate(-17deg)} 100%{transform:rotate(-21deg)}}
+  @keyframes bfUR{0%{transform:rotate(0deg)} 6%{transform:rotate(7deg)} 12%{transform:rotate(0deg)} 18%{transform:rotate(7deg)} 26%{transform:rotate(0deg)} 62%{transform:rotate(17deg)} 100%{transform:rotate(21deg)}}
+  @keyframes bfLL{0%{transform:rotate(0deg)} 26%{transform:rotate(0deg)} 66%{transform:rotate(-11deg)} 100%{transform:rotate(-14deg)}}
+  @keyframes bfLR{0%{transform:rotate(0deg)} 26%{transform:rotate(0deg)} 66%{transform:rotate(11deg)} 100%{transform:rotate(14deg)}}
+  @keyframes bfFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.05,.96)}}
+
+  /* flower: the bud rises, the petals separate and open, the paper unfolds */
+  .fl .fl-pl{transform-origin:92% 100%} .fl .fl-pr{transform-origin:8% 100%} .fl .fl-pc{transform-origin:50% 100%}
+  .fl.go1 .fl-rise{animation:flRise 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .fl.go1 .fl-pl{animation:flPL 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .fl.go1 .fl-pr{animation:flPR 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .fl.go1 .fl-pc{animation:flPC 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .fl.go1 .fl-svg{animation:flFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes flRise{0%{transform:translateY(6px)} 30%{transform:translateY(-5px)} 100%{transform:translateY(-5px)}}
+  @keyframes flPL{0%{transform:rotate(0deg)} 35%{transform:rotate(0deg)} 70%{transform:rotate(-16deg)} 100%{transform:rotate(-30deg)}}
+  @keyframes flPR{0%{transform:rotate(0deg)} 35%{transform:rotate(0deg)} 70%{transform:rotate(16deg)} 100%{transform:rotate(30deg)}}
+  @keyframes flPC{0%{transform:scale(1,1)} 70%{transform:scale(1.06,1.06)} 100%{transform:scale(1.12,1.12)}}
+  @keyframes flFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.05,.96)}}
+
+  /* star: a slight settle, the points relax outward, the center opens */
+  .st .shapename{left:14%; right:14%; top:40.5%}
+  .st .st-p, .st .st-c{transform-box:view-box; transform-origin:85px 108px}
+  .st.go1 .st-svg{animation:stSettle 2.2s cubic-bezier(.45,.05,.3,1) both}
+  .st.go1 .st-p{animation:stPt 2.2s cubic-bezier(.45,.05,.3,1) both}
+  .st.go1 .st-c{animation:stC 2.2s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes stSettle{0%{transform:rotate(-2.5deg) scale(.97,.97)} 25%{transform:rotate(0deg) scale(1,1)} 100%{transform:rotate(0deg) scale(1.04,.98)}}
+  @keyframes stPt{0%{transform:scale(1,1) rotate(0deg)} 25%{transform:scale(1,1) rotate(0deg)} 68%{transform:scale(1.07,1.07) rotate(var(--sr))} 100%{transform:scale(1.09,1.09) rotate(var(--sr))}}
+  @keyframes stC{0%{transform:scale(1,1)} 62%{transform:scale(1,1)} 100%{transform:scale(1.4,1.4)}}
+
+  /* heart: splits along the center crease, the halves open outward */
+  .ht .shapename{left:16%; right:16%; top:37%}
+  .ht .ht-l, .ht .ht-r{transform-box:view-box; transform-origin:85px 104px}
+  .ht.go1 .ht-l{animation:htL 2.2s cubic-bezier(.45,.05,.3,1) both}
+  .ht.go1 .ht-r{animation:htR 2.2s cubic-bezier(.45,.05,.3,1) both}
+  .ht.go1 .ht-svg{animation:htFlat 2.2s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes htL{0%{transform:rotate(0deg)} 45%{transform:rotate(-13deg)} 100%{transform:rotate(-22deg)}}
+  @keyframes htR{0%{transform:rotate(0deg)} 45%{transform:rotate(13deg)} 100%{transform:rotate(22deg)}}
+  @keyframes htFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.05,.96)}}
+
+  /* pinwheel: ONE slow quarter-turn while the blades release and open */
+  .pw .pw-spin, .pw .pw-b{transform-box:view-box; transform-origin:85px 104px}
+  .pw.go1 .pw-spin{animation:pwSpin 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .pw.go1 .pw-b{animation:pwBlade 2.5s cubic-bezier(.45,.05,.3,1) both}
+  .pw.go1 .pw-svg{animation:pwFlat 2.5s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes pwSpin{0%{transform:rotate(0deg)} 55%{transform:rotate(90deg)} 100%{transform:rotate(90deg)}}
+  @keyframes pwBlade{0%{transform:scale(1,1)} 58%{transform:scale(1,1)} 100%{transform:scale(1.14,1.14)}}
+  @keyframes pwFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.04,.97)}}
+
+  /* airplane: the wings open out from the ridge, the body flattens */
+  .ap .shapename{left:12%; right:20%; top:29%; transform:rotate(-3deg)}
+  .ap .packname .pk-to{font-size:calc(var(--u)*5.4)}
+  .ap .packname .pk-from{font-size:calc(var(--u)*4.0)}
+  .ap .ap-wt, .ap .ap-wb{transform-box:view-box; transform-origin:64px 96px}
+  .ap.go1 .ap-wt{animation:apWT 2.3s cubic-bezier(.45,.05,.3,1) both}
+  .ap.go1 .ap-wb{animation:apWB 2.3s cubic-bezier(.45,.05,.3,1) both}
+  .ap.go1 .ap-svg{animation:apFlat 2.3s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes apWT{0%{transform:rotate(0deg)} 55%{transform:rotate(-13deg)} 100%{transform:rotate(-16deg)}}
+  @keyframes apWB{0%{transform:rotate(0deg)} 55%{transform:rotate(13deg)} 100%{transform:rotate(16deg)}}
+  @keyframes apFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.05,.97)}}
+
+  /* hat: opens from its center crease and spreads into the sheet */
+  .ha .shapename{left:18%; right:18%; top:59.5%}
+  .ha .ha-l, .ha .ha-r{transform-box:view-box; transform-origin:85px 138px}
+  .ha.go1 .ha-l{animation:haL 2.3s cubic-bezier(.45,.05,.3,1) both}
+  .ha.go1 .ha-r{animation:haR 2.3s cubic-bezier(.45,.05,.3,1) both}
+  .ha.go1 .ha-svg{animation:haFlat 2.3s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes haL{0%{transform:rotate(0deg)} 55%{transform:rotate(-9deg)} 100%{transform:rotate(-13deg)}}
+  @keyframes haR{0%{transform:rotate(0deg)} 55%{transform:rotate(9deg)} 100%{transform:rotate(13deg)}}
+  @keyframes haFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.06,.95)}}
+
+  /* balloon (waterbomb): the folded triangular faces relax, release along
+     their creases and open outward — faceted paper, never a wad */
+  .ba .shapename{left:20%; right:20%; top:41%}
+  .ba .ba-f{transform-box:view-box; transform-origin:85px 108px}
+  .ba.go1 .ba-f{animation:baF 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .ba.go1 .ba-svg{animation:baFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes baF{0%{transform:scale(1,1) translate(0,0) rotate(0deg)} 40%{transform:scale(1.035,1.035) translate(0,0) rotate(var(--br))} 75%{transform:scale(1.06,1.06) translate(var(--bx),var(--by)) rotate(var(--br))} 100%{transform:scale(1.1,1.1) translate(var(--bx),var(--by)) rotate(var(--br))}}
+  @keyframes baFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.03,.96)}}
+
+  /* dog: the ears flip up, the chin flap drops, the face opens out */
+  .dg .shapename{left:21%; right:21%; top:15%}
+  .dg .packname .pk-to{font-size:calc(var(--u)*5.6)}
+  .dg .packname .pk-from{font-size:calc(var(--u)*4.2)}
+  .dg .dg-earl{transform-origin:94% 4%} .dg .dg-earr{transform-origin:6% 4%} .dg .dg-chin{transform-origin:50% 0%}
+  .dg.go1 .dg-earl{animation:dgEL 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .dg.go1 .dg-earr{animation:dgER 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .dg.go1 .dg-chin{animation:dgChin 2.4s cubic-bezier(.45,.05,.3,1) both}
+  .dg.go1 .dg-svg{animation:dgFlat 2.4s cubic-bezier(.45,.05,.3,1) both}
+  @keyframes dgEL{0%{transform:rotate(0deg)} 45%{transform:rotate(-72deg)} 100%{transform:rotate(-126deg)}}
+  @keyframes dgER{0%{transform:rotate(0deg)} 45%{transform:rotate(72deg)} 100%{transform:rotate(126deg)}}
+  @keyframes dgChin{0%{transform:scale(1,1)} 52%{transform:scale(1,1)} 100%{transform:scale(1,1.09)}}
+  @keyframes dgFlat{0%{transform:scale(1,1)} 100%{transform:scale(1.04,.97)}}
+
+  /* ==== ORIGAMI SURPRISE PREVIEW (crane keepsake flow + origami paper colors) ==== */
+  #wrapCR{transition:transform 2.7s cubic-bezier(.4,.06,.3,1)}
+  /* two-sided origami paper: the sheet's BACK faces wear the color */
+  .cr .nbback{background-image:linear-gradient(168deg, var(--pb1,#faf7ee) 0%, var(--pb2,#f6f2e7) 58%, var(--pb3,#efe9d6) 100%); background-size:200% 200%}
+  /* refold: keep the panels visible while they swing home */
+  .cr.rf .qBL, .cr.rf .fold{visibility:visible}
+  .cr.rf .face::after{opacity:min(var(--fsh,0),.12)}
+  .cr.rf2 .qBL, .cr.rf2 .fold{opacity:0; transition:opacity .45s ease}
+  /* refold: the crane facets run their open keyframes in reverse */
+  .cr.refolding .cr-svg{animation:crFlat 2.3s cubic-bezier(.45,.05,.3,1) reverse both}
+  .cr.refolding .cr-wing{animation:crWing 2.3s cubic-bezier(.45,.05,.3,1) reverse both}
+  .cr.refolding .cr-wingf{animation:crWingF 2.3s cubic-bezier(.45,.05,.3,1) reverse both}
+  .cr.refolding .cr-neck{animation:crNeck 2.3s cubic-bezier(.45,.05,.3,1) reverse both}
+  .cr.refolding .cr-tail{animation:crTail 2.3s cubic-bezier(.45,.05,.3,1) reverse both}
+  /* arrival / keepsake idle: the paper breathes, barely — the object settles, the camera never moves */
+  .cr.ksidle .shapeLayer{animation:ksSway 9s ease-in-out infinite}
+  .cr.ksidle .cr-svg{animation:ksBreath 8s ease-in-out infinite}
+  @keyframes ksSway{0%,100%{transform:rotate(-.28deg)}50%{transform:rotate(.28deg)}}
+  @keyframes ksBreath{0%,100%{transform:scale(1,1) translateY(0)}50%{transform:scale(1.006,1.011) translateY(-1.5px)}}
+  /* the soft landing when the crane settles back into a keepsake */
+  .cr.landed .shapeLayer{animation:ksLand .7s cubic-bezier(.34,1.35,.64,1)}
+  @keyframes ksLand{0%{transform:translateY(-7px) scale(1.012,.988)}55%{transform:translateY(1.6px) scale(.994,1.005)}100%{transform:translateY(0) scale(1,1)}}
+  .cr .shapeLayer{transform-origin:50% 92%}
+  /* origami paper color dots */
+  .paperbar{display:flex; align-items:center; justify-content:center; gap:9px; padding:2px 18px 10px; flex-wrap:wrap}
+  .paperbar .plabel{font-family:Georgia,serif; font-style:italic; font-size:14px; color:#8a6d2f}
+  .pdot{width:26px; height:26px; border-radius:50%; border:1.5px solid rgba(96,78,45,.45); cursor:pointer; padding:0; box-shadow:0 2px 5px rgba(60,40,10,.18), inset -3px -4px 6px rgba(60,40,10,.12)}
+  .pdot.on{box-shadow:0 0 0 2px #faf5ea, 0 0 0 4px #c9a24d, 0 2px 5px rgba(60,40,10,.18)}
+  .pdot:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wordmark">Living Notes · Origami Surprise — Preview</div>
+  <button class="sendbtn" id="sendToggle" type="button">Send a note ✎</button>
+</header>
+
+<main class="stage" id="stage" aria-label="A folded note. Tap to unfold it.">
+  <!-- NOTEBOOK NOTE A -->
+  <div class="sheetwrap" id="wrapNB">
+    <div class="sheet nb" id="sheetNB" role="button" tabindex="0" aria-label="Folded notebook note. Activate to unfold.">
+      <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      <div class="loopbox" hidden>
+        <div class="lb-frame"><img src="../living-cards-site/thumbs/welcome-loop.webp" alt="The eight friends, waving hello"><canvas aria-hidden="true"></canvas></div>
+        <div class="lb-bar"><button type="button" class="lb-still">Still</button><button type="button" class="lb-live on">Living</button></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- IVORY, QUARTERS — THE SYMPATHY NOTE (quiet: the gentle unfold is the whole animation) -->
+  <div class="sheetwrap" id="wrapIVQ" hidden>
+    <div class="sheet nb iv ivq" id="sheetIVQ" role="button" tabindex="0" aria-label="Folded ivory note, folded in quarters. Activate to unfold it, gently.">
+      <div class="quad qBL"><div class="face front ivfront posBL"></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front ivfront posTL"></div><div class="face backX ivback posTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front ivfront posTR"></div><div class="face backY ivback posBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front ivfront posBR"></div><div class="face backY ivback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+  <!-- NOTEBOOK, THE PULL-OUT -->
+  <div class="sheetwrap" id="wrapNB2" hidden>
+    <div class="sheet nb nb2" id="sheetNB2" role="button" tabindex="0" aria-label="Folded notebook note, the pull-out. Activate to open.">
+      <div class="face front nbfront noise faceFull"><div class="hole" style="top:13%"></div><div class="hole" style="top:50%"></div><div class="hole" style="top:87%"></div></div>
+      <div class="sweep" style="left:33.333%"></div>
+      <div class="sweep" style="left:66.666%"></div>
+      <div class="roll nbback"><div class="rollshadow"></div><div class="rollround"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packetedge"></div><div class="packcrease"></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE LETTER FOLD -->
+  <div class="sheetwrap" id="wrapNB3" hidden>
+    <div class="sheet nb nb3" id="sheetNB3" role="button" tabindex="0" aria-label="Folded notebook note, the letter fold. Activate to unfold.">
+      <div class="quad qMID3"><div class="face front nb3front pM3"><div class="hole" style="top:50%"></div></div></div>
+      <div class="fold foldTop3"><div class="quad"><div class="face front nb3front pT3"><div class="hole" style="top:39%"></div></div><div class="face backX nb3back bT3"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="fold foldBot3"><div class="quad"><div class="face front nb3front pB3"><div class="hole" style="top:61%"></div></div><div class="face backX nb3back bB3"></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+
+  <!-- IVORY, THE LETTER FOLD — THE THANK-YOU NOTE -->
+  <div class="sheetwrap" id="wrapIVL" hidden>
+    <div class="sheet nb nb3 iv ivl" id="sheetIVL" role="button" tabindex="0" aria-label="Folded ivory note, the letter fold. Activate to unfold.">
+      <div class="quad qMID3"><div class="face front ivfront pM3"></div></div>
+      <div class="fold foldTop3"><div class="quad"><div class="face front ivfront pT3"></div><div class="face backX ivback bT3"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="fold foldBot3"><div class="quad"><div class="face front ivfront pB3"></div><div class="face backX ivback bB3"></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+  <!-- NOTEBOOK, THE TRIANGLE -->
+  <div class="sheetwrap" id="wrapNB4" hidden>
+    <div class="sheet nb nb4" id="sheetNB4" role="button" tabindex="0" aria-label="Folded notebook note, the triangle. Activate to unfold.">
+      <div class="quad qBL"><div class="face front nbfront noise posBL triclip"><div class="hole" style="top:87%"></div></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL triclip"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR triclip"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR triclip"></div></div></div>
+      <div class="fold triflap"><div class="quad"><div class="face front nbback triface"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div><div class="face backX nbback triface"></div></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE CRUMPLED BALL -->
+  <div class="sheetwrap" id="wrapNB5" hidden>
+    <div class="sheet nb nb5" id="sheetNB5" role="button" tabindex="0" aria-label="A crumpled ball of notebook paper. Activate to unwrap it.">
+      <div class="face front nbfront noise faceFull"><div class="hole" style="top:13%"></div><div class="hole" style="top:50%"></div><div class="hole" style="top:87%"></div></div>
+      <div class="ballstage">
+        <div class="wad wad2"><div class="wadface nbback"><div class="wadshade"></div></div><div class="wadcrease crumpletex"></div></div>
+        <div class="wad wad1"><div class="wadface nbback"><div class="wadshade"></div></div><div class="wadcrease crumpletex"></div></div>
+        <div class="ball"><div class="ballface"><div class="crumpletex"></div><div class="ballshade"></div></div></div>
+        <div class="ballname"><div class="pk-to"></div><div class="pk-from"></div></div>
+      </div>
+      <div class="crumpleset"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD NOTE -->
+  <div class="sheetwrap ypwrap" id="wrapYP" hidden>
+    <div class="sheet yp" id="sheetYP" role="button" tabindex="0" aria-label="Folded yellow pad note. Activate to unfold.">
+      <div class="quad qMID"><div class="face front ypfront tposM"></div></div>
+      <div class="fold foldTop"><div class="quad"><div class="face front ypfront tposT"><div class="padstrip"></div></div><div class="face backX ypback tposT"></div></div></div>
+      <div class="fold foldBot"><div class="quad"><div class="face front ypfront tposB"></div><div class="face backX ypback tposB"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE SECRET NOTE -->
+  <div class="sheetwrap" id="wrapNB6" hidden>
+    <div class="sheet nb nb6" id="sheetNB6" role="button" tabindex="0" aria-label="Folded notebook note, the secret note, tucked into its pocket. Activate to open.">
+      <div class="quad qBOT6"><div class="face front nb6front pB6"><div class="hole" style="top:74%"></div></div></div>
+      <div class="fold foldTop6"><div class="slide6"><div class="quad"><div class="face front nb6front pT6"><div class="hole" style="top:26%"></div></div><div class="face backX nb6back bT6"></div></div></div></div>
+      <div class="pocket6"><div class="pocketface nb6pocket"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE CONCERTINA -->
+  <div class="sheetwrap" id="wrapNB7" hidden>
+    <div class="sheet nb nb7" id="sheetNB7" role="button" tabindex="0" aria-label="Folded notebook note, the concertina. Activate to unfold.">
+      <div class="quad qB4"><div class="face front nb7front bd4"><div class="hole" style="top:48%"></div></div></div>
+      <div class="fold foldC7"><div class="quad"><div class="face front nb7front bd3"></div><div class="face backX nb7back bb3"><div class="pleatedge"></div><div class="pleatside"></div><div class="packcrease"></div></div></div>
+        <div class="fold foldB7"><div class="quad"><div class="face front nb7front bd2"></div><div class="face backX nb7back bb2"></div></div>
+          <div class="fold foldA7"><div class="quad"><div class="face front nb7front bd1"><div class="hole" style="top:52%"></div></div><div class="face backX nb7back bb1"></div></div></div>
+        </div>
+      </div>
+      <div class="stackname7"><div class="stackface7 nb7back bb4"></div><div class="stacklines7"></div><div class="pleatedge"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD, QUARTERS -->
+  <div class="sheetwrap" id="wrapYQ" hidden>
+    <div class="sheet yp yq" id="sheetYQ" role="button" tabindex="0" aria-label="Folded yellow pad note, quarters. Activate to unfold.">
+      <div class="quad qBL"><div class="face front yqfront yqBL"></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front yqfront yqTL"><div class="padstrip"></div></div><div class="face backX yqback yqbTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front yqfront yqTR"><div class="padstrip"></div></div><div class="face backY yqback yqbBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front yqfront yqBR"></div><div class="face backY yqback yqbBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD, THE ROLLED-UP NOTE -->
+  <div class="sheetwrap" id="wrapYR" hidden>
+    <div class="sheet yp yr" id="sheetYR" role="button" tabindex="0" aria-label="Folded yellow pad note, the rolled-up note. Activate to open.">
+      <div class="face front yrfront faceFull"><div class="padstrip"></div></div>
+      <div class="sweep" style="left:33.333%"></div>
+      <div class="sweep" style="left:66.666%"></div>
+      <div class="roll yrback"><div class="rollshadow"></div><div class="rollround"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packetedge"></div><div class="packcrease"></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD, THE LETTER FOLD -->
+  <div class="sheetwrap" id="wrapYL" hidden>
+    <div class="sheet yp yl" id="sheetYL" role="button" tabindex="0" aria-label="Folded yellow pad note, the letter fold. Activate to unfold.">
+      <div class="quad qMID3"><div class="face front ypfront tposM"></div></div>
+      <div class="fold foldTop3"><div class="quad"><div class="face front ypfront tposT"><div class="padstrip"></div></div><div class="face backX ypback tposT"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="fold foldBot3"><div class="quad"><div class="face front ypfront tposB"></div><div class="face backX ypback tposB"></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD, THE SECRET NOTE -->
+  <div class="sheetwrap" id="wrapYS" hidden>
+    <div class="sheet yp ys" id="sheetYS" role="button" tabindex="0" aria-label="Folded yellow pad note, the secret note, tucked into its pocket. Activate to open.">
+      <div class="quad qBOT6"><div class="face front ysfront ysB"></div></div>
+      <div class="fold foldTop6"><div class="slide6"><div class="quad"><div class="face front ysfront ysT"><div class="padstrip"></div></div><div class="face backX ysback ysbT"></div></div></div></div>
+      <div class="pocket6"><div class="pocketface yspocket"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- YELLOW PAD, THE CONCERTINA -->
+  <div class="sheetwrap" id="wrapYC" hidden>
+    <div class="sheet yp yc" id="sheetYC" role="button" tabindex="0" aria-label="Folded yellow pad note, the concertina. Activate to unfold.">
+      <div class="quad qB4"><div class="face front ycfront ycb4"></div></div>
+      <div class="fold foldC7"><div class="quad"><div class="face front ycfront ycb3"></div><div class="face backX ycback ycbb3"><div class="pleatedge"></div><div class="pleatside"></div><div class="packcrease"></div></div></div>
+        <div class="fold foldB7"><div class="quad"><div class="face front ycfront ycb2"></div><div class="face backX ycback ycbb2"></div></div>
+          <div class="fold foldA7"><div class="quad"><div class="face front ycfront ycb1"><div class="padstrip"></div></div><div class="face backX ycback ycbb1"></div></div></div>
+        </div>
+      </div>
+      <div class="stackname7"><div class="stackface7 ycback ycbb4"></div><div class="stacklines7"></div><div class="pleatedge"></div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE MATCHBOOK -->
+  <div class="sheetwrap" id="wrapMB" hidden>
+    <div class="sheet nb mb" id="sheetMB" role="button" tabindex="0" aria-label="Folded notebook note, the matchbook. Activate to open.">
+      <div class="quad qBASE"><div class="face front nb6front pB6"><div class="hole" style="top:74%"></div></div></div>
+      <div class="fold foldTopMB"><div class="slideMB">
+        <div class="quad qTLM"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+        <div class="fold foldV2MB"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+      </div></div>
+      <div class="fold coverMB"><div class="quad"><div class="face front nb6back bB6"><div class="stampMB">a note for you</div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="strikerMB"></div><div class="packcrease"></div></div><div class="face backX nbback"></div></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE DOUBLE-DOOR GATEFOLD -->
+  <div class="sheetwrap" id="wrapGF" hidden>
+    <div class="sheet nb gf" id="sheetGF" role="button" tabindex="0" aria-label="Folded notebook note, the double-door gatefold. Activate to open.">
+      <div class="fold foldBotGF"><div class="quad"><div class="face front nb6front pB6"><div class="hole" style="top:74%"></div></div><div class="face backX nb6back bB6"></div></div></div>
+      <div class="quad qTOPGF"><div class="face front nb6front pT6"><div class="hole" style="top:26%"></div></div></div>
+      <div class="fold doorL"><div class="quad"><div class="face front nbback posTL"><div class="seamL"></div></div><div class="face backY nbback posTR"></div></div></div>
+      <div class="fold doorR"><div class="quad"><div class="face front nbback posTR"><div class="seamR"></div></div><div class="face backY nbback posTL"></div></div></div>
+      <div class="doornameGF"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+      <div class="sealGF">✦</div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE POCKET MAP -->
+  <div class="sheetwrap" id="wrapPM" hidden>
+    <div class="sheet nb pm" id="sheetPM" role="button" tabindex="0" aria-label="Folded notebook note, the pocket map. Activate to unfold.">
+      <div class="quad qBRP"><div class="face front nbfront noise posBR"></div></div>
+      <div class="fold foldTRPM"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backX nbback posBR"></div></div></div>
+      <div class="fold foldVLPM">
+        <div class="quad qBLP"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div><div class="face backY nbback posBL"></div></div>
+        <div class="fold foldHLPM"><div class="quad"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div></div>
+      </div>
+      <div class="mapnamePM"><div class="mapfacePM nbback"></div><svg class="mapsvg" viewBox="0 0 100 260" preserveAspectRatio="none" aria-hidden="true"><path d="M18,238 C42,205 28,168 52,138 C74,110 58,64 80,34" fill="none" stroke="rgba(163,74,58,.7)" stroke-width="2.6" stroke-dasharray="0.1 7" stroke-linecap="round"/><circle cx="18" cy="238" r="3.4" fill="rgba(163,74,58,.8)"/><text x="80" y="30" font-size="17" fill="rgba(163,74,58,.9)" text-anchor="middle">★</text></svg><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE LITTLE BOOK -->
+  <div class="sheetwrap" id="wrapLB" hidden>
+    <div class="sheet nb lb" id="sheetLB" role="button" tabindex="0" aria-label="Folded notebook note, the little book. Activate to open.">
+      <div class="quad qBOTLB"><div class="face front nb6front pB6"><div class="hole" style="top:74%"></div></div></div>
+      <div class="fold foldTopLB"><div class="quad"><div class="face front nb6front pT6"><div class="hole" style="top:26%"></div></div><div class="face backX nb6back bT6"></div></div></div>
+      <div class="fold coverLB"><div class="quad"><div class="face front nb6back bB6"><div class="coverframe"></div><div class="booktitle">a little book</div><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div><div class="face backY nbback"></div></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE DOG-EARED POCKET -->
+  <div class="sheetwrap" id="wrapDE" hidden>
+    <div class="sheet nb de" id="sheetDE" role="button" tabindex="0" aria-label="Folded notebook note, the dog-eared pocket. Activate to unfold.">
+      <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="earDE"><div class="earface"></div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE TOP-FLAP MEMO -->
+  <div class="sheetwrap" id="wrapMF" hidden>
+    <div class="sheet nb mf" id="sheetMF" role="button" tabindex="0" aria-label="Folded notebook note, the top-flap memo. Activate to unfold.">
+      <div class="quad qMID3"><div class="face front nb3front pM3"><div class="hole" style="top:50%"></div></div></div>
+      <div class="fold foldTop3"><div class="quad"><div class="face front nb3front pT3"><div class="hole" style="top:39%"></div></div><div class="face backX nb3back bT3"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="fold foldBot3"><div class="quad"><div class="face front nb3front pB3"><div class="hole" style="top:61%"></div></div><div class="face backX nb3back bB3"></div></div></div>
+      <div class="fold flapMF"><div class="quad"><div class="face front flapface"><div class="flaplabel">MEMO</div></div><div class="face backX nbback"></div></div></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+
+  <!-- NOTEBOOK, THE PAPER-BAND WRAP -->
+  <div class="sheetwrap" id="wrapBW" hidden>
+    <div class="sheet nb bw" id="sheetBW" role="button" tabindex="0" aria-label="Folded notebook note, the paper-band wrap. Activate to unfold.">
+      <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+      <div class="fold foldH">
+        <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+        <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+      </div>
+      <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div><div class="packcrease"></div></div></div></div>
+      <div class="bandBW"><div class="bandmark">♥</div></div>
+      <div class="hole midhole"></div>
+      <div class="creases"></div>
+      <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+    </div>
+  </div>
+    <div class="sheetwrap" id="wrapFT" hidden>
+      <div class="sheet nb shp ft" id="sheetFT" role="button" tabindex="0" aria-label="Folded notebook note shaped like a fortune teller. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="ft-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="ftG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf3ee"/><stop offset="1" stop-color="#f0d8cf"/></linearGradient>
+              <linearGradient id="ftG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef4fb"/><stop offset="1" stop-color="#d7e3ef"/></linearGradient>
+              <linearGradient id="ftG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf6df"/><stop offset="1" stop-color="#efdfae"/></linearGradient>
+              <linearGradient id="ftG4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eff7ec"/><stop offset="1" stop-color="#d5e8cd"/></linearGradient>
+            </defs>
+            <g class="ft-p fac ft-p1" style="--r1:-4deg;--r2:-11deg;--x1:-2px;--y1:-2px;--x2:-5px;--y2:-5px"><polygon points="85,26 160,100 85,100" fill="url(#ftG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,42 87.9,49.2 95.4,49.7 89.7,54.4 91.6,61.6 85,57.6 78.4,61.6 80.3,54.4 74.6,49.7 82.1,49.2" fill="rgba(198,120,90,.55)"/></g>
+            <g class="ft-p fac ft-p2" style="--r1:4deg;--r2:11deg;--x1:2px;--y1:2px;--x2:5px;--y2:5px"><polygon points="160,100 85,174 85,100" fill="url(#ftG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ft-p fac ft-p3" style="--r1:-4deg;--r2:-11deg;--x1:-2px;--y1:2px;--x2:-5px;--y2:5px"><polygon points="85,174 10,100 85,100" fill="url(#ftG3)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ft-p fac ft-p4" style="--r1:4deg;--r2:11deg;--x1:2px;--y1:-2px;--x2:5px;--y2:-5px"><polygon points="10,100 85,26 85,100" fill="url(#ftG4)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <circle cx="85" cy="100" r="2.6" fill="rgba(96,78,45,.35)"/>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapCR" hidden>
+      <div class="sheet nb shp cr" id="sheetCR" role="button" tabindex="0" aria-label="Folded notebook note shaped like an origami crane. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="cr-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="crG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffefb"/><stop offset="1" stop-color="#f4efe0"/></linearGradient>
+              <linearGradient id="crG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8f4e8"/><stop offset="1" stop-color="#eae1c9"/></linearGradient>
+              <linearGradient id="crG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1ebda"/><stop offset="1" stop-color="#ded1b0"/></linearGradient>
+            </defs>
+            <g class="cr-wingf fac"><polygon points="96,118 142,64 148,122 108,130" fill="url(#crG3)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="cr-tail fac"><polygon points="126,114 168,90 161,126 130,130" fill="url(#crG3)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <polygon points="58,128 78,108 126,110 142,126 130,146 74,148" fill="url(#crG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/>
+            <g class="cr-wing fac"><polygon points="70,120 126,42 140,124 96,132" fill="url(#crG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polyline points="126,42 94,124" fill="none" stroke="rgba(96,78,45,.30)" stroke-width="1"/></g>
+            <g class="cr-neck fac"><polygon points="68,116 42,78 30,84 54,130 64,132" fill="url(#crG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="30,84 14,90 31,95" fill="url(#crG3)" stroke="rgba(96,78,45,.38)" stroke-width="1" stroke-linejoin="round"/></g>
+            <path d="M84,148 L82,170 M102,148 L104,170" stroke="rgba(96,78,45,.5)" stroke-width="1.6" fill="none"/>
+          </svg>
+          <div class="shapetag"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapBT" hidden>
+      <div class="sheet nb shp bt" id="sheetBT" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper boat. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="bt-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="btG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffefb"/><stop offset="1" stop-color="#f4efe0"/></linearGradient>
+              <linearGradient id="btG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8f4e8"/><stop offset="1" stop-color="#eae1c9"/></linearGradient>
+              <linearGradient id="btG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1ebda"/><stop offset="1" stop-color="#ded1b0"/></linearGradient>
+            </defs>
+            <g class="bt-rock fac">
+              <g class="bt-sails fac">
+                <polygon points="88,58 88,132 128,132" fill="url(#btG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/>
+                <polygon points="82,78 82,132 52,132" fill="url(#btG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/>
+                <rect x="83.6" y="50" width="2.8" height="86" fill="rgba(96,78,45,.55)"/>
+              </g>
+              <g class="bt-hulll fac"><polygon points="28,136 85,130 85,166 44,166" fill="url(#btG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="51,152 85,152 85,166 44,166" fill="url(#btG3)"/></g>
+              <g class="bt-hullr fac"><polygon points="85,130 142,136 126,166 85,166" fill="url(#btG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,152 119,152 126,166 85,166" fill="url(#btG3)"/></g>
+            </g>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapBF" hidden>
+      <div class="sheet nb shp bf" id="sheetBF" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper butterfly. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="bf-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="bfG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf3f3"/><stop offset="1" stop-color="#f2dcd9"/></linearGradient>
+              <linearGradient id="bfG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbf0ee"/><stop offset="1" stop-color="#e9cfc9"/></linearGradient>
+            </defs>
+            <g class="bf-ul fac"><polygon points="82,88 32,42 14,82 40,112 82,114" fill="url(#bfG1)" stroke="rgba(120,80,80,.38)" stroke-width="1.1" stroke-linejoin="round"/><line x1="82" y1="100" x2="30" y2="52" stroke="rgba(120,80,80,.28)" stroke-width="1"/></g>
+            <g class="bf-ur fac"><polygon points="88,88 138,42 156,82 130,112 88,114" fill="url(#bfG1)" stroke="rgba(120,80,80,.38)" stroke-width="1.1" stroke-linejoin="round"/><line x1="88" y1="100" x2="140" y2="52" stroke="rgba(120,80,80,.28)" stroke-width="1"/></g>
+            <g class="bf-ll fac"><polygon points="82,118 36,114 20,148 50,170 82,152" fill="url(#bfG2)" stroke="rgba(120,80,80,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="bf-lr fac"><polygon points="88,118 134,114 150,148 120,170 88,152" fill="url(#bfG2)" stroke="rgba(120,80,80,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <ellipse cx="85" cy="112" rx="6.5" ry="34" fill="#e6dab9" stroke="rgba(96,78,45,.4)" stroke-width="1"/>
+            <circle cx="85" cy="72" r="8" fill="#e6dab9" stroke="rgba(96,78,45,.4)" stroke-width="1"/>
+            <path d="M80,66 Q66,48 54,46 M90,66 Q104,48 116,46" fill="none" stroke="rgba(96,78,45,.55)" stroke-width="1.6"/>
+          </svg>
+          <div class="shapetag"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapFL" hidden>
+      <div class="sheet nb shp fl" id="sheetFL" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper tulip. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="fl-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="flG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf1ef"/><stop offset="1" stop-color="#f3d2cc"/></linearGradient>
+              <linearGradient id="flG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fcebe8"/><stop offset="1" stop-color="#eebfb7"/></linearGradient>
+              <linearGradient id="flG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d7e6c2"/><stop offset="1" stop-color="#aecb93"/></linearGradient>
+              <linearGradient id="flG4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f0e1"/><stop offset="1" stop-color="#e7ddc2"/></linearGradient>
+            </defs>
+            <ellipse cx="85" cy="198" rx="48" ry="12" fill="url(#flG4)"/>
+            <g class="fl-rise">
+              <polygon points="82,196 88,196 87,114 83,114" fill="url(#flG3)" stroke="rgba(80,100,60,.4)" stroke-width="1" stroke-linejoin="round"/>
+              <polygon points="84,166 50,154 58,184 84,180" fill="url(#flG3)" stroke="rgba(80,100,60,.4)" stroke-width="1" stroke-linejoin="round"/>
+              <g class="fl-pl fac"><polygon points="71,52 52,68 58,102 73,106" fill="url(#flG1)" stroke="rgba(150,90,85,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+              <g class="fl-pr fac"><polygon points="99,52 118,68 112,102 97,106" fill="url(#flG1)" stroke="rgba(150,90,85,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+              <g class="fl-pc fac"><polygon points="85,32 67,56 71,104 85,112 99,104 103,56" fill="url(#flG2)" stroke="rgba(150,90,85,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            </g>
+          </svg>
+          <div class="shapetag"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapST" hidden>
+      <div class="sheet nb shp st" id="sheetST" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper star. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="st-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="stG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf7de"/><stop offset="1" stop-color="#f1e0ab"/></linearGradient>
+              <linearGradient id="stG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbf0cd"/><stop offset="1" stop-color="#e7d193"/></linearGradient>
+            </defs>
+            <g class="st-p" style="--sr:0deg"><polygon points="85,108 85,36 102.1,84.5" fill="url(#stG1)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,108 68,84.5 85,36" fill="url(#stG2)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="st-p" style="--sr:2deg"><polygon points="85,108 102.1,84.5 153.5,85.8" fill="url(#stG2)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,108 153.5,85.8 112.6,117" fill="url(#stG1)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="st-p" style="--sr:1deg"><polygon points="85,108 112.6,117 127.3,166.3" fill="url(#stG2)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,108 127.3,166.3 85,137" fill="url(#stG1)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="st-p" style="--sr:-1deg"><polygon points="85,108 85,137 42.7,166.3" fill="url(#stG2)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,108 42.7,166.3 57.4,117" fill="url(#stG1)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="st-p" style="--sr:-2deg"><polygon points="85,108 57.4,117 16.5,85.8" fill="url(#stG2)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="85,108 16.5,85.8 68,84.5" fill="url(#stG1)" stroke="rgba(120,95,40,.4)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="st-c"><polygon points="102.1,84.5 112.6,117 85,137 57.4,117 68,84.5" fill="#e8d194" stroke="rgba(120,95,40,.4)" stroke-width="1" stroke-linejoin="round"/></g>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapHT" hidden>
+      <div class="sheet nb shp ht" id="sheetHT" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper heart. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="ht-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="htG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf2f1"/><stop offset="1" stop-color="#f3d4d0"/></linearGradient>
+              <linearGradient id="htG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fceae8"/><stop offset="1" stop-color="#eec2bb"/></linearGradient>
+            </defs>
+            <g class="ht-l"><path d="M85,62 C82,49 72,38 58,38 C40,38 22,52 22,76 C22,104 40,132 85,168 Z" fill="url(#htG1)" stroke="rgba(150,80,85,.42)" stroke-width="1.1" stroke-linejoin="round"/><path d="M85,84 C64,80 44,84 32,98" fill="none" stroke="rgba(150,80,85,.30)" stroke-width="1"/></g>
+            <g class="ht-r"><path d="M85,62 C88,49 98,38 112,38 C130,38 148,52 148,76 C148,104 130,132 85,168 Z" fill="url(#htG2)" stroke="rgba(150,80,85,.42)" stroke-width="1.1" stroke-linejoin="round"/><path d="M85,84 C106,80 126,84 138,98" fill="none" stroke="rgba(150,80,85,.30)" stroke-width="1"/></g>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapPW" hidden>
+      <div class="sheet nb shp pw" id="sheetPW" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper pinwheel. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="pw-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="pwG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8f1fa"/><stop offset="1" stop-color="#c9ddef"/></linearGradient>
+              <linearGradient id="pwG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fae8e8"/><stop offset="1" stop-color="#efcaca"/></linearGradient>
+              <linearGradient id="pwG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6f2e2"/><stop offset="1" stop-color="#c2dfc0"/></linearGradient>
+              <linearGradient id="pwG4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbf3d3"/><stop offset="1" stop-color="#efdf9f"/></linearGradient>
+            </defs>
+            <g class="pw-spin">
+              <g class="pw-b"><polygon points="85,104 64,44 116,58" fill="url(#pwG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+              <g class="pw-b"><polygon points="85,104 145,83 131,135" fill="url(#pwG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+              <g class="pw-b"><polygon points="85,104 106,164 54,150" fill="url(#pwG3)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+              <g class="pw-b"><polygon points="85,104 25,125 39,73" fill="url(#pwG4)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            </g>
+            <circle cx="85" cy="104" r="5.5" fill="#d9b45c" stroke="rgba(96,78,45,.5)" stroke-width="1"/>
+          </svg>
+          <div class="shapetag"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapAP" hidden>
+      <div class="sheet nb shp ap" id="sheetAP" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper airplane. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="ap-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="apG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffefb"/><stop offset="1" stop-color="#f4efe0"/></linearGradient>
+              <linearGradient id="apG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f1e2"/><stop offset="1" stop-color="#e6dcc0"/></linearGradient>
+            </defs>
+            <g class="ap-wt"><polygon points="160,94 28,50 64,96" fill="url(#apG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><polygon points="44,62 30,48 56,56" fill="url(#apG2)" stroke="rgba(96,78,45,.38)" stroke-width="1" stroke-linejoin="round"/><line x1="160" y1="94" x2="98" y2="72" stroke="rgba(96,78,45,.28)" stroke-width="1"/></g>
+            <g class="ap-wb"><polygon points="160,94 64,96 28,142" fill="url(#apG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/><line x1="160" y1="94" x2="98" y2="118" stroke="rgba(96,78,45,.28)" stroke-width="1"/></g>
+            <line x1="160" y1="94" x2="36" y2="95" stroke="rgba(96,78,45,.45)" stroke-width="1.4"/>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapHA" hidden>
+      <div class="sheet nb shp ha" id="sheetHA" role="button" tabindex="0" aria-label="Folded notebook note shaped like a paper hat. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="ha-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="haG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffefb"/><stop offset="1" stop-color="#f4efe0"/></linearGradient>
+              <linearGradient id="haG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f8f4e8"/><stop offset="1" stop-color="#eae1c9"/></linearGradient>
+              <linearGradient id="haG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f1ebda"/><stop offset="1" stop-color="#ded1b0"/></linearGradient>
+              <clipPath id="haClip"><path d="M36,138 L62,86 L85,70 L108,86 L134,138 L148,138 L140,168 L30,168 L22,138 Z"/></clipPath>
+            </defs>
+            <g class="ha-l"><polygon points="36,138 62,86 85,70 85,138" fill="url(#haG1)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ha-r"><polygon points="85,70 108,86 134,138 85,138" fill="url(#haG2)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <polygon points="22,138 148,138 140,168 30,168" fill="url(#haG3)" stroke="rgba(96,78,45,.38)" stroke-width="1.1" stroke-linejoin="round"/>
+            <g clip-path="url(#haClip)" stroke="rgba(110,155,205,.30)" stroke-width="1"><path d="M18,95 H152 M18,112 H152 M18,129 H152 M18,156 H152" fill="none"/></g>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapBA" hidden>
+      <div class="sheet nb shp ba" id="sheetBA" role="button" tabindex="0" aria-label="Folded notebook note shaped like an origami balloon. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="ba-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="baG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fdf3ee"/><stop offset="1" stop-color="#f0d8cf"/></linearGradient>
+              <linearGradient id="baG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef4fb"/><stop offset="1" stop-color="#d3e2f0"/></linearGradient>
+            </defs>
+            <g class="ba-f" style="--br:1deg;--bx:1px;--by:-3px"><polygon points="85,108 85,48 127.4,65.6" fill="url(#baG1)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:2deg;--bx:3px;--by:-2px"><polygon points="85,108 127.4,65.6 145,108" fill="url(#baG2)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:2deg;--bx:3px;--by:2px"><polygon points="85,108 145,108 127.4,150.4" fill="url(#baG1)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:1deg;--bx:1px;--by:3px"><polygon points="85,108 127.4,150.4 85,168" fill="url(#baG2)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:-1deg;--bx:-1px;--by:3px"><polygon points="85,108 85,168 42.6,150.4" fill="url(#baG1)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:-2deg;--bx:-3px;--by:2px"><polygon points="85,108 42.6,150.4 25,108" fill="url(#baG2)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:-2deg;--bx:-3px;--by:-2px"><polygon points="85,108 25,108 42.6,65.6" fill="url(#baG1)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <g class="ba-f" style="--br:-1deg;--bx:-1px;--by:-3px"><polygon points="85,108 42.6,65.6 85,48" fill="url(#baG2)" stroke="rgba(96,78,45,.42)" stroke-width="1.1" stroke-linejoin="round"/></g>
+            <polygon points="78,168 92,168 85,181" fill="url(#baG2)" stroke="rgba(96,78,45,.42)" stroke-width="1" stroke-linejoin="round"/>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+    <div class="sheetwrap" id="wrapDG" hidden>
+      <div class="sheet nb shp dg" id="sheetDG" role="button" tabindex="0" aria-label="Folded notebook note shaped like a dog face. Activate to unfold.">
+        <div class="quad qBL"><div class="face front nbfront noise posBL"><div class="hole" style="top:87%"></div></div></div>
+        <div class="fold foldH">
+          <div class="quad qTL"><div class="face front nbfront noise posTL"><div class="hole" style="top:13%"></div></div><div class="face backX nbback posTL"></div></div>
+          <div class="fold foldV2"><div class="quad"><div class="face front nbfront noise posTR"></div><div class="face backY nbback posBR"></div></div></div>
+        </div>
+        <div class="fold foldV"><div class="quad"><div class="face front nbfront noise posBR"></div><div class="face backY nbback posBR"><div class="packcrease"></div></div></div></div>
+        <div class="shapeLayer">
+          <svg class="dg-svg" viewBox="0 0 170 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <defs>
+              <linearGradient id="dgG1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffefb"/><stop offset="1" stop-color="#f4efe0"/></linearGradient>
+              <linearGradient id="dgG2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3e7d3"/><stop offset="1" stop-color="#e2cba6"/></linearGradient>
+              <linearGradient id="dgG3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbf8ef"/><stop offset="1" stop-color="#efe7d0"/></linearGradient>
+            </defs>
+            <path d="M48,54 Q85,40 122,54 Q133,100 119,139 Q105,159 85,159 Q65,159 51,139 Q37,100 48,54 Z" fill="url(#dgG1)" stroke="rgba(96,78,45,.4)" stroke-width="1.1" stroke-linejoin="round"/>
+            <g class="dg-earl fac"><polygon points="53,50 20,58 25,117 55,101" fill="url(#dgG2)" stroke="rgba(96,78,45,.4)" stroke-width="1.1" stroke-linejoin="round"/><path d="M50,58 L32,108" stroke="rgba(96,78,45,.25)" stroke-width="1" fill="none"/></g>
+            <g class="dg-earr fac"><polygon points="117,50 150,58 145,117 115,101" fill="url(#dgG2)" stroke="rgba(96,78,45,.4)" stroke-width="1.1" stroke-linejoin="round"/><path d="M120,58 L138,108" stroke="rgba(96,78,45,.25)" stroke-width="1" fill="none"/></g>
+            <circle cx="67" cy="90" r="4.6" fill="#4a3b2c"/><circle cx="103" cy="90" r="4.6" fill="#4a3b2c"/>
+            <g class="dg-chin fac"><polygon points="53,116 117,116 107,148 63,148" fill="url(#dgG2)" stroke="rgba(96,78,45,.35)" stroke-width="1" stroke-linejoin="round"/><polygon points="66,118 104,118 97,144 73,144" fill="url(#dgG3)" stroke="rgba(96,78,45,.25)" stroke-width="1" stroke-linejoin="round"/><polygon points="75,116 95,116 85,129" fill="rgba(74,59,44,.88)"/><path d="M85,129 Q85,137 78,138 M85,129 Q85,137 92,138" fill="none" stroke="rgba(74,59,44,.7)" stroke-width="1.4"/></g>
+          </svg>
+          <div class="shapename"><div class="packname"><div class="pk-to"></div><div class="pk-from"></div></div></div>
+        </div>
+        <div class="hole midhole"></div>
+        <div class="creases"></div>
+        <div class="notetext"><div class="greet"></div><div class="body"></div><div class="sign"></div></div>
+      </div>
+    </div>
+
+</main>
+
+<div class="hint" id="hint">Tap the note to unfold it</div>
+<div class="underbar"><button class="replaybtn" id="replay" type="button">Fold it back into a crane</button></div>
+<div class="paperbar" id="paperbar"><span class="plabel">Origami paper:</span><button class="pdot" type="button" data-color="white" style="background:#f7f3e8" aria-label="White origami paper"></button><button class="pdot" type="button" data-color="blue" style="background:#6aa9e8" aria-label="Blue origami paper"></button><button class="pdot" type="button" data-color="green" style="background:#69b96f" aria-label="Green origami paper"></button><button class="pdot" type="button" data-color="rose" style="background:#f191a7" aria-label="Rose origami paper"></button></div>
+
+<section class="composer" id="composer" hidden>
+  <h3>Pass a note of your own</h3>
+  <p class="csub">Your words, your names — the link carries them. Send the link yourself, any way you like.</p>
+  <label>Paper &amp; fold
+    <select id="cNote">
+      <option value="notebook">Notebook — Quarters</option>
+      <option value="wave">Notebook — the Wave Note (Quarters, moving)</option>
+      <option value="notebook2">Notebook — the Rolled-Up Note</option>
+      <option value="notebook3">Notebook — the Letter Fold</option>
+      <option value="notebook6">Notebook — the Secret Note</option>
+      <option value="notebook7">Notebook — the Concertina</option>
+      <option value="matchbook">Notebook — the Matchbook</option>
+      <option value="gatefold">Notebook — the Double-Door Gatefold</option>
+      <option value="pocketmap">Notebook — the Pocket Map</option>
+      <option value="littlebook">Notebook — the Little Book</option>
+      <option value="dogear">Notebook — the Dog-Eared Pocket</option>
+      <option value="memo">Notebook — the Top-Flap Memo</option>
+      <option value="bandwrap">Notebook — the Paper-Band Wrap</option>
+        <option value="fortune">Notebook — the Fortune Teller</option>
+        <option value="crane">Notebook — the Origami Crane</option>
+        <option value="boat">Notebook — the Origami Boat</option>
+        <option value="butterfly">Notebook — the Origami Butterfly</option>
+        <option value="flower">Notebook — the Origami Flower</option>
+        <option value="star">Notebook — the Origami Star</option>
+        <option value="heart">Notebook — the Origami Heart</option>
+        <option value="pinwheel">Notebook — the Paper Pinwheel</option>
+        <option value="airplane">Notebook — the Paper Airplane</option>
+        <option value="hat">Notebook — the Paper Hat</option>
+        <option value="balloon">Notebook — the Origami Balloon</option>
+        <option value="dog">Notebook — the Origami Dog</option>
+      <option value="notebook4">Notebook — the triangle fold</option>
+      <option value="notebook5">Notebook — the Crumpled Ball Note</option>
+      <option value="yellow">Yellow Pad — Classic Trifold</option>
+      <option value="yellowq">Yellow Pad — Quarters</option>
+      <option value="yellowr">Yellow Pad — the Rolled-Up Note</option>
+      <option value="yellowl">Yellow Pad — the Letter Fold</option>
+      <option value="yellows">Yellow Pad — the Secret Note</option>
+      <option value="yellowc">Yellow Pad — the Concertina</option>
+      <option value="ivoryl">Ivory — Thank-You Note (the Letter Fold)</option>
+      <option value="ivoryq">Ivory — Sympathy Note (Quarters)</option>
+    </select>
+  </label>
+  <label>To <input type="text" id="cTo" maxlength="40" autocomplete="off"></label>
+  <label>From <input type="text" id="cFrom" maxlength="40" autocomplete="off"></label>
+  <label>Your note <textarea id="cBody" maxlength="280"></textarea></label>
+  <div class="crow">
+    <span class="ccount" id="cCount"></span>
+    <button class="cbtn ghost" id="cCopy" type="button">Copy link</button>
+    <button class="cbtn" id="cMail" type="button">Open in my email</button>
+  </div>
+  <p class="cnote">No account, no sending service — the note travels in the link, and you pass it hand to hand.</p>
+</section>
+
+<footer>Living Notes · Living Photos</footer>
+
+<script>
+(function(){
+  "use strict";
+  var q = new URLSearchParams(location.search);
+  var noteParam = q.get("note") || "crane";
+  var VARIANTS = {
+    notebook:  { wrap:"wrapNB",  sheet:"sheetNB",  title:"Notebook Note A — a folded note", machine:"quarters" },
+    notebook2: { wrap:"wrapNB2", sheet:"sheetNB2", title:"Notebook — the Rolled-Up Note — a folded note", machine:"rolled" },
+    notebook3: { wrap:"wrapNB3", sheet:"sheetNB3", title:"Notebook — the letter fold — a folded note", machine:"letter" },
+    notebook4: { wrap:"wrapNB4", sheet:"sheetNB4", title:"Notebook — the triangle fold — a folded note", machine:"triangle" },
+    notebook5: { wrap:"wrapNB5", sheet:"sheetNB5", title:"Notebook — the Crumpled Ball Note — a folded note", machine:"ball" },
+    notebook6: { wrap:"wrapNB6", sheet:"sheetNB6", title:"Notebook — the Secret Note — a folded note", machine:"secret" },
+    wave:      { wrap:"wrapNB",  sheet:"sheetNB",  title:"Notebook — the Wave Note — a folded note", machine:"quarters", loop:"wave", hint:"A hello, with a little wave inside." },
+    notebook7: { wrap:"wrapNB7", sheet:"sheetNB7", title:"Notebook — the Concertina — a folded note", machine:"concertina" },
+    matchbook: { wrap:"wrapMB", sheet:"sheetMB", title:"Notebook — the Matchbook — a folded note", machine:"matchbook" },
+    gatefold:  { wrap:"wrapGF", sheet:"sheetGF", title:"Notebook — the Double-Door Gatefold — a folded note", machine:"gatefold" },
+    pocketmap: { wrap:"wrapPM", sheet:"sheetPM", title:"Notebook — the Pocket Map — a folded note", machine:"pocketmap" },
+    littlebook:{ wrap:"wrapLB", sheet:"sheetLB", title:"Notebook — the Little Book — a folded note", machine:"littlebook" },
+    dogear:    { wrap:"wrapDE", sheet:"sheetDE", title:"Notebook — the Dog-Eared Pocket — a folded note", machine:"dogear" },
+    memo:      { wrap:"wrapMF", sheet:"sheetMF", title:"Notebook — the Top-Flap Memo — a folded note", machine:"memo" },
+    bandwrap:  { wrap:"wrapBW", sheet:"sheetBW", title:"Notebook — the Paper-Band Wrap — a folded note", machine:"bandwrap" },
+    fortune:   { wrap:"wrapFT", sheet:"sheetFT", title:"Notebook — the Fortune Teller — a folded note", machine:"shape", dur:2400 },
+    crane:     { wrap:"wrapCR", sheet:"sheetCR", title:"Notebook — the Origami Crane — a folded note", machine:"shape", dur:2500, hint:"Fold it back up when you are done — and keep the crane." },
+    boat:      { wrap:"wrapBT", sheet:"sheetBT", title:"Notebook — the Origami Boat — a folded note", machine:"shape", dur:2400 },
+    butterfly: { wrap:"wrapBF", sheet:"sheetBF", title:"Notebook — the Origami Butterfly — a folded note", machine:"shape", dur:2400 },
+    flower:    { wrap:"wrapFL", sheet:"sheetFL", title:"Notebook — the Origami Flower — a folded note", machine:"shape", dur:2400 },
+    star:      { wrap:"wrapST", sheet:"sheetST", title:"Notebook — the Origami Star — a folded note", machine:"shape", dur:2200 },
+    heart:     { wrap:"wrapHT", sheet:"sheetHT", title:"Notebook — the Origami Heart — a folded note", machine:"shape", dur:2200 },
+    pinwheel:  { wrap:"wrapPW", sheet:"sheetPW", title:"Notebook — the Paper Pinwheel — a folded note", machine:"shape", dur:2500 },
+    airplane:  { wrap:"wrapAP", sheet:"sheetAP", title:"Notebook — the Paper Airplane — a folded note", machine:"shape", dur:2300 },
+    hat:       { wrap:"wrapHA", sheet:"sheetHA", title:"Notebook — the Paper Hat — a folded note", machine:"shape", dur:2300 },
+    balloon:   { wrap:"wrapBA", sheet:"sheetBA", title:"Notebook — the Origami Balloon — a folded note", machine:"shape", dur:2400 },
+    dog:       { wrap:"wrapDG", sheet:"sheetDG", title:"Notebook — the Origami Dog — a folded note", machine:"shape", dur:2400 },
+    yellow:    { wrap:"wrapYP",  sheet:"sheetYP",  title:"Yellow Pad Note — a folded note", machine:"classic" },
+    yellowq:   { wrap:"wrapYQ",  sheet:"sheetYQ",  title:"Yellow Pad — Quarters — a folded note", machine:"quarters" },
+    yellowr:   { wrap:"wrapYR",  sheet:"sheetYR",  title:"Yellow Pad — the Rolled-Up Note — a folded note", machine:"rolled" },
+    yellowl:   { wrap:"wrapYL",  sheet:"sheetYL",  title:"Yellow Pad — the Letter Fold — a folded note", machine:"letter" },
+    yellows:   { wrap:"wrapYS",  sheet:"sheetYS",  title:"Yellow Pad — the Secret Note — a folded note", machine:"secret" },
+    yellowc:   { wrap:"wrapYC",  sheet:"sheetYC",  title:"Yellow Pad — the Concertina — a folded note", machine:"concertina" },
+    ivoryl:    { wrap:"wrapIVL", sheet:"sheetIVL", title:"Thank-You Note — a folded note", machine:"letter", hint:"A thank-you, folded the letter way." },
+    ivoryq:    { wrap:"wrapIVQ", sheet:"sheetIVQ", title:"Sympathy Note — a folded note", machine:"quarters", pace:1.55, hint:"A quiet note, folded in quarters." }
+  };
+  var kind = VARIANTS[noteParam] ? noteParam : "notebook";
+  var V = VARIANTS[kind];
+  var machine = V.machine;
+  var isYellowPaper = kind.indexOf("yellow") === 0;
+  var DEMO = {
+    notebook: { to:"Friend", from:"Me",
+      body:"Psst — nice save in the game yesterday. Nobody saw it coming.\nSit with us at lunch tomorrow? We're planning the whole weekend.\nAnd don't show this to anybody!!" },
+    yellow: { to:"Friend", from:"Me",
+      body:"Quick one — the meeting moved to 3, so don't rush back.\nYour coffee money is on the counter, and the spare keys are with the front desk.\nSee you at dinner." }
+  };
+  DEMO.wave = { to:"Friend", from:"Me",
+      body:"Just saying hi \u2014 properly, not in a text.\nHope today is treating you kindly.\nWave back when you can." };
+  DEMO.ivoryl = { to:"Friend", from:"Me",
+      body:"Thank you for the lovely dinner \u2014 and for thinking of me.\nThe flowers are on the table now, and they make the whole room kinder.\nYou are a good friend." };
+  DEMO.ivoryq = { to:"Friend", from:"Me",
+      body:"I was so sorry to hear about your loss.\nPlease know I am thinking of you, and I am here \u2014 for a talk, a walk, or just quiet company.\nTake all the time you need." };
+  DEMO.matchbook = { to:"Friend", from:"Me", body:"I was thinking about you. That's all." };
+  DEMO.gatefold = { to:"Friend", from:"Me", body:"Open when you need a smile. Consider this me, checking in until you do." };
+  DEMO.pocketmap = { to:"Friend", from:"Me", body:"Your next adventure starts whenever you're ready. I'm in your corner for it." };
+  DEMO.littlebook = { to:"Friend", from:"Me", body:"A little memory, folded up small so you can keep it. Open it whenever." };
+  DEMO.dogear = { to:"Friend", from:"Me", body:"Psst... between us. You know exactly why I'm sending this." };
+  DEMO.memo = { to:"Friend", from:"Me", body:"Desk surprise. Someone noticed the work you did. It mattered." };
+  DEMO.bandwrap = { to:"Friend", from:"Me", body:"A little something for you. No reason. That's the reason." };
+  DEMO.fortune = { to:"Friend", from:"Me", body:"The fortune says: a good day is coming. Pass it on." };
+  DEMO.crane = { to:"Friend", from:"Me", body:"For hope, and for thanks. Some people fold a thousand of these — start with one." };
+  DEMO.boat = { to:"Friend", from:"Me", body:"Set sail. Your next adventure is closer than it looks." };
+  DEMO.butterfly = { to:"Friend", from:"Me", body:"A little kindness, delivered by wing." };
+  DEMO.flower = { to:"Friend", from:"Me", body:"Thank you. For everything — and for the small things too." };
+  DEMO.star = { to:"Friend", from:"Me", body:"You did it. A little star for a big moment." };
+  DEMO.heart = { to:"Friend", from:"Me", body:"A heartfelt note, in a heart. You already know the rest." };
+  DEMO.pinwheel = { to:"Friend", from:"Me", body:"A spin of happiness. Congratulations!" };
+  DEMO.airplane = { to:"Friend", from:"Me", body:"Flying your way — catch. Thinking of you from far away." };
+  DEMO.hat = { to:"Friend", from:"Me", body:"Hats off to you. Congratulations — seriously." };
+  DEMO.balloon = { to:"Friend", from:"Me", body:"A little surprise, folded round. Pop it open." };
+  DEMO.dog = { to:"Friend", from:"Me", body:"From a friend's desk to yours. Have the best day." };
+  var demo = DEMO[kind] || (isYellowPaper ? DEMO.yellow : DEMO.notebook);
+  function clamp(s, n){ s = (s == null ? "" : String(s)); return s.length > n ? s.slice(0, n) : s; }
+  var to   = clamp(q.get("to")   || demo.to,   40);
+  var from = clamp(q.get("from") || demo.from, 40);
+  var body = clamp(q.get("body") || demo.body, 280);
+
+  var sheet = document.getElementById(V.sheet);
+  var wrap = document.getElementById(V.wrap);
+  Object.keys(VARIANTS).forEach(function(k){
+    var w = document.getElementById(VARIANTS[k].wrap);
+    if (w) w.hidden = (w !== wrap);
+  });
+  document.title = V.title;
+
+  /* fill the words */
+  sheet.querySelector(".pk-to").textContent   = "To: " + to;
+  sheet.querySelector(".pk-from").textContent = "from " + from;
+  sheet.querySelector(".greet").textContent   = to + ",";
+  sheet.querySelector(".body").textContent    = body;
+  sheet.querySelector(".sign").textContent    = "— " + from;
+
+  /* the wave note: words first, and a little wave doodling in the corner */
+  var loopbox = sheet.querySelector(".loopbox");
+  if (loopbox && V.loop === "wave"){
+    loopbox.hidden = false;
+    sheet.classList.add("hasloop");
+    var limg = loopbox.querySelector("img"), lcan = loopbox.querySelector("canvas"),
+        bStill = loopbox.querySelector(".lb-still"), bLive = loopbox.querySelector(".lb-live"),
+        living = true;
+    function setLiving(on){
+      living = on;
+      if (on){ lcan.style.display = "none"; limg.style.display = "block"; }
+      else {
+        try {
+          lcan.width = limg.naturalWidth || 800; lcan.height = limg.naturalHeight || 600;
+          lcan.getContext("2d").drawImage(limg, 0, 0, lcan.width, lcan.height);
+        } catch(e){}
+        limg.style.display = "none"; lcan.style.display = "block";
+      }
+      bStill.classList.toggle("on", !on); bLive.classList.toggle("on", on);
+    }
+    bStill.addEventListener("click", function(e){ e.stopPropagation(); setLiving(false); });
+    bLive.addEventListener("click", function(e){ e.stopPropagation(); setLiving(true); });
+    limg.addEventListener("click", function(e){ e.stopPropagation(); setLiving(!living); });
+  }
+
+
+  /* scale unit: --u = sheet width / 100 */
+  function setU(){ var w = sheet.clientWidth; if (w) sheet.style.setProperty("--u", (w/100) + "px"); }
+  setU(); window.addEventListener("resize", setU);
+
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) document.documentElement.classList.add("rm");
+  var T = reduced ? 0.06 : (V.pace || 1);
+  var hint = document.getElementById("hint"), replay = document.getElementById("replay");
+  var opened = false, busy = false;
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  /* soft shading that follows each fold as it swings */
+  function shade(el, dur){
+    if (reduced || !el) return;
+    var t0 = performance.now();
+    (function frame(t){
+      var p = Math.min(1, (t - t0) / dur);
+      el.style.setProperty("--fsh", (Math.sin(p * Math.PI) * 0.30).toFixed(3));
+      if (p < 1) requestAnimationFrame(frame); else el.style.setProperty("--fsh", 0);
+    })(t0);
+  }
+
+  /* the pull-out: one rAF clock drives the reveal, the traveling roll, and the wrap's glide to center */
+  function unfurlNB2(yOff){
+    yOff = yOff || 0;
+    return new Promise(function(resolve){
+      var face = sheet.querySelector(".faceFull"), roll = sheet.querySelector(".roll"),
+          round = sheet.querySelector(".rollround"), pk = sheet.querySelector(".packname"),
+          edge = sheet.querySelector(".packetedge"), shad = sheet.querySelector(".rollshadow"),
+          sweeps = sheet.querySelectorAll(".sweep");
+      if (reduced || !face || !roll){
+        if (face) face.style.clipPath = "inset(0 0% 0 0)";
+        if (roll) roll.style.display = "none";
+        wrap.style.transform = "translate(0," + yOff + "px)";
+        resolve(); return;
+      }
+      var dur = 2400, t0 = performance.now(), sheetW = sheet.clientWidth || 343;
+      function ease(p){
+        var e = p < .5 ? 4*p*p*p : 1 - Math.pow(-2*p + 2, 3) / 2;
+        if (p > .70){ var q = (p - .70) / .30; e += 0.016 * Math.sin(q * Math.PI); }
+        return e;
+      }
+      (function frame(t){
+        var p = Math.min(1, (t - t0) / dur), e = ease(p), front = e * 100;
+        face.style.clipPath = "inset(0 " + Math.max(0, 100 - front) + "% 0 0)";
+        wrap.style.transform = "translate(" + ((1 - e) * 35) + "%, " + yOff + "px)";
+        var morph = Math.min(1, p / 0.12);
+        var rw = p < 0.12 ? (30 + (13.4 - 30) * morph)
+                          : (13.4 + (4.7 - 13.4) * ((p - 0.12) / 0.88));
+        var center = Math.max(rw / 2, Math.min(front, 100 - rw / 2));
+        roll.style.width = rw + "%";
+        roll.style.left = (center - rw / 2) + "%";
+        round.style.opacity = morph;
+        round.style.backgroundPosition = (-(front * sheetW / 100) * 0.9) + "px 0";
+        pk.style.opacity = 1 - Math.min(1, p / 0.10);
+        edge.style.opacity = 1 - morph;
+        shad.style.opacity = Math.min(1, p * 5) * Math.min(1, Math.max(0, (1 - p) / 0.05));
+        sweeps.forEach(function(sw, i){
+          var d = Math.abs(front - (i + 1) * 33.333);
+          sw.style.opacity = Math.max(0, 0.55 * (1 - d / 16));
+        });
+        if (p < 1){ requestAnimationFrame(frame); return; }
+        var f0 = performance.now();
+        (function flat(t2){
+          var fp = Math.min(1, (t2 - f0) / 170);
+          roll.style.transform = "scaleX(" + (1 - 0.88 * fp) + ")";
+          roll.style.opacity = 1 - fp;
+          if (fp < 1) requestAnimationFrame(flat);
+          else { roll.style.display = "none"; resolve(); }
+        })(f0);
+      })(t0);
+    });
+  }
+
+  async function open(){
+    if (opened || busy) return; busy = true;
+    sheet.classList.remove("ksidle", "landed");
+    wrap.classList.add("centered");
+    hint.textContent = "";
+    await wait(120 * T);
+    if (machine === "classic"){
+      var bot = sheet.querySelector(".foldBot"), top = sheet.querySelector(".foldTop");
+      shade(bot, 1150 * T); sheet.classList.add("go1"); await wait(1180 * T);
+      shade(top, 1150 * T); sheet.classList.add("go2"); await wait(1150 * T);
+    } else if (machine === "rolled"){
+      await unfurlNB2(kind === "yellowr" ? -6 : 0);
+    } else if (machine === "letter"){
+      var tp = sheet.querySelector(".foldTop3"), bt = sheet.querySelector(".foldBot3");
+      shade(tp, 1100 * T); sheet.classList.add("go1"); await wait(1120 * T);
+      shade(bt, 1100 * T); sheet.classList.add("go2"); await wait(1080 * T);
+    } else if (machine === "secret"){
+      wrap.classList.remove("centered"); void wrap.offsetWidth;
+      sheet.classList.add("go1"); await wait(900 * T);
+      wrap.classList.add("centered");
+      var tf6 = sheet.querySelector(".foldTop6");
+      shade(tf6, 1250 * T); sheet.classList.add("go2"); await wait(1300 * T);
+    } else if (machine === "concertina"){
+      var fc7 = sheet.querySelector(".foldC7"), fb7 = sheet.querySelector(".foldB7"), fa7 = sheet.querySelector(".foldA7");
+      shade(fc7, 1050 * T); sheet.classList.add("go1"); await wait(1080 * T);
+      shade(fb7, 1050 * T); sheet.classList.add("go2"); await wait(1080 * T);
+      shade(fa7, 950 * T); sheet.classList.add("go3"); await wait(1000 * T);
+    } else if (machine === "triangle"){
+      var tf = sheet.querySelector(".triflap"), bv = sheet.querySelector(".foldV"),
+          bh = sheet.querySelector(".foldH"), tv = sheet.querySelector(".foldV2");
+      shade(tf, 950 * T); sheet.classList.add("go1"); await wait(980 * T);
+      shade(bv, 1050 * T); sheet.classList.add("go2"); await wait(1020 * T);
+      shade(bh, 1250 * T); sheet.classList.add("go3"); await wait(1200 * T);
+      shade(tv, 1050 * T); sheet.classList.add("go4"); await wait(980 * T);
+    } else if (machine === "ball"){
+      sheet.classList.add("go1"); await wait(1000 * T);
+      sheet.classList.add("go2"); await wait(650 * T);
+      sheet.classList.add("go3"); await wait(650 * T);
+      sheet.classList.add("go4"); await wait(650 * T);
+    } else if (machine === "matchbook"){
+      wrap.classList.remove("centered"); void wrap.offsetWidth;
+      var cov = sheet.querySelector(".coverMB");
+      shade(cov, 1050 * T); sheet.classList.add("go1"); await wait(1080 * T);
+      sheet.classList.add("go2"); await wait(920 * T);
+      var fv2 = sheet.querySelector(".foldV2MB");
+      shade(fv2, 1050 * T); sheet.classList.add("go3"); await wait(1080 * T);
+      wrap.classList.add("centered");
+      var ftm = sheet.querySelector(".foldTopMB");
+      shade(ftm, 1250 * T); sheet.classList.add("go4"); await wait(1350 * T);
+    } else if (machine === "gatefold"){
+      wrap.classList.remove("centered"); void wrap.offsetWidth;
+      sheet.classList.add("go1"); await wait(420 * T);
+      var dl = sheet.querySelector(".doorL");
+      shade(dl, 1000 * T); sheet.classList.add("go2"); await wait(1040 * T);
+      var dr = sheet.querySelector(".doorR");
+      shade(dr, 1000 * T); sheet.classList.add("go3"); await wait(1160 * T);
+      wrap.classList.add("centered");
+      var fbg = sheet.querySelector(".foldBotGF");
+      shade(fbg, 1250 * T); sheet.classList.add("go4"); await wait(1350 * T);
+    } else if (machine === "pocketmap"){
+      var fvl = sheet.querySelector(".foldVLPM");
+      shade(fvl, 1050 * T); sheet.classList.add("go1"); await wait(1080 * T);
+      var ftr = sheet.querySelector(".foldTRPM");
+      shade(ftr, 1150 * T); sheet.classList.add("go2"); await wait(1180 * T);
+      var fhl = sheet.querySelector(".foldHLPM");
+      shade(fhl, 1250 * T); sheet.classList.add("go3"); await wait(1300 * T);
+    } else if (machine === "littlebook"){
+      wrap.classList.remove("centered"); void wrap.offsetWidth;
+      var clb = sheet.querySelector(".coverLB");
+      shade(clb, 1050 * T); sheet.classList.add("go1"); await wait(1080 * T);
+      wrap.classList.add("centered");
+      var ftl = sheet.querySelector(".foldTopLB");
+      shade(ftl, 1250 * T); sheet.classList.add("go2"); await wait(1350 * T);
+    } else if (machine === "dogear"){
+      sheet.classList.add("go1"); await wait(780 * T);
+      var dv = sheet.querySelector(".foldV"), dh = sheet.querySelector(".foldH"), dv2 = sheet.querySelector(".foldV2");
+      shade(dv, 1050 * T); sheet.classList.add("go2"); await wait(1020 * T);
+      shade(dh, 1250 * T); sheet.classList.add("go3"); await wait(1200 * T);
+      shade(dv2, 1050 * T); sheet.classList.add("go4"); await wait(980 * T);
+    } else if (machine === "memo"){
+      var fl = sheet.querySelector(".flapMF");
+      shade(fl, 850 * T); sheet.classList.add("go1"); await wait(900 * T);
+      var mt = sheet.querySelector(".foldTop3"), mbt = sheet.querySelector(".foldBot3");
+      shade(mt, 1100 * T); sheet.classList.add("go2"); await wait(1120 * T);
+      shade(mbt, 1100 * T); sheet.classList.add("go3"); await wait(1080 * T);
+    } else if (machine === "bandwrap"){
+      sheet.classList.add("go1"); await wait(1180 * T);
+      var bv = sheet.querySelector(".foldV"), bh2 = sheet.querySelector(".foldH"), bv2 = sheet.querySelector(".foldV2");
+      shade(bv, 1050 * T); sheet.classList.add("go2"); await wait(1020 * T);
+      shade(bh2, 1250 * T); sheet.classList.add("go3"); await wait(1200 * T);
+      shade(bv2, 1050 * T); sheet.classList.add("go4"); await wait(980 * T);
+    } else if (machine === "shape"){
+      sheet.classList.add("go1"); await wait((V.dur || 2300) * T);
+      var sqv = sheet.querySelector(".foldV"), sqh = sheet.querySelector(".foldH"), sqv2 = sheet.querySelector(".foldV2");
+      shade(sqv, 1050 * T); sheet.classList.add("go2"); await wait(1020 * T);
+      shade(sqh, 1250 * T); sheet.classList.add("go3"); await wait(1200 * T);
+      shade(sqv2, 1050 * T); sheet.classList.add("go4"); await wait(980 * T);
+    } else {
+      var br = sheet.querySelector(".foldV"), fh = sheet.querySelector(".foldH"), tr = sheet.querySelector(".foldV2");
+      shade(br, 1050 * T); sheet.classList.add("go1"); await wait(1020 * T);
+      shade(fh, 1250 * T); sheet.classList.add("go2"); await wait(1200 * T);
+      shade(tr, 1050 * T); sheet.classList.add("go3"); await wait(980 * T);
+    }
+    sheet.classList.add("open", "settled");
+    hint.textContent = V.hint || (isYellowPaper ? "A yellow pad note — a little longer, a little bigger."
+                                : "Passed in class, the old way — now by link.");
+    replay.classList.add("on");
+    opened = true; busy = false;
+  }
+  function reset(){
+    if (busy) return;
+    sheet.classList.add("noanim"); wrap.classList.add("noanim");
+    sheet.classList.remove("go1","go2","go3","go4","open","settled");
+    wrap.classList.remove("centered");
+    sheet.querySelectorAll(".fold").forEach(function(f){ f.style.setProperty("--fsh", 0); });
+    if (machine === "rolled"){
+      var ff = sheet.querySelector(".faceFull"), rr = sheet.querySelector(".roll");
+      if (ff) ff.style.clipPath = "";
+      if (rr) rr.style.cssText = "";
+      sheet.querySelectorAll(".rollround,.packname,.packetedge,.rollshadow,.sweep").forEach(function(el){ el.style.opacity = ""; });
+      wrap.style.transform = "";
+    }
+    void sheet.offsetWidth;
+    sheet.classList.remove("noanim"); wrap.classList.remove("noanim");
+    hint.textContent = "Tap the note to unfold it";
+    replay.classList.remove("on");
+    opened = false;
+  }
+  /* ---------- ORIGAMI SURPRISE (preview): origami paper colors + the keepsake fold-back ---------- */
+  var PAPERS = { white:"#f2ecdc", blue:"#6aa9e8", green:"#69b96f", rose:"#f191a7" };
+  function hexRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+  function rgbHex(r,g,b){ function c(v){ v = Math.max(0, Math.min(255, Math.round(v))); return (v<16?"0":"") + v.toString(16); } return "#" + c(r)+c(g)+c(b); }
+  function shadeHex(h, amt){ var rgb = hexRgb(h), t = amt < 0 ? 0 : 255, p = Math.abs(amt);
+    return rgbHex(rgb[0]+(t-rgb[0])*p, rgb[1]+(t-rgb[1])*p, rgb[2]+(t-rgb[2])*p); }
+  var paperName = (q.get("color") || "white").toLowerCase();
+  if (!PAPERS[paperName]) paperName = "white";
+  function setStops(id, c1, c2){
+    var g = document.getElementById(id); if (!g) return;
+    var st = g.querySelectorAll("stop");
+    if (st[0]) st[0].setAttribute("stop-color", c1);
+    if (st[1]) st[1].setAttribute("stop-color", c2);
+  }
+  function applyPaper(name){
+    paperName = PAPERS[name] ? name : "white";
+    var base = PAPERS[paperName];
+    /* crane facets: light / mid / dark shades derived from the one base color */
+    setStops("crG1", shadeHex(base, .55), shadeHex(base, .30));
+    setStops("crG2", shadeHex(base, .38), shadeHex(base, .10));
+    setStops("crG3", shadeHex(base, .16), shadeHex(base, -.16));
+    /* the sheet's back faces wear the same color family (white stays the pale original) */
+    sheet.style.setProperty("--pb1", shadeHex(base, .34));
+    sheet.style.setProperty("--pb2", shadeHex(base, .08));
+    sheet.style.setProperty("--pb3", shadeHex(base, -.10));
+    document.querySelectorAll(".pdot").forEach(function(d){ d.classList.toggle("on", d.getAttribute("data-color") === paperName); });
+    try {
+      var u = new URL(location.href);
+      if (paperName === "white") u.searchParams.delete("color"); else u.searchParams.set("color", paperName);
+      history.replaceState(null, "", u.toString());
+    } catch(e){}
+  }
+  document.querySelectorAll(".pdot").forEach(function(d){
+    d.addEventListener("click", function(){ applyPaper(d.getAttribute("data-color")); });
+  });
+  applyPaper(paperName);
+
+  var isCrane = (kind === "crane");
+  async function foldBack(){
+    if (!opened || busy || !isCrane) return; busy = true;
+    sheet.classList.remove("ksidle", "landed", "open", "settled");
+    sheet.classList.add("rf");
+    replay.classList.remove("on");
+    hint.textContent = "Folding it back\u2026";
+    var fv2 = sheet.querySelector(".foldV2"), fh = sheet.querySelector(".foldH"), fv = sheet.querySelector(".foldV");
+    shade(fv2, 1050 * T); sheet.classList.remove("go4"); await wait(1000 * T);
+    shade(fh, 1250 * T); sheet.classList.remove("go3"); await wait(1180 * T);
+    shade(fv, 1050 * T); sheet.classList.remove("go2"); await wait(1020 * T);
+    sheet.classList.add("refolding", "rf2");
+    wrap.classList.remove("centered");
+    await wait(2350 * T);
+    sheet.classList.add("noanim");
+    sheet.classList.remove("go1", "refolding", "rf", "rf2");
+    sheet.querySelectorAll(".fold").forEach(function(f){ f.style.setProperty("--fsh", 0); });
+    void sheet.offsetWidth;
+    sheet.classList.remove("noanim");
+    opened = false; busy = false;
+    sheet.classList.add("landed");
+    hint.textContent = "Your crane — it keeps. Tap it to read the note again.";
+    setTimeout(function(){
+      sheet.classList.remove("landed");
+      if (!opened && !busy) sheet.classList.add("ksidle");
+    }, 780);
+  }
+  if (isCrane){
+    hint.textContent = "A crane, folded for you — tap it to unfold it.";
+    setTimeout(function(){ if (!opened && !busy) sheet.classList.add("ksidle"); }, 600);
+  }
+
+  document.getElementById("stage").addEventListener("click", function(e){
+    if (e.target.closest(".composer") || e.target.closest("button")) return;
+    if (isCrane && opened) foldBack(); else open();
+  });
+  sheet.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); if (isCrane && opened) foldBack(); else open(); } });
+  replay.addEventListener("click", function(){ if (isCrane) foldBack(); else reset(); });
+
+  /* ---------- composer: the sender's three things, nothing more ---------- */
+  var composer = document.getElementById("composer");
+  var cNote = document.getElementById("cNote"), cTo = document.getElementById("cTo"),
+      cFrom = document.getElementById("cFrom"), cBody = document.getElementById("cBody"),
+      cCount = document.getElementById("cCount");
+  cNote.value = kind; cTo.value = to; cFrom.value = from; cBody.value = body;
+  function updCount(){ cCount.textContent = cBody.value.length + " / 280"; }
+  cBody.addEventListener("input", updCount); updCount();
+  function buildLink(){
+    var u = new URL(location.href);
+    u.search = "";
+    if (cNote.value === "yellow") u.searchParams.set("note", "yellow");
+    if (cNote.value === "wave") u.searchParams.set("note", "wave");
+    if (cNote.value === "notebook2") u.searchParams.set("note", "notebook2");
+    if (cNote.value === "notebook3") u.searchParams.set("note", "notebook3");
+    if (cNote.value === "notebook4") u.searchParams.set("note", "notebook4");
+    if (cNote.value === "notebook5") u.searchParams.set("note", "notebook5");
+    if (cNote.value === "notebook6") u.searchParams.set("note", "notebook6");
+    if (cNote.value === "notebook7") u.searchParams.set("note", "notebook7");
+    if (cNote.value === "matchbook") u.searchParams.set("note", "matchbook");
+    if (cNote.value === "gatefold") u.searchParams.set("note", "gatefold");
+    if (cNote.value === "pocketmap") u.searchParams.set("note", "pocketmap");
+    if (cNote.value === "littlebook") u.searchParams.set("note", "littlebook");
+    if (cNote.value === "dogear") u.searchParams.set("note", "dogear");
+    if (cNote.value === "memo") u.searchParams.set("note", "memo");
+    if (cNote.value === "bandwrap") u.searchParams.set("note", "bandwrap");
+    if (cNote.value === "fortune") u.searchParams.set("note", "fortune");
+    if (cNote.value === "crane") u.searchParams.set("note", "crane");
+    if (cNote.value === "boat") u.searchParams.set("note", "boat");
+    if (cNote.value === "butterfly") u.searchParams.set("note", "butterfly");
+    if (cNote.value === "flower") u.searchParams.set("note", "flower");
+    if (cNote.value === "star") u.searchParams.set("note", "star");
+    if (cNote.value === "heart") u.searchParams.set("note", "heart");
+    if (cNote.value === "pinwheel") u.searchParams.set("note", "pinwheel");
+    if (cNote.value === "airplane") u.searchParams.set("note", "airplane");
+    if (cNote.value === "hat") u.searchParams.set("note", "hat");
+    if (cNote.value === "balloon") u.searchParams.set("note", "balloon");
+    if (cNote.value === "dog") u.searchParams.set("note", "dog");
+    if (cNote.value === "yellowq") u.searchParams.set("note", "yellowq");
+    if (cNote.value === "yellowr") u.searchParams.set("note", "yellowr");
+    if (cNote.value === "yellowl") u.searchParams.set("note", "yellowl");
+    if (cNote.value === "yellows") u.searchParams.set("note", "yellows");
+    if (cNote.value === "yellowc") u.searchParams.set("note", "yellowc");
+    if (cNote.value === "ivoryl") u.searchParams.set("note", "ivoryl");
+    if (cNote.value === "ivoryq") u.searchParams.set("note", "ivoryq");
+    if (cTo.value.trim())   u.searchParams.set("to", cTo.value.trim());
+    if (cFrom.value.trim()) u.searchParams.set("from", cFrom.value.trim());
+    if (cBody.value.trim()) u.searchParams.set("body", cBody.value.trim());
+    if (paperName && paperName !== "white") u.searchParams.set("color", paperName);
+    return u.toString();
+  }
+  document.getElementById("sendToggle").addEventListener("click", function(){
+    composer.hidden = !composer.hidden;
+    if (!composer.hidden) composer.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"nearest"});
+  });
+  document.getElementById("cMail").addEventListener("click", function(){
+    var link = buildLink();
+    var subj = "A note for " + (cTo.value.trim() || "you");
+    var text = "I folded you a note:\n\n" + link + "\n\n— " + (cFrom.value.trim() || "Me");
+    location.href = "mailto:?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(text);
+  });
+  document.getElementById("cCopy").addEventListener("click", function(){
+    var link = buildLink(), btn = this;
+    function done(){ btn.textContent = "Copied ✓"; setTimeout(function(){ btn.textContent = "Copy link"; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(done, done); }
+    else { var ta = document.createElement("textarea"); ta.value = link; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch(e){} ta.remove(); done(); }
+  });
+})();
+</script>
+</body>
+</html>
