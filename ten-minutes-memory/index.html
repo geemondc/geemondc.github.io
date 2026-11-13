@@ -104,6 +104,7 @@
   <div id="startScreen" class="screen">
     <button class="btn" id="startBtn">▶ Start today's 10 minutes</button>
     <button class="btn alt" id="practiceBtn">Practice — no clock</button>
+    <button class="btn alt" id="keyBtn" style="margin-top:8px;padding:10px 16px;font-size:16.5px">🔑 The Key — every card's picture</button>
     <button class="btn alt" id="lessonBtn" style="margin-top:8px;padding:10px 16px;font-size:16.5px">📖 Read the lesson for Level <span id="lessonLvl">1</span></button>
     <div id="ladder"></div>
     <div class="strip" id="stripStart"></div>
@@ -207,18 +208,15 @@
   ];
   function conquered(level, mastered){ if (mastered) return 52; return level<=1 ? 0 : LEVELS[level-2].n; }
   var LESSONS = [
-    [ 'Your brain forgets symbols. It never forgets a good picture.',
-      'So every card becomes a picture. The Ace of Spades? A shining SUN \u2014 in the tool shed. (Spades live in the tool shed. You\u2019ll see.)',
-      'Then we chain the pictures into a silly story. Silly is sticky \u2014 the sillier the picture, the harder it is to forget.',
-      'Watch 3 cards. Hear the story. Then tell the cards back in order. That\u2019s the whole trick \u2014 from here it just grows.' ],
-    [ 'New trick: every suit is a FAMILY. Know the family, and the picture makes itself.',
-      '\u2665 Hearts are the Love family \u2014 warm people, big feelings. \u2666 Diamonds are the Rich family \u2014 gold, jewels, shiny things.',
-      '\u2663 Clubs are the Wild family \u2014 parties and animals. \u2660 Spades are the Tool family \u2014 sheds, shovels, work.',
-      'So the 7 of Spades is a RAINBOW in the tool shed, and the 7 of Hearts is a RAINBOW with a big red heart. Five cards today.' ],
-    [ 'Now the number pictures \u2014 one for every rank. Learn these, and all 52 cards get a face.',
-      'A is the SUN \u00b7 2 is a SHOE \u00b7 3 is a TREE \u00b7 4 is a DOOR \u00b7 5 is a STARFISH.',
-      '6 is DICE \u00b7 7 is a RAINBOW \u00b7 8 is a SPIDER \u00b7 9 is a CAT \u00b7 10 is bowling PINS.',
-      'Jack is a JUGGLER, the Queen is a QUEEN, the King is a KING. Number picture + family = the card. Eight cards today.' ],
+    [ 'Now the story. I deal 3 cards \u2014 each one shows you its picture, big and clear.',
+      'Card 2\u2019s picture crashes into card 1\u2019s. Card 3\u2019s crashes into card 2\u2019s. That silly chain IS the story \u2014 and the story is what you remember.',
+      'Then the cards hide, and you tap them back in order. Wrong tap? The story reminds you. Deal them.' ],
+    [ 'Five cards today. Thing + place should be getting quick \u2014 that\u2019s the suits doing their work.',
+      'Forgot a picture mid-run? Study writes it under every card, and recall\u2019s \ud83d\udca1 spells it out too. And the Key lives on the start screen, any time.',
+      'Longer story, same trick. Deal them.' ],
+    [ 'Eight cards today \u2014 a real handful.',
+      'By now the key is yours: the thing plus its place, instantly. That\u2019s the whole engine.',
+      'If the chain snaps in the middle, grab the link BEFORE the gap and pull \u2014 the rest follows. Deal them.' ],
     [ 'Quarter deck: 13 cards \u2014 a whole suit\u2019s worth in one story.',
       'Same trick, longer chain. And here\u2019s the pro move: if the chain breaks, grab the link BEFORE the gap \u2014 it pulls the rest back.',
       'Study slowly. Speed doesn\u2019t come from rushing \u2014 it comes from the pictures being LOUD.' ],
@@ -229,6 +227,13 @@
       'This is exactly what memory athletes do \u2014 same trick, same ten minutes a day. Seth\u2019s list, done for real.',
       'Deal them.' ]
   ];
+  var KEY = [
+    'First, the key. Every card wears a picture \u2014 learn the pictures once, and no card is ever just a card again.',
+    'THE NUMBERS \u2014 the thing in the picture: A is the SUN \u00b7 2 is a SHOE \u00b7 3 is a TREE \u00b7 4 is a DOOR \u00b7 5 is a STARFISH.',
+    '6 is DICE \u00b7 7 is a RAINBOW \u00b7 8 is a SPIDER \u00b7 9 is a CAT \u00b7 10 is bowling PINS \u00b7 Jack is a JUGGLER \u00b7 Queen is a QUEEN \u00b7 King is a KING.',
+    'THE SUITS \u2014 the place the thing is in: \u2665 Hearts \u2014 with a big red heart. \u2666 Diamonds \u2014 covered in diamonds. \u2663 Clubs \u2014 at a wild party. \u2660 Spades \u2014 in the tool shed.',
+    'Put them together: the 7 of Spades is a RAINBOW in the tool shed. The 2 of Hearts is a SHOE with a big red heart. That\u2019s the whole secret \u2014 now watch three cards become a story.'
+  ];
   // ---------- End pure logic ----------
   var store = {
     get: function(k, d){ try { var v = localStorage.getItem('tm-mem-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -237,6 +242,7 @@
   var level = Math.min(6, Math.max(1, store.get('level', 1)));
   var streak = store.get('streak', 0), best = store.get('best', 0), mastered = store.get('mastered', false);
   var lastDay = store.get('lastDay', ''), seen = store.get('seen', {});
+  var keySeen = store.get('keySeen', false);
   var today = new Date().toDateString();
   if (lastDay && lastDay !== today && lastDay !== new Date(Date.now() - 864e5).toDateString()) { streak = 0; store.set('streak', 0); }
   var mode = 'daily', seq = [], spos = 0, rpos = 0, firstTry = [], chain = 0, runBest = 0;
@@ -266,19 +272,22 @@
   function startTimer(){ timeLeft = 600; $('timerWrap').classList.remove('hidden'); paintTimer(); if (timer) clearInterval(timer); timer = setInterval(function(){ timeLeft--; paintTimer(); if (timeLeft <= 0){ clearInterval(timer); timer = null; finish(false); } }, 1000); }
   function stopTimer(){ if (timer){ clearInterval(timer); timer = null; } $('timerWrap').classList.add('hidden'); }
 
-  function startSession(m){ mode = m; if (m === 'daily' && !seen[level]) openLesson(beginRun); else beginRun(); }
-  function openLesson(then){
+  var curLines = null, curLabel = '', curIsKey = false;
+  function startSession(m){ mode = m; var go = function(){ if (!seen[level]) openLesson(beginRun); else beginRun(); }; if (!keySeen) openKey(go); else go(); }
+  function showLesson(then){
     afterLesson = then || null; lessonIdx = 0;
-    show('lessonScreen'); board('Level ' + level + ' \u00b7 ' + LEVELS[level - 1].name + ' \u2014 the lesson');
+    show('lessonScreen');
     $('lessonSkip').classList.toggle('hidden', !afterLesson); paintLesson();
   }
+  function openLesson(then){ curLines = LESSONS[level - 1]; curLabel = 'LEVEL ' + level + ' LESSON'; curIsKey = false; board('Level ' + level + ' \u00b7 ' + LEVELS[level - 1].name + ' \u2014 the lesson'); showLesson(then); }
+  function openKey(then){ curLines = KEY; curLabel = 'THE KEY \u2014 LEARN THIS FIRST'; curIsKey = true; board('The Key \u2014 every card\u2019s picture'); showLesson(then); }
   function paintLesson(){
-    var L = LESSONS[level - 1];
-    $('lessonCount').textContent = 'LEVEL ' + level + ' LESSON \u00b7 ' + (lessonIdx + 1) + ' OF ' + L.length;
+    var L = curLines;
+    $('lessonCount').textContent = curLabel + ' \u00b7 ' + (lessonIdx + 1) + ' OF ' + L.length;
     $('lessonText').textContent = L[lessonIdx];
-    $('lessonNext').textContent = lessonIdx === L.length - 1 ? (afterLesson ? 'Deal the cards \u25b8' : 'Back \u25b8') : 'Next \u25b8';
+    $('lessonNext').textContent = lessonIdx === L.length - 1 ? (afterLesson ? (curIsKey ? (seen[level] ? 'Deal the cards \u25b8' : 'Now the lesson \u25b8') : 'Deal the cards \u25b8') : 'Back \u25b8') : 'Next \u25b8';
   }
-  $('lessonNext').onclick = function(){ var L = LESSONS[level - 1]; if (lessonIdx < L.length - 1){ lessonIdx++; paintLesson(); } else { seen[level] = true; store.set('seen', seen); var f = afterLesson; afterLesson = null; if (f) f(); else { show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); } } };
+  $('lessonNext').onclick = function(){ var L = curLines; if (lessonIdx < L.length - 1){ lessonIdx++; paintLesson(); } else { if (curIsKey){ keySeen = true; store.set('keySeen', true); } else { seen[level] = true; store.set('seen', seen); } var f = afterLesson; afterLesson = null; if (f) f(); else { show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); } } };
   $('lessonSkip').onclick = function(){ var f = afterLesson; afterLesson = null; if (f) f(); };
 
   function beginRun(){
@@ -366,6 +375,7 @@
 
   $('startBtn').onclick = function(){ startSession('daily'); };
   $('practiceBtn').onclick = function(){ startSession('practice'); };
+  $('keyBtn').onclick = function(){ openKey(null); };
   $('lessonBtn').onclick = function(){ openLesson(null); };
   $('againBtn').onclick = function(){ show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); renderStats(); renderLadder(); renderStrips(); };
   renderStats(); renderLadder(); renderStrips();
