@@ -50,15 +50,30 @@
   .card .cnr { position:absolute; top:5px; left:7px; font-weight:bold; line-height:1; text-align:center; }
   .card .cnr small { display:block; }
   .card .pip { line-height:1; }
-  .bigcard { width:112px; height:156px; margin:10px auto 2px; }
-  .bigcard .cnr { font-size:19px; } .bigcard .cnr small { font-size:16px; } .bigcard .pip { font-size:56px; }
-  .bigcard .nm { font-size:12.5px; margin-top:5px; color:#46589c; font-style:italic; }
+  .bigcard { width:158px; height:220px; margin:10px auto 2px; }
+  .bigcard .cnr { font-size:26px; } .bigcard .cnr small { font-size:21px; } .bigcard .pip { font-size:80px; }
+  .bigcard .nm { font-size:15px; margin-top:5px; color:#46589c; font-style:italic; }
+  .scene { display:flex; align-items:flex-end; justify-content:center; gap:2px; background:linear-gradient(180deg,#8ed8ff,#fdf6d8); border-radius:18px; padding:8px 10px 4px; margin:10px auto 0; width:fit-content; min-width:170px; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+  .sc-thing { font-size:74px; line-height:1; }
+  .sc-place { font-size:42px; line-height:1; margin-left:-14px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+  #storyStrip { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:3px; margin-top:8px; min-height:40px; }
+  .stile { background:#fff8e7; border-radius:11px; padding:4px 7px; font-size:21px; line-height:1; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .stile.now { outline:3px solid #ffd23e; }
+  .sboom { font-size:15px; }
+  #lessonArt { margin-top:10px; }
+  .kgrid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:480px; margin:0 auto; }
+  .ktile { background:#fff8e7; color:#17203a; border-radius:14px; padding:8px 6px 6px; width:82px; box-shadow:0 3px 9px rgba(0,0,0,.3); }
+  .kemoji { font-size:38px; line-height:1.15; }
+  .klabel { font-size:12.5px; font-weight:bold; margin-top:2px; }
+  .ktile.suit { width:118px; }
+  .ksuit { font-size:40px; line-height:1.1; }
+  .big-deck { font-size:84px; line-height:1.1; }
   #studyPic { font-size:17.5px; color:#ffe97a; margin-top:7px; line-height:1.35; min-height:1.35em; }
   #studyLink { font-size:15.5px; color:#bcd0ff; font-style:italic; margin-top:3px; line-height:1.35; min-height:1.35em; }
   .count { font-size:13px; letter-spacing:2px; color:#bcd0ff; margin-top:6px; }
   #choices { display:flex; justify-content:center; gap:9px; margin-top:10px; flex-wrap:wrap; }
-  .choice { width:68px; height:95px; cursor:pointer; }
-  .choice .cnr { font-size:14px; } .choice .cnr small { font-size:12px; } .choice .pip { font-size:34px; }
+  .choice { width:86px; height:120px; cursor:pointer; }
+  .choice .cnr { font-size:17px; } .choice .cnr small { font-size:14px; } .choice .pip { font-size:46px; }
   .choice:active { transform:scale(.95); }
   .choice.dim { opacity:.28; pointer-events:none; }
   .choice.right { box-shadow:0 0 0 3px #00e436, 0 4px 14px rgba(0,0,0,.4); }
@@ -114,6 +129,7 @@
 
   <div id="lessonScreen" class="screen hidden">
     <div class="count" id="lessonCount">LESSON</div>
+    <div id="lessonArt"></div>
     <div class="lessonText" id="lessonText"></div>
     <button class="btn" id="lessonNext">Next ▸</button>
     <button class="btn alt hidden" id="lessonSkip" style="margin-top:8px;padding:10px 16px;font-size:16.5px">Skip lesson</button>
@@ -121,7 +137,9 @@
 
   <div id="studyScreen" class="screen hidden">
     <div class="count" id="studyCount">CARD 1 OF 3</div>
+    <div id="storyStrip"></div>
     <div id="studyCard"></div>
+    <div id="studyScene" class="scene"></div>
     <div id="studyPic"></div>
     <div id="studyLink"></div>
     <button class="btn" id="studyNext">Got it ▸</button>
@@ -198,6 +216,17 @@
     if (pos===0) return 'It\u2019s the first card — the story starts with ' + picPhrase(seq[0]) + '.';
     return linkLine(seq[pos-1], seq[pos], pos-1) + ' So card ' + (pos+1) + ' is ' + picPhrase(seq[pos]) + ' — which card is that?';
   }
+
+  var PIC_EMOJI = { 'SUN':'\u2600\ufe0f', 'SHOE':'\ud83d\udc5f', 'TREE':'\ud83c\udf33', 'DOOR':'\ud83d\udeaa', 'STARFISH':'\u2b50', 'DICE':'\ud83c\udfb2', 'RAINBOW':'\ud83c\udf08', 'SPIDER':'\ud83d\udd77\ufe0f', 'CAT':'\ud83d\udc31', 'PINS':'\ud83c\udfb3', 'JUGGLER':'\ud83e\udd39', 'QUEEN':'\ud83d\udc78', 'KING':'\ud83e\udd34' };
+  var SUIT_EMOJI = ['\u2764\ufe0f','\ud83d\udc8e','\ud83c\udf89','\ud83d\udd27'];
+  function verbOf(seed){ return VERBS[seed % VERBS.length]; }
+  function picTag(c){ return PIC_EMOJI[picOf(c)] + ' ' + picOf(c); }
+  function sceneText(c){ return picTag(c) + ' \u2014 ' + suitOf(c).fl; }
+  function sceneInner(c){ return '<span class="sc-thing">' + PIC_EMOJI[picOf(c)] + '</span><span class="sc-place">' + SUIT_EMOJI[Math.floor(c / 13)] + '</span>'; }
+  function hintHTML(seq, pos){
+    if (pos===0) return 'It\u2019s the first card \u2014 the story starts with ' + sceneText(seq[0]) + '.';
+    return 'The ' + picTag(seq[pos-1]) + ' ' + verbOf(pos-1) + ' the ' + picTag(seq[pos]) + '! So card ' + (pos+1) + ' is ' + sceneText(seq[pos]) + ' \u2014 which card is that?';
+  }
   var LEVELS = [
     { name:'Picture Trick',   n:3,  need:0.66 },
     { name:'Suit Families',   n:5,  need:0.8 },
@@ -252,19 +281,20 @@
   function renderLadder(){ var h = ''; for (var i = 0; i < 6; i++){ var lv = i + 1, cls = 'rung'; if (mastered || lv < level) cls += ' done'; else if (lv === level) cls += ' on'; h += '<div class="' + cls + '">' + lv + ' \u00b7 ' + LEVELS[i].name + ' (' + LEVELS[i].n + ')</div>'; } $('ladder').innerHTML = h; }
   function stripInto(el, total, fn){ var h = ''; for (var i = 0; i < total; i++){ var c = fn(i); h += '<div class="cell' + (c ? ' ' + c : '') + '"></div>'; } el.innerHTML = h; }
   function renderStrips(){ var c = conquered(level, mastered); var f = function(i){ return i < c ? 'gold' : ''; }; stripInto($('stripStart'), 52, f); stripInto($('stripDone'), 52, f); $('stripLabel').textContent = 'Your deck so far: ' + c + ' of 52 cards conquered.'; }
-  function show(id){ ['startScreen','lessonScreen','studyScreen','recallScreen','doneScreen'].forEach(function(s){ $(s).classList.toggle('hidden', s !== id); }); }
+  function show(id){ ['startScreen','lessonScreen','studyScreen','recallScreen','doneScreen'].forEach(function(s){ $(s).classList.toggle('hidden', s !== id); }); $('stage').style.display = id === 'startScreen' ? '' : 'none'; }
   function board(sub){ $('boardSub').textContent = sub; }
   function cardHTML(c, cls, withName){ var s = suitOf(c), r = rankOf(c); return '<div class="card ' + cls + (s.red ? ' red' : '') + '"><div class="cnr">' + r.r + '<small>' + s.g + '</small></div><div class="pip">' + s.g + '</div>' + (withName ? '<div class="nm">' + cardName(c) + '</div>' : '') + '</div>'; }
 
   var COLORS = ['#ffd23e','#ff004d','#29adff','#00e436','#ff77a8','#ffa300','#fff8e7'];
   function burst(xFrac, big){
-    var stage = $('stage'), n = big ? 46 : 22, i, d;
+    var n = big ? 46 : 22, i, d;
     for (i = 0; i < n; i++){ d = document.createElement('div'); d.className = 'confetti';
       d.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
+      d.style.position = 'fixed'; d.style.zIndex = '60';
       d.style.left = (xFrac * 100 + (Math.random() * 36 - 18)) + '%'; d.style.top = (8 + Math.random() * 22) + '%';
       var s = 6 + Math.random() * 7; d.style.width = s + 'px'; d.style.height = (s * 1.5) + 'px';
       d.style.animation = 'drift ' + (1.6 + Math.random() * 1.4) + 's ease-in forwards';
-      stage.appendChild(d); (function(el){ setTimeout(function(){ el.remove(); }, 3400); })(d); }
+      document.body.appendChild(d); (function(el){ setTimeout(function(){ el.remove(); }, 3400); })(d); }
   }
 
   function fmt(s){ return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
@@ -281,10 +311,25 @@
   }
   function openLesson(then){ curLines = LESSONS[level - 1]; curLabel = 'LEVEL ' + level + ' LESSON'; curIsKey = false; board('Level ' + level + ' \u00b7 ' + LEVELS[level - 1].name + ' \u2014 the lesson'); showLesson(then); }
   function openKey(then){ curLines = KEY; curLabel = 'THE KEY \u2014 LEARN THIS FIRST'; curIsKey = true; board('The Key \u2014 every card\u2019s picture'); showLesson(then); }
+  function keyTiles(a, b){ var h = '<div class="kgrid">'; for (var i = a; i < b; i++) h += '<div class="ktile"><div class="kemoji">' + PIC_EMOJI[RANKS[i].pic] + '</div><div class="klabel">' + RANKS[i].r + ' \u00b7 ' + RANKS[i].pic + '</div></div>'; return h + '</div>'; }
+  function suitTiles(){ var h = '<div class="kgrid">'; for (var i = 0; i < 4; i++) h += '<div class="ktile suit"><div class="ksuit" style="color:' + (SUITS[i].red ? '#cf2233' : '#17203a') + '">' + SUITS[i].g + '</div><div class="kemoji">' + SUIT_EMOJI[i] + '</div><div class="klabel">' + SUITS[i].name + ' \u2014 ' + SUITS[i].fl + '</div></div>'; return h + '</div>'; }
+  function lessonArtFor(){
+    if (curIsKey){
+      if (lessonIdx === 0) return '<div class="big-deck">\ud83c\udccf</div>';
+      if (lessonIdx === 1) return keyTiles(0, 5);
+      if (lessonIdx === 2) return keyTiles(5, 13);
+      if (lessonIdx === 3) return suitTiles();
+      if (lessonIdx === 4) return '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><div class="scene">' + sceneInner(45) + '</div><div class="scene">' + sceneInner(1) + '</div></div>';
+      return '';
+    }
+    if (level === 1 && lessonIdx === 1) return '<div style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap"><div class="scene">' + sceneInner(39) + '</div><span style="font-size:30px">\ud83d\udca5</span><div class="scene">' + sceneInner(1) + '</div></div>';
+    return '';
+  }
   function paintLesson(){
     var L = curLines;
     $('lessonCount').textContent = curLabel + ' \u00b7 ' + (lessonIdx + 1) + ' OF ' + L.length;
     $('lessonText').textContent = L[lessonIdx];
+    $('lessonArt').innerHTML = lessonArtFor();
     $('lessonNext').textContent = lessonIdx === L.length - 1 ? (afterLesson ? (curIsKey ? (seen[level] ? 'Deal the cards \u25b8' : 'Now the lesson \u25b8') : 'Deal the cards \u25b8') : 'Back \u25b8') : 'Next \u25b8';
   }
   $('lessonNext').onclick = function(){ var L = curLines; if (lessonIdx < L.length - 1){ lessonIdx++; paintLesson(); } else { if (curIsKey){ keySeen = true; store.set('keySeen', true); } else { seen[level] = true; store.set('seen', seen); } var f = afterLesson; afterLesson = null; if (f) f(); else { show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); } } };
@@ -303,6 +348,8 @@
     var N = seq.length, c = seq[spos];
     $('studyCount').textContent = 'CARD ' + (spos + 1) + ' OF ' + N;
     $('studyCard').innerHTML = cardHTML(c, 'bigcard', true);
+    $('studyScene').innerHTML = sceneInner(c);
+    $('storyStrip').innerHTML = seq.slice(0, spos + 1).map(function(cc, i){ return '<span class="stile' + (i === spos ? ' now' : '') + '">' + PIC_EMOJI[picOf(cc)] + SUIT_EMOJI[Math.floor(cc / 13)] + '</span>'; }).join('<span class="sboom">\ud83d\udca5</span>');
     $('studyPic').textContent = 'Picture: ' + picPhrase(c) + '.';
     $('studyLink').textContent = spos === 0 ? 'The story starts here.' : 'Link: ' + linkLine(seq[spos - 1], c, spos - 1);
     $('studyNext').textContent = spos === N - 1 ? 'Now \u2014 tell them back \u25b8' : 'Got it \u25b8';
@@ -340,16 +387,16 @@
     Array.prototype.forEach.call($('suitRow').children, function(b){ b.onclick = function(){ pickSuit = parseInt(b.getAttribute('data-s'), 10); paintPicker(); maybePickerAnswer(); }; });
   }
   function maybePickerAnswer(){ if (pickRank < 0 || pickSuit < 0 || busy) return; var c = pickSuit * 13 + pickRank; if (c === seq[rpos]) rightAnswer(); else { wrongAnswer(); pickRank = -1; pickSuit = -1; paintPicker(); } }
-  function wrongAnswer(){ firstTry[rpos] = false; chain = 0; $('recallMsg').textContent = 'Not that one. ' + hintFor(seq, rpos); $('recallMsg').className = 'try'; }
+  function wrongAnswer(){ firstTry[rpos] = false; chain = 0; $('recallMsg').innerHTML = 'Not that one. ' + hintHTML(seq, rpos); $('recallMsg').className = 'try'; }
   function rightAnswer(){
     busy = true;
     if (firstTry[rpos]){ chain++; if (chain > runBest) runBest = chain; }
-    $('recallMsg').textContent = '\u2713 ' + cardName(seq[rpos]) + (firstTry[rpos] ? ' \u2014 the story holds.' : ' \u2014 got it back.');
+    $('recallMsg').innerHTML = '\u2713 ' + PIC_EMOJI[picOf(seq[rpos])] + ' ' + cardName(seq[rpos]) + (firstTry[rpos] ? ' \u2014 the story holds.' : ' \u2014 got it back.');
     $('recallMsg').className = 'good';
     if ((rpos + 1) % 10 === 0) burst(0.5, false);
     setTimeout(function(){ busy = false; rpos++; if (rpos >= seq.length) finish(true); else paintRecall(); }, 650);
   }
-  $('recallHint').onclick = function(){ $('recallMsg').textContent = '\ud83d\udca1 ' + hintFor(seq, rpos); $('recallMsg').className = ''; };
+  $('recallHint').onclick = function(){ $('recallMsg').innerHTML = '\ud83d\udca1 ' + hintHTML(seq, rpos); $('recallMsg').className = ''; };
 
   function finish(completedRun){
     stopTimer();
