@@ -249,7 +249,7 @@
       .jt { position: absolute; font-size: 10px; color: rgba(255,255,255,.55); pointer-events: none; line-height: 1; z-index: 1; }
       .jt.u { left: 50%; top: 7px; transform: translateX(-50%); } .jt.d { left: 50%; bottom: 7px; transform: translateX(-50%); }
       .jt.l { left: 8px; top: 50%; transform: translateY(-50%); } .jt.r { right: 8px; top: 50%; transform: translateY(-50%); }
-      #depthTag { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(26px + env(safe-area-inset-bottom)); z-index: 9; padding: 7px 16px; border-radius: 999px; background: rgba(4,24,44,.55); border: 1px solid rgba(140,220,255,.35); color: #bfeaff; font-size: 11px; font-weight: 800; letter-spacing: 2px; opacity: 0; transition: opacity .4s ease; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap; }
+      #depthTag { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 9; padding: 7px 16px;   /* Nov 13 (Gary): raised clear above the location chip — the two labels were stacked on top of each other */ border-radius: 999px; background: rgba(4,24,44,.55); border: 1px solid rgba(140,220,255,.35); color: #bfeaff; font-size: 11px; font-weight: 800; letter-spacing: 2px; opacity: 0; transition: opacity .4s ease; pointer-events: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap; }
       /* ---------- POP-UP DISPLAY (#466, Gary): a holographic button by the
          joystick — translucent cyan glass, thin bright border, a scanline
          sheen and a soft glow. It is the ONLY persistent nav element: tap
@@ -2241,12 +2241,12 @@ function drawBeachVista(RP,hy,cx){
         ctx.save(); ctx.globalCompositeOperation='screen';
         const fwSpotsF = dom==='hero'? [[0.15,0.13],[0.87,0.15],[0.31,0.08]] : [[0.63,0.11],[0.86,0.17],[0.52,0.07]];
         const fwColsF=['255,215,106','255,106,213','106,232,255'];
-        const fwPer2=34, fwPh=((t%fwPer2)+fwPer2)%fwPer2, fwIdx=Math.floor(t/fwPer2)%3;
+        const fwPer2=10, fwPh=((t%fwPer2)+fwPer2)%fwPer2, fwIdx=Math.floor(t/fwPer2)%3;   /* Nov 13 (Gary): the walrus cadence — a show every ~10 s like the aurora display; at 34 s he watched and saw none */
         const fbx=gSeat.left+fwSpotsF[fwIdx][0]*gSeat.pw, fby=gSeat.top+fwSpotsF[fwIdx][1]*gSeat.ph;
-        if(fwPh<2.2){ const rp3=fwPh/2.2, ry3=(gSeat.top+gSeat.ph*0.46)-rp3*((gSeat.top+gSeat.ph*0.46)-fby);
+        if(fwPh<0.9){ const rp3=fwPh/0.9, ry3=(gSeat.top+gSeat.ph*0.46)-rp3*((gSeat.top+gSeat.ph*0.46)-fby);
           ctx.strokeStyle='rgba(255,230,170,'+(0.75*dw2*(1-rp3*0.35))+')'; ctx.lineWidth=2;
           ctx.beginPath(); ctx.moveTo(fbx+Math.sin(t*31)*1.2,ry3+10); ctx.lineTo(fbx,ry3); ctx.stroke(); }
-        else if(fwPh<5.8){ const bu2=(fwPh-2.2)/3.6, bEnv2=Math.sin(Math.min(1,bu2)*Math.PI);
+        else if(fwPh<4.1){ const bu2=(fwPh-0.9)/3.2, bEnv2=Math.sin(Math.min(1,bu2)*Math.PI);
           for(let si=0;si<16;si++){ const sa=si*(TAU/16)+fwIdx*1.7, sr3=bu2*gSeat.ph*0.105;
             const sx3=fbx+Math.cos(sa)*sr3, sy3=fby+Math.sin(sa)*sr3+bu2*bu2*gSeat.ph*0.03;   /* burst widened + brightened after the first QA frame read faint against the sunset */
             ctx.fillStyle='rgba('+fwColsF[fwIdx]+','+(0.95*bEnv2*dw2)+')';
@@ -2683,10 +2683,15 @@ function drawSpacePaint(img,alpha,zoom,par){
   const oy=H*0.52-dh/2 - S.pitchD*H*0.03;
   ctx.globalAlpha=alpha; ctx.drawImage(img,ox,oy,dw,dh); ctx.globalAlpha=1;
 }
+let spVistaSince=-1;
 function spaceWeights(){
   const inS=S.spaceF;
-  if(inS<=0.02||S.uwF>0.4){ SPACE_W={vista:0,fun:0}; return SPACE_W; }
-  SPACE_W={vista:sstep(0.22,0.88,inS), fun:sstep(0.62,1.0,inS)};   /* #466: wider, gentler bands — one view at a time, finishing its fade */
+  if(inS<=0.02||S.uwF>0.4){ SPACE_W={vista:0,fun:0}; spVistaSince=-1; return SPACE_W; }
+  const vistaW=sstep(0.22,0.88,inS);
+  const nowS=performance.now()*0.001;
+  if(vistaW>0.5){ if(spVistaSince<0)spVistaSince=nowS; } else if(vistaW<0.15)spVistaSince=-1;
+  const funHold=spVistaSince<0?0:sstep(5.0,6.5,nowS-spVistaSince);   /* Nov 13 (Gary): arriving in space, HOLD the first shot ~5 s longer, THEN go to the UFOs */
+  SPACE_W={vista:vistaW, fun:sstep(0.62,1.0,inS)*funHold};   /* #466: wider, gentler bands — one view at a time, finishing its fade */
   return SPACE_W;
 }
 /* the paintings draw LATE — over ridge, ground and dome — because in
@@ -3423,19 +3428,19 @@ function seatBiomeAccent(b,g,RP){
     ctx.globalAlpha=1;
   } else if(b==='boardwalk'){ /* pier + wheel light alive on the water */
     const sr=mulberry(717); ctx.fillStyle='rgba(255,225,170,1)';
-    for(let i=0;i<26;i++){ const fx=0.05+sr()*0.9, fy=0.55+sr()*0.38; const tw=0.5+0.5*Math.sin(t*1.7+i*1.93); ctx.globalAlpha=0.14*tw; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.3,1.7); }
+    for(let i=0;i<26;i++){ const fx=0.05+sr()*0.9, fy=0.55+sr()*0.38; const tw=0.5+0.5*Math.sin(t*1.7+i*1.93); ctx.globalAlpha=0.14*tw*(0.7+0.3*Math.sin(t*1.5)); ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.3,1.7); }
     /* REBUILD (Gary: "lights on boardwalk glow · twinkles from water and sky and sun and moon"): the boardwalk's own lamp row glowing along the boards, and twinkles in its sky */
     const srL=mulberry(919); ctx.fillStyle='rgba(255,214,150,1)';
-    for(let i=0;i<16;i++){ const fx=0.06+srL()*0.88, fy=0.485+srL()*0.05; const tw=0.5+0.5*Math.sin(t*1.3+i*2.71); ctx.globalAlpha=0.20*tw; ctx.beginPath(); ctx.arc(g.left+fx*g.pw,g.top+fy*g.ph,2.4,0,TAU); ctx.fill();
-      ctx.globalAlpha=0.07*tw; ctx.beginPath(); ctx.arc(g.left+fx*g.pw,g.top+fy*g.ph,6.0,0,TAU); ctx.fill(); }
+    for(let i=0;i<16;i++){ const fx=0.06+srL()*0.88, fy=0.485+srL()*0.05; const tw=0.5+0.5*Math.sin(t*1.3+i*2.71); const pulseL=0.68+0.32*Math.sin(t*1.5+i*0.55); ctx.globalAlpha=0.26*tw*pulseL+0.05;   /* Nov 13 (Gary): the street lights PULSATE too — a slow wave of brightness down the row */ ctx.beginPath(); ctx.arc(g.left+fx*g.pw,g.top+fy*g.ph,2.4,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.10*tw*pulseL; ctx.beginPath(); ctx.arc(g.left+fx*g.pw,g.top+fy*g.ph,6.0,0,TAU); ctx.fill(); }
     const srS=mulberry(3131); ctx.fillStyle='rgba(235,244,255,1)';
     for(let i=0;i<30;i++){ const fx=0.05+srS()*0.9, fy=0.04+srS()*0.26;   /* Nov 13 (Gary): more twinkles in this sky */ const tw=0.5+0.5*Math.sin(t*(0.8+(i%4)*0.2)+i*2.93); ctx.globalAlpha=0.16*tw; ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,1.9,1.9); }
     /* Nov 13 (Gary): the Ferris wheel's own lights TWINKLE in their own colors, and the two painted fireworks over the water breathe — with a fresh little burst blooming over one of them now and then */
     const wheelCols=['255,106,213','106,232,255','255,215,106','140,255,170','255,140,90'];
     for(let i=0;i<14;i++){ const a=i/14*TAU+t*0.05, wx2=0.505+0.080*Math.cos(a), wy2=0.252+0.148*Math.sin(a);
-      const tw=0.5+0.5*Math.sin(t*2.2+i*1.93);
-      ctx.fillStyle='rgba('+wheelCols[i%5]+',1)'; ctx.globalAlpha=0.55*tw+0.15;
-      ctx.beginPath(); ctx.arc(g.left+wx2*g.pw,g.top+wy2*g.ph,2.1,0,TAU); ctx.fill(); }
+      const tw=0.5+0.5*Math.sin(t*2.2+i*1.93); const pulseW=0.72+0.28*Math.sin(t*1.5);   /* Nov 13 (Gary): the wheel's lights PULSATE — one breathing swell over the whole rim */
+      ctx.fillStyle='rgba('+wheelCols[i%5]+',1)'; ctx.globalAlpha=(0.55*tw+0.15)*pulseW;
+      ctx.beginPath(); ctx.arc(g.left+wx2*g.pw,g.top+wy2*g.ph,2.1*(0.85+0.3*pulseW),0,TAU); ctx.fill(); }
     { const tw=0.5+0.5*Math.sin(t*1.8); ctx.fillStyle='rgba(255,240,200,1)'; ctx.globalAlpha=0.5*tw+0.2;
       ctx.beginPath(); ctx.arc(g.left+0.505*g.pw,g.top+0.252*g.ph,2.6,0,TAU); ctx.fill(); ctx.globalAlpha=1; }
     const fwSpotsB=[[0.245,0.362],[0.288,0.358]];
@@ -3497,7 +3502,7 @@ function drawSeatBiomeLife(RP,hy,cx){
   /* THE INTRACOASTAL's yacht — cut from this very painting — cruising up
      the canal toward the raised drawbridge on a slow clock (Dose
      Law: a 34 s crossing inside 120 s of quiet). Solid, small. */
-  if(S.biome==='canal'&&canalYacht.complete&&canalYacht.naturalWidth){ const cyc=t%120;
+  if(S.biome==='canal'&&canalYacht.complete&&canalYacht.naturalWidth){ for(const yOff of [0,40,80]){ const cyc=(t+yOff)%120;   /* Nov 13 (Gary): three yachts staggered on the same run — after one passes the bridge, the next is already coming */
     if(cyc<34){ const p=cyc/34, env=sstep(0,0.06,p)*(1-sstep(0.94,1,p));
       const wdt=g.pw*0.052, hgt=wdt*canalYacht.naturalHeight/canalYacht.naturalWidth;
       const x=g.left+lerp(0.285,0.435,p)*g.pw, y=g.top+lerp(0.875,0.695,p)*g.ph;
@@ -3505,7 +3510,7 @@ function drawSeatBiomeLife(RP,hy,cx){
       const sg=ctx.createRadialGradient(0,0,0,0,0,wdt*0.55); sg.addColorStop(0,'rgba(8,30,36,'+(0.30*env)+')'); sg.addColorStop(1,'rgba(8,30,36,0)');
       ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(0,0,wdt*0.55,0,TAU); ctx.fill(); ctx.restore();
       ctx.save(); ctx.globalAlpha=0.12*env; ctx.drawImage(softBlobW,x-wdt*0.85,y+hgt*0.72,wdt*1.1,hgt*0.20); ctx.restore();   /* a thin wake trailing down-canal behind the stern */
-      ctx.save(); ctx.globalAlpha=0.96*env; ctx.drawImage(canalYacht,x-wdt/2,y-hgt/2,wdt,hgt); ctx.restore(); } }
+      ctx.save(); ctx.globalAlpha=0.96*env; ctx.drawImage(canalYacht,x-wdt/2,y-hgt/2,wdt,hgt); ctx.restore(); } } }
   if(S.biome==='canal'){ /* REBUILD (Gary: "need more on this page, all i see are birds"): a second small boat working a side canal, and gulls over the water */
     const cyc2=t%95; if(cyc2<30){ const p=cyc2/30, env2=Math.sin(Math.min(1,p*1.1)*Math.PI);
       const bx=g.left+lerp(0.86,0.68,p)*g.pw, by=g.top+0.80*g.ph, bw3=g.pw*0.030;
@@ -3522,8 +3527,8 @@ function drawSeatBiomeLife(RP,hy,cx){
     ctx.drawImage(softBlobW,g.left+0.44*g.pw-mw/2+mDr,g.top+0.60*g.ph,mw,mw*0.22);
     ctx.drawImage(softBlobW,g.left+0.55*g.pw-mw*0.32-mDr,g.top+0.655*g.ph,mw*0.64,mw*0.16);
     ctx.restore();
-    for(let i=0;i<3;i++){ const p2=i*2.4, cxp=g.left+(0.60+0.05*i+0.03*Math.sin(t*0.22+p2))*g.pw, cyp=g.top+(0.52+0.05*i+0.016*Math.sin(t*0.3+p2*1.7))*g.ph, sq=0.84+0.16*Math.sin(t*6+p2*3.0), bw2=g.pw*0.0085;   /* #588: three butterflies now — a magical scene wears the magic marker */
-      ctx.save(); ctx.translate(cxp,cyp); ctx.scale(1,sq); ctx.fillStyle=['rgba(96,156,238,0.96)','rgba(238,158,44,0.96)','rgba(238,120,190,0.96)'][i];
+    for(let i=0;i<7;i++){ const p2=i*2.4, cxp=g.left+(0.54+0.045*i+0.03*Math.sin(t*0.22+p2))*g.pw, cyp=g.top+(0.47+0.035*i+0.016*Math.sin(t*0.3+p2*1.7))*g.ph, sq=0.84+0.16*Math.sin(t*6+p2*3.0), bw2=g.pw*0.0085;   /* Nov 13 (Gary): more butterflies over the falls — seven now */   /* #588: three butterflies now — a magical scene wears the magic marker */
+      ctx.save(); ctx.translate(cxp,cyp); ctx.scale(1,sq); ctx.fillStyle=['rgba(96,156,238,0.96)','rgba(238,158,44,0.96)','rgba(238,120,190,0.96)','rgba(150,230,160,0.96)','rgba(190,150,255,0.96)','rgba(255,225,120,0.96)','rgba(120,225,235,0.96)'][i];
       ctx.beginPath(); ctx.ellipse(-bw2*0.55,0,bw2*0.55,bw2*0.34,-0.5,0,TAU); ctx.fill();
       ctx.beginPath(); ctx.ellipse(bw2*0.55,0,bw2*0.55,bw2*0.34,0.5,0,TAU); ctx.fill();
       ctx.fillStyle='rgba(40,30,20,0.9)'; ctx.beginPath(); ctx.ellipse(0,0,bw2*0.13,bw2*0.42,0,0,TAU); ctx.fill(); ctx.restore(); }
@@ -3548,7 +3553,19 @@ function drawSeatBiomeLife(RP,hy,cx){
       ctx.save(); ctx.globalAlpha=0.88*env3; ctx.fillStyle='rgba(14,22,30,0.92)';
       ctx.fillRect(bx-bw4/2,by,bw4,bw4*0.15); ctx.fillRect(bx-bw4*0.14,by-bw4*0.22,bw4*0.28,bw4*0.22);
       ctx.globalAlpha=0.30*env3; ctx.fillStyle='rgba(10,20,28,1)';
-      ctx.beginPath(); ctx.ellipse(bx,by+bw4*0.17,bw4*0.62,bw4*0.07,0,0,TAU); ctx.fill(); ctx.restore(); } }
+      ctx.beginPath(); ctx.ellipse(bx,by+bw4*0.17,bw4*0.62,bw4*0.07,0,0,TAU); ctx.fill(); ctx.restore(); }
+    const cyc5=t%140; if(cyc5<44){ const p=cyc5/44, env5=Math.sin(Math.min(1,p*1.08)*Math.PI);
+      const bx=g.left+lerp(-0.08,1.05,p)*g.pw, by=g.top+(0.78+0.008*Math.sin(t*0.9))*g.ph, bw5=g.pw*0.042;
+      ctx.save(); ctx.globalAlpha=0.9*env5; ctx.fillStyle='rgba(12,20,28,0.92)';
+      ctx.fillRect(bx-bw5/2,by,bw5,bw5*0.14); ctx.fillRect(bx-bw5*0.10,by-bw5*0.20,bw5*0.24,bw5*0.20);
+      ctx.fillStyle='rgba(255,214,150,'+(0.75*(0.6+0.4*Math.sin(t*1.5)))+')'; ctx.fillRect(bx-bw5*0.02,by-bw5*0.13,bw5*0.05,bw5*0.06);
+      ctx.globalAlpha=0.35*env5; ctx.fillStyle='rgba(255,225,170,1)';
+      ctx.fillRect(bx-bw5*0.9,by+bw5*0.20,bw5*1.1,1.4); ctx.restore(); }   /* Nov 13 (Gary): a second boat working the water the other way, its window lit and breathing with the shore lights */
+    { const bobY=Math.sin(t*1.1)*g.ph*0.004, bl=0.5+0.5*Math.sin(t*2.4);
+      const bx=g.left+0.68*g.pw, by=g.top+0.815*g.ph+bobY;
+      ctx.save(); ctx.fillStyle='rgba(150,40,34,0.95)'; ctx.beginPath(); ctx.moveTo(bx-4,by); ctx.lineTo(bx+4,by); ctx.lineTo(bx+2,by+6); ctx.lineTo(bx-2,by+6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,120,110,1)'; ctx.globalAlpha=0.35+0.65*bl; ctx.beginPath(); ctx.arc(bx,by-3,1.8,0,TAU); ctx.fill();
+      ctx.globalAlpha=0.20*bl; ctx.beginPath(); ctx.arc(bx,by-3,5.5,0,TAU); ctx.fill(); ctx.restore(); } }
   if(S.biome==='canyon'){ /* REBUILD (Gary: "all i see are bird cutouts · needs more"): a balloon riding the canyon air — solid, slow, one crossing in a long quiet */
     const cyc4=t%120; if(cyc4<44){ const p=cyc4/44, env4=Math.sin(Math.min(1,p*1.07)*Math.PI);
       const bx=g.left+lerp(-0.10,1.10,p)*g.pw, by=g.top+(0.20+0.03*Math.sin(p*Math.PI*2))*g.ph, bs=g.pw*0.030;
@@ -3880,7 +3897,7 @@ function drawNorthVista(RP,hy,cx){
     if(S.biomeBlend<1)npEnterT=S.flyT;   /* the 18 s arrival window starts when the blend-in completes (covers tour arrivals AND pop-up jumps — both run a blend) */
     const sw0=npSeatWeights(); const sw=sw0?{list:sw0.list,w:sharpW(sw0.w)}:null; let gSeat=null, drawn=false;   /* #567: sharpened */
     if(sw){ for(const k of sw.list){ const wgt=sw.w[k]||0; if(wgt<=0.003)continue;
-        const g2=(k==='walrus')? drawSeatFit(npSeats[k],wgt,0.60) /* Nov 13 (Gary): the walruses still loomed — drawn 40% smaller so the sky and the AURORA get their share of the frame */ : drawSeatCover(npSeats[k],wgt); if(g2){ gSeat=g2; drawn=true; } } }   /* REBUILD: the walrus seat draws WHOLE (Gary: they were too big) */
+        const g2=(k==='walrus')? drawSeatFit(npSeats[k],wgt,0.40) /* Nov 13 (Gary, second call): STILL too zoomed — out another ~50% (0.60 -> 0.40) so the walruses and the sharks sit IN the scene, aurora above */ : drawSeatCover(npSeats[k],wgt); if(g2){ gSeat=g2; drawn=true; } } }   /* REBUILD: the walrus seat draws WHOLE (Gary: they were too big) */
     if(drawn&&gSeat){ NORTH_G=gSeat; NORTH_NEAR_F=0;
       const t=S.flyT;
       /* aurora SHIMMER: soft curtains of light breathing in the seat's
@@ -3989,7 +4006,7 @@ function drawNorthVista(RP,hy,cx){
     ctx.globalAlpha=(0.05+0.30*tw)*(0.35+0.65*(RP.starF||0));
     ctx.fillRect(g.left+fx*g.pw,g.top+fy*g.ph,2.0,2.0); }
   ctx.restore(); ctx.globalAlpha=1;
-  { const _sf=window.__seatFocus||0; if(_sf>0&&_sf<=0.5&&S.seatKey&&npSeats[S.seatKey]&&npSeats[S.seatKey].complete){ if(S.seatKey==='walrus')drawSeatFit(npSeats[S.seatKey],_sf*1.7); else drawSeatCover(npSeats[S.seatKey],_sf*1.7); } }   /* REBUILD ramp */
+  { const _sf=window.__seatFocus||0; if(_sf>0&&_sf<=0.5&&S.seatKey&&npSeats[S.seatKey]&&npSeats[S.seatKey].complete){ if(S.seatKey==='walrus')drawSeatFit(npSeats[S.seatKey],_sf*1.7,0.40); else drawSeatCover(npSeats[S.seatKey],_sf*1.7); } }   /* REBUILD ramp */
 }
 /* #558 — THE POLE'S ANIMALS, set into the world as solid cutouts (the
    Falls pattern): the arctic fox standing on the snow foreground, the
