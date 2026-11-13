@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ten Minutes — Memory · Future Ready</title>
+<meta name="description" content="Ten minutes a day to memorize a whole deck of cards — the real memory-athlete system, taught one lesson at a time by the Future Ready friends. Pictures, a silly story, and a streak worth protecting.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; }
+  body { font-family: Georgia, 'Times New Roman', serif; background:#141c3f; color:#fff8e7;
+         display:flex; flex-direction:column; height:100dvh; user-select:none; }
+  #stage { position:relative; width:min(100%, 560px, calc((100dvh - 452px) * 0.6667)); min-width:230px; margin:0 auto; flex:none; overflow:hidden; background:#141c3f; }
+  #stageImg { display:block; width:100%; height:auto; animation:breathe 16s ease-in-out infinite alternate; }
+  @keyframes breathe { from { transform:scale(1); } to { transform:scale(1.025); } }
+  #board { position:absolute; left:13.5%; top:8.5%; width:75%; height:38%; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; text-align:center; padding:2% 3%; }
+  #boardTitle { font-size:clamp(15px,4.6vw,26px); letter-spacing:3px; color:#ffd23e; font-weight:bold; }
+  #boardSub { font-size:clamp(12.5px,3.8vw,19px); color:#eaf6ff; opacity:.95; margin-top:3px; font-style:italic; line-height:1.3; }
+  .confetti { position:absolute; width:9px; height:14px; border-radius:2px; pointer-events:none; z-index:5; }
+  @keyframes fall { to { transform:translateY(46vh) rotate(560deg); opacity:.9; } }
+  @keyframes drift { 0% { transform:translateY(-4%) rotate(0deg); opacity:0; } 12% { opacity:.85; } 88% { opacity:.85; } 100% { transform:translateY(108%) rotate(320deg); opacity:0; } }
+  #below { flex:1; display:flex; flex-direction:column; align-items:center; width:100%; max-width:560px; margin:0 auto; padding:8px 14px 10px; min-height:0; overflow:hidden; }
+  #stats { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+  .chip { background:#2a3d75; border:2px solid #46589c; border-radius:999px; padding:5px 13px; font-size:14.5px; }
+  .chip b { color:#ffd23e; }
+  #timerWrap { width:100%; padding:8px 4px 0; }
+  #timerBarOuter { height:10px; background:#2a3d75; border-radius:99px; overflow:hidden; border:2px solid #46589c; }
+  #timerBar { height:100%; width:100%; background:linear-gradient(90deg,#29adff,#00e436,#ffd23e); transition:width 1s linear; }
+  #timerText { text-align:center; font-size:12px; color:#bcd0ff; margin-top:3px; letter-spacing:2px; }
+  .screen { text-align:center; width:100%; }
+  .small { color:#bcd0ff; font-size:15px; line-height:1.5; margin-top:8px; }
+  .btn { display:block; width:100%; font-family:inherit; font-size:20px; font-weight:bold; padding:13px 16px; margin-top:11px;
+         border-radius:16px; border:2px solid #ffd23e; background:#ffd23e; color:#1d2b53; cursor:pointer; }
+  .btn.alt { background:transparent; color:#ffd23e; border-color:#46589c; }
+  .btn:active { transform:scale(.97); }
+  #ladder { display:flex; justify-content:center; gap:5px; margin-top:11px; flex-wrap:wrap; }
+  .rung { font-size:11.5px; padding:4px 9px; border-radius:99px; border:2px solid #46589c; color:#bcd0ff; }
+  .rung.on { background:#ffd23e; color:#1d2b53; border-color:#ffd23e; font-weight:bold; }
+  .rung.done { border-color:#00e436; color:#8dff6a; }
+  .strip { display:flex; flex-wrap:wrap; gap:2.5px; justify-content:center; width:min(94vw,340px); margin:10px auto 0; }
+  .cell { width:11px; height:15px; border-radius:2.5px; background:#2a3d75; border:1.5px solid #46589c; }
+  .cell.gold { background:#ffd23e; border-color:#ffd23e; }
+  .cell.green { background:#00a324; border-color:#00e436; }
+  .cell.now { border-color:#ffd23e; box-shadow:0 0 0 1.5px #ffd23e; }
+  .lessonText { font-size:18.5px; line-height:1.55; color:#fff8e7; max-width:480px; margin:14px auto 2px; min-height:5.2em; display:flex; align-items:center; justify-content:center; }
+  .card { background:#fdfdf8; color:#17203a; border-radius:11px; box-shadow:0 4px 14px rgba(0,0,0,.4);
+          display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:Georgia,serif; position:relative; flex:none; }
+  .card.red { color:#cf2233; }
+  .card .cnr { position:absolute; top:5px; left:7px; font-weight:bold; line-height:1; text-align:center; }
+  .card .cnr small { display:block; }
+  .card .pip { line-height:1; }
+  .bigcard { width:112px; height:156px; margin:10px auto 2px; }
+  .bigcard .cnr { font-size:19px; } .bigcard .cnr small { font-size:16px; } .bigcard .pip { font-size:56px; }
+  .bigcard .nm { font-size:12.5px; margin-top:5px; color:#46589c; font-style:italic; }
+  #studyPic { font-size:17.5px; color:#ffe97a; margin-top:7px; line-height:1.35; min-height:1.35em; }
+  #studyLink { font-size:15.5px; color:#bcd0ff; font-style:italic; margin-top:3px; line-height:1.35; min-height:1.35em; }
+  .count { font-size:13px; letter-spacing:2px; color:#bcd0ff; margin-top:6px; }
+  #choices { display:flex; justify-content:center; gap:9px; margin-top:10px; flex-wrap:wrap; }
+  .choice { width:68px; height:95px; cursor:pointer; }
+  .choice .cnr { font-size:14px; } .choice .cnr small { font-size:12px; } .choice .pip { font-size:34px; }
+  .choice:active { transform:scale(.95); }
+  .choice.dim { opacity:.28; pointer-events:none; }
+  .choice.right { box-shadow:0 0 0 3px #00e436, 0 4px 14px rgba(0,0,0,.4); }
+  #picker { margin-top:10px; }
+  .prow { display:flex; justify-content:center; gap:5px; flex-wrap:wrap; margin-top:6px; }
+  .pkey { font-family:inherit; font-size:17px; font-weight:bold; min-width:38px; padding:8px 6px; border-radius:11px;
+          border:2px solid #46589c; background:#2a3d75; color:#fff8e7; cursor:pointer; }
+  .pkey.suit { font-size:22px; min-width:56px; }
+  .pkey.sel { background:#ffd23e; color:#1d2b53; border-color:#ffd23e; }
+  .pkey:active { transform:scale(.95); }
+  .redTx { color:#ff8fa0; } .blkTx { color:#fff8e7; }
+  #recallMsg { font-size:16px; line-height:1.4; min-height:2.6em; margin-top:8px; color:#eaf6ff; display:flex; align-items:center; justify-content:center; }
+  .good { color:#8dff6a !important; } .try { color:#ffb3c9 !important; }
+  .minibtn { display:inline-block; font-family:inherit; font-size:15.5px; font-weight:bold; padding:8px 14px; margin-top:7px;
+             border-radius:12px; border:2px solid #46589c; background:transparent; color:#ffd23e; cursor:pointer; }
+  .minibtn:active { transform:scale(.96); }
+  footer { text-align:center; font-size:11.5px; color:#7f8fc9; padding:2px 10px 8px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="stageImg" src="../ten-minutes/stage.jpg" alt="The Future Ready friends at the big chalkboard — Goggles hosts, the gang cheers">
+  <div id="board">
+    <div id="boardTitle">TEN MINUTES · MEMORY</div>
+    <div id="boardSub">Memorize a whole deck of cards. Ten minutes a day.</div>
+  </div>
+</div>
+
+<div id="below">
+  <div id="stats">
+    <div class="chip">🔥 Streak <b id="streak">0</b> days</div>
+    <div class="chip">Level <b id="level">1</b></div>
+    <div class="chip">🏆 Best chain <b id="best">0</b></div>
+  </div>
+
+  <div id="timerWrap" class="hidden">
+    <div id="timerBarOuter"><div id="timerBar"></div></div>
+    <div id="timerText">10:00</div>
+  </div>
+
+  <div id="startScreen" class="screen">
+    <button class="btn" id="startBtn">▶ Start today's 10 minutes</button>
+    <button class="btn alt" id="practiceBtn">Practice — no clock</button>
+    <button class="btn alt" id="lessonBtn" style="margin-top:8px;padding:10px 16px;font-size:16.5px">📖 Read the lesson for Level <span id="lessonLvl">1</span></button>
+    <div id="ladder"></div>
+    <div class="strip" id="stripStart"></div>
+    <div class="small" id="stripLabel">Your deck so far: 0 of 52 cards conquered.</div>
+    <div class="small">Nobody walks in able to do this. The pictures do the work —<br>you just practice ten minutes a day and watch the deck grow.</div>
+  </div>
+
+  <div id="lessonScreen" class="screen hidden">
+    <div class="count" id="lessonCount">LESSON</div>
+    <div class="lessonText" id="lessonText"></div>
+    <button class="btn" id="lessonNext">Next ▸</button>
+    <button class="btn alt hidden" id="lessonSkip" style="margin-top:8px;padding:10px 16px;font-size:16.5px">Skip lesson</button>
+  </div>
+
+  <div id="studyScreen" class="screen hidden">
+    <div class="count" id="studyCount">CARD 1 OF 3</div>
+    <div id="studyCard"></div>
+    <div id="studyPic"></div>
+    <div id="studyLink"></div>
+    <button class="btn" id="studyNext">Got it ▸</button>
+    <button class="minibtn hidden" id="studyAgain">↺ Study them again</button>
+  </div>
+
+  <div id="recallScreen" class="screen hidden">
+    <div class="count" id="recallCount">CARD 1 OF 3 — WHAT WAS IT?</div>
+    <div class="strip" id="stripRecall"></div>
+    <div id="choices"></div>
+    <div id="picker" class="hidden">
+      <div class="prow" id="rankRow"></div>
+      <div class="prow" id="suitRow"></div>
+    </div>
+    <div id="recallMsg">Walk the story back, one card at a time.</div>
+    <button class="minibtn" id="recallHint">💡 Remind me of the link</button>
+  </div>
+
+  <div id="doneScreen" class="screen hidden">
+    <div class="small" id="doneStats" style="font-size:16.5px;color:#fff8e7"></div>
+    <div class="small" id="doneLevel"></div>
+    <div class="strip" id="stripDone"></div>
+    <div class="small">The second hard part is doing it again tomorrow.<br>Your streak is counting on you. 🔥</div>
+    <button class="btn" id="againBtn">Done for today</button>
+  </div>
+</div>
+
+<footer>From Seth Godin's list — things ten minutes a day can teach you · A Future Ready page</footer>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  // ---------- Pure logic: the deck, the picture system, the links ----------
+  var SUITS = [
+    { g:'♥', name:'Hearts',   red:1, fam:'the Love family', fl:'with a big red heart' },
+    { g:'♦', name:'Diamonds', red:1, fam:'the Rich family', fl:'covered in diamonds' },
+    { g:'♣', name:'Clubs',    red:0, fam:'the Wild family', fl:'at a wild party' },
+    { g:'♠', name:'Spades',   red:0, fam:'the Tool family', fl:'in the tool shed' }
+  ];
+  var RANKS = [
+    { r:'A',  nm:'Ace',   pic:'SUN' },
+    { r:'2',  nm:'2',     pic:'SHOE' },
+    { r:'3',  nm:'3',     pic:'TREE' },
+    { r:'4',  nm:'4',     pic:'DOOR' },
+    { r:'5',  nm:'5',     pic:'STARFISH' },
+    { r:'6',  nm:'6',     pic:'DICE' },
+    { r:'7',  nm:'7',     pic:'RAINBOW' },
+    { r:'8',  nm:'8',     pic:'SPIDER' },
+    { r:'9',  nm:'9',     pic:'CAT' },
+    { r:'10', nm:'10',    pic:'PINS' },
+    { r:'J',  nm:'Jack',  pic:'JUGGLER' },
+    { r:'Q',  nm:'Queen', pic:'QUEEN' },
+    { r:'K',  nm:'King',  pic:'KING' }
+  ];
+  function mkDeck(){ var d=[]; for (var i=0;i<52;i++) d.push(i); return d; }
+  function shuffle(a){ for (var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function suitOf(c){ return SUITS[Math.floor(c/13)]; }
+  function rankOf(c){ return RANKS[c%13]; }
+  function cardName(c){ return rankOf(c).nm + ' of ' + suitOf(c).name; }
+  function picOf(c){ return rankOf(c).pic; }
+  function picPhrase(c){ return 'the ' + picOf(c) + ' — ' + suitOf(c).fl; }
+  var VERBS = ['squashes','splashes','chases','crashes into','dances with','melts all over','tickles','photobombs','body-slams','serenades'];
+  function linkLine(a, b, seed){ return 'The ' + picOf(a) + ' ' + VERBS[seed % VERBS.length] + ' the ' + picOf(b) + '!'; }
+  function decoys(correct, n){
+    var cs = Math.floor(correct/13), cr = correct%13, pool = [], out = [], i, c;
+    for (i=0;i<13;i++){ c = cs*13+i; if (c!==correct) pool.push(c); }
+    for (i=0;i<4;i++){ c = i*13+cr; if (c!==correct) pool.push(c); }
+    shuffle(pool);
+    for (i=0;i<pool.length && out.length<n;i++){ if (out.indexOf(pool[i])===-1) out.push(pool[i]); }
+    while (out.length<n){ c = Math.floor(Math.random()*52); if (c!==correct && out.indexOf(c)===-1) out.push(c); }
+    return out;
+  }
+  function hintFor(seq, pos){
+    if (pos===0) return 'It\u2019s the first card — the story starts with ' + picPhrase(seq[0]) + '.';
+    return linkLine(seq[pos-1], seq[pos], pos-1) + ' So card ' + (pos+1) + ' is ' + picPhrase(seq[pos]) + ' — which card is that?';
+  }
+  var LEVELS = [
+    { name:'Picture Trick',   n:3,  need:0.66 },
+    { name:'Suit Families',   n:5,  need:0.8 },
+    { name:'Number Pictures', n:8,  need:0.8 },
+    { name:'Quarter Deck',    n:13, need:0.8 },
+    { name:'Half Deck',       n:26, need:0.8 },
+    { name:'Whole Deck',      n:52, need:0.8 }
+  ];
+  function conquered(level, mastered){ if (mastered) return 52; return level<=1 ? 0 : LEVELS[level-2].n; }
+  var LESSONS = [
+    [ 'Your brain forgets symbols. It never forgets a good picture.',
+      'So every card becomes a picture. The Ace of Spades? A shining SUN \u2014 in the tool shed. (Spades live in the tool shed. You\u2019ll see.)',
+      'Then we chain the pictures into a silly story. Silly is sticky \u2014 the sillier the picture, the harder it is to forget.',
+      'Watch 3 cards. Hear the story. Then tell the cards back in order. That\u2019s the whole trick \u2014 from here it just grows.' ],
+    [ 'New trick: every suit is a FAMILY. Know the family, and the picture makes itself.',
+      '\u2665 Hearts are the Love family \u2014 warm people, big feelings. \u2666 Diamonds are the Rich family \u2014 gold, jewels, shiny things.',
+      '\u2663 Clubs are the Wild family \u2014 parties and animals. \u2660 Spades are the Tool family \u2014 sheds, shovels, work.',
+      'So the 7 of Spades is a RAINBOW in the tool shed, and the 7 of Hearts is a RAINBOW with a big red heart. Five cards today.' ],
+    [ 'Now the number pictures \u2014 one for every rank. Learn these, and all 52 cards get a face.',
+      'A is the SUN \u00b7 2 is a SHOE \u00b7 3 is a TREE \u00b7 4 is a DOOR \u00b7 5 is a STARFISH.',
+      '6 is DICE \u00b7 7 is a RAINBOW \u00b7 8 is a SPIDER \u00b7 9 is a CAT \u00b7 10 is bowling PINS.',
+      'Jack is a JUGGLER, the Queen is a QUEEN, the King is a KING. Number picture + family = the card. Eight cards today.' ],
+    [ 'Quarter deck: 13 cards \u2014 a whole suit\u2019s worth in one story.',
+      'Same trick, longer chain. And here\u2019s the pro move: if the chain breaks, grab the link BEFORE the gap \u2014 it pulls the rest back.',
+      'Study slowly. Speed doesn\u2019t come from rushing \u2014 it comes from the pictures being LOUD.' ],
+    [ 'Half the deck: 26 cards. And one change \u2014 no more choices.',
+      'From here you pick the rank and the suit from memory alone. That\u2019s real recall \u2014 the story does the work, your fingers just report it.',
+      'If a card won\u2019t come, ask for the link. The picture is always waiting on the other end of it.' ],
+    [ 'The whole deck. 52 cards, one story, start to finish.',
+      'This is exactly what memory athletes do \u2014 same trick, same ten minutes a day. Seth\u2019s list, done for real.',
+      'Deal them.' ]
+  ];
+  // ---------- End pure logic ----------
+  var store = {
+    get: function(k, d){ try { var v = localStorage.getItem('tm-mem-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set: function(k, v){ try { localStorage.setItem('tm-mem-' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  var level = Math.min(6, Math.max(1, store.get('level', 1)));
+  var streak = store.get('streak', 0), best = store.get('best', 0), mastered = store.get('mastered', false);
+  var lastDay = store.get('lastDay', ''), seen = store.get('seen', {});
+  var today = new Date().toDateString();
+  if (lastDay && lastDay !== today && lastDay !== new Date(Date.now() - 864e5).toDateString()) { streak = 0; store.set('streak', 0); }
+  var mode = 'daily', seq = [], spos = 0, rpos = 0, firstTry = [], chain = 0, runBest = 0;
+  var timer = null, timeLeft = 600, lessonIdx = 0, afterLesson = null, pickRank = -1, pickSuit = -1, busy = false;
+
+  function renderStats(){ $('streak').textContent = streak; $('level').textContent = level; $('best').textContent = best; $('lessonLvl').textContent = level; }
+  function renderLadder(){ var h = ''; for (var i = 0; i < 6; i++){ var lv = i + 1, cls = 'rung'; if (mastered || lv < level) cls += ' done'; else if (lv === level) cls += ' on'; h += '<div class="' + cls + '">' + lv + ' \u00b7 ' + LEVELS[i].name + ' (' + LEVELS[i].n + ')</div>'; } $('ladder').innerHTML = h; }
+  function stripInto(el, total, fn){ var h = ''; for (var i = 0; i < total; i++){ var c = fn(i); h += '<div class="cell' + (c ? ' ' + c : '') + '"></div>'; } el.innerHTML = h; }
+  function renderStrips(){ var c = conquered(level, mastered); var f = function(i){ return i < c ? 'gold' : ''; }; stripInto($('stripStart'), 52, f); stripInto($('stripDone'), 52, f); $('stripLabel').textContent = 'Your deck so far: ' + c + ' of 52 cards conquered.'; }
+  function show(id){ ['startScreen','lessonScreen','studyScreen','recallScreen','doneScreen'].forEach(function(s){ $(s).classList.toggle('hidden', s !== id); }); }
+  function board(sub){ $('boardSub').textContent = sub; }
+  function cardHTML(c, cls, withName){ var s = suitOf(c), r = rankOf(c); return '<div class="card ' + cls + (s.red ? ' red' : '') + '"><div class="cnr">' + r.r + '<small>' + s.g + '</small></div><div class="pip">' + s.g + '</div>' + (withName ? '<div class="nm">' + cardName(c) + '</div>' : '') + '</div>'; }
+
+  var COLORS = ['#ffd23e','#ff004d','#29adff','#00e436','#ff77a8','#ffa300','#fff8e7'];
+  function burst(xFrac, big){
+    var stage = $('stage'), n = big ? 46 : 22, i, d;
+    for (i = 0; i < n; i++){ d = document.createElement('div'); d.className = 'confetti';
+      d.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
+      d.style.left = (xFrac * 100 + (Math.random() * 36 - 18)) + '%'; d.style.top = (8 + Math.random() * 22) + '%';
+      var s = 6 + Math.random() * 7; d.style.width = s + 'px'; d.style.height = (s * 1.5) + 'px';
+      d.style.animation = 'drift ' + (1.6 + Math.random() * 1.4) + 's ease-in forwards';
+      stage.appendChild(d); (function(el){ setTimeout(function(){ el.remove(); }, 3400); })(d); }
+  }
+
+  function fmt(s){ return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function paintTimer(){ $('timerBar').style.width = (timeLeft / 600 * 100) + '%'; $('timerText').textContent = fmt(Math.max(0, timeLeft)); }
+  function startTimer(){ timeLeft = 600; $('timerWrap').classList.remove('hidden'); paintTimer(); if (timer) clearInterval(timer); timer = setInterval(function(){ timeLeft--; paintTimer(); if (timeLeft <= 0){ clearInterval(timer); timer = null; finish(false); } }, 1000); }
+  function stopTimer(){ if (timer){ clearInterval(timer); timer = null; } $('timerWrap').classList.add('hidden'); }
+
+  function startSession(m){ mode = m; if (m === 'daily' && !seen[level]) openLesson(beginRun); else beginRun(); }
+  function openLesson(then){
+    afterLesson = then || null; lessonIdx = 0;
+    show('lessonScreen'); board('Level ' + level + ' \u00b7 ' + LEVELS[level - 1].name + ' \u2014 the lesson');
+    $('lessonSkip').classList.toggle('hidden', !afterLesson); paintLesson();
+  }
+  function paintLesson(){
+    var L = LESSONS[level - 1];
+    $('lessonCount').textContent = 'LEVEL ' + level + ' LESSON \u00b7 ' + (lessonIdx + 1) + ' OF ' + L.length;
+    $('lessonText').textContent = L[lessonIdx];
+    $('lessonNext').textContent = lessonIdx === L.length - 1 ? (afterLesson ? 'Deal the cards \u25b8' : 'Back \u25b8') : 'Next \u25b8';
+  }
+  $('lessonNext').onclick = function(){ var L = LESSONS[level - 1]; if (lessonIdx < L.length - 1){ lessonIdx++; paintLesson(); } else { seen[level] = true; store.set('seen', seen); var f = afterLesson; afterLesson = null; if (f) f(); else { show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); } } };
+  $('lessonSkip').onclick = function(){ var f = afterLesson; afterLesson = null; if (f) f(); };
+
+  function beginRun(){
+    var N = LEVELS[level - 1].n, i;
+    seq = shuffle(mkDeck()).slice(0, N);
+    firstTry = []; for (i = 0; i < N; i++) firstTry.push(true);
+    chain = 0; runBest = 0; spos = 0; rpos = 0;
+    if (mode === 'daily') startTimer(); else stopTimer();
+    openStudy();
+  }
+  function openStudy(){ show('studyScreen'); board('Study \u2014 turn every card into a picture'); spos = 0; paintStudy(); }
+  function paintStudy(){
+    var N = seq.length, c = seq[spos];
+    $('studyCount').textContent = 'CARD ' + (spos + 1) + ' OF ' + N;
+    $('studyCard').innerHTML = cardHTML(c, 'bigcard', true);
+    $('studyPic').textContent = 'Picture: ' + picPhrase(c) + '.';
+    $('studyLink').textContent = spos === 0 ? 'The story starts here.' : 'Link: ' + linkLine(seq[spos - 1], c, spos - 1);
+    $('studyNext').textContent = spos === N - 1 ? 'Now \u2014 tell them back \u25b8' : 'Got it \u25b8';
+    $('studyAgain').classList.toggle('hidden', spos !== N - 1);
+  }
+  $('studyNext').onclick = function(){ if (spos < seq.length - 1){ spos++; paintStudy(); } else openRecall(); };
+  $('studyAgain').onclick = function(){ spos = 0; paintStudy(); };
+
+  function openRecall(){ show('recallScreen'); board('Recall \u2014 walk the story back'); rpos = 0; paintRecall(); }
+  function paintRecall(){
+    var N = seq.length, c = seq[rpos];
+    $('recallCount').textContent = 'CARD ' + (rpos + 1) + ' OF ' + N + ' \u2014 WHAT WAS IT?';
+    stripInto($('stripRecall'), N, function(i){ return i < rpos ? 'green' : (i === rpos ? 'now' : ''); });
+    $('recallMsg').textContent = rpos === 0 ? 'First card of the story. What was it?' : 'Walk the story. What came next?';
+    $('recallMsg').className = '';
+    if (level <= 4){
+      $('picker').classList.add('hidden'); $('choices').classList.remove('hidden');
+      var opts = shuffle([c].concat(decoys(c, 3)));
+      $('choices').innerHTML = opts.map(function(o){ return cardHTML(o, 'choice', false); }).join('');
+      var kids = $('choices').children;
+      opts.forEach(function(o, i){ kids[i].onclick = function(){ answerChoice(o, kids[i]); }; });
+    } else {
+      $('choices').classList.add('hidden'); $('picker').classList.remove('hidden');
+      pickRank = -1; pickSuit = -1; paintPicker();
+    }
+  }
+  function answerChoice(o, el){ if (busy) return; if (o === seq[rpos]){ el.classList.add('right'); rightAnswer(); } else { el.classList.add('dim'); wrongAnswer(); } }
+  function paintPicker(){
+    var rh = '', sh = '', i;
+    for (i = 0; i < 13; i++) rh += '<button class="pkey' + (pickRank === i ? ' sel' : '') + '" data-r="' + i + '">' + RANKS[i].r + '</button>';
+    $('rankRow').innerHTML = rh;
+    for (i = 0; i < 4; i++) sh += '<button class="pkey suit' + (pickSuit === i ? ' sel' : '') + '" data-s="' + i + '"><span class="' + (SUITS[i].red ? 'redTx' : 'blkTx') + '">' + SUITS[i].g + '</span></button>';
+    $('suitRow').innerHTML = sh;
+    Array.prototype.forEach.call($('rankRow').children, function(b){ b.onclick = function(){ pickRank = parseInt(b.getAttribute('data-r'), 10); paintPicker(); maybePickerAnswer(); }; });
+    Array.prototype.forEach.call($('suitRow').children, function(b){ b.onclick = function(){ pickSuit = parseInt(b.getAttribute('data-s'), 10); paintPicker(); maybePickerAnswer(); }; });
+  }
+  function maybePickerAnswer(){ if (pickRank < 0 || pickSuit < 0 || busy) return; var c = pickSuit * 13 + pickRank; if (c === seq[rpos]) rightAnswer(); else { wrongAnswer(); pickRank = -1; pickSuit = -1; paintPicker(); } }
+  function wrongAnswer(){ firstTry[rpos] = false; chain = 0; $('recallMsg').textContent = 'Not that one. ' + hintFor(seq, rpos); $('recallMsg').className = 'try'; }
+  function rightAnswer(){
+    busy = true;
+    if (firstTry[rpos]){ chain++; if (chain > runBest) runBest = chain; }
+    $('recallMsg').textContent = '\u2713 ' + cardName(seq[rpos]) + (firstTry[rpos] ? ' \u2014 the story holds.' : ' \u2014 got it back.');
+    $('recallMsg').className = 'good';
+    if ((rpos + 1) % 10 === 0) burst(0.5, false);
+    setTimeout(function(){ busy = false; rpos++; if (rpos >= seq.length) finish(true); else paintRecall(); }, 650);
+  }
+  $('recallHint').onclick = function(){ $('recallMsg').textContent = '\ud83d\udca1 ' + hintFor(seq, rpos); $('recallMsg').className = ''; };
+
+  function finish(completedRun){
+    stopTimer();
+    var N = seq.length, attempted = completedRun ? N : rpos, ft = 0, i;
+    for (i = 0; i < attempted; i++) if (firstTry[i]) ft++;
+    var acc = attempted ? ft / attempted : 0, lv = LEVELS[level - 1], leveled = false;
+    if (runBest > best){ best = runBest; store.set('best', best); }
+    if (completedRun && acc >= lv.need){
+      if (level < 6){ level++; store.set('level', level); leveled = true; }
+      else if (!mastered){ mastered = true; store.set('mastered', true); leveled = true; }
+    }
+    if (mode === 'daily' && lastDay !== today){ streak++; lastDay = today; store.set('streak', streak); store.set('lastDay', lastDay); }
+    renderStats(); renderLadder(); renderStrips();
+    if (completedRun) $('doneStats').textContent = 'You walked the whole story: ' + N + ' cards, ' + ft + ' of them first-try (' + Math.round(acc * 100) + '%). Best chain: ' + runBest + ' in a row.';
+    else if (attempted === 0) $('doneStats').textContent = 'Time. The studying ate the clock today \u2014 that\u2019s real work too. Recall gets faster as the pictures stick.';
+    else $('doneStats').textContent = 'Time. You got through ' + attempted + ' of ' + N + ' cards, ' + ft + ' first-try. The story will be longer tomorrow.';
+    $('doneLevel').textContent = leveled
+      ? (mastered && level === 6 ? '\ud83c\udfc6 THE WHOLE DECK. All 52 cards \u2014 that\u2019s the top of Seth\u2019s list. Keep the streak and it stays yours.' : '\u2b50 Level up! Tomorrow: Level ' + level + ' \u2014 ' + LEVELS[level - 1].name + ', ' + LEVELS[level - 1].n + ' cards. The lesson\u2019s waiting for you.')
+      : 'Clear ' + Math.round(lv.need * 100) + '% first-try on a full run to level up \u2014 same level tomorrow; the pictures get louder with practice.';
+    burst(0.3, true); burst(0.7, true);
+    show('doneScreen'); board('Ten minutes. Done. \u2713');
+  }
+
+  $('startBtn').onclick = function(){ startSession('daily'); };
+  $('practiceBtn').onclick = function(){ startSession('practice'); };
+  $('lessonBtn').onclick = function(){ openLesson(null); };
+  $('againBtn').onclick = function(){ show('startScreen'); board('Memorize a whole deck of cards. Ten minutes a day.'); renderStats(); renderLadder(); renderStrips(); };
+  renderStats(); renderLadder(); renderStrips();
+  setTimeout(function(){ burst(0.5, true); }, 400);
+})();
+</script>
+</body>
+</html>
