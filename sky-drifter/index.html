@@ -688,7 +688,7 @@
           <li><b>✌️ Second finger:</b> hold a second finger down anywhere for full gas while you steer with the first. Hold maximum speed up in the sky — gas pinned, or a full-speed dive — and the flight melts into warp: rainbow tunnel, electric arcs, pure streaming light. (Underwater, full speed stays water and light.)</li>
           <li><b>🖱 Mouse:</b> the screen is a compass around its center — <b>point where you want to go</b>, no click needed. Above center climbs, below dives, the sides turn, the corners blend both — and the further from center you point, the stronger it answers. Dead center flies straight and level. <b>Hold the left button</b> for gas — and keep holding it pointed somewhere and the flight keeps <b>accelerating</b> that way: hold high underwater and you'll pitch up toward the light, burst out of the surface, and keep climbing through the air into space, one unbroken push. Release and you settle back to a calm cruise.</li>
           <li><b>⌨️ Keys:</b> arrows fly — <b>↑</b> climbs · <b>↓</b> descends · <b>←</b> <b>→</b> bank (WASD works too) · hold <b>Space</b> for gas · hold <b>L</b> + steer to look · <b>M</b> opens the paint box.</li>
-          <li><b>🕹️ Joystick:</b> want a stick with structure? In the paint box (☰ CONTROLS), under STEERING, pick 🕹️ Joystick — a stick appears at the lower-left. Push it <b>up</b> to climb, <b>down</b> to dive, <b>left</b> and <b>right</b> to bank; let go and it springs home while the flight settles level. Pick 👆 Drag steer to put it away.</li>
+          <li><b>🕹️ Joystick:</b> want a stick with structure? In the paint box (☰ CONTROLS), under STEERING, pick 🕹️ Joystick — a stick appears at the lower-left. Push it <b>up</b> to climb, <b>down</b> to dive, <b>left</b> and <b>right</b> to bank; let go and it springs home while the flight settles level. Keep it pushed <b>up</b> and you will climb all the way to space — hold it <b>down</b> for a full 5 seconds and the flight warps to the Underwater scenes. Pick 👆 Drag steer to put it away.</li>
           <li><b>☰ CONTROLS</b> under EXIT is your paint box: a sidebar where everything is on show at once — 🌍 LAND or 🫧 UNDERWATER up top, then every destination — pick one and it STAYS yours as long as you want, or leave the worlds on 🔀 Auto and they rotate every 50 seconds while you steer — plus the time of day, the moon's shape and color, the weather, your trails and your speed. Leave any of them on 🔀 Auto, or pick one and it stays yours. YOUR MUSIC at the very bottom takes your own YouTube links — paste one, tap it, and fly to your own soundtrack.</li>
           <li><b>✈️ Skywriting</b> (also in the paint box): about once a minute a little plane drifts by and writes something kind in smoke — affirmations, your own words, or just hearts and smileys. Soft and brief, like a good thought passing. Off whenever you want the sky to yourself.</li>
           <li><b>A world you pick is yours</b> — climb, dive, ride the surface underwater, it won't change on you until you pick another. <b>Keep climbing</b> — into the black, where the stars and the moon are waiting. 🚀</li>
@@ -5868,6 +5868,14 @@ function update(dt){
      to let the spectator drift seize the flight 15s into a held push */
   let touchHeld=false; pointers.forEach(p=>{ if(p.type!=='mouse')touchHeld=true; });
   if(flying){ if(S.mouseGas||keys.gas||touchHeld||joyHeldNow)S.idleT=0; S.idleT+=dt; S.drift=S.idleT>15; } else { S.idleT=0; S.drift=false; }
+  /* DOWN-WARP (Gary, Nov 13): the mirror of the climb-to-space rule —
+     hold the stick pointed DOWN for a full 5 seconds and the flight
+     warps to the Underwater scenes, riding the pop-up display's own
+     travel machinery (navGo: splash gate, space unwind and all). Any
+     let-up, swing away from down, or an active gate resets the count. */
+  if(joyHeldNow&&JOY.ty<=-0.72&&flying&&S.biome!=='underwater'&&!S.gate){ S.joyDownT=(S.joyDownT||0)+dt;
+    if(S.joyDownT>=5){ S.joyDownT=0; navGo('underwater'); } }
+  else S.joyDownT=0;
   S.panelIdle+=dt;
 
   if(!flying)S.holdBoost=Math.max(0,(S.holdBoost||0)-dt*1.4);   /* off the stick (landing, takeoff, intro) the hold build melts away */
