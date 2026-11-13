@@ -1870,6 +1870,103 @@ html,body{overflow-x:hidden;overflow-x:clip}
   #tbIntro span{display:inline}
 }
 </style>
+
+<style>
+.zoomable{cursor:zoom-in}
+.zoombadge{position:absolute;top:10px;right:10px;z-index:3;background:rgba(20,12,2,.74);color:#ffe9a8;font-family:Georgia,serif;font-weight:700;font-size:12.5px;padding:6px 11px;border-radius:999px;pointer-events:none;letter-spacing:.03em;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.lpd-card{position:relative}
+#zoomlb{position:fixed;inset:0;z-index:9999;background:rgba(10,6,2,.95);display:flex;flex-direction:column}
+#zoomlb[hidden]{display:none}
+#zoomStage{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;position:relative;cursor:grab}
+#zoomStage:active{cursor:grabbing}
+#zoomImg{max-width:97%;max-height:97%;width:auto;height:auto;display:block;user-select:none;-webkit-user-drag:none;will-change:transform;border-radius:6px;box-shadow:0 12px 44px rgba(0,0,0,.6)}
+#zoomBar{background:rgba(20,12,2,.88);padding:10px 12px 14px;text-align:center}
+#zoomHint{color:#d8c491;font-size:13.5px;font-style:italic;margin-bottom:9px}
+#zoomBtns{display:flex;gap:12px;justify-content:center}
+#zoomBtns button{width:54px;height:54px;border-radius:50%;border:2px solid #d9b45c;background:#2b2118;color:#ffe9a8;font-size:25px;font-weight:700;cursor:pointer;line-height:1}
+#zoomBtns button:active{transform:scale(.93)}
+</style>
+<div id="zoomlb" hidden role="dialog" aria-label="Photo zoom">
+  <div id="zoomStage"><img id="zoomImg" src="" alt=""></div>
+  <div id="zoomBar">
+    <div id="zoomHint" data-en="Drag to look around · pinch or scroll to zoom" data-es="Arrastra para moverte · pellizca o desplaza para ampliar">Drag to look around · pinch or scroll to zoom</div>
+    <div id="zoomBtns">
+      <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+      <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+      <button type="button" id="zoomFit" aria-label="Fit whole photo" style="font-size:19px">FIT</button>
+      <button type="button" id="zoomClose" aria-label="Close">✕</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var lb=document.getElementById('zoomlb'), stage=document.getElementById('zoomStage'), img=document.getElementById('zoomImg');
+  if(!lb||!stage||!img) return;
+  var s=1, tx=0, ty=0, MIN=1, MAX=6;
+  function clamp(){
+    var mx=Math.max(0,(img.clientWidth*s-stage.clientWidth)/2+30), my=Math.max(0,(img.clientHeight*s-stage.clientHeight)/2+30);
+    tx=Math.max(-mx,Math.min(mx,tx)); ty=Math.max(-my,Math.min(my,ty));
+  }
+  function render(){ clamp(); img.style.transform='translate('+tx+'px,'+ty+'px) scale('+s+')'; }
+  function reset(){ s=1; tx=0; ty=0; render(); }
+  function zoomAt(cx,cy,ns){
+    ns=Math.max(MIN,Math.min(MAX,ns)); if(ns===s) return;
+    var r=stage.getBoundingClientRect(), px=cx-r.left-r.width/2, py=cy-r.top-r.height/2, k=ns/s;
+    tx=px-(px-tx)*k; ty=py-(py-ty)*k; s=ns; render();
+  }
+  function centerZoom(ns){ var r=stage.getBoundingClientRect(); zoomAt(r.left+r.width/2, r.top+r.height/2, ns); }
+  function openZoom(src, alt){
+    img.src=src; img.alt=alt||''; reset();
+    lb.hidden=false; document.body.style.overflow='hidden';
+    if(img.complete&&img.naturalWidth) reset();
+    else img.onload=function(){ reset(); };
+  }
+  function closeZoom(){ lb.hidden=true; document.body.style.overflow=''; }
+  document.getElementById('zoomClose').addEventListener('click', closeZoom);
+  document.getElementById('zoomIn').addEventListener('click', function(){ centerZoom(s*1.45); });
+  document.getElementById('zoomOut').addEventListener('click', function(){ centerZoom(s/1.45); });
+  document.getElementById('zoomFit').addEventListener('click', reset);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'&&!lb.hidden) closeZoom(); });
+  stage.addEventListener('wheel', function(e){ e.preventDefault(); zoomAt(e.clientX, e.clientY, s*(e.deltaY<0?1.16:0.86)); }, {passive:false});
+  stage.addEventListener('click', function(e){ if(e.target===stage&&s<=1.02) closeZoom(); });
+  var ptrs={}, pinch=null, lastTap=0;
+  stage.addEventListener('pointerdown', function(e){ try{ stage.setPointerCapture(e.pointerId); }catch(err){} ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(ptrs);
+    if(ids.length===2){ var a=ptrs[ids[0]], b=ptrs[ids[1]]; pinch={d:Math.hypot(a.x-b.x,a.y-b.y), s:s}; }
+  });
+  stage.addEventListener('pointermove', function(e){
+    if(!ptrs[e.pointerId]) return;
+    var prev=ptrs[e.pointerId]; ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(ptrs);
+    if(ids.length===2&&pinch){
+      var a=ptrs[ids[0]], b=ptrs[ids[1]], d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(pinch.d>0) zoomAt((a.x+b.x)/2,(a.y+b.y)/2, pinch.s*d/pinch.d);
+    } else if(ids.length===1&&s>1){
+      tx+=e.clientX-prev.x; ty+=e.clientY-prev.y; render();
+    }
+  });
+  function endPtr(e){
+    delete ptrs[e.pointerId];
+    if(Object.keys(ptrs).length<2) pinch=null;
+    if(e.type==='pointerup'&&s<=1.02){
+      var now=Date.now();
+      if(now-lastTap<330){ reset(); zoomAt(e.clientX,e.clientY,2.5); lastTap=0; }
+      else lastTap=now;
+    }
+  }
+  stage.addEventListener('pointerup', endPtr);
+  stage.addEventListener('pointercancel', endPtr);
+  function addBadge(parent){ if(!parent||parent.querySelector('.zoombadge')) return; var b=document.createElement('span'); b.className='zoombadge'; b.innerHTML='🔍 <span data-en="Zoom" data-es="Ampliar">Zoom</span>'; parent.appendChild(b); }
+  function enrollOpen(im){ openZoom(im.currentSrc||im.src, im.alt||''); }
+  var hero=document.querySelector('.fri-photo'), heroImg=hero?hero.querySelector('img'):null;
+  if(hero&&heroImg){ hero.classList.add('zoomable'); addBadge(hero); hero.addEventListener('click', function(){ enrollOpen(heroImg); }); }
+  document.querySelectorAll('.lpd-card img').forEach(function(im){
+    im.classList.add('zoomable'); addBadge(im.closest('.lpd-card'));
+    im.addEventListener('click', function(ev){ ev.preventDefault(); enrollOpen(im); });
+  });
+})();
+</script>
+
 </body>
 <!-- mirror sync 2026-11-05 -->
 </html>
