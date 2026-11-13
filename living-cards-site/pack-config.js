@@ -4,4 +4,4 @@
    e.g. window.PACK_API = 'https://living-cards-pack.vercel.app';
    While it is '' the pack features show a friendly "being switched on" note
    and the free Love card works exactly as always. */
-window.PACK_API = '';
+window.PACK_API = 'https://living-cards-pack.vercel.app';
