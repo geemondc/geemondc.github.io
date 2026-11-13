@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ten Minutes — Mental Math · Future Ready</title>
+<meta name="description" content="Ten minutes a day of mental math with the Future Ready friends. One problem at a time on the big chalkboard, a level ladder, and a streak worth protecting.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; }
+  body { font-family: Georgia, 'Times New Roman', serif; background:#141c3f; color:#fff8e7;
+         display:flex; flex-direction:column; height:100dvh; user-select:none; }
+  #stage { position:relative; width:min(100%, 560px, calc((100dvh - 336px) * 0.6667)); margin:0 auto; flex:none; overflow:hidden; background:#141c3f; }
+  #stageImg { display:block; width:100%; height:auto; animation:breathe 16s ease-in-out infinite alternate; }
+  @keyframes breathe { from { transform:scale(1); } to { transform:scale(1.025); } }
+  #board { position:absolute; left:13.5%; top:8.5%; width:75%; height:38%; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; text-align:center; padding:2% 3%;
+           font-family:"Chalkboard SE","Segoe Print","Comic Sans MS",cursive; color:#fff; }
+  #boardTitle { font-size:clamp(15px,4.6vw,26px); letter-spacing:3px; color:#ffd23e; font-family:Georgia,serif; font-weight:bold; }
+  #boardSub { font-size:clamp(12px,3.6vw,19px); color:#eaf6ff; opacity:.92; margin-top:2px; font-family:Georgia,serif; font-style:italic; }
+  #problem { font-size:clamp(30px,10.5vw,58px); font-weight:bold; line-height:1.08; text-shadow:0 0 6px rgba(255,255,255,.35); }
+  #answerLine { font-size:clamp(24px,8vw,44px); color:#ffe97a; min-height:1.15em; font-weight:bold; text-shadow:0 0 6px rgba(255,233,122,.35); }
+  #feedback { font-size:clamp(14px,4.4vw,24px); min-height:1.3em; }
+  .good { color:#8dff6a; } .try { color:#ffb3c9; }
+  .confetti { position:absolute; width:9px; height:14px; border-radius:2px; pointer-events:none; z-index:5; }
+  @keyframes fall { to { transform:translateY(46vh) rotate(560deg); opacity:.9; } }
+  @keyframes drift { 0% { transform:translateY(-4%) rotate(0deg); opacity:0; } 12% { opacity:.85; } 88% { opacity:.85; } 100% { transform:translateY(108%) rotate(320deg); opacity:0; } }
+  #below { flex:1; display:flex; flex-direction:column; align-items:center; width:100%; max-width:560px; margin:0 auto; padding:8px 14px 10px; min-height:0; }
+  #stats { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+  .chip { background:#2a3d75; border:2px solid #46589c; border-radius:999px; padding:5px 13px; font-size:14.5px; }
+  .chip b { color:#ffd23e; }
+  #timerWrap { width:100%; padding:8px 4px 0; }
+  #timerBarOuter { height:10px; background:#2a3d75; border-radius:99px; overflow:hidden; border:2px solid #46589c; }
+  #timerBar { height:100%; width:100%; background:linear-gradient(90deg,#29adff,#00e436,#ffd23e); transition:width 1s linear; }
+  #timerText { text-align:center; font-size:12px; color:#bcd0ff; margin-top:3px; letter-spacing:2px; }
+  .screen { text-align:center; width:100%; }
+  .small { color:#bcd0ff; font-size:15px; line-height:1.5; margin-top:8px; }
+  .btn { display:block; width:100%; font-family:inherit; font-size:20px; font-weight:bold; padding:14px 16px; margin-top:12px;
+         border-radius:16px; border:2px solid #ffd23e; background:#ffd23e; color:#1d2b53; cursor:pointer; }
+  .btn.alt { background:transparent; color:#ffd23e; border-color:#46589c; }
+  .btn:active { transform:scale(.97); }
+  #ladder { display:flex; justify-content:center; gap:5px; margin-top:12px; flex-wrap:wrap; }
+  .rung { font-size:11.5px; padding:4px 9px; border-radius:99px; border:2px solid #46589c; color:#bcd0ff; }
+  .rung.on { background:#ffd23e; color:#1d2b53; border-color:#ffd23e; font-weight:bold; }
+  #pad { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:min(94vw,330px); margin:2px auto 0; }
+  .key { font-family:inherit; font-size:25px; font-weight:bold; padding:9px 0; border-radius:15px; border:2px solid #46589c;
+         background:#2a3d75; color:#fff8e7; cursor:pointer; }
+  .key:active { background:#3b529c; transform:scale(.96); }
+  .key.go { background:#00a324; border-color:#00e436; color:#fff; }
+  .key.del { background:#5a2d4d; border-color:#8a4a72; }
+  footer { text-align:center; font-size:11.5px; color:#7f8fc9; padding:2px 10px 8px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img id="stageImg" src="stage.jpg" alt="The Future Ready friends at the big chalkboard — Goggles hosts, the gang cheers">
+  <div id="board">
+    <div id="boardTitle">TEN MINUTES · MENTAL MATH</div>
+    <div id="boardSub">Ten minutes a day. That's the whole deal.</div>
+    <div id="problem" class="hidden"></div>
+    <div id="answerLine" class="hidden"></div>
+    <div id="feedback" class="hidden"></div>
+  </div>
+</div>
+
+<div id="below">
+  <div id="stats">
+    <div class="chip">🔥 Streak <b id="streak">0</b> days</div>
+    <div class="chip">Level <b id="level">1</b></div>
+    <div class="chip">✓ <b id="score">0</b></div>
+  </div>
+
+  <div id="timerWrap" class="hidden">
+    <div id="timerBarOuter"><div id="timerBar"></div></div>
+    <div id="timerText">10:00</div>
+  </div>
+
+  <div id="startScreen" class="screen">
+    <button class="btn" id="startBtn">▶ Start today's 10 minutes</button>
+    <button class="btn alt" id="practiceBtn">Practice — no clock</button>
+    <div id="ladder"></div>
+    <div class="small">One problem at a time — the next one's always waiting.<br>That's how you get past minute three.</div>
+  </div>
+
+  <div id="playScreen" class="screen hidden">
+    <div id="pad">
+      <button class="key">1</button><button class="key">2</button><button class="key">3</button>
+      <button class="key">4</button><button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button><button class="key">9</button>
+      <button class="key del">⌫</button><button class="key">0</button><button class="key go">✓</button>
+    </div>
+    <button class="btn alt hidden" id="quitBtn" style="margin-top:10px">Finish practice</button>
+  </div>
+
+  <div id="doneScreen" class="screen hidden">
+    <div class="small" id="doneStats" style="font-size:16.5px;color:#fff8e7"></div>
+    <div class="small" id="doneLevel"></div>
+    <div class="small">The second hard part is doing it again tomorrow.<br>Your streak is counting on you. 🔥</div>
+    <button class="btn" id="againBtn">Done for today</button>
+  </div>
+</div>
+
+<footer>From Seth Godin's list — things ten minutes a day can teach you · A Future Ready page</footer>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var LEVELS = [
+    { name:'Warm-Up',   gen:function(){ return pick([add(2,20), sub(5,20)]); } },
+    { name:'Two Digits',gen:function(){ return pick([add(15,99), sub(25,99), add(15,99)]); } },
+    { name:'Times Tables', gen:function(){ return pick([mul(3,9,3,9), mul(3,9,3,9), add(25,99)]); } },
+    { name:'Big Leagues', gen:function(){ return pick([mul(11,99,3,9), div(), sub(50,199)]); } },
+    { name:'Lightning', gen:function(){ return pick([mul(11,99,3,12), div(), add(99,499), mul(3,9,3,9)]); } }
+  ];
+  function r(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function add(a,b){ var x=r(a,b), y=r(a,b); return {q:x+' + '+y, a:x+y}; }
+  function sub(a,b){ var x=r(a,b), y=r(a,x); return {q:x+' − '+y, a:x-y}; }
+  function mul(a,b,c,d){ var x=r(a,b), y=r(c,d); return {q:x+' × '+y, a:x*y}; }
+  function div(){ var y=r(3,12), z=r(3,12); return {q:(y*z)+' ÷ '+y, a:z}; }
+  var COLORS = ['#ff595e','#ffca3a','#8ac926','#1982c4','#ff77a8','#ffd23e','#00e5ff'];
+  function burst(){
+    var st = $('stage');
+    for (var i=0;i<26;i++){
+      var c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (8 + Math.random()*84) + '%';
+      c.style.top = (4 + Math.random()*10) + '%';
+      c.style.background = pick(COLORS);
+      c.style.animation = 'fall ' + (0.9 + Math.random()*0.9) + 's ease-in forwards';
+      c.style.transform = 'rotate(' + Math.random()*180 + 'deg)';
+      st.appendChild(c);
+      (function(el){ setTimeout(function(){ el.remove(); }, 2100); })(c);
+    }
+  }
+  function ambient(){
+    var st = $('stage');
+    for (var i=0;i<6;i++){
+      var c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (5 + Math.random()*90) + '%';
+      c.style.top = '-3%';
+      c.style.background = pick(COLORS);
+      c.style.opacity = '0';
+      c.style.animation = 'drift ' + (11 + Math.random()*9) + 's linear ' + (i*2.7) + 's infinite';
+      st.appendChild(c);
+    }
+  }
+  var store = { get:function(k,d){ try{ var v = localStorage.getItem('tm-math-'+k); return v===null? d : JSON.parse(v); }catch(e){ return d; } },
+                set:function(k,v){ try{ localStorage.setItem('tm-math-'+k, JSON.stringify(v)); }catch(e){} } };
+  var level = store.get('level', 1);
+  var streak = store.get('streak', 0);
+  var lastDay = store.get('lastDay', '');
+  function today(){ return new Date().toLocaleDateString('en-CA'); }
+  function yesterday(){ var d = new Date(); d.setDate(d.getDate()-1); return d.toLocaleDateString('en-CA'); }
+  if (lastDay && lastDay !== today() && lastDay !== yesterday()) { streak = 0; store.set('streak', 0); }
+  var mode = null, cur = null, typed = '', correct = 0, tried = 0, runBest = 0, run = 0;
+  var secsLeft = 600, timer = null;
+  function renderStats(){ $('streak').textContent = streak; $('level').textContent = level; $('score').textContent = correct; }
+  function renderLadder(){
+    var h = '';
+    for (var i=0;i<LEVELS.length;i++) h += '<span class="rung'+(i===level-1?' on':'')+'">'+(i+1)+'. '+LEVELS[i].name+'</span>';
+    $('ladder').innerHTML = h;
+  }
+  function boardMode(m){
+    $('boardTitle').classList.toggle('hidden', m!=='title');
+    $('boardSub').classList.toggle('hidden', m!=='title');
+    $('problem').classList.toggle('hidden', m==='title');
+    $('answerLine').classList.toggle('hidden', m==='title');
+    $('feedback').classList.toggle('hidden', m==='title');
+  }
+  function show(id){
+    ['startScreen','playScreen','doneScreen'].forEach(function(s){ $(s).classList.toggle('hidden', s!==id); });
+    $('timerWrap').classList.toggle('hidden', !(id==='playScreen' && mode==='daily'));
+    $('quitBtn').classList.toggle('hidden', !(id==='playScreen' && mode==='practice'));
+    boardMode(id==='playScreen' ? 'play' : 'title');
+    if (id==='doneScreen') boardMode('done');
+  }
+  function next(){
+    cur = LEVELS[level-1].gen();
+    typed = '';
+    $('problem').textContent = cur.q + ' =';
+    $('answerLine').innerHTML = '&nbsp;';
+    $('feedback').innerHTML = '&nbsp;';
+    $('feedback').className = '';
+  }
+  function fmt(s){ return Math.floor(s/60) + ':' + ('0'+(s%60)).slice(-2); }
+  function tick(){
+    secsLeft--;
+    $('timerBar').style.width = (secsLeft/600*100) + '%';
+    $('timerText').textContent = fmt(secsLeft);
+    if (secsLeft<=0) finish();
+  }
+  function start(m){
+    mode = m; correct = 0; tried = 0; runBest = 0; run = 0;
+    renderStats(); show('playScreen'); next();
+    if (mode==='daily'){
+      secsLeft = 600; $('timerBar').style.width = '100%'; $('timerText').textContent = '10:00';
+      clearInterval(timer); timer = setInterval(tick, 1000);
+    }
+  }
+  function finish(){
+    clearInterval(timer); timer = null;
+    if (mode==='daily'){
+      if (lastDay !== today()){
+        streak = (lastDay === yesterday()) ? streak + 1 : 1;
+        lastDay = today();
+        store.set('streak', streak); store.set('lastDay', lastDay);
+      }
+      var up = (correct >= 25 && level < LEVELS.length);
+      if (up) { level++; store.set('level', level); }
+      $('problem').textContent = 'Ten minutes. Done. ✓';
+      $('answerLine').textContent = correct + ' right!';
+      $('feedback').textContent = 'See you tomorrow. 🔥';
+      $('doneStats').innerHTML = 'You answered <b style="color:#ffd23e">' + correct + '</b> right out of ' + tried + '. Best run: ' + runBest + ' in a row.';
+      $('doneLevel').innerHTML = up ? 'Level up! Tomorrow: <b style="color:#ffd23e">Level ' + level + ' — ' + LEVELS[level-1].name + '</b>.' :
+        'Tomorrow: Level ' + level + ' — ' + LEVELS[level-1].name + (correct<25 ? ' (25 right in a day moves you up).' : '.');
+    } else {
+      $('problem').textContent = 'Practice over.';
+      $('answerLine').textContent = correct + ' right!';
+      $('feedback').textContent = 'Nice work.';
+      $('doneStats').innerHTML = 'You answered <b style="color:#ffd23e">' + correct + '</b> right out of ' + tried + '. Best run: ' + runBest + ' in a row.';
+      $('doneLevel').textContent = '';
+    }
+    renderStats(); renderLadder(); show('doneScreen');
+    burst();
+  }
+  function submit(){
+    if (!cur || typed==='') return;
+    tried++;
+    if (parseInt(typed,10) === cur.a){
+      correct++; run++; runBest = Math.max(runBest, run);
+      $('feedback').textContent = pick(['✓ Right!', '✓ Yes!', '✓ Got it!', '✓ Exactly!']);
+      $('feedback').className = 'good';
+      renderStats(); burst();
+      setTimeout(next, 480);
+    } else {
+      run = 0;
+      $('feedback').textContent = 'Not quite — it\'s ' + cur.a + '. Next one!';
+      $('feedback').className = 'try';
+      setTimeout(next, 1400);
+    }
+    typed = ''; $('answerLine').innerHTML = '&nbsp;';
+  }
+  document.querySelectorAll('.key').forEach(function(k){
+    k.addEventListener('click', function(){
+      var t = k.textContent;
+      if (t==='⌫') typed = typed.slice(0,-1);
+      else if (t==='✓') { submit(); return; }
+      else if (typed.length < 6) typed += t;
+      $('answerLine').textContent = typed || ' ';
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if ($('playScreen').classList.contains('hidden')) return;
+    if (/^[0-9]$/.test(e.key)) { if (typed.length<6) typed += e.key; $('answerLine').textContent = typed; }
+    else if (e.key==='Backspace') { typed = typed.slice(0,-1); $('answerLine').textContent = typed || ' '; }
+    else if (e.key==='Enter') submit();
+  });
+  $('startBtn').addEventListener('click', function(){ start('daily'); });
+  $('practiceBtn').addEventListener('click', function(){ start('practice'); });
+  $('againBtn').addEventListener('click', function(){ show('startScreen'); });
+  $('quitBtn').addEventListener('click', finish);
+  if (lastDay===today()) $('boardSub').textContent = 'Today\'s ten minutes: done ✓ — practice mode keeps the streak safe.';
+  renderStats(); renderLadder(); show('startScreen'); ambient();
+})();
+</script>
+</body>
+</html>
