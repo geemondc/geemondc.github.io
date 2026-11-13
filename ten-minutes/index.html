@@ -20,7 +20,7 @@
   #boardSub { font-size:clamp(12px,3.6vw,19px); color:#eaf6ff; opacity:.92; margin-top:2px; font-family:Georgia,serif; font-style:italic; }
   #problem { font-size:clamp(30px,10.5vw,58px); font-weight:bold; line-height:1.08; text-shadow:0 0 6px rgba(255,255,255,.35); }
   #answerLine { font-size:clamp(24px,8vw,44px); color:#ffe97a; min-height:1.15em; font-weight:bold; text-shadow:0 0 6px rgba(255,233,122,.35); }
-  #feedback { font-size:clamp(14px,4.4vw,24px); min-height:1.3em; }
+  #feedback { font-size:clamp(13px,4vw,19px); min-height:1.3em; line-height:1.25; }
   .good { color:#8dff6a; } .try { color:#ffb3c9; }
   .confetti { position:absolute; width:9px; height:14px; border-radius:2px; pointer-events:none; z-index:5; }
   @keyframes fall { to { transform:translateY(46vh) rotate(560deg); opacity:.9; } }
@@ -81,10 +81,11 @@
     <button class="btn" id="startBtn">▶ Start today's 10 minutes</button>
     <button class="btn alt" id="practiceBtn">Practice — no clock</button>
     <div id="ladder"></div>
-    <div class="small">One problem at a time — the next one's always waiting.<br>That's how you get past minute three.</div>
+    <div class="small">Every level teaches real tricks — Make Ten, Add in Parts, the Nine Trick.<br>Stuck on one? Tap 💡 and watch the trick work it out.</div>
   </div>
 
   <div id="playScreen" class="screen hidden">
+    <button class="btn alt" id="hintBtn" style="width:min(94vw,330px);margin:0 auto 8px;padding:9px 12px;font-size:16.5px">💡 Show the trick</button>
     <div id="pad">
       <button class="key">1</button><button class="key">2</button><button class="key">3</button>
       <button class="key">4</button><button class="key">5</button><button class="key">6</button>
@@ -107,19 +108,41 @@
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var LEVELS = [
-    { name:'Warm-Up',   gen:function(){ return pick([add(2,20), sub(5,20)]); } },
-    { name:'Two Digits',gen:function(){ return pick([add(15,99), sub(25,99), add(15,99)]); } },
-    { name:'Times Tables', gen:function(){ return pick([mul(3,9,3,9), mul(3,9,3,9), add(25,99)]); } },
-    { name:'Big Leagues', gen:function(){ return pick([mul(11,99,3,9), div(), sub(50,199)]); } },
-    { name:'Lightning', gen:function(){ return pick([mul(11,99,3,12), div(), add(99,499), mul(3,9,3,9)]); } }
-  ];
   function r(a,b){ return a + Math.floor(Math.random()*(b-a+1)); }
   function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-  function add(a,b){ var x=r(a,b), y=r(a,b); return {q:x+' + '+y, a:x+y}; }
-  function sub(a,b){ var x=r(a,b), y=r(a,x); return {q:x+' − '+y, a:x-y}; }
-  function mul(a,b,c,d){ var x=r(a,b), y=r(c,d); return {q:x+' × '+y, a:x*y}; }
-  function div(){ var y=r(3,12), z=r(3,12); return {q:(y*z)+' ÷ '+y, a:z}; }
+  function P(q,a,t,h){ return {q:q, a:a, t:t, h:h}; }
+  // Every problem is built FROM a named trick. The board names the trick up front,
+  // the 💡 button works it out, and a miss shows the trick worked — that's the teaching.
+  // Level 1 — Make Ten
+  function gBridge(){ var x=r(6,9), y=r(Math.max(4,11-x),9); return P(x+' + '+y, x+y, 'Bridge to Ten', x+' + '+(10-x)+' = 10, then + '+(x+y-10)+' = '+(x+y)); }
+  function gNearDouble(){ var x=r(4,9); return P(x+' + '+(x+1), 2*x+1, 'Near Doubles', 'Double '+x+' = '+(2*x)+', then + 1 = '+(2*x+1)); }
+  function gCrossTen(){ var x=r(2,8)*10 + r(4,9), o=x%10, y=r(Math.max(3,11-o),9); return P(x+' + '+y, x+y, 'Bridge to Ten', x+' + '+(10-o)+' = '+(x+10-o)+', then + '+(y-(10-o))+' = '+(x+y)); }
+  // Level 2 — Add & Subtract in Parts
+  function gAddParts(){ var x=r(25,99), y=r(2,9)*10 + r(1,9), t=y-(y%10); return P(x+' + '+y, x+y, 'Add in Parts', x+' + '+t+' = '+(x+t)+', then + '+(y%10)+' = '+(x+y)); }
+  function gSubParts(){ var x=r(45,99), y=r(2,7)*10 + r(1,9); if (y > x-12) y = x - r(16,30); if (y%10===0) y -= 1; var t=y-(y%10); return P(x+' − '+y, x-y, 'Subtract in Parts', x+' − '+t+' = '+(x-t)+', then − '+(y%10)+' = '+(x-y)); }
+  function gSubRound(){ var x=r(52,99), y; do { y = r(2,8)*10 + r(7,9); } while (y > x-12); var up=10-(y%10); return P(x+' − '+y, x-y, 'Round It Up', 'Take away '+(y+up)+' → '+(x-(y+up))+', then add back '+up+' = '+(x-y)); }
+  // Level 3 — Times Tricks
+  function gTimes9(){ var x=r(3,12); return P(x+' × 9', x*9, 'Nine Trick', x+' × 10 = '+(x*10)+', then − '+x+' = '+(x*9)); }
+  function gTimes5(){ var x=r(4,48); return P(x+' × 5', x*5, 'Five Trick', x+' × 10 = '+(x*10)+', then halve it = '+(x*5)); }
+  function gTimes4(){ var x=r(6,25); return P(x+' × 4', x*4, 'Double Double', 'Double '+x+' = '+(2*x)+', double again = '+(4*x)); }
+  // Level 4 — Big Leagues
+  function gTimes11(){ var d1=r(1,4), d2=r(1,9-d1), x=d1*10+d2; return P(x+' × 11', x*11, 'Eleven Trick', 'Split it: '+d1+' | '+d1+'+'+d2+' = '+(d1+d2)+' | '+d2+' → '+(x*11)); }
+  function gSplitMul(){ var x=r(12,39), y=r(4,9), t=x-(x%10); return P(x+' × '+y, x*y, 'Split & Multiply', t+' × '+y+' = '+(t*y)+', '+(x%10)+' × '+y+' = '+((x%10)*y)+', add = '+(x*y)); }
+  function gSplitDiv(){ var d=r(3,9), q=r(12,29); if (q%10===0) q+=3; var n=d*q, hi=q-(q%10); return P(n+' ÷ '+d, q, 'Divide in Chunks', (d*hi)+' ÷ '+d+' = '+hi+', '+(n-d*hi)+' ÷ '+d+' = '+(q%10)+', add = '+q); }
+  // Level 5 — Real Life
+  function gPct10(){ var n=r(2,40)*10; return P('10% of '+n, n/10, 'Percent Ladder', '10% is just ÷ 10 → '+(n/10)); }
+  function gPct20(){ var n=r(2,30)*10; return P('20% of '+n, n/5, 'Percent Ladder', '10% = '+(n/10)+', double it = '+(n/5)); }
+  function gPct15(){ var n=r(1,15)*20; return P('15% of '+n, n*15/100, 'Tip Trick', '10% = '+(n/10)+', 5% = '+(n/20)+', add them = '+(n*15/100)); }
+  function gSquare5(){ var t=r(1,9), x=t*10+5; return P(x+'²', x*x, 'Squares Ending in 5', t+' × '+(t+1)+' = '+(t*(t+1))+', then stick 25 on → '+(x*x)); }
+  var L5GENS = [gPct10, gPct20, gPct15, gSquare5];
+  var REVIEW = [gBridge, gCrossTen, gAddParts, gSubRound, gTimes9, gTimes5, gSplitMul, gTimes11, gPct15, gSquare5];
+  var LEVELS = [
+    { name:'Make Ten',     gens:[gBridge, gNearDouble, gCrossTen], gen:function(){ return pick(this.gens)(); } },
+    { name:'In Parts',     gens:[gAddParts, gSubParts, gSubRound], gen:function(){ return pick(this.gens)(); } },
+    { name:'Times Tricks', gens:[gTimes9, gTimes5, gTimes4],       gen:function(){ return pick(this.gens)(); } },
+    { name:'Big Leagues',  gens:[gSplitMul, gTimes11, gSplitDiv],  gen:function(){ return pick(this.gens)(); } },
+    { name:'Real Life',    gens:L5GENS, gen:function(){ return Math.random()<0.55 ? pick(this.gens)() : pick(REVIEW)(); } }
+  ];
   var COLORS = ['#ff595e','#ffca3a','#8ac926','#1982c4','#ff77a8','#ffd23e','#00e5ff'];
   function burst(){
     var st = $('stage');
@@ -183,7 +206,7 @@
     typed = '';
     $('problem').textContent = cur.q + ' =';
     $('answerLine').innerHTML = '&nbsp;';
-    $('feedback').innerHTML = '&nbsp;';
+    $('feedback').textContent = 'Trick: ' + cur.t;
     $('feedback').className = '';
   }
   function fmt(s){ return Math.floor(s/60) + ':' + ('0'+(s%60)).slice(-2); }
@@ -238,9 +261,9 @@
       setTimeout(next, 480);
     } else {
       run = 0;
-      $('feedback').textContent = 'Not quite — it\'s ' + cur.a + '. Next one!';
+      $('feedback').textContent = '✗ The trick: ' + cur.h;
       $('feedback').className = 'try';
-      setTimeout(next, 1400);
+      setTimeout(next, 2600);
     }
     typed = ''; $('answerLine').innerHTML = '&nbsp;';
   }
@@ -259,6 +282,7 @@
     else if (e.key==='Backspace') { typed = typed.slice(0,-1); $('answerLine').textContent = typed || ' '; }
     else if (e.key==='Enter') submit();
   });
+  $('hintBtn').addEventListener('click', function(){ if (cur){ $('feedback').textContent = '💡 ' + cur.h; $('feedback').className = ''; } });
   $('startBtn').addEventListener('click', function(){ start('daily'); });
   $('practiceBtn').addEventListener('click', function(){ start('practice'); });
   $('againBtn').addEventListener('click', function(){ show('startScreen'); });
