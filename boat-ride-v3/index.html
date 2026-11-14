@@ -16,8 +16,13 @@
   #vidB { opacity:0; }
   #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
              background:rgba(9,14,34,.55); color:#ffeec2; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
-             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,210,62,.45); animation:capfade 9s ease forwards; }
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,210,62,.45); animation:capfade 9s ease forwards; pointer-events:none; }
   @keyframes capfade { 0%,70% { opacity:1; } 100% { opacity:.38; } }
+  #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
+             background:rgba(9,14,34,.72); color:#ffd23e; border:2px solid #ffd23e; border-radius:999px;
+             font-family: Georgia, 'Times New Roman', serif; font-size:clamp(17px, 5vw, 22px); letter-spacing:2px;
+             padding:16px 30px; cursor:pointer; box-shadow:0 6px 30px rgba(0,0,0,.5); }
+  #startbtn:active { background:rgba(255,210,62,.9); color:#0b1026; }
 </style>
 </head>
 <body>
@@ -25,22 +30,27 @@
 <div id="wrap">
   <div id="frame">
     <img id="poster" src="master.jpg" alt="First-person boat ride on the Florida Intracoastal at golden hour">
-    <video class="vid" id="vidA" src="ride.mp4" muted playsinline autoplay preload="auto"></video>
-    <video class="vid" id="vidB" src="ride.mp4" muted playsinline preload="auto"></video>
+    <video class="vid" id="vidA" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <button id="startbtn" type="button">&#9654; START THE RIDE</button>
     <div id="caption">BOAT RIDE &middot; FLORIDA INTRACOASTAL</div>
   </div>
 </div>
 <script>
   // Endless ride: two stacked copies of the clip crossfade at the seam,
   // so the return to the start melts instead of jumping.
+  // If the viewer blocks autoplay, a START THE RIDE button appears —
+  // one tap (a real user gesture) always starts a muted video.
   (function(){
     var A = document.getElementById('vidA'), B = document.getElementById('vidB');
+    var btn = document.getElementById('startbtn');
     var FADE = 2.0, front = A, back = B, fading = false;
     front.style.opacity = '1'; back.style.opacity = '0';
+    function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
     function swap(){
       fading = true;
       back.currentTime = 0;
-      var p = back.play(); if (p && p.catch) p.catch(function(){});
+      tryPlay(back);
       var t0 = performance.now();
       (function step(){
         var k = Math.min(1, (performance.now() - t0) / (FADE * 1000));
@@ -51,13 +61,10 @@
     }
     setInterval(function(){
       if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - FADE) swap();
-    }, 200);
-    // Tap anywhere: pause / resume the ride.
-    var paused = false;
-    document.getElementById('frame').addEventListener('click', function(){
-      paused = !paused;
-      [A, B].forEach(function(v){ if (paused) v.pause(); else if (v === front) { var p = v.play(); if (p && p.catch) p.catch(function(){}); } });
-    });
+      btn.style.display = (front.paused && !fading) ? 'block' : 'none';
+    }, 400);
+    btn.addEventListener('click', function(){ tryPlay(front); });
+    tryPlay(A);
   })();
 </script>
 </body>
