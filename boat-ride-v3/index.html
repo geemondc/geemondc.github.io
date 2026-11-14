@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Boat Ride — Florida Intracoastal</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#0b1026; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('master.jpg') center/cover no-repeat; filter:blur(26px) brightness(.72); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:9/16; width:min(100vw, 56.25dvh); max-height:100dvh; overflow:hidden; box-shadow:0 0 60px rgba(0,0,0,.55); }
+  #painting { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .layer { position:absolute; pointer-events:none; }
+  #sparkle { inset:0; width:100%; height:100%; }
+  .cloud { opacity:.92; }
+  #cloud1 { width:46%; left:4%; top:2.5%; animation:drift1 160s ease-in-out infinite alternate; }
+  #cloud2 { width:38%; right:3%; top:11%; animation:drift2 190s ease-in-out infinite alternate; }
+  @keyframes drift1 { from { transform:translateX(0); } to { transform:translateX(5%); } }
+  @keyframes drift2 { from { transform:translateX(0); } to { transform:translateX(-4.5%); } }
+  #pelican { width:20%; left:0; top:4.5%; animation:glide 96s linear infinite; }
+  @keyframes glide {
+    0%   { transform:translate(560%, 0); opacity:0; }
+    2%   { opacity:1; }
+    10%  { transform:translate(390%, 8%); }
+    18%  { transform:translate(210%, 1%); }
+    26%  { transform:translate(20%, 9%); opacity:1; }
+    29%  { transform:translate(-150%, 13%); opacity:0; }
+    100% { transform:translate(-150%, 13%); opacity:0; }
+  }
+  #passboat { width:11%; left:41%; top:33.5%; animation:cross 175s linear infinite; }
+  @keyframes cross {
+    0%   { transform:translate(0, 0); opacity:0; }
+    3%   { opacity:1; }
+    17%  { transform:translate(150%, -1.5%); opacity:1; }
+    20%  { transform:translate(185%, -1%); opacity:0; }
+    100% { transform:translate(185%, -1%); opacity:0; }
+  }
+  .dolphin { width:15%; bottom:19%; opacity:0; }
+  #dolphinL { left:1%; animation:leapL 124s ease-in-out infinite; }
+  @keyframes leapL {
+    0%, 54%   { opacity:0; transform:translate(0, 14%) rotate(-28deg); }
+    56%       { opacity:1; transform:translate(6%, 8%) rotate(-26deg); }
+    59.5%     { opacity:1; transform:translate(46%, -52%) rotate(6deg); }
+    63%       { opacity:1; transform:translate(84%, 10%) rotate(40deg); }
+    64.5%,100%{ opacity:0; transform:translate(92%, 16%) rotate(44deg); }
+  }
+  #dolphinR { right:1%; animation:leapR 124s ease-in-out infinite; animation-delay:-62s; }
+  @keyframes leapR {
+    0%, 54%   { opacity:0; transform:translate(0, 14%) rotate(28deg) scaleX(-1); }
+    56%       { opacity:1; transform:translate(-6%, 8%) rotate(26deg) scaleX(-1); }
+    59.5%     { opacity:1; transform:translate(-46%, -52%) rotate(-6deg) scaleX(-1); }
+    63%       { opacity:1; transform:translate(-84%, 10%) rotate(-40deg) scaleX(-1); }
+    64.5%,100%{ opacity:0; transform:translate(-92%, 16%) rotate(-44deg) scaleX(-1); }
+  }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap;
+             background:rgba(9,14,34,.55); color:#ffeec2; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,210,62,.45); animation:capfade 9s ease forwards; }
+  @keyframes capfade { 0%,70% { opacity:1; } 100% { opacity:.38; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <img id="painting" src="master.jpg" alt="First-person boat ride on the Florida Intracoastal at golden hour">
+    <img class="layer cloud anim" id="cloud1" src="cloud1.webp" alt="">
+    <img class="layer cloud anim" id="cloud2" src="cloud2.webp" alt="">
+    <img class="layer anim" id="passboat" src="el_boat.webp" alt="">
+    <img class="layer anim" id="pelican" src="el_glide.webp" alt="">
+    <canvas class="layer" id="sparkle"></canvas>
+    <img class="layer dolphin anim" id="dolphinL" src="el_dolphin.webp" alt="">
+    <img class="layer dolphin anim" id="dolphinR" src="el_dolphin.webp" alt="">
+    <div id="caption">BOAT RIDE &middot; FLORIDA INTRACOASTAL</div>
+  </div>
+</div>
+<script>
+  // QA / preview hook: ?t=<seconds> jumps every CSS animation to that scene time.
+  (function(){
+    var t = parseFloat(new URLSearchParams(location.search).get('t'));
+    if (t > 0) document.querySelectorAll('.anim').forEach(function(el){ var d = parseFloat(getComputedStyle(el).animationDelay) || 0; el.style.animationDelay = (d - t) + 's'; });
+  })();
+
+  // Gold sparkle flowing over the water band toward the viewer: forward motion.
+  (function(){
+    var cv = document.getElementById('sparkle'), ctx = cv.getContext('2d');
+    var W = 0, H = 0, ps = [], N = 120;
+    function size(){ var r = cv.parentElement.getBoundingClientRect(); W = cv.width = Math.round(r.width); H = cv.height = Math.round(r.height); }
+    size(); addEventListener('resize', size);
+    function spawn(p){
+      p.y = H * (0.40 + Math.random() * 0.56);
+      p.x = W * (0.06 + Math.random() * 0.88);
+      p.s = 0.6 + Math.random() * 1.6;
+      p.ph = Math.random() * Math.PI * 2;
+      p.sp = 0.5 + Math.random() * 0.9;
+      return p;
+    }
+    for (var i = 0; i < N; i++) ps.push(spawn({}));
+    var last = performance.now();
+    function tick(now){
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < ps.length; i++){
+        var p = ps[i], depth = (p.y / H - 0.40) / 0.60; // 0 at horizon -> 1 at bow
+        p.y += dt * H * 0.016 * p.sp * (0.25 + depth * depth * 1.6);
+        p.x += (p.x - W * 0.51) * dt * 0.055 * p.sp; // gentle outward spread from the vanishing point
+        if (p.y > H * 0.985 || p.x < -8 || p.x > W + 8) spawn(p), p.y = H * (0.40 + Math.random() * 0.08);
+        var tw = 0.35 + 0.65 * Math.abs(Math.sin(now / 620 * p.sp + p.ph));
+        var r = p.s * (0.7 + depth * 1.5);
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,' + (205 + Math.round(depth * 35)) + ',110,' + (0.5 * tw).toFixed(3) + ')';
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  })();
+</script>
+</body>
+</html>
