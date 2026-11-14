@@ -2748,6 +2748,25 @@ body.stnpaper.stn-font-pinyon .stn-note, body.stnpaper.stn-font-pinyon #card .si
 body.stnpaper.stn-font-pinyon #card .signature .sig-name{font-family:'Pinyon Script',cursive; font-size:clamp(31px,9.4vw,39px)}
 body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radius:50%; background:radial-gradient(circle,rgba(230,190,90,.95),rgba(230,190,90,0) 70%); opacity:.3; pointer-events:none}
 </style>
+
+<style>
+/* Personal tone override (Gary, Nov 14): tone=red turns any envelope RED to imply love —
+   the Adriana Boat card is the first. Recolors front, flap, seal, page-turn and burst;
+   the scene inside and the card layout stay the design's own. */
+body.envtone-red{--sealBoomA:#e8324f;--sealBoomHi:#ffb3c0;--sealBoomLo:#8e1a26;--sealBoomPiece:#e8324f;--sp1:#a31621;--sp2:#5c0d18;--spA:#ffd23e;--fx1:#a31621;--fx2:#5c0d18;--fx3:#ffd23e}
+body.envtone-red #front{background:radial-gradient(130% 100% at 50% 0%, #b3232e 0%, #8e1a26 55%, #5c0d18 100%); color:#fff3e2}
+body.envtone-red #flap{background:linear-gradient(180deg, #c22a38 0%, #96182a 100%)}
+body.envtone-red #front .f-for{color:#ffd9a8}
+body.envtone-red #front .f-name{color:#fff7ea}
+body.envtone-red #front .f-from{color:#fff0f5; font-weight:600}
+body.envtone-red #front .tap{color:#ffd9a8}
+body.envtone-red #seal{background:radial-gradient(circle at 35% 30%, #f7e3ac 0%, #e3bc55 45%, #a87f24 100%); outline-color:rgba(247,227,172,.55)}
+body.envtone-red #seal .half{color:#6d0f18}
+body.envtone-red .frame{border-color:#c9a24d}
+body.envtone-red #card::before{border-color:rgba(200,40,60,.45)}
+body.envtone-red .over{color:#a31621}
+body.envtone-red #replay{background:#8e1a26; border-color:#e3bc55; color:#ffedb5}
+</style>
 </head>
 <body>
 <div id="scene">
@@ -3306,7 +3325,7 @@ body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radi
       if (v == null) return '';
       return String(v).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, cap);
     }
-    var hasParams = ['to','from','line','scene','env','card'].some(function(k){ return q.has(k); });
+    var hasParams = ['to','from','line','scene','env','card','top','head','signoff','tone'].some(function(k){ return q.has(k); });
     if (!hasParams) return;
     var sc = clean(q.get('scene') || q.get('env') || q.get('card'), 24).toLowerCase();
     if (/^w[0-9][0-9]$/.test(sc)) sc = sc.toUpperCase();
@@ -3331,6 +3350,11 @@ body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radi
     var to = clean(q.get('to'), 60) || 'Sofia';
     var from = clean(q.get('from'), 60) || 'James';
     var rawLine = q.has('line') ? clean(q.get('line'), 140) : null;
+    var tone = clean(q.get('tone'), 16).toLowerCase();
+    if (tone === 'red' || tone === 'love') document.body.classList.add('envtone-red');
+    var customTop = clean(q.get('top'), 90);
+    var customHead = clean(q.get('head'), 90);
+    var customSignoff = clean(q.get('signoff'), 40);
     var DEF_LINE = 'Another year, same favorite view — you, right next to me.';
     var line = rawLine !== null ? rawLine : (scene === 'bigview' ? DEF_LINE : '');
     var headline = scene === 'chilling' || scene === 'heart' || scene === 'butterfly' || scene === 'wedding' || scene === 'baby' || scene === 'snowglobe' || scene === 'ocean' || scene === 'bloom' || scene === 'firefly' || scene === 'pool' || scene === 'pool2' || scene === 'hotair' || scene === 'lantern' || scene === 'biglove' || scene === 'luxburgundy' || scene === 'luxcream' || scene === 'luxnavy' || scene === 'luxamethyst' || scene === 'luxgilt' || scene === 'luxlaurel' ? ('For ' + to + ', with love.')
@@ -3478,7 +3502,7 @@ body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radi
       : scene === 'tennis-day' ? 'Great hit'
       : scene === 'drumline' ? 'Great show'
       : scene === 'concert' ? 'Bravo'
-      : scene === 'boat' ? 'Bon voyage'
+      : scene === 'boat' ? 'Come Visit Florida'
       : scene === 'falls' ? 'From the falls'
       : scene === 'thanksgiving' ? 'Happy Thanksgiving'
       : scene === 'hanukkah' ? 'Happy Hanukkah'
@@ -3516,6 +3540,10 @@ body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radi
       : scene === 'striker' ? 'What a strike'
       : scene === 'birthday' ? 'Happy Birthday'
       : 'Happy New Year';
+    if (customTop) greeting = customTop;
+    if (customHead) headline = customHead;
+    var hideTop = q.has('top') && !customTop;
+    var hideHead = q.has('head') && !customHead;
     function setText(sel, txt){ var el = document.querySelector(sel); if (el) el.textContent = txt; }
     (function(){ var el = document.querySelector('#front .f-for'); if (el) el.style.display = 'none'; })();
     setText('#front .f-name', to);
@@ -3530,8 +3558,10 @@ body.stnpaper .stn-whisper{position:absolute; width:5px; height:5px; border-radi
     var msg = document.querySelector('#card .message');
     if (msg){ if (line){ msg.textContent = line; } else { msg.style.display = 'none'; } }
     setText('#card .closing', headline);
-    (function(){ var el = document.querySelector('#card .signature'); if (el){ el.innerHTML = ''; var a = document.createElement('span'); a.className = 'sig-close'; a.textContent = 'With love,'; var b = document.createElement('span'); b.className = 'sig-name'; b.textContent = from; el.appendChild(a); el.appendChild(b); } })();
+    if (hideHead){ var _ch = document.querySelector('#card .closing'); if (_ch) _ch.style.display = 'none'; }
+    (function(){ var el = document.querySelector('#card .signature'); if (el){ el.innerHTML = ''; var a = document.createElement('span'); a.className = 'sig-close'; a.textContent = customSignoff || 'With love,'; var b = document.createElement('span'); b.className = 'sig-name'; b.textContent = from; el.appendChild(a); el.appendChild(b); } })();
     setText('#card .over', greeting);
+    if (hideTop){ var _ov = document.querySelector('#card .over'); if (_ov) _ov.style.display = 'none'; }
     document.title = 'A Living Card — for ' + to;
     /* envSprite gate removed — no front sprites on any envelope (Gary, Nov 9 02:41) */
     if (scene === 'chilling'){
