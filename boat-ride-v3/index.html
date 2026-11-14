@@ -14,10 +14,14 @@
   #poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   #vidB { opacity:0; }
-  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
-             background:rgba(9,14,34,.55); color:#ffeec2; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
-             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,210,62,.45); animation:capfade 9s ease forwards; pointer-events:none; }
-  @keyframes capfade { 0%,70% { opacity:1; } 100% { opacity:.38; } }
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(9,14,34,.5); color:#ffeec2; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(255,210,62,.4); pointer-events:none; }
+  #picker { position:absolute; left:50%; bottom:2%; transform:translateX(-50%); z-index:6; display:flex; gap:4px; max-width:98%; }
+  .pill { background:rgba(9,14,34,.62); color:#ffeec2; border:1px solid rgba(255,210,62,.45); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(9px, 2.5vw, 12px); letter-spacing:.5px;
+          padding:7px 8px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#ffd23e; color:#0b1026; border-color:#ffd23e; font-weight:bold; }
   #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
              background:rgba(9,14,34,.72); color:#ffd23e; border:2px solid #ffd23e; border-radius:999px;
              font-family: Georgia, 'Times New Roman', serif; font-size:clamp(17px, 5vw, 22px); letter-spacing:2px;
@@ -28,42 +32,82 @@
 <body>
 <div id="fill"></div>
 <div id="wrap">
-  <div id="frame">
+  <div id="frame" data-clip="0">
     <img id="poster" src="master.jpg" alt="First-person boat ride on the Florida Intracoastal at golden hour">
-    <video class="vid" id="vidA" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
-    <video class="vid" id="vidB" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     <button id="startbtn" type="button">&#9654; START THE RIDE</button>
     <div id="caption">BOAT RIDE &middot; FLORIDA INTRACOASTAL</div>
+    <div id="picker">
+      <button class="pill" type="button" data-mode="golden">GOLDEN</button>
+      <button class="pill" type="button" data-mode="bridge">BRIDGE</button>
+      <button class="pill" type="button" data-mode="marina">MARINA</button>
+      <button class="pill" type="button" data-mode="sunset">SUNSET</button>
+      <button class="pill" type="button" data-mode="long">LONG RIDE</button>
+    </div>
   </div>
 </div>
 <script>
-  // Endless ride: two stacked copies of the clip crossfade at the seam,
-  // so the return to the start melts instead of jumping.
-  // If the viewer blocks autoplay, a START THE RIDE button appears —
-  // one tap (a real user gesture) always starts a muted video.
+  // Five ways to ride: four short loops (Golden, Bridge, Marina, Sunset)
+  // and the Long Ride, which chains all four with dissolves and melts
+  // back to the golden start. Two stacked players crossfade every seam;
+  // the next leg is always buffered in the hidden player. If the viewer
+  // blocks autoplay, a START THE RIDE button appears; one tap starts it.
   (function(){
+    var LEGS = { golden:'ride.mp4', bridge:'ride2.mp4', marina:'ride3.mp4', sunset:'ride4.mp4' };
+    var LONG = ['ride.mp4', 'ride2.mp4', 'ride3.mp4', 'ride4.mp4'];
+    var frame = document.getElementById('frame');
     var A = document.getElementById('vidA'), B = document.getElementById('vidB');
     var btn = document.getElementById('startbtn');
-    var FADE = 2.0, front = A, back = B, fading = false;
-    front.style.opacity = '1'; back.style.opacity = '0';
+    var pills = Array.prototype.slice.call(document.querySelectorAll('.pill'));
+    var list = [LEGS.golden], idx = 0, front = A, back = B, fading = false;
     function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function preload(v, i){ var src = list[i % list.length]; if (v.getAttribute('src') !== src) { v.src = src; v.load(); } }
+    function fadeLen(){ if (list.length === 1) return 1.6; return (idx + 1) % list.length === 0 ? 2.5 : 1.4; }
+    function crossTo(newList){
+      list = newList;
+      // quick fade into the new ride's first leg
+      fading = true;
+      back.src = list[0]; back.load(); back.currentTime = 0; tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / 600);
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; idx = 0; frame.setAttribute('data-clip', '0'); back.pause(); preload(back, 1); fading = false; }
+      })();
+    }
     function swap(){
       fading = true;
+      var F = fadeLen();
       back.currentTime = 0;
       tryPlay(back);
       var t0 = performance.now();
       (function step(){
-        var k = Math.min(1, (performance.now() - t0) / (FADE * 1000));
+        var k = Math.min(1, (performance.now() - t0) / (F * 1000));
         front.style.opacity = String(1 - k); back.style.opacity = String(k);
         if (k < 1) requestAnimationFrame(step);
-        else { var f = front; front = back; back = f; back.pause(); fading = false; }
+        else { var f = front; front = back; back = f; idx = (idx + 1) % list.length; frame.setAttribute('data-clip', String(idx)); back.pause(); preload(back, idx + 1); fading = false; }
       })();
     }
+    function setMode(mode){
+      pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === mode); });
+      crossTo(mode === 'long' ? LONG.slice() : [LEGS[mode]]);
+    }
+    pills.forEach(function(p){ p.addEventListener('click', function(){ if (!fading) setMode(p.getAttribute('data-mode')); }); });
     setInterval(function(){
-      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - FADE) swap();
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
       btn.style.display = (front.paused && !fading) ? 'block' : 'none';
     }, 400);
     btn.addEventListener('click', function(){ tryPlay(front); });
+    // Start: ?ride=long (or golden/bridge/marina/sunset) picks the first ride.
+    var start = (new URLSearchParams(location.search).get('ride') || 'golden').toLowerCase();
+    if (!LEGS[start] && start !== 'long') start = 'golden';
+    A.src = start === 'long' ? LONG[0] : LEGS[start];
+    front.style.opacity = '1'; back.style.opacity = '0';
+    list = start === 'long' ? LONG.slice() : [LEGS[start]];
+    pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === start); });
+    preload(B, 1);
     tryPlay(A);
   })();
 </script>
