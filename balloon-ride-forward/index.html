@@ -22,6 +22,25 @@
          transform-origin:50% 42%; will-change:transform, opacity; }
   #farA { z-index:0; } #farB { z-index:1; }
 
+  /* Portrait pull-back (Gary: "just so we see the full picture"): on a
+     tall screen, cover alone would show only the middle slice of a
+     landscape painting. So in portrait the sharp painting is pulled
+     back to a band showing about half its width, laid over a soft,
+     darkened full-bleed copy of itself — the whole composition (both
+     temple shores, the river's sweep) stays readable in frame while
+     the frame stays full. The blur twins mirror their sharp twins'
+     transform and opacity exactly, so the push-in stays one world.
+     Landscape screens keep the shipped full-bleed cover untouched. */
+  .farBlur { position:absolute; inset:0; background:url('master.jpg') center/cover no-repeat;
+             transform-origin:50% 42%; will-change:transform, opacity;
+             filter:blur(16px) brightness(.88) saturate(1.15); display:none; }
+  @media (max-aspect-ratio: 1/1) {
+    .far { background-size:auto 52%; background-position:50% 42%;
+           -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 12%, #000 21%, #000 64%, rgba(0,0,0,0) 76%);
+           mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 12%, #000 21%, #000 64%, rgba(0,0,0,0) 76%); }
+    .farBlur { display:block; }
+  }
+
   /* Dusk deepening: light only, Gary's living-photo grammar — a slow
      warm dim that breathes over minutes and melts back. */
   #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
@@ -76,7 +95,9 @@
 </head>
 <body>
 <div id="frame">
+  <div class="farBlur" id="farBBlur"></div>
   <div class="far" id="farB"></div>
+  <div class="farBlur" id="farABlur"></div>
   <div class="far" id="farA"></div>
   <div id="worldglow"></div>
   <div id="dusk"></div>
@@ -105,9 +126,9 @@
     // crossfade reset can be straddled on demand; ?pace=<n> multiplies
     // clock speed. Normal visits use the full, calm defaults.
     var P = parseFloat(params.get('zoom'));
-    if (!(P >= 8 && P <= 1200)) P = 420;
-    var FW = 50 * P / 420; if (FW < 2) FW = 2;      // crossfade window, seconds
-    var S = 1.26;                                    // total far-layer growth per cycle
+    if (!(P >= 8 && P <= 1200)) P = 45;
+    var FW = 0.30 * P; if (FW < 2) FW = 2;          // crossfade window, seconds
+    var S = 1.20;                                    // total far-layer growth per cycle
     var pace = parseFloat(params.get('pace'));
     if (!(pace >= 0.1 && pace <= 50)) pace = 1;
 
@@ -116,9 +137,12 @@
 
     // ---- Far layers: endless approach of the valley itself ----------
     var farA = document.getElementById('farA'), farB = document.getElementById('farB');
-    function farLayer(el, off, t){
+    var farABlur = document.getElementById('farABlur'), farBBlur = document.getElementById('farBBlur');
+    function farLayer(el, blurEl, off, t){
       var p = ((t + off) % P) / P;                   // 0..1 through its cycle
-      el.style.transform = 'scale(' + Math.pow(S, p).toFixed(5) + ')';
+      var sc = Math.pow(S, p);
+      el.style.transform = 'scale(' + sc.toFixed(5) + ')';
+      blurEl.style.transform = 'scale(' + (sc * 1.05).toFixed(5) + ')';  // bleed pushed off-frame
       return p;
     }
 
@@ -130,18 +154,18 @@
     // together, which is what makes the approach read as real depth.
     var BIRD = '<svg viewBox="0 0 26 10"><path d="M1 8 Q7 1 13 7 Q19 1 25 8" fill="none" stroke="rgba(16,10,34,.8)" stroke-width="2" stroke-linecap="round"/></svg>';
     var MOVERS = [
-      { img:'fwd_purple.webp', th:  62, T:380, w0:.014, w1:.30, cap:215, off:2.6, ph:.05 },
-      { img:'fwd_pink.webp',   th: -70, T:320, w0:.016, w1:.26, cap:165, off:2.8, ph:.85 },
-      { img:'fwd_rose.webp',   th:-150, T:390, w0:.014, w1:.24, cap:150, off:2.1, ph:.25 },
-      { img:'fwd_orange.webp', th: 140, T:360, w0:.015, w1:.33, cap:200, off:2.0, ph:.45 },
-      { img:'fwd_teal2.webp',  th:  95, T:260, w0:.020, w1:.34, cap:175, off:2.4, ph:.75 },
-      { img:'fwd_gold.webp',   th:-105, T:280, w0:.020, w1:.36, cap:250, off:2.2, ph:.35 },
-      { img:'fwd_red.webp',    th:  30, T:340, w0:.016, w1:.55, cap:350, off:1.7, ph:.15, burner:true },
-      { img:'fwd_teal.webp',   th: -38, T:300, w0:.018, w1:.62, cap:340, off:1.5, ph:.55, burner:true },
-      { img:'cloud1.webp', cloud:true, th: -58, T:210, w0:.05, w1:.95, cap:900, off:3.1, ph:.30, op:.34 },
-      { img:'cloud2.webp', cloud:true, th:  78, T:250, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.26 },
-      { bird:true, th: -25, T:200, w0:9,  w1:30,  cap:30,  off:14, ph:.20, px:true, op:.85 },
-      { bird:true, th:  48, T:230, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 }
+      { img:'fwd_purple.webp', th:  62, T:230, w0:.014, w1:.30, cap:215, off:2.6, ph:.30 },
+      { img:'fwd_pink.webp',   th: -70, T:210, w0:.016, w1:.26, cap:165, off:2.8, ph:.85 },
+      { img:'fwd_rose.webp',   th:-150, T:240, w0:.014, w1:.24, cap:150, off:2.1, ph:.40 },
+      { img:'fwd_orange.webp', th: 140, T:220, w0:.015, w1:.33, cap:200, off:2.0, ph:.45 },
+      { img:'fwd_teal2.webp',  th:  95, T:150, w0:.020, w1:.34, cap:175, off:2.4, ph:.55 },
+      { img:'fwd_gold.webp',   th:-105, T:170, w0:.020, w1:.36, cap:250, off:2.2, ph:.50 },
+      { img:'fwd_red.webp',    th:  30, T:130, w0:.024, w1:.55, cap:350, off:1.7, ph:.55, burner:true },
+      { img:'fwd_teal.webp',   th: -38, T:110, w0:.028, w1:.62, cap:340, off:1.5, ph:.45, burner:true },
+      { img:'cloud1.webp', cloud:true, th: -58, T:105, w0:.05, w1:.95, cap:900, off:3.1, ph:.30, op:.34 },
+      { img:'cloud2.webp', cloud:true, th:  78, T:125, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.26 },
+      { bird:true, th: -25, T:140, w0:9,  w1:30,  cap:30,  off:14, ph:.20, px:true, op:.85 },
+      { bird:true, th:  48, T:160, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 }
     ];
     var host = document.getElementById('movers');
     MOVERS.forEach(function(m){
@@ -162,9 +186,11 @@
     function place(m, t){
       var u = (t / m.T + m.ph) % 1;
       var g = Math.exp(Math.log(m.w1 / m.w0) * u);       // growth factor
-      var w = m.px ? m.w0 * g : Math.min(m.w0 * g * W, m.cap);
+      var wRaw = m.px ? m.w0 * g : m.w0 * g * W;         // uncapped approach width
+      var w = Math.min(wRaw, m.cap);
       var h = w / m.ar;
-      var rho = m.off * w;                               // distance from VP grows with size
+      var rho = m.off * (m.px ? w : wRaw);               // distance follows the true
+                                                         // approach, even past the size cap
       var rad = m.th * Math.PI / 180;
       var cx = VPX * W + rho * Math.sin(rad);
       var cy = VPY * H - rho * Math.cos(rad);
@@ -180,17 +206,22 @@
     // ---- The clock ---------------------------------------------------
     var simT = 0, last = null;
     function render(){
-      var pa = farLayer(farA, 0, simT), pb = farLayer(farB, P / 2, simT);
+      var pa = farLayer(farA, farABlur, 0, simT), pb = farLayer(farB, farBBlur, P / 2, simT);
       // The senior layer (further through its cycle, hence larger) rides
       // on top; as it nears its end it fades, revealing the junior
       // beneath — and at the wrap it restarts below, already invisible.
       var aSenior = pa >= pb;
       var sen = aSenior ? farA : farB, jun = aSenior ? farB : farA;
+      var senBlur = aSenior ? farABlur : farBBlur, junBlur = aSenior ? farBBlur : farABlur;
       var pSen = aSenior ? pa : pb;
       sen.style.zIndex = 1; jun.style.zIndex = 0;
-      jun.style.opacity = 1;
+      senBlur.style.zIndex = 1; junBlur.style.zIndex = 0;   // twins stack with their
+                                                           // sharp layer (DOM order
+                                                           // keeps blur under sharp)
+      jun.style.opacity = 1; junBlur.style.opacity = 1;
       var fadeStart = 1 - FW / P;
-      sen.style.opacity = pSen > fadeStart ? Math.max(0, 1 - (pSen - fadeStart) / (FW / P)) : 1;
+      sen.style.opacity = senBlur.style.opacity =
+        pSen > fadeStart ? Math.max(0, 1 - (pSen - fadeStart) / (FW / P)) : 1;
       for (var i = 0; i < MOVERS.length; i++) place(MOVERS[i], simT);
     }
     function tick(ts){
