@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FLOW TEST — Cap's Dunk, the Boat Way</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#0d2233; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.6); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:3/2; width:100%; max-height:100%; overflow:hidden; background:#0d2233;
+           box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  @media (min-aspect-ratio: 3/2) { #frame { width:auto; height:100%; } }
+  #poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #vidB { opacity:0; }
+  /* the world's own breathing: slow scale + pan, out-and-back so it never jumps */
+  #drift { position:absolute; inset:0; animation:drift 10s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes drift { from { transform:scale(1.015) translate(0.35%,0.2%); } to { transform:scale(1.065) translate(-0.9%,-0.6%); } }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(10,25,38,.55); color:#ffe9b8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,233,184,.35); pointer-events:none; }
+  body.wall #caption { display:none; }
+  #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
+             background:rgba(10,25,38,.72); color:#ffe9b8; border:2px solid #ffb03a; border-radius:999px;
+             font-family: Georgia, 'Times New Roman', serif; font-size:clamp(15px, 4.4vw, 20px); letter-spacing:2px;
+             padding:13px 24px; cursor:pointer; box-shadow:0 6px 30px rgba(0,0,0,.5); }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="poster" src="still.jpg" alt="Cap on the schoolyard court">
+      <video class="vid" id="vidA" src="dunk.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+      <video class="vid" id="vidB" src="dunk.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    </div>
+    <button id="startbtn" type="button">&#9654; PLAY</button>
+    <div id="caption">FLOW TEST &middot; CAP'S DUNK, THE BOAT WAY</div>
+  </div>
+</div>
+<script>
+  // The Boat recipe, applied to a school loop (Gary, Nov 14): the six painted
+  // frames were motion-interpolated into ONE continuous clip — no poses, no
+  // counting — and two stacked copies crossfade 1.2s before the seam so the
+  // loop never jumps. In #wall (inside a Living Card) the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var A = document.getElementById('vidA'), B = document.getElementById('vidB');
+    var btn = document.getElementById('startbtn');
+    var FADE = 1.2, front = A, back = B, fading = false;
+    front.style.opacity = '1'; back.style.opacity = '0';
+    function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function swap(){
+      fading = true;
+      back.currentTime = 0;
+      tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / (FADE * 1000));
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; back.pause(); fading = false; }
+      })();
+    }
+    setInterval(function(){
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - FADE) swap();
+      btn.style.display = (front.paused && !fading) ? 'block' : 'none';
+    }, 400);
+    btn.addEventListener('click', function(){ tryPlay(front); });
+    tryPlay(A);
+  })();
+</script>
+</body>
+</html>
