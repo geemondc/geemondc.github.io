@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Balloon Ride — Temple Valley Drift</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#141033; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #frame { position:fixed; inset:0; overflow:hidden; background:#141033; }
+
+  /* The world: four copies of the painting (plain, mirrored, plain,
+     mirrored) on one track. The pattern repeats every two copies, so
+     sliding the track by exactly two copy-widths is invisible — the
+     drift never jumps, ends, or restarts. */
+  #track { position:absolute; top:0; left:0; height:100%; width:400%; display:flex;
+           animation: drift var(--drift, 300s) linear infinite; will-change: transform; }
+  .copy { flex:0 0 25%; height:100%; background:url('master.jpg') center/cover no-repeat; }
+  .copy.flip { transform:scaleX(-1); }
+  @keyframes drift { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+
+  /* Dusk deepening: light only, Gary's living-photo grammar — a slow
+     warm dim that breathes over minutes and melts back. */
+  #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
+          background:linear-gradient(180deg, rgba(24,12,64,.28), rgba(10,6,38,0) 42%, rgba(8,4,30,.34));
+          opacity:.25; animation: dusk 150s ease-in-out infinite alternate; }
+  @keyframes dusk { from { opacity:.12; } to { opacity:.55; } }
+  #worldglow { position:absolute; inset:0; z-index:1; pointer-events:none;
+               background:radial-gradient(120% 90% at 50% 68%, rgba(255,166,66,.10), rgba(255,166,66,0) 60%);
+               animation: breathe 11s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+
+  /* Drifting balloons — cut from this same painting, so they belong
+     to the world. Each rides its own slow crossing; positions repeat
+     far off-screen, so nothing ever pops. */
+  .bal { position:absolute; z-index:3; pointer-events:none; will-change: transform, left; }
+  .bal img { display:block; width:100%; height:auto; }
+  #balTeal { width:clamp(64px, 17vw, 150px); top:9%;  animation: crossA 210s linear infinite; animation-delay:-58s; }
+  #balGold { width:clamp(52px, 13vw, 118px); top:20%; animation: crossB 260s linear infinite; animation-delay:-190s; }
+  #balPink { width:clamp(30px, 8vw, 64px);  top:5%;  animation: crossA 320s linear infinite; animation-delay:-240s; opacity:.92; }
+  @keyframes crossA { from { left:-22%; transform:translateY(0); } 50% { transform:translateY(-1.6vh); } to { left:106%; transform:translateY(0); } }
+  @keyframes crossB { from { left:104%; transform:translateY(0); } 50% { transform:translateY(1.4vh); } to { left:-20%; transform:translateY(0); } }
+  .burner { animation: burner 7s ease-in-out infinite alternate; }
+  @keyframes burner { from { filter:brightness(.96) drop-shadow(0 0 6px rgba(255,170,60,.25)); } to { filter:brightness(1.07) drop-shadow(0 0 14px rgba(255,170,60,.45)); } }
+
+  /* Near clouds — faster than the world, so the depth is real. */
+  .cloud { position:absolute; z-index:4; pointer-events:none; opacity:.5; will-change:left; }
+  #cloud1 { width:clamp(180px, 44vw, 460px); top:12%; animation: crossA 150s linear infinite; animation-delay:-96s; }
+  #cloud2 { width:clamp(140px, 34vw, 360px); top:30%; animation: crossB 185s linear infinite; animation-delay:-40s; opacity:.38; }
+
+  /* Birds — small, dark, far away, unhurried. */
+  .bird { position:absolute; z-index:3; pointer-events:none; animation: crossA 240s linear infinite; }
+  .bird svg { display:block; animation: flap 1.6s ease-in-out infinite alternate; transform-origin:50% 50%; }
+  @keyframes flap { from { transform:scaleY(.72); } to { transform:scaleY(1.12); } }
+  #bird1 { top:16%; animation-delay:-120s; }
+  #bird2 { top:22%; animation-delay:-126s; animation-duration:252s; }
+  #bird3 { top:13%; animation-delay:-134s; animation-duration:266s; }
+
+  /* Ropes: from the rim attachments straight up and out of the top of
+     the frame, toward the envelope we never see. Fixed-pixel divs laid
+     out by JS, so a rope is the same 5px on a phone and on a desktop —
+     never stretched by the window shape. Drawn under the basket, so
+     their feet disappear into the wicker. */
+  .rope { position:absolute; z-index:5; pointer-events:none; width:5px; border-radius:3px;
+          transform-origin:50% 100%;
+          background:linear-gradient(90deg, #2e1c0e 0%, #5d3d20 38%, #96683a 55%, #4a2f1a 82%, #241608 100%);
+          box-shadow:1px 0 2px rgba(8,4,16,.35); }
+  /* Soft shadow the rim throws onto the world — sells one world. */
+  #rimshade { position:absolute; left:0; right:0; bottom:15.2vh; height:7vh; z-index:5; pointer-events:none;
+              background:linear-gradient(180deg, rgba(10,4,20,0), rgba(10,4,20,.38)); }
+  #basket { position:absolute; left:0; bottom:0; width:100%; height:16.6vh; z-index:6;
+            object-fit:fill; display:block; pointer-events:none; }
+
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+             background:rgba(16,10,40,.5); color:#ffe9c4; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(255,196,86,.45); pointer-events:none; }
+  #picker { position:absolute; right:2.5%; bottom:18.5vh; z-index:8; display:flex; gap:4px; }
+  .pill { background:rgba(16,10,40,.62); color:#ffe9c4; border:1px solid rgba(255,196,86,.45); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
+          padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#ffc456; color:#1c1038; border-color:#ffc456; font-weight:bold; }
+  body.still #track, body.still .bal, body.still .cloud, body.still .bird,
+  body.still #dusk, body.still #worldglow, body.still .burner, body.still .bird svg { animation-play-state:paused !important; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="track">
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+  </div>
+  <div id="worldglow"></div>
+  <div id="dusk"></div>
+
+  <div class="bal" id="balTeal"><img class="burner" src="bal_teal.webp" alt=""></div>
+  <div class="bal" id="balGold"><img src="bal_gold.webp" alt=""></div>
+  <div class="bal" id="balPink"><img src="bal_pink.webp" alt=""></div>
+
+  <div class="bird" id="bird1"><svg width="26" height="10" viewBox="0 0 26 10"><path d="M1 8 Q7 1 13 7 Q19 1 25 8" fill="none" stroke="rgba(16,10,34,.85)" stroke-width="2" stroke-linecap="round"/></svg></div>
+  <div class="bird" id="bird2"><svg width="19" height="8" viewBox="0 0 19 8"><path d="M1 6.5 Q5.5 1 9.5 5.5 Q13.5 1 18 6.5" fill="none" stroke="rgba(16,10,34,.75)" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+  <div class="bird" id="bird3"><svg width="15" height="7" viewBox="0 0 15 7"><path d="M1 5.5 Q4.5 1 7.5 4.8 Q10.5 1 14 5.5" fill="none" stroke="rgba(16,10,34,.65)" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+
+  <img class="cloud" id="cloud1" src="cloud1.webp" alt="">
+  <img class="cloud" id="cloud2" src="cloud2.webp" alt="">
+
+  <div class="rope" data-ax="17"   data-ay="88"   data-tx="43.5"></div>
+  <div class="rope" data-ax="38.5" data-ay="88.5" data-tx="48"></div>
+  <div class="rope" data-ax="61.5" data-ay="88.5" data-tx="52"></div>
+  <div class="rope" data-ax="83"   data-ay="88"   data-tx="56.5"></div>
+  <div id="rimshade"></div>
+  <img id="basket" src="basket.webp" alt="Looking over the rim of the balloon basket">
+  <div id="caption">BALLOON RIDE &middot; TEMPLE VALLEY</div>
+  <div id="picker">
+    <button class="pill on" id="btnLiving" type="button">LIVING</button>
+    <button class="pill" id="btnStill" type="button">STILL</button>
+  </div>
+</div>
+<script>
+  // One ride, two states: LIVING (the endless drift) and STILL (the
+  // painting at rest). The basket never moves; only the world flows.
+  (function(){
+    // QA hook: ?drift=<seconds> shortens the world loop so the seam
+    // can be straddled on demand. Normal visits use the full 300s.
+    var d = parseFloat(new URLSearchParams(location.search).get('drift'));
+    if (d && d >= 8 && d <= 1200) document.getElementById('track').style.setProperty('--drift', d + 's');
+    // Lay out the ropes: feet on the rim (percent of frame), heads out
+    // the top (percent of frame), shafts exactly 5px on any screen.
+    function layRopes(){
+      var W = innerWidth, H = innerHeight, topY = -0.05 * H;
+      Array.prototype.forEach.call(document.querySelectorAll('.rope'), function(r){
+        var x1 = parseFloat(r.getAttribute('data-ax')) / 100 * W;
+        var y1 = parseFloat(r.getAttribute('data-ay')) / 100 * H;
+        var x2 = parseFloat(r.getAttribute('data-tx')) / 100 * W;
+        var len = Math.hypot(x2 - x1, y1 - topY);
+        var ang = Math.atan2(x2 - x1, y1 - topY) * 180 / Math.PI;
+        r.style.left = (x1 - 2.5) + 'px';
+        r.style.top = (y1 - len) + 'px';
+        r.style.height = len + 'px';
+        r.style.transform = 'rotate(' + ang + 'deg)';
+      });
+    }
+    layRopes();
+    addEventListener('resize', layRopes);
+    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
+    function setMode(s){
+      document.body.classList.toggle('still', s);
+      living.classList.toggle('on', !s); still.classList.toggle('on', s);
+    }
+    living.addEventListener('click', function(){ setMode(false); });
+    still.addEventListener('click', function(){ setMode(true); });
+  })();
+</script>
+</body>
+</html>
