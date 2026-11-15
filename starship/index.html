@@ -52,6 +52,8 @@
   .burner { animation: burner 7s ease-in-out infinite alternate; }
   @keyframes burner { from { filter:brightness(.96) drop-shadow(0 0 6px rgba(255,170,60,.25)); } to { filter:brightness(1.07) drop-shadow(0 0 14px rgba(255,170,60,.45)); } }
   .birdMv svg { display:block; width:100%; height:auto; animation: flap 1.6s ease-in-out infinite alternate; transform-origin:50% 50%; }
+  .streakMv { border-radius:50%; pointer-events:none;
+              background:linear-gradient(90deg, rgba(255,244,214,0) 0%, rgba(255,244,214,.95) 50%, rgba(255,244,214,0) 100%); }
   @keyframes flap { from { transform:scaleY(.72); } to { transform:scaleY(1.12); } }
 
   /* The ship: a storybook console, star-map glowing, twin sticks —
@@ -133,9 +135,9 @@
   (function(){
     var params = new URLSearchParams(location.search);
     var P = parseFloat(params.get('zoom'));
-    if (!(P >= 8 && P <= 1200)) P = 17;
+    if (!(P >= 8 && P <= 1200)) P = 15;
     var FW = 0.35 * P; if (FW < 2) FW = 2;
-    var S = 1.30;
+    var S = 2.6;
     var pace = parseFloat(params.get('pace'));
     if (!(pace >= 0.1 && pace <= 50)) pace = 1;
 
@@ -198,13 +200,28 @@
       { img:'cloud2.webp', cloud:true, th:  78, T:100, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.17 },
       { img:'fwd_teal.webp', fallsOnly:true, th: -38, T: 79, w0:.028, w1:.62, cap:340, off:1.5, ph:.45, burner:true },
       { bird:true, fallsOnly:true, th: -25, T:120, w0:9,  w1:30,  cap:30,  off:14, ph:.20, px:true, op:.85 },
-      { bird:true, fallsOnly:true, th:  48, T:135, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 }
+      { bird:true, fallsOnly:true, th:  48, T:135, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 },
+      { streak:true, spaceSky:true, th: -20, T: 3.1, w0:.006, w1:.13, cap:210, off:1.6, ph:.05, op:.65 },
+      { streak:true, spaceSky:true, th:  15, T: 2.7, w0:.006, w1:.13, cap:210, off:1.6, ph:.35, op:.6 },
+      { streak:true, spaceSky:true, th:  55, T: 3.8, w0:.006, w1:.13, cap:210, off:1.6, ph:.62, op:.65 },
+      { streak:true, spaceSky:true, th:  95, T: 2.9, w0:.006, w1:.13, cap:210, off:1.6, ph:.18, op:.55 },
+      { streak:true, spaceSky:true, th: 140, T: 4.3, w0:.006, w1:.13, cap:210, off:1.6, ph:.80, op:.65 },
+      { streak:true, spaceSky:true, th: 175, T: 3.4, w0:.006, w1:.13, cap:210, off:1.6, ph:.47, op:.6 },
+      { streak:true, spaceSky:true, th:-160, T: 2.6, w0:.006, w1:.13, cap:210, off:1.6, ph:.71, op:.65 },
+      { streak:true, spaceSky:true, th:-125, T: 4.0, w0:.006, w1:.13, cap:210, off:1.6, ph:.26, op:.55 },
+      { streak:true, spaceSky:true, th: -85, T: 3.0, w0:.006, w1:.13, cap:210, off:1.6, ph:.55, op:.65 },
+      { streak:true, spaceSky:true, th: -50, T: 4.6, w0:.006, w1:.13, cap:210, off:1.6, ph:.90, op:.6 },
+      { streak:true, spaceSky:true, th:  35, T: 3.3, w0:.006, w1:.13, cap:210, off:1.6, ph:.12, op:.65 },
+      { streak:true, spaceSky:true, th: 115, T: 2.8, w0:.006, w1:.13, cap:210, off:1.6, ph:.44, op:.6 },
+      { streak:true, spaceSky:true, th:-145, T: 3.9, w0:.006, w1:.13, cap:210, off:1.6, ph:.67, op:.65 },
+      { streak:true, spaceSky:true, th: -95, T: 3.5, w0:.006, w1:.13, cap:210, off:1.6, ph:.31, op:.6 }
     ];
     var host = document.getElementById('movers');
     MOVERS.forEach(function(m){
       var d = document.createElement('div');
-      d.className = 'mv' + (m.cloud ? ' cloudMv' : '') + (m.bird ? ' birdMv' : '');
-      if (m.bird) { d.innerHTML = BIRD; m.ar = 26/10; }
+      d.className = 'mv' + (m.cloud ? ' cloudMv' : '') + (m.bird ? ' birdMv' : '') + (m.streak ? ' streakMv' : '');
+      if (m.streak) { m.ar = 3.2; d.style.transform = 'rotate(' + m.th + 'deg)'; }
+      else if (m.bird) { d.innerHTML = BIRD; m.ar = 26/10; }
       else {
         var im = document.createElement('img');
         im.src = m.img; im.alt = '';
@@ -217,7 +234,8 @@
     });
     function setMoverVisibility(){
       MOVERS.forEach(function(m){
-        m.el.style.display = (m.fallsOnly && place !== 2) ? 'none' : '';
+        var hide = (m.fallsOnly && place !== 2) || (m.spaceOnly && place !== 0) || (m.spaceSky && place === 2);
+        m.el.style.display = hide ? 'none' : '';
       });
     }
     setMoverVisibility();
