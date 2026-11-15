@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sky Drifter — First Flight</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#1a1030; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #frame { position:fixed; inset:0; overflow:hidden; background:#1a1030; }
+
+  /* The world, flown FORWARD from the cockpit: two paintings stacked on
+     the vanishing point (50%, 42%). Each layer slowly scales up — the
+     falls growing nearer — and the senior layer fades out over the
+     junior one as its cycle ends, then restarts beneath it at scale 1
+     wearing the NEXT vista in the ring. So the flight goes vista to
+     vista around Paradise Falls: approach, arrive, melt, approach the
+     next — the reset can never be seen. Driven by the JS clock below
+     so STILL can freeze it and QA can straddle the wraps. */
+  .far { position:absolute; inset:0; background:center/cover no-repeat;
+         transform-origin:50% 42%; will-change:transform, opacity; }
+  #farA { z-index:0; } #farB { z-index:1; }
+
+  /* Portrait pull-back: on a tall screen the sharp painting pulls back
+     to a band over a soft, darkened full-bleed copy of itself, so the
+     whole composition stays readable while the frame stays full. The
+     blur twins mirror their sharp twins' transform and opacity. */
+  .farBlur { position:absolute; inset:0; background:center/cover no-repeat;
+             transform-origin:50% 42%; will-change:transform, opacity;
+             filter:blur(16px) brightness(.88) saturate(1.15); display:none; }
+  @media (max-aspect-ratio: 1/1) {
+    .far { background-size:auto 62%; background-position:50% 42%;
+           -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%);
+           mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%); }
+    .farBlur { display:block; }
+  }
+
+  /* Light only, living-photo grammar: a slow warm dim that breathes
+     over minutes and melts back. The paintings never change. */
+  #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
+          background:linear-gradient(180deg, rgba(24,12,64,.28), rgba(10,6,38,0) 42%, rgba(8,4,30,.34));
+          opacity:.25; animation: dusk 150s ease-in-out infinite alternate; }
+  @keyframes dusk { from { opacity:.12; } to { opacity:.55; } }
+  #worldglow { position:absolute; inset:0; z-index:1; pointer-events:none;
+               background:radial-gradient(120% 90% at 50% 68%, rgba(255,166,66,.10), rgba(255,166,66,0) 60%);
+               animation: breathe 11s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+
+  /* Movers — one valley balloon, two clouds, two birds ahead of us.
+     Each starts small near the vanishing point, grows as we approach,
+     drifts radially outward and passes out of frame. Positions are set
+     every frame by the JS clock; nothing pans sideways. */
+  .mv { position:absolute; z-index:3; pointer-events:none; will-change:left, top, width, opacity; }
+  .mv img { display:block; width:100%; height:auto; }
+  .cloudMv { z-index:4; }
+  .burner { animation: burner 7s ease-in-out infinite alternate; }
+  @keyframes burner { from { filter:brightness(.96) drop-shadow(0 0 6px rgba(255,170,60,.25)); } to { filter:brightness(1.07) drop-shadow(0 0 14px rgba(255,170,60,.45)); } }
+  .birdMv svg { display:block; width:100%; height:auto; animation: flap 1.6s ease-in-out infinite alternate; transform-origin:50% 50%; }
+  @keyframes flap { from { transform:scaleY(.72); } to { transform:scaleY(1.12); } }
+
+  /* The cockpit: you are IN the little plane. Warm wooden dash, brass
+     gauges glowing, windshield posts at the edges — keyed from a
+     painting made for this seat, composited clean over bright, mid and
+     dark worlds. It never moves; the world flies past it. That fixed
+     frame is what keeps the flight stable — no rocking, ever. */
+  #cockpit { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+             width:100%; height:auto; z-index:6; display:block; pointer-events:none; }
+  @media (max-aspect-ratio: 1/1) { #cockpit { width:112%; } }
+
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+             background:rgba(16,10,40,.5); color:#ffe9c4; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(255,196,86,.45); pointer-events:none; }
+  #picker { position:absolute; right:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
+  @media (max-aspect-ratio: 1/1) { #picker { bottom:15vh; } }
+  .pill { background:rgba(16,10,40,.62); color:#ffe9c4; border:1px solid rgba(255,196,86,.45); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
+          padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#ffc456; color:#1c1038; border-color:#ffc456; font-weight:bold; }
+  body.still #dusk, body.still #worldglow, body.still .burner, body.still .birdMv svg { animation-play-state:paused !important; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div class="farBlur" id="farBBlur"></div>
+  <div class="far" id="farB"></div>
+  <div class="farBlur" id="farABlur"></div>
+  <div class="far" id="farA"></div>
+  <div id="worldglow"></div>
+  <div id="dusk"></div>
+  <div id="movers"></div>
+
+  <img id="cockpit" src="cockpit.webp" alt="From the pilot's seat of the little plane">
+  <div id="caption">SKY DRIFTER &middot; FIRST FLIGHT</div>
+  <div id="picker">
+    <button class="pill on" id="btnLiving" type="button">LIVING</button>
+    <button class="pill" id="btnStill" type="button">STILL</button>
+  </div>
+</div>
+<script>
+  // One flight, two states: LIVING (the endless forward flight) and
+  // STILL (the painting at rest). The cockpit never moves; only the
+  // world flows — toward us, vista after vista around the Falls.
+  (function(){
+    var params = new URLSearchParams(location.search);
+    // QA hooks: ?zoom=<seconds> shortens the vista cycle so the wrap
+    // can be straddled on demand; ?pace=<n> multiplies clock speed.
+    var P = parseFloat(params.get('zoom'));
+    if (!(P >= 8 && P <= 1200)) P = 28;
+    var FW = 0.35 * P; if (FW < 2) FW = 2;          // crossfade window, seconds
+    var S = 1.32;                                    // total growth per vista approach
+    var pace = parseFloat(params.get('pace'));
+    if (!(pace >= 0.1 && pace <= 50)) pace = 1;
+
+    var W = innerWidth, H = innerHeight;
+    var VPX = 0.50, VPY = 0.42;                      // the vanishing point
+
+    // ---- Far layers: the ring of Falls vistas, flown in a loop -----
+    // Order: the pool with the house on the rim (the anchor), across
+    // the valley, the side profile, the cliff-top, from the rim —
+    // then back to the pool. Each layer wears the next vista when it
+    // wraps underneath its twin.
+    var VISTAS = ['falls0.jpg', 'falls1.jpg', 'falls2.jpg', 'falls3.jpg', 'falls4.jpg'];
+    var nextVista = 2;
+    function setVista(L, v){
+      L.vista = v;
+      L.el.style.backgroundImage = "url('" + VISTAS[v] + "')";
+      L.blur.style.backgroundImage = "url('" + VISTAS[v] + "')";
+    }
+    function farLayer(L, t){
+      var p = ((t + L.off) % P) / P;                 // 0..1 through its cycle
+      if (p < L.lastP - 0.5) {                       // wrapped: restart beneath,
+        setVista(L, nextVista % VISTAS.length);      // wearing the next vista
+        nextVista++;
+      }
+      L.lastP = p;
+      var sc = Math.pow(S, p);
+      L.el.style.transform = 'scale(' + sc.toFixed(5) + ')';
+      L.blur.style.transform = 'scale(' + (sc * 1.05).toFixed(5) + ')';
+      return p;
+    }
+    var LA = { el: document.getElementById('farA'), blur: document.getElementById('farABlur'), off: 0,     vista: 0, lastP: 0 };
+    var LB = { el: document.getElementById('farB'), blur: document.getElementById('farBBlur'), off: P / 2, vista: 1, lastP: 0 };
+    setVista(LA, 0); setVista(LB, 1);
+    // Preload the rest of the ring so a wrap never waits on the wire.
+    VISTAS.forEach(function(v){ var i = new Image(); i.src = v; });
+
+    // ---- Movers: a balloon, clouds, birds on approach paths --------
+    var BIRD = '<svg viewBox="0 0 26 10"><path d="M1 8 Q7 1 13 7 Q19 1 25 8" fill="none" stroke="rgba(16,10,34,.8)" stroke-width="2" stroke-linecap="round"/></svg>';
+    var MOVERS = [
+      { img:'fwd_teal.webp', th: -38, T: 79, w0:.028, w1:.62, cap:340, off:1.5, ph:.45, burner:true },
+      { img:'cloud1.webp', cloud:true, th: -58, T: 85, w0:.05, w1:.95, cap:900, off:3.1, ph:.30, op:.34 },
+      { img:'cloud2.webp', cloud:true, th:  78, T:100, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.26 },
+      { bird:true, th: -25, T:120, w0:9,  w1:30,  cap:30,  off:14, ph:.20, px:true, op:.85 },
+      { bird:true, th:  48, T:135, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 }
+    ];
+    var host = document.getElementById('movers');
+    MOVERS.forEach(function(m){
+      var d = document.createElement('div');
+      d.className = 'mv' + (m.cloud ? ' cloudMv' : '') + (m.bird ? ' birdMv' : '');
+      if (m.bird) { d.innerHTML = BIRD; m.ar = 26/10; }
+      else {
+        var im = document.createElement('img');
+        im.src = m.img; im.alt = '';
+        if (m.burner) im.className = 'burner';
+        m.ar = 0.85;
+        im.addEventListener('load', function(){ if (im.naturalHeight) m.ar = im.naturalWidth / im.naturalHeight; });
+        d.appendChild(im);
+      }
+      host.appendChild(d); m.el = d;
+    });
+
+    function place(m, t){
+      var u = (t / m.T + m.ph) % 1;
+      var g = Math.exp(Math.log(m.w1 / m.w0) * u);       // growth factor
+      var wRaw = m.px ? m.w0 * g : m.w0 * g * W;         // uncapped approach width
+      var w = Math.min(wRaw, m.cap);
+      var h = w / m.ar;
+      var rho = m.off * (m.px ? w : wRaw);               // distance follows the true
+                                                         // approach, even past the size cap
+      var rad = m.th * Math.PI / 180;
+      var cx = VPX * W + rho * Math.sin(rad);
+      var cy = VPY * H - rho * Math.cos(rad);
+      var op = (m.op != null ? m.op : 1);
+      if (u < 0.07) op *= u / 0.07;                      // materialise far away, in the haze
+      else if (u > 0.93) op *= (1 - u) / 0.07;           // dissolve as it passes
+      m.el.style.width = w + 'px';
+      m.el.style.left = (cx - w / 2) + 'px';
+      m.el.style.top = (cy - h / 2) + 'px';
+      m.el.style.opacity = op.toFixed(3);
+    }
+
+    // ---- The clock ---------------------------------------------------
+    var simT = 0, last = null;
+    function render(){
+      var pa = farLayer(LA, simT), pb = farLayer(LB, simT);
+      // The senior layer (further through its cycle, hence larger) rides
+      // on top; as it nears its end it fades, revealing the junior
+      // beneath — and at the wrap it restarts below wearing a new vista.
+      var aSenior = pa >= pb;
+      var sen = aSenior ? LA : LB, jun = aSenior ? LB : LA;
+      sen.el.style.zIndex = 1; jun.el.style.zIndex = 0;
+      sen.blur.style.zIndex = 1; jun.blur.style.zIndex = 0;
+      jun.el.style.opacity = 1; jun.blur.style.opacity = 1;
+      var fadeStart = 1 - FW / P;
+      var pSen = aSenior ? pa : pb;
+      sen.el.style.opacity = sen.blur.style.opacity =
+        pSen > fadeStart ? Math.max(0, 1 - (pSen - fadeStart) / (FW / P)) : 1;
+      for (var i = 0; i < MOVERS.length; i++) place(MOVERS[i], simT);
+    }
+    function tick(ts){
+      if (last == null) last = ts;
+      var dt = (ts - last) / 1000; last = ts;
+      if (!document.body.classList.contains('still')) simT += dt * pace;
+      render();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // QA handle: jump the clock, read state.
+    window.__ride = {
+      setTime: function(s){ simT = s; render(); },
+      time: function(){ return simT; },
+      far: function(){ return { P: P, FW: FW }; },
+      vista: function(){ return { A: LA.vista, B: LB.vista, next: nextVista }; },
+      mover: function(i){ var r = MOVERS[i].el.getBoundingClientRect();
+        return { x:r.x, y:r.y, w:r.width, h:r.height }; }
+    };
+
+    addEventListener('resize', function(){ W = innerWidth; H = innerHeight; });
+    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
+    function setMode(s){
+      document.body.classList.toggle('still', s);
+      living.classList.toggle('on', !s); still.classList.toggle('on', s);
+    }
+    living.addEventListener('click', function(){ setMode(false); });
+    still.addEventListener('click', function(){ setMode(true); });
+  })();
+</script>
+</body>
+</html>
