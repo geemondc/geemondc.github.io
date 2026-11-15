@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Underwater — Turtle Channel</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#04263e; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #frame { position:fixed; inset:0; overflow:hidden; background:#04263e; }
+
+  /* The world: four copies of the painting (plain, mirrored, plain,
+     mirrored) on one track. The pattern repeats every two copies, so
+     sliding by exactly two copy-widths is invisible — the glide never
+     jumps, ends, or restarts. */
+  #track { position:absolute; top:0; left:0; height:100%; width:400%; display:flex;
+           animation: drift 420s linear infinite; will-change: transform; }
+  .copy { flex:0 0 25%; height:100%; background:url('master.jpg') center/cover no-repeat; }
+  .copy.flip { transform:scaleX(-1); }
+  @keyframes drift { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+
+  /* Sunlight falling through the water: rays that sway like the
+     surface above is moving, plus a slow breathing glow. */
+  #rays { position:absolute; inset:-12% -6%; z-index:2; pointer-events:none; mix-blend-mode:screen;
+          background:linear-gradient(103deg, rgba(255,244,190,0) 22%, rgba(255,244,190,.20) 34%, rgba(255,244,190,0) 46%,
+                                          rgba(255,244,190,.14) 58%, rgba(255,244,190,0) 70%);
+          animation: sway 13s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform:translateX(-1.6%) rotate(-.5deg); opacity:.65; } to { transform:translateX(1.6%) rotate(.5deg); opacity:1; } }
+  #glow { position:absolute; inset:0; z-index:1; pointer-events:none;
+          background:radial-gradient(120% 90% at 50% 30%, rgba(140,230,255,.10), rgba(140,230,255,0) 62%);
+          animation: breathe 11s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+  #deepen { position:absolute; inset:0; z-index:2; pointer-events:none;
+            background:linear-gradient(180deg, rgba(3,32,58,0) 55%, rgba(3,32,58,.28));
+            opacity:.3; animation: dusk 170s ease-in-out infinite alternate; }
+  @keyframes dusk { from { opacity:.15; } to { opacity:.5; } }
+
+  /* Bubbles rising past — near ones big and quick, far ones small. */
+  .bub { position:absolute; z-index:3; border-radius:50%; pointer-events:none; will-change: transform, opacity;
+         background:radial-gradient(circle at 32% 30%, rgba(255,255,255,.85), rgba(255,255,255,.12) 55%, rgba(255,255,255,.30));
+         animation: rise linear infinite; }
+  @keyframes rise { from { transform:translateY(0) translateX(0); opacity:0; }
+                     8% { opacity:.8; }
+                     92% { opacity:.7; }
+                     to { transform:translateY(-108vh) translateX(2.2vw); opacity:0; } }
+
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+             background:rgba(4,30,52,.55); color:#eaf7ff; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(150,220,255,.5); pointer-events:none; }
+  #picker { position:absolute; right:2.5%; bottom:3.5%; z-index:8; display:flex; gap:4px; }
+  .pill { background:rgba(4,30,52,.62); color:#eaf7ff; border:1px solid rgba(150,220,255,.5); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
+          padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#7fd4ff; color:#06283f; border-color:#7fd4ff; font-weight:bold; }
+  body.still #track, body.still #rays, body.still #glow, body.still #deepen,
+  body.still .bub { animation-play-state:paused !important; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="track">
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+  </div>
+  <div id="glow"></div>
+  <div id="rays"></div>
+  <div id="deepen"></div>
+  <div id="bubbles"></div>
+  <div id="caption">UNDERWATER &middot; TURTLE CHANNEL</div>
+  <div id="picker">
+    <button class="pill on" id="btnLiving" type="button">LIVING</button>
+    <button class="pill" id="btnStill" type="button">STILL</button>
+  </div>
+</div>
+<script>
+  (function(){
+    // Bubble streams (seeded, same sea every visit)
+    var box = document.getElementById('bubbles');
+    var seed = 11;
+    function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var i = 0; i < 16; i++){
+      var b = document.createElement('div');
+      b.className = 'bub';
+      var sz = 4 + rnd() * 13;
+      b.style.width = sz + 'px'; b.style.height = sz + 'px';
+      b.style.left = (3 + rnd() * 94) + '%';
+      b.style.bottom = '-4vh';
+      b.style.animationDuration = (9 + rnd() * 14) + 's';
+      b.style.animationDelay = (-rnd() * 18) + 's';
+      box.appendChild(b);
+    }
+    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
+    function setMode(s){
+      document.body.classList.toggle('still', s);
+      living.classList.toggle('on', !s); still.classList.toggle('on', s);
+    }
+    living.addEventListener('click', function(){ setMode(false); });
+    still.addEventListener('click', function(){ setMode(true); });
+    // Riding inside the Rides page's full-screen view: a tap on the
+    // scene asks the parent to close, exactly like the film rides.
+    document.getElementById('frame').addEventListener('click', function(e){
+      if (e.target.closest && e.target.closest('#picker')) return;
+      if (window.parent && window.parent !== window) window.parent.postMessage('lc-close-fs', '*');
+    });
+  })();
+</script>
+</body>
+</html>
