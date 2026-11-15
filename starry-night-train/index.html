@@ -108,12 +108,16 @@
     pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === start); });
     preload(B, 1);
     tryPlay(A);
+    // Tap the scene: if the ride has not started (autoplay blocked inside
+    // the Rides page frame), the tap STARTS it. Once playing, a tap closes.
+    frame.addEventListener('click', function(e){
+      if (e.target.closest && e.target.closest('.pill')) return;
+      if (e.target.id === 'startbtn') return;
+      if (front.paused) { tryPlay(front); return; }
+      if (window.parent !== window) window.parent.postMessage('lc-close-fs', '*');
+    });
   })();
-  // Tap the scene (not a pill) to close when opened inside the Rides page frame.
-  document.getElementById('frame').addEventListener('click', function(e){
-    if (e.target.closest('.pill') || e.target.id === 'startbtn') return;
-    if (window.parent !== window) window.parent.postMessage('lc-close-fs', '*');
-  });
+  // (tap-to-close handler lives inside the engine, below)
 </script>
 </body>
 </html>
