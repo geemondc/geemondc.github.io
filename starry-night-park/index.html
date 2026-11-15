@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Starry Night Line — The Park</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#060a1e; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #frame { position:fixed; inset:0; overflow:hidden; background:#060a1e; }
+
+  /* The world: four copies of the painting (plain, mirrored, plain,
+     mirrored) on one track. The pattern repeats every two copies, so
+     sliding by exactly two copy-widths is invisible — the ride never
+     jumps, ends, or restarts. */
+  #track { position:absolute; top:0; left:0; height:100%; width:400%; display:flex;
+           animation: drift var(--drift, 340s) linear infinite; will-change: transform; }
+  .copy { flex:0 0 25%; height:100%; background:url('master.jpg') center/cover no-repeat; }
+  .copy.flip { transform:scaleX(-1); }
+  @keyframes drift { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+
+  /* The night deepening: light only — a slow breath over the painting. */
+  #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
+          background:linear-gradient(180deg, rgba(10,14,52,.26), rgba(6,8,30,0) 42%, rgba(4,6,24,.30));
+          opacity:.25; animation: dusk 150s ease-in-out infinite alternate; }
+  @keyframes dusk { from { opacity:.12; } to { opacity:.5; } }
+  #worldglow { position:absolute; inset:0; z-index:1; pointer-events:none;
+               background:radial-gradient(120% 90% at 50% 62%, rgba(255,190,80,.08), rgba(255,190,80,0) 60%);
+               animation: breathe 11s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+
+  /* Stars twinkling in the turning sky */
+  .star { position:absolute; border-radius:50%; pointer-events:none; z-index:2;
+          background:radial-gradient(circle, #fffbe8 0%, #ffe9a8 38%, rgba(255,233,168,0) 72%);
+          animation:nxTwinkle 3.4s ease-in-out infinite; }
+  @keyframes nxTwinkle { 0%,100% { opacity:.12; transform:scale(.72); } 50% { opacity:.95; transform:scale(1.12); } }
+
+  /* Night clouds — slower than the lamps, faster than the far world,
+     so the depth is real. */
+  .cloud { position:absolute; z-index:3; pointer-events:none; opacity:.5; will-change:left; }
+  #cloud1 { width:clamp(180px, 44vw, 460px); top:9%; animation: crossL 170s linear infinite; animation-delay:-96s; }
+  #cloud2 { width:clamp(140px, 34vw, 360px); top:24%; animation: crossL 215s linear infinite; animation-delay:-40s; opacity:.38; }
+
+  /* Trackside lamps streaming past — mid lamps smaller and slower,
+     near lamps big and fast. The train is moving; the world goes by. */
+  .lamp { position:absolute; z-index:4; pointer-events:none; will-change:left; }
+  .lamp img { display:block; height:100%; width:auto; }
+  .lamp.mid { height:24vh; bottom:11.5vh; animation: crossL 34s linear infinite; }
+  .lamp.near { height:38vh; bottom:10vh; animation: crossL 19s linear infinite; }
+  @keyframes crossL { from { left:106%; } to { left:-26%; } }
+
+  /* The train itself: the painting's own roof and headlight band,
+     steady at the bottom. It never moves — the world does. */
+  #band { position:absolute; left:0; right:0; bottom:0; z-index:6; pointer-events:none; }
+  #band img { width:100%; height:auto; display:block; }
+  @media (max-aspect-ratio: 1/1) { #band img { width:158%; margin-left:-29%; } }
+
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+             background:rgba(8,10,28,.55); color:#fdf3d8; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(253,211,106,.45); pointer-events:none; }
+  #picker { position:absolute; right:2.5%; bottom:15.5vh; z-index:8; display:flex; gap:4px; }
+  .pill { background:rgba(8,10,28,.62); color:#fdf3d8; border:1px solid rgba(253,211,106,.45); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
+          padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#f5b942; color:#23130a; border-color:#f5b942; font-weight:bold; }
+  body.still #track, body.still .cloud, body.still .lamp, body.still .star,
+  body.still #dusk, body.still #worldglow { animation-play-state:paused !important; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="track">
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+    <div class="copy"></div>
+    <div class="copy flip"></div>
+  </div>
+  <div id="worldglow"></div>
+  <div id="dusk"></div>
+  <div id="stars"></div>
+
+  <img class="cloud" id="cloud1" src="cloud1.webp" alt="">
+  <img class="cloud" id="cloud2" src="cloud2.webp" alt="">
+
+  <div class="lamp mid" style="animation-delay:-6s"><img src="lamp.webp" alt=""></div>
+  <div class="lamp mid" style="animation-delay:-23s"><img src="lamp.webp" alt=""></div>
+  <div class="lamp near" style="animation-delay:-11s"><img src="lamp.webp" alt=""></div>
+  <div class="lamp near" style="animation-delay:-2s"><img src="lamp.webp" alt=""></div>
+
+  <div id="band"><img src="band.webp" alt="The front of the train, steady while the world goes by"></div>
+  <div id="caption">STARRY NIGHT LINE &middot; THE PARK</div>
+  <div id="picker">
+    <button class="pill on" id="btnLiving" type="button">LIVING</button>
+    <button class="pill" id="btnStill" type="button">STILL</button>
+  </div>
+</div>
+<script>
+  (function(){
+    // Twinkling stars across the sky (seeded, same sky every visit)
+    var starBox = document.getElementById('stars');
+    var seed = 7;
+    function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var i = 0; i < 16; i++){
+      var st = document.createElement('div');
+      st.className = 'star';
+      var sz = 3 + rnd() * 5;
+      st.style.width = sz + 'px'; st.style.height = sz + 'px';
+      st.style.left = (4 + rnd() * 92) + '%';
+      st.style.top = (3 + rnd() * 34) + '%';
+      st.style.animationDuration = (2.4 + rnd() * 2.8) + 's';
+      st.style.animationDelay = (-rnd() * 4) + 's';
+      starBox.appendChild(st);
+    }
+    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
+    function setMode(s){
+      document.body.classList.toggle('still', s);
+      living.classList.toggle('on', !s); still.classList.toggle('on', s);
+    }
+    living.addEventListener('click', function(){ setMode(false); });
+    still.addEventListener('click', function(){ setMode(true); });
+    // Riding inside the Rides page's full-screen view: a tap on the
+    // scene asks the parent to close, exactly like the film rides.
+    document.getElementById('frame').addEventListener('click', function(e){
+      if (e.target.closest && e.target.closest('#picker')) return;
+      if (window.parent && window.parent !== window) window.parent.postMessage('lc-close-fs', '*');
+    });
+  })();
+</script>
+</body>
+</html>
