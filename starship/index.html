@@ -60,6 +60,10 @@
   #cockpit { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
              width:100%; height:auto; z-index:6; display:block; pointer-events:none; }
   @media (max-aspect-ratio: 1/1) { #cockpit { width:112%; } }
+  /* Wide screens: the console is cropped shorter and pushed down, so
+     it rides as a bottom band and space gets the screen — the same
+     framing fix as the balloon. */
+  @media (min-aspect-ratio: 1/1) { #cockpit { bottom:-26vh; } }
 
   #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
              background:rgba(12,8,36,.55); color:#d8fff4; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
@@ -72,6 +76,7 @@
   #places { position:absolute; left:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
   #picker { position:absolute; right:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
   @media (max-aspect-ratio: 1/1) { #places { bottom:17vh; } #picker { bottom:17vh; } }
+  @media (min-aspect-ratio: 1/1) { #places { bottom:39vh; } #picker { bottom:39vh; } }
   .pill { background:rgba(12,8,36,.62); color:#d8fff4; border:1px solid rgba(64,224,208,.5); border-radius:999px;
           font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
           padding:7px 12px; cursor:pointer; white-space:nowrap; }
@@ -79,6 +84,20 @@
   #picker .pill { color:#ffe9c4; border-color:rgba(255,196,86,.45); }
   #picker .pill.on { background:#ffc456; color:#1c1038; border-color:#ffc456; }
   body.still #dusk, body.still #worldglow, body.still .burner, body.still .birdMv svg { animation-play-state:paused !important; }
+
+  /* The joystick: a real stick you work with a thumb or a mouse.
+     Push it left, right, up, down and the universe turns that way;
+     let go and the knob springs home and the ship settles straight. */
+  #stick { position:absolute; left:50%; bottom:3.5vh; transform:translateX(-50%); z-index:9;
+           width:96px; height:96px; border-radius:50%; touch-action:none; cursor:grab;
+           background:radial-gradient(circle at 50% 42%, rgba(64,224,208,.14), rgba(10,8,34,.55) 68%);
+           border:1.5px solid rgba(64,224,208,.55); box-shadow:0 4px 18px rgba(0,0,0,.45), inset 0 0 18px rgba(64,224,208,.12); }
+  #stick:active { cursor:grabbing; }
+  #knob { position:absolute; left:50%; top:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%;
+          background:radial-gradient(circle at 38% 32%, #ffe9a8, #e8a33d 55%, #9a6414);
+          border:1.5px solid rgba(255,233,168,.8); box-shadow:0 3px 10px rgba(0,0,0,.5);
+          transition:transform .18s ease; pointer-events:none; }
+  #stick.live #knob { transition:none; }
 </style>
 </head>
 <body>
@@ -94,7 +113,7 @@
 
   <img id="cockpit" src="ship.webp" alt="From the pilot's seat of the little starship">
   <div id="caption">STARSHIP &middot; FLY A SPACESHIP</div>
-  <div id="hint">Drag to steer &middot; Pick a place to fly to</div>
+  <div id="hint">Work the joystick &middot; Pick a place to fly to</div>
   <div id="places">
     <button class="pill on" type="button" data-place="0">DEEP SPACE</button>
     <button class="pill" type="button" data-place="1">NEBULA HARBOR</button>
@@ -104,6 +123,7 @@
     <button class="pill on" id="btnLiving" type="button">LIVING</button>
     <button class="pill" id="btnStill" type="button">STILL</button>
   </div>
+  <div id="stick"><div id="knob"></div></div>
 </div>
 <script>
   // FLY A SPACESHIP TO PLACES. The ship always flies forward; you
@@ -272,9 +292,36 @@
     function hintGone(){ hint.classList.add('gone'); }
     setTimeout(hintGone, 9000);
     frame.addEventListener('pointerdown', function(e){
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button') || e.target.closest('#stick')) return;
       dragId = e.pointerId; sx = e.clientX; sy = e.clientY; hintGone();
     });
+
+    // ---- The joystick ---------------------------------------------------
+    var stick = document.getElementById('stick'), knob = document.getElementById('knob');
+    var stickId = null;
+    function stickMove(e){
+      var r = stick.getBoundingClientRect();
+      var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+      var len = Math.hypot(dx, dy), max = 30;
+      if (len > max) { dx *= max / len; dy *= max / len; }
+      knob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+      TX = Math.min(0.70, Math.max(0.30, CX + (dx / max) * 0.20));
+      TY = Math.min(0.54, Math.max(0.30, CY + (dy / max) * 0.12));
+    }
+    stick.addEventListener('pointerdown', function(e){
+      stickId = e.pointerId; stick.classList.add('live');
+      stick.setPointerCapture(e.pointerId); hintGone(); stickMove(e);
+    });
+    stick.addEventListener('pointermove', function(e){
+      if (e.pointerId === stickId) stickMove(e);
+    });
+    function stickEnd(e){
+      if (e.pointerId !== stickId) return;
+      stickId = null; stick.classList.remove('live');
+      knob.style.transform = ''; TX = CX; TY = CY;
+    }
+    stick.addEventListener('pointerup', stickEnd);
+    stick.addEventListener('pointercancel', stickEnd);
     frame.addEventListener('pointermove', function(e){
       if (e.pointerId !== dragId) return;
       var dx = (e.clientX - sx) / W, dy = (e.clientY - sy) / H;
