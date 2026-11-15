@@ -2,271 +2,229 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>The Starry Night Line</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Starry Night Line — a Living Ride</title>
+<meta name="description" content="Ride the night rails under a turning sky. The original Starry Night Train, living — it never ends.">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { height:100%; overflow:hidden; background:#0d1430; }
-  body { font-family: Georgia, 'Times New Roman', serif; }
-  #frame { position:fixed; inset:0; overflow:hidden; background:#0d1430; }
+  html, body { height:100%; overflow:hidden; background:#060a1e; }
+  body { font-family: Georgia, 'Times New Roman', serif; color:#fdf3d8;
+         -webkit-user-select:none; user-select:none; touch-action:none; }
 
-  /* The world, rolling FORWARD from the front of the train: two
-     paintings stacked on the vanishing point (50%, 42%). Each layer
-     slowly scales up — the city growing nearer — and the senior layer
-     fades out over the junior one as its cycle ends, then restarts
-     beneath it at scale 1 wearing the NEXT vista in the active
-     track's set. So the ride goes vista to vista down the line: the
-     reset can never be seen. Driven by the JS clock below so STILL
-     can freeze it and QA can straddle the wraps. */
-  .far { position:absolute; inset:0; background:center/cover no-repeat;
-         transform-origin:50% 42%; will-change:transform, opacity; }
-  #farA { z-index:0; } #farB { z-index:1; }
+  /* The world: two stacked copies of the ONE painting, flying down its
+     own track corridor — each grows exponentially around the rails'
+     vanishing point, the senior layer melts out over the junior as its
+     cycle ends, then restarts behind. The ride never ends. */
+  .layer { position:absolute; overflow:hidden; will-change:transform,opacity;
+           transform-origin:53.5% 47.2%; }
+  .layer img.world { position:absolute; inset:0; width:100%; height:100%; }
+  /* The sky's own life: discs cut from the painting's swirls, sitting
+     exactly over their painted originals inside each world layer,
+     swaying a few degrees, very slow — the swirls turn a little. */
+  .disc { position:absolute; will-change:transform; pointer-events:none; aspect-ratio:1; }
+  .disc img { width:100%; height:100%; display:block; }
+  @keyframes nxSway1 { from { transform:rotate(-7deg); } to { transform:rotate(7deg); } }
+  @keyframes nxSway2 { from { transform:rotate(6deg); }  to { transform:rotate(-6deg); } }
+  .disc.d1 { animation:nxSway1 46s ease-in-out infinite alternate; }
+  .disc.d2 { animation:nxSway2 58s ease-in-out infinite alternate; }
+  .disc.d3 { animation:nxSway1 39s ease-in-out infinite alternate; }
+  .disc.d4 { animation:nxSway2 51s ease-in-out infinite alternate; }
+  .disc.d5 { animation:nxSway1 33s ease-in-out infinite alternate; }
 
-  /* Portrait pull-back: on a tall screen the sharp painting pulls back
-     to a band over a soft, darkened full-bleed copy of itself, so the
-     whole composition stays readable while the frame stays full. The
-     blur twins mirror their sharp twins' transform and opacity. */
-  .farBlur { position:absolute; inset:0; background:center/cover no-repeat;
-             transform-origin:50% 42%; will-change:transform, opacity;
-             filter:blur(16px) brightness(.88) saturate(1.15); display:none; }
+  /* Street lamps rushing past at the edges of the track */
+  .lamp { position:absolute; will-change:transform,opacity; pointer-events:none; }
+  .lamp img { width:100%; height:100%; display:block; }
+
+  /* Stars twinkling in the turning sky */
+  .star { position:absolute; border-radius:50%; pointer-events:none;
+          background:radial-gradient(circle, #fffbe8 0%, #ffe9a8 38%, rgba(255,233,168,0) 72%);
+          animation:nxTwinkle 3.4s ease-in-out infinite; }
+  @keyframes nxTwinkle { 0%,100% { opacity:.12; transform:scale(.72); } 50% { opacity:.95; transform:scale(1.12); } }
+
+  /* The train itself: the painting's own roof and headlight, a slim
+     steady band at the bottom. It never moves — the world does. */
+  #band { position:absolute; left:0; right:0; bottom:0; z-index:6; pointer-events:none; }
+  #band img { width:100%; height:auto; display:block; }
   @media (max-aspect-ratio: 1/1) {
-    .far { background-size:auto 62%; background-position:50% 42%;
-           -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%);
-           mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%); }
-    .farBlur { display:block; }
+    #band img { width:158%; margin-left:-29%; }
   }
 
-  /* Light only, living-photo grammar: a slow warm dim that breathes
-     over minutes and melts back. The paintings never change. */
-  #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
-          background:linear-gradient(180deg, rgba(24,12,64,.28), rgba(10,6,38,0) 42%, rgba(8,4,30,.34));
-          opacity:.25; animation: dusk 150s ease-in-out infinite alternate; }
-  @keyframes dusk { from { opacity:.12; } to { opacity:.55; } }
-  #worldglow { position:absolute; inset:0; z-index:1; pointer-events:none;
-               background:radial-gradient(120% 90% at 50% 68%, rgba(255,166,66,.10), rgba(255,166,66,0) 60%);
-               animation: breathe 11s ease-in-out infinite alternate; }
-  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+  .shade { position:absolute; inset:0; z-index:5; pointer-events:none;
+           background:linear-gradient(180deg, rgba(4,6,20,.30), rgba(4,6,20,0) 18%, rgba(4,6,20,0) 82%, rgba(4,6,20,.24)); }
 
-  /* Movers — two night clouds ahead of us, dim and slow. Each starts
-     small near the vanishing point, grows as we approach, drifts
-     radially outward and passes out of frame. Positions are set every
-     frame by the JS clock; nothing pans sideways. */
-  .mv { position:absolute; z-index:3; pointer-events:none; will-change:left, top, width, opacity; }
-  .mv img { display:block; width:100%; height:auto; }
-  .cloudMv { z-index:4; }
-
-  /* The melt: one soft night-blue veil that closes over the world
-     while the track changes underneath, then lifts. A single gentle
-     fade out and in — never a flash, never a strobe. */
-  #farfade { position:absolute; inset:0; z-index:5; pointer-events:none;
-             background:#0a1030; opacity:0; transition:opacity .35s ease; }
-
-  /* The train: you are riding at its front. Rounded dark nose, one
-     big glowing headlight, iron posts at the edges — keyed from a
-     painting made for this seat, composited clean over bright, mid
-     and dark worlds. It never moves; the world rolls past it. That
-     fixed frame is what keeps the ride stable — no rocking, ever. */
-  #train { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-           width:100%; height:auto; z-index:6; display:block; pointer-events:none; }
-  @media (max-aspect-ratio: 1/1) { #train { width:112%; } }
-  /* Wide screens: the band is cropped shorter and pushed down, so the
-     nose rides as a bottom band and the night gets the screen — the
-     same framing fix as the balloon. */
-  @media (min-aspect-ratio: 1/1) { #train { bottom:-26vh; } }
-
-  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
-             background:rgba(16,10,40,.5); color:#ffe9c4; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
-             padding:6px 14px; border-radius:999px; border:1px solid rgba(255,196,86,.45); pointer-events:none; }
-  /* Track picker: three lines out of the same station — A downtown,
-     B the park, C the monument. Pick one and the ride melts over. */
-  #tracks { position:absolute; left:50%; top:calc(2% + 42px); transform:translateX(-50%); z-index:8; display:flex; gap:4px; }
-  #picker { position:absolute; right:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
-  @media (max-aspect-ratio: 1/1) { #picker { bottom:15vh; } }
-  .pill { background:rgba(16,10,40,.62); color:#ffe9c4; border:1px solid rgba(255,196,86,.45); border-radius:999px;
-          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
-          padding:7px 12px; cursor:pointer; white-space:nowrap; }
-  .pill.on { background:#ffc456; color:#1c1038; border-color:#ffc456; font-weight:bold; }
-  body.still #dusk, body.still #worldglow { animation-play-state:paused !important; }
+  /* Furniture */
+  #title { position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:10;
+           font-size:13px; letter-spacing:.34em; text-transform:uppercase; white-space:nowrap;
+           color:#fdf3d8; background:rgba(8,10,28,.55); border:1px solid rgba(253,211,106,.45);
+           padding:9px 18px 9px 22px; border-radius:999px; backdrop-filter:blur(3px); }
+  #cap { position:absolute; top:58px; left:50%; transform:translateX(-50%); z-index:10;
+         font-size:14.5px; font-style:italic; letter-spacing:.04em; white-space:nowrap;
+         color:#fdf3d8; text-shadow:0 1px 10px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.9); }
+  #mode { position:absolute; right:16px; top:50%; transform:translateY(-50%); z-index:10;
+          display:flex; flex-direction:column; gap:8px; }
+  #mode button { font-family:inherit; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+                 padding:9px 15px; border-radius:999px; cursor:pointer;
+                 color:#fdf3d8; background:rgba(8,10,28,.55); border:1px solid rgba(253,211,106,.45);
+                 backdrop-filter:blur(3px); }
+  #mode button.on { background:#f5b942; color:#23130a; border-color:#f5b942; font-weight:bold; }
+  @media (max-width:640px) {
+    #title { font-size:10.5px; letter-spacing:.26em; padding:8px 13px 8px 16px; }
+    #cap { font-size:12.5px; top:52px; }
+    #mode { right:10px; }
+    #mode button { font-size:11px; padding:8px 11px; }
+  }
+  body.still .disc, body.still .star { animation-play-state:paused; }
 </style>
 </head>
 <body>
-<div id="frame">
-  <div class="farBlur" id="farBBlur"></div>
-  <div class="far" id="farB"></div>
-  <div class="farBlur" id="farABlur"></div>
-  <div class="far" id="farA"></div>
-  <div id="worldglow"></div>
-  <div id="dusk"></div>
-  <div id="movers"></div>
-  <div id="farfade"></div>
+  <div class="layer" id="layerA"></div>
+  <div class="layer" id="layerB"></div>
+  <div id="streamers"></div>
+  <div id="stars"></div>
+  <div class="shade"></div>
+  <div id="band"><img src="band.webp" alt=""></div>
 
-  <img id="train" src="train.webp" alt="From the front of the night train">
-  <div id="caption">THE STARRY NIGHT LINE</div>
-  <div id="tracks">
-    <button class="pill on" id="trkA" type="button">A &middot; DOWNTOWN</button>
-    <button class="pill" id="trkB" type="button">B &middot; THE PARK</button>
-    <button class="pill" id="trkC" type="button">C &middot; THE MONUMENT</button>
+  <div id="title">The Starry Night Line</div>
+  <div id="cap">Riding the night rails — it never ends</div>
+  <div id="mode">
+    <button id="btnLiving" class="on">Living</button>
+    <button id="btnStill">Still</button>
   </div>
-  <div id="picker">
-    <button class="pill on" id="btnLiving" type="button">LIVING</button>
-    <button class="pill" id="btnStill" type="button">STILL</button>
-  </div>
-</div>
+
 <script>
-  // One ride, two states: LIVING (the endless forward roll) and STILL
-  // (the painting at rest). The train never moves; only the world
-  // flows — toward us, vista after vista down whichever track the
-  // rider picked: A downtown, B the park, C the monument. Every track
-  // departs from the same station: the Starry Night Train painting.
-  (function(){
-    var params = new URLSearchParams(location.search);
-    // QA hooks: ?zoom=<seconds> shortens the vista cycle so the wrap
-    // can be straddled on demand; ?pace=<n> multiplies clock speed.
-    var P = parseFloat(params.get('zoom'));
-    if (!(P >= 8 && P <= 1200)) P = 17;
-    var FW = 0.35 * P; if (FW < 2) FW = 2;          // crossfade window, seconds
-    var S = 1.32;                                    // total growth per vista approach
-    var pace = parseFloat(params.get('pace'));
-    if (!(pace >= 0.1 && pace <= 50)) pace = 1;
+(function(){
+  var VPX = 0.535, VPY = 0.472;              // where the rails converge
+  var P = 16;                                 // seconds per approach
+  var FW = 0.35 * P; if (FW < 2) FW = 2;      // senior melt window
+  var S = 2.2;                                // growth per approach
+  var params = new URLSearchParams(location.search);
+  var zoomQ = parseFloat(params.get('zoom'));
+  if (zoomQ >= 4 && zoomQ <= 1200) { P = zoomQ; FW = 0.35 * P; if (FW < 2) FW = 2; }
+  var pace = parseFloat(params.get('pace')); if (!(pace > 0)) pace = 1;
 
-    var W = innerWidth, H = innerHeight;
-    var VPX = 0.50, VPY = 0.42;                      // the vanishing point
-
-    // ---- Far layers: three track sets, each a loop of vistas -------
-    var TRACKS = {
-      A: ['a0.jpg', 'a1.jpg', 'a2.jpg'],   // departure · the hero skyline · the station
-      B: ['b0.jpg', 'b1.jpg', 'b2.jpg'],   // departure · the park lake · the stone bridge
-      C: ['c0.jpg', 'c1.jpg', 'c2.jpg']    // departure · the causeway · Lady Liberty close
-    };
-    var cur = 'A';
-    var SET = TRACKS[cur];
-    var nextVista = 2;
-    function setVista(L, v){
-      L.vista = v;
-      L.el.style.backgroundImage = "url('" + SET[v] + "')";
-      L.blur.style.backgroundImage = "url('" + SET[v] + "')";
-    }
-    function farLayer(L, t){
-      var p = ((t + L.off) % P) / P;                 // 0..1 through its cycle
-      if (p < L.lastP - 0.5) {                       // wrapped: restart beneath,
-        setVista(L, nextVista % SET.length);         // wearing the next vista
-        nextVista++;
-      }
-      L.lastP = p;
-      var sc = Math.pow(S, p);
-      L.el.style.transform = 'scale(' + sc.toFixed(5) + ')';
-      L.blur.style.transform = 'scale(' + (sc * 1.05).toFixed(5) + ')';
-      return p;
-    }
-    var LA = { el: document.getElementById('farA'), blur: document.getElementById('farABlur'), off: 0,     vista: 0, lastP: 0 };
-    var LB = { el: document.getElementById('farB'), blur: document.getElementById('farBBlur'), off: P / 2, vista: 1, lastP: 0 };
-    setVista(LA, 0); setVista(LB, 1);
-    // Preload every track so a switch or a wrap never waits on the wire.
-    Object.keys(TRACKS).forEach(function(k){ TRACKS[k].forEach(function(v){ var i = new Image(); i.src = v; }); });
-
-    // ---- Track switching: one soft melt, never a flash -------------
-    var veil = document.getElementById('farfade');
-    var trkBtns = { A: document.getElementById('trkA'), B: document.getElementById('trkB'), C: document.getElementById('trkC') };
-    var melting = false;
-    function switchTrack(k){
-      if (k === cur || melting) return;
-      melting = true;
-      veil.style.opacity = 1;                        // the night closes over…
-      setTimeout(function(){
-        cur = k; SET = TRACKS[k];
-        simT = 0; LA.lastP = 0; LB.lastP = 0;
-        setVista(LA, 0); setVista(LB, 1); nextVista = 2;
-        render();
-        Object.keys(trkBtns).forEach(function(key){ trkBtns[key].classList.toggle('on', key === k); });
-        veil.style.opacity = 0;                      // …and lifts on the new line
-        setTimeout(function(){ melting = false; }, 380);
-      }, 370);
-    }
-    Object.keys(trkBtns).forEach(function(k){ trkBtns[k].addEventListener('click', function(){ switchTrack(k); }); });
-
-    // ---- Movers: two dim night clouds on approach paths ------------
-    var MOVERS = [
-      { img:'cloud1.webp', cloud:true, th: -58, T: 85, w0:.05, w1:.95, cap:900, off:3.1, ph:.30, op:.22 },
-      { img:'cloud2.webp', cloud:true, th:  78, T:100, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.18 }
-    ];
-    var host = document.getElementById('movers');
-    MOVERS.forEach(function(m){
-      var d = document.createElement('div');
-      d.className = 'mv cloudMv';
-      var im = document.createElement('img');
-      im.src = m.img; im.alt = '';
-      m.ar = 0.85;
-      im.addEventListener('load', function(){ if (im.naturalHeight) m.ar = im.naturalWidth / im.naturalHeight; });
-      d.appendChild(im);
-      host.appendChild(d); m.el = d;
+  var DISCS = [  // cx, cy, diameter (fractions of the painting), sway class
+    { src:'disc1.webp', cx:0.255, cy:0.125, d:0.175, cls:'d1' },
+    { src:'disc2.webp', cx:0.625, cy:0.185, d:0.195, cls:'d2' },
+    { src:'disc3.webp', cx:0.790, cy:0.335, d:0.130, cls:'d3' },
+    { src:'disc4.webp', cx:0.875, cy:0.145, d:0.120, cls:'d4' },
+    { src:'disc5.webp', cx:0.335, cy:0.175, d:0.095, cls:'d5' }
+  ];
+  function buildLayer(el){
+    var img = document.createElement('img');
+    img.className = 'world'; img.src = 'world.jpg'; img.alt = '';
+    el.appendChild(img);
+    DISCS.forEach(function(dc){
+      var wrap = document.createElement('div');
+      wrap.className = 'disc ' + dc.cls;
+      // the painting is 16:9; layer-space % of height = d * (16/9)
+      wrap.style.width = (dc.d * 100) + '%';
+      wrap.style.left = ((dc.cx - dc.d/2) * 100) + '%';
+      wrap.style.top = ((dc.cy - dc.d * 0.8889) * 100) + '%';
+      var di = document.createElement('img'); di.src = dc.src; di.alt = '';
+      wrap.appendChild(di);
+      el.appendChild(wrap);
     });
+  }
+  // The layer is always the painting's own 16:9, oversized to cover the
+  // screen, pinned so the rails' vanishing point sits at the screen's
+  // vanishing point at any aspect — painting coordinates stay true.
+  function fit(){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var lw = Math.max(vw, vh * 16 / 9), lh = lw * 9 / 16;
+    [layerA, layerB].forEach(function(el){
+      el.style.width = lw + 'px'; el.style.height = lh + 'px';
+      el.style.left = (VPX * vw - VPX * lw) + 'px';
+      el.style.top = (VPY * vh - VPY * lh) + 'px';
+    });
+  }
+  var layerA = document.getElementById('layerA');
+  var layerB = document.getElementById('layerB');
+  buildLayer(layerA); buildLayer(layerB);
+  fit();
+  window.addEventListener('resize', fit);
+  var layers = [
+    { el: layerA, off: 0 },
+    { el: layerB, off: P / 2 }
+  ];
 
-    function place(m, t){
-      var u = (t / m.T + m.ph) % 1;
-      var g = Math.exp(Math.log(m.w1 / m.w0) * u);       // growth factor
-      var wRaw = m.w0 * g * W;                           // uncapped approach width
-      var w = Math.min(wRaw, m.cap);
-      var h = w / m.ar;
-      var rho = m.off * wRaw;                            // distance follows the true approach
-      var rad = m.th * Math.PI / 180;
-      var cx = VPX * W + rho * Math.sin(rad);
-      var cy = VPY * H - rho * Math.cos(rad);
-      var op = m.op;
-      if (u < 0.07) op *= u / 0.07;                      // materialise far away, in the haze
-      else if (u > 0.93) op *= (1 - u) / 0.07;           // dissolve as it passes
-      m.el.style.width = w + 'px';
-      m.el.style.left = (cx - w / 2) + 'px';
-      m.el.style.top = (cy - h / 2) + 'px';
-      m.el.style.opacity = op.toFixed(3);
-    }
+  // Street lamps on approach paths at the edges of the track
+  var LAMPS = [];
+  var streamBox = document.getElementById('streamers');
+  [ {sx:0.452, ex:-0.07}, {sx:0.452, ex:-0.07}, {sx:0.452, ex:-0.07},
+    {sx:0.618, ex: 1.07}, {sx:0.618, ex: 1.07}, {sx:0.618, ex: 1.07} ].forEach(function(cfg, i){
+    var el = document.createElement('div');
+    el.className = 'lamp';
+    var im = document.createElement('img'); im.src = 'lamp.webp'; im.alt = '';
+    el.appendChild(im); streamBox.appendChild(el);
+    LAMPS.push({ el: el, sx: cfg.sx, ex: cfg.ex, T: 8, off: i * 1.37, w0: 0.012, w1: 0.34 });
+  });
 
-    // ---- The clock ---------------------------------------------------
-    var simT = 0, last = null;
-    function render(){
-      var pa = farLayer(LA, simT), pb = farLayer(LB, simT);
-      // The senior layer (further through its cycle, hence larger) rides
-      // on top; as it nears its end it fades, revealing the junior
-      // beneath — and at the wrap it restarts below wearing a new vista.
-      var aSenior = pa >= pb;
-      var sen = aSenior ? LA : LB, jun = aSenior ? LB : LA;
-      sen.el.style.zIndex = 1; jun.el.style.zIndex = 0;
-      sen.blur.style.zIndex = 1; jun.blur.style.zIndex = 0;
-      jun.el.style.opacity = 1; jun.blur.style.opacity = 1;
-      var fadeStart = 1 - FW / P;
-      var pSen = aSenior ? pa : pb;
-      sen.el.style.opacity = sen.blur.style.opacity =
-        pSen > fadeStart ? Math.max(0, 1 - (pSen - fadeStart) / (FW / P)) : 1;
-      for (var i = 0; i < MOVERS.length; i++) place(MOVERS[i], simT);
-    }
-    function tick(ts){
-      if (last == null) last = ts;
-      var dt = (ts - last) / 1000; last = ts;
-      if (!document.body.classList.contains('still')) simT += dt * pace;
-      render();
-      requestAnimationFrame(tick);
-    }
+  // Twinkling stars across the sky
+  var starBox = document.getElementById('stars');
+  var seed = 7;
+  function rnd(){ seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  for (var i = 0; i < 16; i++){
+    var st = document.createElement('div');
+    st.className = 'star';
+    var sz = 3 + rnd() * 5;
+    st.style.width = sz + 'px'; st.style.height = sz + 'px';
+    st.style.left = (4 + rnd() * 92) + '%';
+    st.style.top = (3 + rnd() * 34) + '%';
+    st.style.animationDuration = (2.4 + rnd() * 2.8) + 's';
+    st.style.animationDelay = (-rnd() * 4) + 's';
+    starBox.appendChild(st);
+  }
+
+  var living = true, simT = 0, last = null;
+  function setLayer(L, t){
+    var p = ((t + L.off) % P) / P;
+    var k = Math.pow(S, p);
+    L.el.style.transform = 'scale(' + k + ')';
+    var op = 1;
+    if (p > 1 - FW / P) op = 1 - (p - (1 - FW / P)) / (FW / P);
+    L.el.style.opacity = op;
+    L.el.style.zIndex = (p > 0.5) ? 2 : 1;
+    return p;
+  }
+  function setLamp(m, t){
+    var p = ((t + m.off) % m.T) / m.T;
+    var e = Math.pow(p, 2.1);
+    var x = m.sx + (m.ex - m.sx) * e;
+    var y = 0.502 + (1.03 - 0.502) * e;
+    var w = m.w0 + (m.w1 - m.w0) * e;
+    var op = p < 0.1 ? p / 0.1 : (p > 0.86 ? (1 - p) / 0.14 : 1);
+    m.el.style.width = (w * 100) + 'vw';
+    m.el.style.height = (w * 100) + 'vw';
+    m.el.style.transform = 'translate(' + (x * 100) + 'vw,' + (y * 100) + 'vh) translate(-50%,-50%)';
+    m.el.style.opacity = op * 0.9;
+  }
+  function frame(t){
+    layers.forEach(function(L){ setLayer(L, t); });
+    LAMPS.forEach(function(m){ setLamp(m, t); });
+  }
+  function tick(ts){
+    if (last === null) last = ts;
+    var dt = (ts - last) / 1000; last = ts;
+    if (dt > 0.25) dt = 0.25;
+    if (living) { simT += dt * pace; frame(simT); }
     requestAnimationFrame(tick);
+  }
+  frame(0);
+  requestAnimationFrame(tick);
 
-    // QA handle: jump the clock, read state.
-    window.__ride = {
-      setTime: function(s){ simT = s; render(); },
-      time: function(){ return simT; },
-      far: function(){ return { P: P, FW: FW }; },
-      track: function(){ return cur; },
-      vista: function(){ return { A: LA.vista, B: LB.vista, next: nextVista }; },
-      mover: function(i){ var r = MOVERS[i].el.getBoundingClientRect();
-        return { x:r.x, y:r.y, w:r.width, h:r.height }; }
-    };
+  var btnL = document.getElementById('btnLiving');
+  var btnS = document.getElementById('btnStill');
+  function setMode(live){
+    living = live;
+    document.body.classList.toggle('still', !live);
+    btnL.classList.toggle('on', live);
+    btnS.classList.toggle('on', !live);
+  }
+  btnL.addEventListener('click', function(){ setMode(true); });
+  btnS.addEventListener('click', function(){ setMode(false); });
 
-    addEventListener('resize', function(){ W = innerWidth; H = innerHeight; });
-    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
-    function setMode(s){
-      document.body.classList.toggle('still', s);
-      living.classList.toggle('on', !s); still.classList.toggle('on', s);
-    }
-    living.addEventListener('click', function(){ setMode(false); });
-    still.addEventListener('click', function(){ setMode(true); });
-  })();
+  window.__ride = { t: function(){ return simT; }, living: function(){ return living; } };
+})();
 </script>
 </body>
 </html>
