@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Starship — Fly a Spaceship</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#0d0a26; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #frame { position:fixed; inset:0; overflow:hidden; background:#0d0a26; touch-action:none; }
+
+  /* The world, flown FORWARD from the ship: two copies of the current
+     place stacked on the vanishing point. Each layer slowly scales up
+     — the place growing nearer — and the senior layer fades out over
+     the junior as its cycle ends, then restarts beneath it. The
+     vanishing point is the steering: it eases toward your hand when
+     you drag, and settles back to center when you let go. The ship
+     itself never moves — the universe turns. */
+  .far { position:absolute; inset:0; background:center/cover no-repeat;
+         transform-origin:50% 42%; will-change:transform, opacity; }
+  #farA { z-index:0; } #farB { z-index:1; }
+  .farBlur { position:absolute; inset:0; background:center/cover no-repeat;
+             transform-origin:50% 42%; will-change:transform, opacity;
+             filter:blur(16px) brightness(.88) saturate(1.15); display:none; }
+  @media (max-aspect-ratio: 1/1) {
+    .far { background-size:auto 62%; background-position:50% 42%;
+           -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%);
+           mask-image:linear-gradient(to bottom, rgba(0,0,0,0) 8%, #000 17%, #000 82%, rgba(0,0,0,0) 94%); }
+    .farBlur { display:block; }
+  }
+
+  /* Light only: a slow breathing glow over the place. */
+  #dusk { position:absolute; inset:0; pointer-events:none; z-index:2;
+          background:linear-gradient(180deg, rgba(16,8,48,.26), rgba(10,6,38,0) 42%, rgba(8,4,30,.30));
+          opacity:.25; animation: dusk 150s ease-in-out infinite alternate; }
+  @keyframes dusk { from { opacity:.12; } to { opacity:.5; } }
+  #worldglow { position:absolute; inset:0; z-index:1; pointer-events:none;
+               background:radial-gradient(120% 90% at 50% 62%, rgba(64,224,208,.10), rgba(64,224,208,0) 60%);
+               animation: breathe 11s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity:.45; } to { opacity:1; } }
+
+  /* The warp melt: one soft teal breath that hides a place change. */
+  #warp { position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0;
+          background:radial-gradient(90% 75% at 50% 45%, rgba(140,255,235,.85), rgba(64,224,208,.35) 55%, rgba(20,10,60,0) 100%); }
+
+  /* Movers — nebula wisps everywhere; the valley balloon and birds
+     belong to the Falls only and show only there. */
+  .mv { position:absolute; z-index:3; pointer-events:none; will-change:left, top, width, opacity; }
+  .mv img { display:block; width:100%; height:auto; }
+  .cloudMv { z-index:4; }
+  .burner { animation: burner 7s ease-in-out infinite alternate; }
+  @keyframes burner { from { filter:brightness(.96) drop-shadow(0 0 6px rgba(255,170,60,.25)); } to { filter:brightness(1.07) drop-shadow(0 0 14px rgba(255,170,60,.45)); } }
+  .birdMv svg { display:block; width:100%; height:auto; animation: flap 1.6s ease-in-out infinite alternate; transform-origin:50% 50%; }
+  @keyframes flap { from { transform:scaleY(.72); } to { transform:scaleY(1.12); } }
+
+  /* The ship: a storybook console, star-map glowing, twin sticks —
+     keyed from a painting made for this seat. It never moves a pixel;
+     that fixed frame is what makes the flight feel stable. */
+  #cockpit { position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+             width:100%; height:auto; z-index:6; display:block; pointer-events:none; }
+  @media (max-aspect-ratio: 1/1) { #cockpit { width:112%; } }
+
+  #caption { position:absolute; left:50%; top:2%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+             background:rgba(12,8,36,.55); color:#d8fff4; font-size:clamp(10px, 2.6vw, 13px); letter-spacing:2.5px;
+             padding:6px 14px; border-radius:999px; border:1px solid rgba(64,224,208,.5); pointer-events:none; }
+  #hint { position:absolute; left:50%; top:9%; transform:translateX(-50%); white-space:nowrap; z-index:8;
+          background:rgba(12,8,36,.45); color:#ffe9c4; font-size:clamp(10px, 2.6vw, 12px); letter-spacing:1.5px;
+          padding:5px 12px; border-radius:999px; border:1px solid rgba(255,196,86,.35); pointer-events:none;
+          transition:opacity 1.2s ease; }
+  #hint.gone { opacity:0; }
+  #places { position:absolute; left:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
+  #picker { position:absolute; right:2.5%; bottom:36vh; z-index:8; display:flex; gap:4px; }
+  @media (max-aspect-ratio: 1/1) { #places { bottom:17vh; } #picker { bottom:17vh; } }
+  .pill { background:rgba(12,8,36,.62); color:#d8fff4; border:1px solid rgba(64,224,208,.5); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(10px, 2.5vw, 12px); letter-spacing:1.5px;
+          padding:7px 12px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#40e0d0; color:#0c1030; border-color:#40e0d0; font-weight:bold; }
+  #picker .pill { color:#ffe9c4; border-color:rgba(255,196,86,.45); }
+  #picker .pill.on { background:#ffc456; color:#1c1038; border-color:#ffc456; }
+  body.still #dusk, body.still #worldglow, body.still .burner, body.still .birdMv svg { animation-play-state:paused !important; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div class="farBlur" id="farBBlur"></div>
+  <div class="far" id="farB"></div>
+  <div class="farBlur" id="farABlur"></div>
+  <div class="far" id="farA"></div>
+  <div id="worldglow"></div>
+  <div id="dusk"></div>
+  <div id="movers"></div>
+  <div id="warp"></div>
+
+  <img id="cockpit" src="ship.webp" alt="From the pilot's seat of the little starship">
+  <div id="caption">STARSHIP &middot; FLY A SPACESHIP</div>
+  <div id="hint">Drag to steer &middot; Pick a place to fly to</div>
+  <div id="places">
+    <button class="pill on" type="button" data-place="0">DEEP SPACE</button>
+    <button class="pill" type="button" data-place="1">NEBULA HARBOR</button>
+    <button class="pill" type="button" data-place="2">THE FALLS</button>
+  </div>
+  <div id="picker">
+    <button class="pill on" id="btnLiving" type="button">LIVING</button>
+    <button class="pill" id="btnStill" type="button">STILL</button>
+  </div>
+</div>
+<script>
+  // FLY A SPACESHIP TO PLACES. The ship always flies forward; you
+  // steer by dragging — the vanishing point eases toward your hand and
+  // the universe turns — and you pick where to fly with the place
+  // pills: one soft warp melt, and the new place is ahead of you.
+  (function(){
+    var params = new URLSearchParams(location.search);
+    var P = parseFloat(params.get('zoom'));
+    if (!(P >= 8 && P <= 1200)) P = 30;
+    var FW = 0.35 * P; if (FW < 2) FW = 2;
+    var S = 1.30;
+    var pace = parseFloat(params.get('pace'));
+    if (!(pace >= 0.1 && pace <= 50)) pace = 1;
+
+    var W = innerWidth, H = innerHeight;
+
+    // ---- Steering state ---------------------------------------------
+    var VPX = 0.50, VPY = 0.42;              // live vanishing point
+    var TX = 0.50, TY = 0.42;                // where the hand wants it
+    var CX = 0.50, CY = 0.42;                // home (center)
+
+    // ---- Places -------------------------------------------------------
+    var PLACES = ['place-space.jpg', 'place-harbor.jpg', 'place-falls.jpg'];
+    var place = 0;
+    PLACES.forEach(function(v){ var i = new Image(); i.src = v; });
+
+    var farA = document.getElementById('farA'), farB = document.getElementById('farB');
+    var farABlur = document.getElementById('farABlur'), farBBlur = document.getElementById('farBBlur');
+    var epoch = 0;                            // simT at the last place change
+    function setPlaceImages(){
+      var u = "url('" + PLACES[place] + "')";
+      farA.style.backgroundImage = u; farB.style.backgroundImage = u;
+      farABlur.style.backgroundImage = u; farBBlur.style.backgroundImage = u;
+    }
+    setPlaceImages();
+    function farLayer(el, blurEl, off, t){
+      var p = ((t + off) % P) / P;
+      var sc = Math.pow(S, p);
+      el.style.transform = 'scale(' + sc.toFixed(5) + ')';
+      blurEl.style.transform = 'scale(' + (sc * 1.05).toFixed(5) + ')';
+      return p;
+    }
+
+    // ---- Warp: one soft melt that swaps the place --------------------
+    var warpEl = document.getElementById('warp');
+    var warpStart = -1, warpDur = 0.9, warpSwapped = false, warpTarget = 0;
+    function flyTo(n){
+      if (n === place || warpStart >= 0) return;
+      warpTarget = n; warpStart = simT; warpSwapped = false;
+      Array.prototype.forEach.call(document.querySelectorAll('#places .pill'), function(b){
+        b.classList.toggle('on', parseInt(b.getAttribute('data-place'), 10) === n);
+      });
+    }
+    function warpOpacity(){
+      if (warpStart < 0) return 1;
+      var u = (simT - warpStart) / warpDur;
+      if (u >= 1) { warpStart = -1; warpEl.style.opacity = 0; return 1; }
+      if (u >= 0.5 && !warpSwapped) {
+        warpSwapped = true; place = warpTarget; setPlaceImages();
+        epoch = simT; setMoverVisibility();
+      }
+      var bell = Math.sin(Math.PI * Math.min(1, u));       // 0→1→0
+      warpEl.style.opacity = (bell * 0.85).toFixed(3);
+      return 1 - bell;
+    }
+
+    // ---- Movers --------------------------------------------------------
+    var BIRD = '<svg viewBox="0 0 26 10"><path d="M1 8 Q7 1 13 7 Q19 1 25 8" fill="none" stroke="rgba(16,10,34,.8)" stroke-width="2" stroke-linecap="round"/></svg>';
+    var MOVERS = [
+      { img:'cloud1.webp', cloud:true, th: -58, T: 85, w0:.05, w1:.95, cap:900, off:3.1, ph:.30, op:.22 },
+      { img:'cloud2.webp', cloud:true, th:  78, T:100, w0:.04, w1:.80, cap:760, off:3.4, ph:.80, op:.17 },
+      { img:'fwd_teal.webp', fallsOnly:true, th: -38, T: 79, w0:.028, w1:.62, cap:340, off:1.5, ph:.45, burner:true },
+      { bird:true, fallsOnly:true, th: -25, T:120, w0:9,  w1:30,  cap:30,  off:14, ph:.20, px:true, op:.85 },
+      { bird:true, fallsOnly:true, th:  48, T:135, w0:8,  w1:26,  cap:26,  off:15, ph:.65, px:true, op:.7 }
+    ];
+    var host = document.getElementById('movers');
+    MOVERS.forEach(function(m){
+      var d = document.createElement('div');
+      d.className = 'mv' + (m.cloud ? ' cloudMv' : '') + (m.bird ? ' birdMv' : '');
+      if (m.bird) { d.innerHTML = BIRD; m.ar = 26/10; }
+      else {
+        var im = document.createElement('img');
+        im.src = m.img; im.alt = '';
+        if (m.burner) im.className = 'burner';
+        m.ar = 0.85;
+        im.addEventListener('load', function(){ if (im.naturalHeight) m.ar = im.naturalWidth / im.naturalHeight; });
+        d.appendChild(im);
+      }
+      host.appendChild(d); m.el = d;
+    });
+    function setMoverVisibility(){
+      MOVERS.forEach(function(m){
+        m.el.style.display = (m.fallsOnly && place !== 2) ? 'none' : '';
+      });
+    }
+    setMoverVisibility();
+
+    function placeMover(m, t){
+      var u = (t / m.T + m.ph) % 1;
+      var g = Math.exp(Math.log(m.w1 / m.w0) * u);
+      var wRaw = m.px ? m.w0 * g : m.w0 * g * W;
+      var w = Math.min(wRaw, m.cap);
+      var h = w / m.ar;
+      var rho = m.off * (m.px ? w : wRaw);
+      var rad = m.th * Math.PI / 180;
+      var cx = VPX * W + rho * Math.sin(rad);
+      var cy = VPY * H - rho * Math.cos(rad);
+      var op = (m.op != null ? m.op : 1);
+      if (u < 0.07) op *= u / 0.07;
+      else if (u > 0.93) op *= (1 - u) / 0.07;
+      m.el.style.width = w + 'px';
+      m.el.style.left = (cx - w / 2) + 'px';
+      m.el.style.top = (cy - h / 2) + 'px';
+      m.el.style.opacity = op.toFixed(3);
+    }
+
+    // ---- The clock -----------------------------------------------------
+    var simT = 0, last = null;
+    function render(){
+      // ease the vanishing point toward the hand (or home)
+      VPX += (TX - VPX) * 0.06; VPY += (TY - VPY) * 0.06;
+      var org = (VPX * 100).toFixed(2) + '% ' + (VPY * 100).toFixed(2) + '%';
+      farA.style.transformOrigin = org; farB.style.transformOrigin = org;
+      farABlur.style.transformOrigin = org; farBBlur.style.transformOrigin = org;
+      var t = simT - epoch;
+      var pa = farLayer(farA, farABlur, 0, t), pb = farLayer(farB, farBBlur, P / 2, t);
+      var aSenior = pa >= pb;
+      var sen = aSenior ? farA : farB, jun = aSenior ? farB : farA;
+      var senBlur = aSenior ? farABlur : farBBlur, junBlur = aSenior ? farBBlur : farABlur;
+      var pSen = aSenior ? pa : pb;
+      sen.style.zIndex = 1; jun.style.zIndex = 0;
+      senBlur.style.zIndex = 1; junBlur.style.zIndex = 0;
+      var wo = warpOpacity();
+      jun.style.opacity = wo; junBlur.style.opacity = wo;
+      var fadeStart = 1 - FW / P;
+      var so = pSen > fadeStart ? Math.max(0, 1 - (pSen - fadeStart) / (FW / P)) : 1;
+      sen.style.opacity = senBlur.style.opacity = so * wo;
+      for (var i = 0; i < MOVERS.length; i++) placeMover(MOVERS[i], simT);
+    }
+    function tick(ts){
+      if (last == null) last = ts;
+      var dt = (ts - last) / 1000; last = ts;
+      if (!document.body.classList.contains('still')) simT += dt * pace;
+      render();
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // QA handle
+    window.__ride = {
+      setTime: function(s){ simT = s; render(); },
+      time: function(){ return simT; },
+      vp: function(){ return { x: VPX, y: VPY, tx: TX, ty: TY }; },
+      steer: function(x, y){ TX = x; TY = y; },
+      place: function(){ return place; },
+      flyTo: flyTo,
+      mover: function(i){ var r = MOVERS[i].el.getBoundingClientRect();
+        return { x:r.x, y:r.y, w:r.width, h:r.height }; }
+    };
+
+    // ---- Steering input --------------------------------------------------
+    var frame = document.getElementById('frame');
+    var hint = document.getElementById('hint');
+    var dragId = null, sx = 0, sy = 0;
+    function hintGone(){ hint.classList.add('gone'); }
+    setTimeout(hintGone, 9000);
+    frame.addEventListener('pointerdown', function(e){
+      if (e.target.closest('button')) return;
+      dragId = e.pointerId; sx = e.clientX; sy = e.clientY; hintGone();
+    });
+    frame.addEventListener('pointermove', function(e){
+      if (e.pointerId !== dragId) return;
+      var dx = (e.clientX - sx) / W, dy = (e.clientY - sy) / H;
+      TX = Math.min(0.70, Math.max(0.30, CX + dx * 0.9));
+      TY = Math.min(0.54, Math.max(0.30, CY + dy * 0.6));
+    });
+    function endDrag(e){
+      if (e.pointerId !== dragId) return;
+      dragId = null; TX = CX; TY = CY;
+    }
+    frame.addEventListener('pointerup', endDrag);
+    frame.addEventListener('pointercancel', endDrag);
+    var keys = {};
+    addEventListener('keydown', function(e){
+      keys[e.key] = true; hintGone();
+      TX = CX + (keys['ArrowRight'] ? 0.18 : 0) - (keys['ArrowLeft'] ? 0.18 : 0);
+      TY = CY + (keys['ArrowDown'] ? 0.10 : 0) - (keys['ArrowUp'] ? 0.10 : 0);
+    });
+    addEventListener('keyup', function(e){
+      keys[e.key] = false;
+      TX = CX + (keys['ArrowRight'] ? 0.18 : 0) - (keys['ArrowLeft'] ? 0.18 : 0);
+      TY = CY + (keys['ArrowDown'] ? 0.10 : 0) - (keys['ArrowUp'] ? 0.10 : 0);
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('#places .pill'), function(b){
+      b.addEventListener('click', function(){ flyTo(parseInt(b.getAttribute('data-place'), 10)); });
+    });
+    addEventListener('resize', function(){ W = innerWidth; H = innerHeight; });
+    var living = document.getElementById('btnLiving'), still = document.getElementById('btnStill');
+    function setMode(s){
+      document.body.classList.toggle('still', s);
+      living.classList.toggle('on', !s); still.classList.toggle('on', s);
+    }
+    living.addEventListener('click', function(){ setMode(false); });
+    still.addEventListener('click', function(){ setMode(true); });
+  })();
+</script>
+</body>
+</html>
