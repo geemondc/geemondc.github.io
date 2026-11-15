@@ -61,9 +61,12 @@
    ============================================================ */
 const VW = 960, VH = 720;
 const LAVA_Y = 688;            // lava surface
-const GRAV = 1150;             // px/s^2
-const FLAP_VY = -315;          // flap impulse
-const MAXFALL = 540;
+const GRAV = 1800;             // px/s^2 (snappier fall, tuned to the cabinet)
+const FLAP_VY = -430;          // flap impulse (pulsed lift; rhythm flapping climbs fast)
+const MAXFALL = 700;
+/* rider sprite geometry: sprites are 72x80, drawn at (e.x, e.y) */
+const RW = 72, RH = 80, RCX = 36;
+const BOX_L = 13, BOX_R = 59, BOX_T = 15, BOX_B = 74;  // collision box inside the sprite
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -151,180 +154,397 @@ const CLS_NAME = ['BOUNDER', 'HUNTER', 'SHADOW LORD'];
 const CLS_PTS = [500, 750, 1500];
 
 /* ---------------- sprite maps (char = 2 virtual px, facing right) ---------------- */
-const HEAD_TOP = [
-"............ppp................",
-"...........ppppp........HHHH...",
-"...........YYYYYd.......HHeHkkk",
-"...........YYYYY........nn....."
+const FLY_UP = [
+"....................................",
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+"............BBB..YYYYYY.............",
+"...........BBBBb.YYYY.d.............",
+"...........BBBBBbYYYYd..............",
+"..........BBBBBBYYYYYYYY............",
+"..........BBBBBBYYYYYYYY......nHHee.",
+".........BBBBBBBYYYYYYYd......nHHH..",
+".........BBBBBBBYYYYYYYdd.....nnHHkk",
+".........BBBBBBBBYYYYYYdd.....nnn.k.",
+".........BBBBBBBBYYYYYdlllllllllllll",
+".........BBBBBBBBYYYYdd......nnn....",
+"....hh...BBBBBBBBYYYdBb......nnn....",
+"...hhBh...BBBBBBBYY.YYb.....nnn.....",
+"..hBBBh...BBBBBBBYY.YY......nnn.....",
+"..BBBB....BBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbbbbbbbbbbbbb.........",
+".............bbnnbbbbbnn............",
+"...............nn.....nn............",
+"...............nn......nn...........",
+"...............nn......nn...........",
+"................nn.....nn...........",
+"................nn..................",
+"...............nnn..................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"...................................."
 ];
-const FLY_A = HEAD_TOP.concat([
-".....bbbbb.YYYYY.......nn......",
-"....bbbbbbbYYYYY.......nn......",
-"...bbbbbbbbYYYYYYYYY...nn......",
-"...bbbbbbbbYYYYllllllllllllllll",
-"...bbbbbbbbddddddd....nnn......",
-"bbbbBBBBBBBBBBBBBBBBBBBB.......",
-"..BBBBBhBBBBBBhBBBBBhBBBB......",
-"..BBBBBBBBBBBBBBBBBBBBBBBB.....",
-"...BBBBBBBBBBBBBBBBBBBBBBB.....",
-"...BBBBBBBBBBBBBBBBBBBBBB......",
-"....bbbbBBBBBBBBBBBBbbbb.......",
-"......bbbbbbbbbbbbbbbb.........",
-"..........nnn....nnn...........",
-"...........n......n............",
-"...............................",
-"...............................",
-"...............................",
-"...............................",
-"..............................."
-]);
-const FLY_B = HEAD_TOP.concat([
-"...........YYYYY.......nn......",
-"...........YYYYY.......nn......",
-"...........YYYYYYYYY...nn......",
-"...........YYYYllllllllllllllll",
-"...........ddddddd....nnn......",
-"bbbbBBBBBBBBBBBBBBBBBBBB.......",
-"..bbbbbbbbbbBBBBBBBBBBBBBB.....",
-"..bbbbbbbbbBBBBBBBBBBBBBBB.....",
-"...bbbbbbbBBBBBBBBBBBBBBBB.....",
-"...BBBBBBBBBBBBBBBBBBBBBB......",
-"....bbbbBBBBBBBBBBBBbbbb.......",
-"......bbbbbbbbbbbbbbbb.........",
-"..........nnn....nnn...........",
-"...........n......n............",
-"...............................",
-"...............................",
-"...............................",
-"...............................",
-"..............................."
-]);
-const STAND_A = HEAD_TOP.concat([
-"...........YYYYY.......nn......",
-"...........YYYYY.......nn......",
-"...........YYYYYYYYY...nn......",
-"...........YYYYllllllllllllllll",
-"...........ddddddd....nnn......",
-"bbbbBBBBBBBBBBBBBBBBBBBB.......",
-"..BBbbbbbbBBBBBBBBBBBBBB.......",
-"..BBBBBBBBBBBBBBBBBBBBBBBB.....",
-"...BBBBBBBBBBBBBBBBBBBBBBB.....",
-"....bbbbbbbbbbbbbbbbbbbb.......",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"...........nn......nn..........",
-"..........nnnn...nnnn.........."
-]);
-const STAND_B = HEAD_TOP.concat([
-"...........YYYYY.......nn......",
-"...........YYYYY.......nn......",
-"...........YYYYYYYYY...nn......",
-"...........YYYYllllllllllllllll",
-"...........ddddddd....nnn......",
-"bbbbBBBBBBBBBBBBBBBBBBBB.......",
-"..BBbbbbbbBBBBBBBBBBBBBB.......",
-"..BBBBBBBBBBBBBBBBBBBBBBBB.....",
-"...BBBBBBBBBBBBBBBBBBBBBBB.....",
-"....bbbbbbbbbbbbbbbbbbbb.......",
-"...........nn......nn..........",
-"............nn....nn...........",
-"............nn....nn...........",
-".............nn..nn............",
-".............nn..nn............",
-"..............nnnn.............",
-".............nn..nn............",
-"............nn....nn...........",
-"...........nnnn..nnnn.........."
-]);
+const FLY_MID = [
+"....................................",
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY......nHHee.",
+"................YYYYYYYd......nHHH..",
+"................YYYYYYYdd.....nnHHkk",
+".................YYYYYYdd.....nnn.k.",
+".................YYYYYdlllllllllllll",
+".................YYYYdd......nnn....",
+"....hh.....BBBBBBYYYd........nnn....",
+"...hhBh.BBBBBBBBBYY.YYBB....nnn.....",
+"..hBBBhBBBBBBBBBBYY.YYBBB...nnn.....",
+"..BBBB.BBBBBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbbbbbbbbbbbbb.........",
+".............bbnnbbbbbnn............",
+"...............nn.....nn............",
+"...............nn......nn...........",
+"...............nn......nn...........",
+"................nn.....nn...........",
+"................nn..................",
+"...............nnn..................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"...................................."
+];
+const FLY_DN = [
+"....................................",
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY......nHHee.",
+"................YYYYYYYd......nHHH..",
+"................YYYYYYYdd.....nnHHkk",
+".................YYYYYYdd.....nnn.k.",
+".................YYYYYdlllllllllllll",
+".................YYYYdd......nnn....",
+"....hh...........YYYd........nnn....",
+"...hhBh..........YY.YY......nnn.....",
+"..hBBBh..........YY.YY......nnn.....",
+"..BBBB....BBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+"........BbbbbBBBBBBBBBBBBbbbb.......",
+"........BBBbbbbbbbbbbbbbbbb.........",
+"........BBBBBbbnnbbbbbnn............",
+".......BBBBBBb.nn.....nn............",
+".......BBBBBb..nn......nn...........",
+".......BBBBb...nn......nn...........",
+"......BBBb......nn.....nn...........",
+"......BBb.......nn..................",
+"...............nnn..................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"...................................."
+];
+const GLIDE = [
+"....................................",
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY......nHHee.",
+"................YYYYYYYd......nHHH..",
+"................YYYYYYYdd.....nnHHkk",
+".................YYYYYYdd.....nnn.k.",
+".................YYYYYdlllllllllllll",
+".........BBBBBBBBYYYYdd......nnn....",
+"....hhBBBBBBBBBBBYYYd........nnn....",
+"...hhBhBBBBBBBBBBYY.YYB.....nnn.....",
+"..hBBBhBBBBBBBBBBYY.YY......nnn.....",
+"..BBBBBBBBBBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbbbbbbbbbbbbb.........",
+".............bbbnnnnbbb.............",
+".............nnnn...................",
+"...........nnnn.....................",
+"........nnnn........................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"....................................",
+"...................................."
+];
+const STAND = [
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY............",
+"................YYYYYYYd......nHHe..",
+"................YYYYYYYdd.....nHHH..",
+".................YYYYYYdd.....nnHHkk",
+".................YYYYYdd......nnn.k.",
+".................YYYYdd.......nnn...",
+".................YYYd..lllllllllllll",
+".................YY.YY........nnn...",
+".................YY.YY........nnn...",
+"..............................nnn...",
+".............................nnn....",
+"...hhBh......................nnn....",
+"..hBBBh.....................nnn.....",
+"..BBBB....BBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBhhhhhhBBBBBBBBBBBBBB.....",
+".......BBBBBhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbnnbbbbbnnbbb.........",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"..............nnnn...nnnn..........."
+];
+const RUN_A = [
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY............",
+"................YYYYYYYd......nHHe..",
+"................YYYYYYYdd.....nHHH..",
+".................YYYYYYdd.....nnHHkk",
+".................YYYYYdd......nnn.k.",
+".................YYYYdd.......nnn...",
+".................YYYd..lllllllllllll",
+".................YY.YY........nnn...",
+".................YY.YY........nnn...",
+"..............................nnn...",
+".............................nnn....",
+"...hhBh......................nnn....",
+"..hBBBh.....................nnn.....",
+"..BBBB....BBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBhhhhhhBBBBBBBBBBBBBB.....",
+".......BBBBBhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbnnbbbbbnnbbb.........",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"..............nn.......nn...........",
+"..............nn........nn..........",
+".............nn.........nn..........",
+".............nn..........nn.........",
+"............nn...........nn.........",
+"...........nnnn.........nnnn........"
+];
+const RUN_B = [
+"....................................",
+"...................ppp..............",
+"..................ppppp.............",
+"..................YYYYY.............",
+".................YYYYYY.............",
+".................YYYY.d.............",
+".................YYYYd..............",
+"................YYYYYYYY............",
+"................YYYYYYYY............",
+"................YYYYYYYd......nHHe..",
+"................YYYYYYYdd.....nHHH..",
+".................YYYYYYdd.....nnHHkk",
+".................YYYYYdd......nnn.k.",
+".................YYYYdd.......nnn...",
+".................YYYd..lllllllllllll",
+".................YY.YY........nnn...",
+".................YY.YY........nnn...",
+"..............................nnn...",
+".............................nnn....",
+"...hhBh......................nnn....",
+"..hBBBh.....................nnn.....",
+"..BBBB....BBBBBBBBBBBBBBBBBBBB......",
+"...BBB..BBhhhhBBBBBBBBBBBBBBBBBB....",
+"...BBBBBBhhhhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBhhhhhhBBBBBBBBBBBBBB.....",
+".......BBBBBhhhhBBBBBBBBBBBBBBB.....",
+".......BBBBBBBBBBBBBBBBBBBBBBB......",
+"........BBBBBBBBBBBBBBBBBBBBBB......",
+"........bBBBBBBBBBBBBBBBBBBBb.......",
+".........bbbbBBBBBBBBBBBBbbbb.......",
+"...........bbbbnnbbbbbnnbbb.........",
+"...............nn.....nn............",
+"...............nn.....nn............",
+"..............nn......nnn...........",
+"..............nn.....nn.............",
+"..............nn....................",
+"..............nn....................",
+"..............nn....................",
+"..............nn....................",
+".............nnnn..................."
+];
 const KNIGHT = [
-"....ppp.....",
-"...ppppp....",
-"...YYYYY....",
-"...YYYdd....",
-"...YYYY.....",
-"...YYYYlllll",
-"...YYYY.....",
-"....YYY.....",
-"...YY.YY....",
-"...YY.YY....",
-"...YY.YY....",
-"...YY.YY....",
-"...YY.YY....",
-"..YYY.YYY..."
+".....ppp......",
+"....ppppp.....",
+"....YYYYY.....",
+"....YYYYY.....",
+"....YYYY.d....",
+"....YYYY......",
+"...YYYYYY.....",
+"...YYYYYYll...",
+"...YYYYYYlllll",
+"...YYYYYY.....",
+"....YYYY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"....Y.YY......",
+"...YYY.YYY....",
+"...YY...YY...."
 ];
 const EGG_MAP = [
-"...WWW...",
-"..WWWWW..",
-".WWWWWWW.",
-".WWWsWWW.",
-"WWWWWWWWW",
-"WWWWWWWWW",
-"WWWsWWWWW",
-".WWWWWWW.",
-".WWWsWWW.",
-"..WWWWW..",
-"...sss..."
+"...WWWWW...",
+"..WWWWWWW..",
+".WWWWWWWWW.",
+".WWWWsWWWW.",
+"WWWWWWWWWWW",
+"WWWWWWWWWWW",
+"WWWsWWWWWWW",
+"WWWWWWWWWWW",
+"WWWWWWWWWWW",
+".WWWWWWWWW.",
+".WWWWsWWWW.",
+"..WWWWWWW..",
+"...sssss..."
 ];
 const PTERO_A = [
-"......bbbb..............................",
-"......bbbbbbb...........................",
-"......bbbbbbbbb.........................",
-"......bbbbbbbbbbb.......................",
-"......bbbbbbbbbbbbb.........BBB.........",
-"......BBBBBBBBBBBBBB......BBBBkkkkkkkkkk",
-"........BBBBBBBBBBBBBBBBBBBBekkkkkkk....",
-".........BBBBBBBBBBBBBBBBBB.............",
-"..........BBBBBBBBBBBBBBbb..............",
-"............bbbbbbbbbbbb................",
-"....bbbbbb..nnn.........................",
-"........................................",
-"........................................",
-"........................................",
-"........................................",
-"........................................"
+"......................BBB.............................",
+"....................BBBBB.............................",
+"...................BBBBBBb............................",
+"..................BBBBBBBBb....kkk....................",
+".................BBBBBBBBBBb.....kkkk.................",
+"................BBBBBBBBBBBBb......kkkk...............",
+"........bb......BBBBBBBBBBBBBb.......BBBB.............",
+"......bbbb....BBBBBBBBBBBBBBBBBBBBBBBBBBekkkkkkkkkkkk.",
+".....bbbbb...BBBBBBBBBBBBBBBBBBBBBBBBBBBBkkkkkkkkk....",
+"......bbbb...BBBBBBBBBBBBBBBBBBBBBBBBBBB.kkkk.........",
+"........bb....bbbbBBBBBBBBBBBBBBBBbb..................",
+"................bbbbbbbbbbbbbbbbbb....................",
+"........................nn............................",
+"......................nn..............................",
+"......................................................",
+"......................................................",
+"......................................................"
 ];
 const PTERO_B = [
-"........................................",
-"........................................",
-"........................................",
-"........................BBB.............",
-"........................BBBB............",
-"......BBBBBBBBBBBBBB......BBBBkkkkkkkkkk",
-"........BBBBBBBBBBBBBBBBBBBBekkkkkkk....",
-".........BBBBBBBBBBBBBBBBBB.............",
-"......bbbBBBBBBBBBBBBBBBBbb.............",
-"......bbbbbbbbbbbbbbbbbb................",
-"....bbbbbb..nnn.........................",
-"........................................",
-"........................................",
-"........................................",
-"........................................",
-"........................................"
+"......................................................",
+"......................................................",
+"......................................................",
+"...............................kkk....................",
+".................................kkkk.................",
+"...................................kkkk...............",
+"........bb...........................BBBB.............",
+"......bbbb....BBBBBBBBBBBBBBBBBBBBBBBBBBekkkkkkkkkkkk.",
+".....bbbbb...BBBBBBBBBBBBBBBBBBBBBBBBBBBBkkkkkkkkk....",
+"......bbbb...BBBBBBBBBBBBBBBBBBBBBBBBBBB.kkkk.........",
+"........bb....bbbbBBBBBBBBBBBBBBBBbb..................",
+"................bbbbbbbbbbbbbbbbbb....................",
+"................BBBBBBBBnnBBb.........................",
+".................BBBBBnnBBBb..........................",
+"..................BBBBBBBBb...........................",
+"...................BBBBBBb............................",
+".....................BBBB............................."
 ];
 const HAND_MAP = [
-"...bb....bb...",
-"..bBBb..bBBb..",
-"..bBBb..bBBb..",
-".bBBBBBBBBBBb.",
-".bBBBBBBBBBBb.",
-"..bBBBBBBBBb..",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb...",
-"...bBBBBBBb..."
+"..bb........bb..",
+"..bBBb......bBBb",
+"..bBBb......bBBb",
+"...bBBb....bBBb.",
+"...bBBBb..bBBb..",
+"....bBBBBBBBb...",
+"....bBBBBBBb....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+".....bBBBBb.....",
+"....bbBBBBbb....",
+"....bbbbbbbb...."
 ];
 const ICON_MAP = [
 "..ppp..",
@@ -338,7 +558,8 @@ const ICON_MAP = [
 ".YY.YY."
 ];
 function deriveBird(rows){ return rows.map(r => r.replace(/[Ydpl]/g, '.')); }
-const BIRD_A = deriveBird(FLY_A), BIRD_B = deriveBird(FLY_B);
+const BIRD_UP = deriveBird(FLY_UP), BIRD_MID = deriveBird(FLY_MID),
+      BIRD_DN = deriveBird(FLY_DN), BIRD_GLIDE = deriveBird(GLIDE);
 
 /* sprite builder: map + palette -> offscreen canvas at unit=2 */
 const SPR = {};
@@ -357,13 +578,17 @@ function buildSprite(rows, pal){
 function buildAllSprites(){
   for (const pk of Object.keys(PAL)){
     SPR[pk] = {
-      flyA: buildSprite(FLY_A, PAL[pk]), flyB: buildSprite(FLY_B, PAL[pk]),
-      standA: buildSprite(STAND_A, PAL[pk]), standB: buildSprite(STAND_B, PAL[pk]),
+      up: buildSprite(FLY_UP, PAL[pk]), mid: buildSprite(FLY_MID, PAL[pk]),
+      dn: buildSprite(FLY_DN, PAL[pk]), glide: buildSprite(GLIDE, PAL[pk]),
+      stand: buildSprite(STAND, PAL[pk]), runA: buildSprite(RUN_A, PAL[pk]),
+      runB: buildSprite(RUN_B, PAL[pk]),
       knight: buildSprite(KNIGHT, PAL[pk]), icon: buildSprite(ICON_MAP, PAL[pk])
     };
   }
-  SPR.birdA = buildSprite(BIRD_A, PAL.bounder);
-  SPR.birdB = buildSprite(BIRD_B, PAL.bounder);
+  SPR.birdUp = buildSprite(BIRD_UP, PAL.bounder);
+  SPR.birdMid = buildSprite(BIRD_MID, PAL.bounder);
+  SPR.birdDn = buildSprite(BIRD_DN, PAL.bounder);
+  SPR.birdGlide = buildSprite(BIRD_GLIDE, PAL.bounder);
   SPR.egg = buildSprite(EGG_MAP, PAL.p1);
   SPR.pteroA = buildSprite(PTERO_A, PAL.ptero);
   SPR.pteroB = buildSprite(PTERO_B, PAL.ptero);
@@ -416,7 +641,7 @@ function paintTopBand(g, w){
   g.fillStyle = '#7e8894'; g.fillRect(0, 6, w, 1);
 }
 function makePlatTexture(w, seed){
-  const h = 34;
+  const h = 46;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   g.save(); paintRock(g, w, h, seed); g.restore();
@@ -711,7 +936,7 @@ function nextWave(){
     for (let i = 0; i < 12; i++){
       const pl = spots[(Math.random() * spots.length) | 0];
       const ex = pl.x + 20 + Math.random() * (pl.w - 40);
-      eggs.push({x: ex, y: pl.y - 11, vx: 0, vy: 0, resting: true, plat: pl,
+      eggs.push({x: ex, y: pl.y - 13, vx: 0, vy: 0, resting: true, plat: pl,
         hatchT: -i * 0.8 - Math.random() * 2, landed: true, bounced: true, fromCls: 0, shake: false});
     }
     spawnQueue = 0;
@@ -732,8 +957,8 @@ function spawnPlatList(){
 function placePlayerSpawn(p){
   const list = spawnPlatList();
   const pref = p.idx === 0 ? list[0] : (platById(game.plats, 'lm') || list[list.length - 1]);
-  p.x = pref.x + pref.w / 2 - 31 + (p.idx === 0 ? 0 : 0);
-  p.y = pref.y - 46;
+  p.x = pref.x + pref.w / 2 - RCX;
+  p.y = pref.y - RH;
   p.vx = 0; p.vy = 0; p.grounded = true; p.plat = pref;
   p.dir = p.idx === 0 ? 1 : -1;
 }
@@ -749,23 +974,24 @@ function spawnEnemy(){
   const list = spawnPlatList().filter(pl => !pl.thin);
   const busy = pl => {
     const cx = pl.x + pl.w / 2;
-    for (const e of enemies) if (Math.abs(riderCX(e) - cx) < 80 && Math.abs(e.y - (pl.y - 46)) < 60) return true;
-    for (const p of players) if (p.state === 'play' && Math.abs(riderCX(p) - cx) < 80 && Math.abs(p.y - (pl.y - 46)) < 60) return true;
+    for (const e of enemies) if (Math.abs(riderCX(e) - cx) < 80 && Math.abs(e.y - (pl.y - RH)) < 60) return true;
+    for (const p of players) if (p.state === 'play' && Math.abs(riderCX(p) - cx) < 80 && Math.abs(p.y - (pl.y - RH)) < 60) return true;
     return false;
   };
   const free = list.filter(pl => !busy(pl));
   const pool = free.length ? free : list;
   const pl = pool[(Math.random() * pool.length) | 0];
-  const e = makeEnemy(classForSpawn(game.wave), pl.x + pl.w / 2 - 31, pl.y - 46);
+  const e = makeEnemy(classForSpawn(game.wave), pl.x + pl.w / 2 - RCX, pl.y - RH);
   e.plat = pl;
   enemies.push(e);
 }
 
 /* ---------------- shared rider physics ---------------- */
-const RUN_MAX = 215, AIR_MAX = 305;
-function riderCX(e){ return e.x + 31; }
+const RUN_MAX = 250, AIR_MAX = 440;
+function riderCX(e){ return e.x + RCX; }
 function dust(x, y){ burst(x, y, 5, ['#c9a06a', '#8a6a3a', '#e8d8a8'], 55, 260, 0.35); }
 function stepRider(e, dt, dirIn, isPlayer){
+  if (e.wingT > 0) e.wingT -= dt;
   if (e.clashCD > 0) e.clashCD -= dt;
   if (e.trollCD > 0) e.trollCD -= dt;
   const flapPow = e.flapPow || FLAP_VY;
@@ -777,31 +1003,31 @@ function stepRider(e, dt, dirIn, isPlayer){
   };
   if (e.grounded){
     const pl = e.plat;
-    if (!pl || !game.plats.includes(pl) || riderCX(e) < pl.x - 12 || riderCX(e) > pl.x + pl.w + 12){
+    if (!pl || !game.plats.includes(pl) || riderCX(e) < pl.x - 16 || riderCX(e) > pl.x + pl.w + 16){
       e.grounded = false;
     } else {
-      e.y = pl.y - 46; e.vy = 0;
+      e.y = pl.y - RH; e.vy = 0;
       if (e.flapQ){ e.flapQ = false; e.grounded = false; doFlap(); dust(riderCX(e), pl.y); }
       else {
         if (dirIn !== 0){
           if (e.vx * dirIn < -60){
-            e.vx += 1800 * dt * dirIn;
+            e.vx += 2600 * dt * dirIn;
             e.skidT += dt;
             if (isPlayer && e.skidT > 0.07){ e.skidT = 0; SFX.skid(); }
           } else {
-            e.vx += 1400 * dt * dirIn;
+            e.vx += 1900 * dt * dirIn;
             if (e.vx > RUN_MAX) e.vx = RUN_MAX;
             if (e.vx < -RUN_MAX) e.vx = -RUN_MAX;
           }
           e.dir = dirIn;
           e.runDist += Math.abs(e.vx) * dt;
         } else {
-          if (e.vx > 0) e.vx = Math.max(0, e.vx - 1600 * dt);
-          else e.vx = Math.min(0, e.vx + 1600 * dt);
+          if (e.vx > 0) e.vx = Math.max(0, e.vx - 2400 * dt);
+          else e.vx = Math.min(0, e.vx + 2400 * dt);
         }
         e.x += e.vx * dt;
-        if (e.x < -62) e.x += VW + 62;
-        if (e.x > VW) e.x -= VW + 62;
+        if (e.x < -RW) e.x += VW + RW;
+        if (e.x > VW) e.x -= VW + RW;
         return;
       }
     }
@@ -811,33 +1037,33 @@ function stepRider(e, dt, dirIn, isPlayer){
   e.vy += GRAV * dt;
   if (e.vy > MAXFALL) e.vy = MAXFALL;
   if (dirIn !== 0){
-    e.vx += 300 * dt * dirIn;
+    e.vx += 560 * dt * dirIn;
     if (e.vx > AIR_MAX) e.vx = AIR_MAX;
     if (e.vx < -AIR_MAX) e.vx = -AIR_MAX;
     e.dir = dirIn;
-  } else {
-    e.vx -= e.vx * 0.12 * dt;
   }
-  const prevFeet = e.y + 46, prevHead = e.y + 4;
+  /* no air drag: momentum carries, like the cabinet */
+  const prevFeet = e.y + RH, prevHead = e.y + BOX_T;
   e.x += e.vx * dt;
   e.y += e.vy * dt;
-  if (e.x < -62) e.x += VW + 62;
-  if (e.x > VW) e.x -= VW + 62;
-  if (e.y < 8){ e.y = 8; if (e.vy < 30) e.vy = 30; }
-  const feet = e.y + 46, head = e.y + 4;
+  if (e.x < -RW) e.x += VW + RW;
+  if (e.x > VW) e.x -= VW + RW;
+  if (e.y < 4){ e.y = 4; if (e.vy < 0){ e.vy = -e.vy * 0.45; if (isPlayer) SFX.bonk(); } }
+  const feet = e.y + RH, head = e.y + BOX_T;
   for (const pl of game.plats){
-    if (!(e.x + 50 > pl.x && e.x + 12 < pl.x + pl.w)) continue;
-    const pBottom = pl.y + 16;
+    if (!(e.x + BOX_R > pl.x && e.x + BOX_L < pl.x + pl.w)) continue;
+    const pBottom = pl.y + (pl.thin ? 10 : 20);
     if (e.vy >= 0 && prevFeet <= pl.y + 1 && feet >= pl.y){
-      e.y = pl.y - 46; e.vy = 0; e.grounded = true; e.plat = pl;
-      if (prevFeet < pl.y - 30) dust(riderCX(e), pl.y);
+      e.y = pl.y - RH; e.vy = 0; e.grounded = true; e.plat = pl;
+      if (prevFeet < pl.y - 60) dust(riderCX(e), pl.y);
       break;
     }
     if (e.vy < 0 && prevHead >= pBottom && head < pBottom){
-      e.y = pBottom - 4; e.vy = 40;
+      e.y = pBottom - BOX_T; e.vy = Math.max(60, -e.vy * 0.45);
+      if (isPlayer) SFX.bonk();
     }
   }
-  if (!e.grounded && e.y + 46 > LAVA_Y + 8) lavaDeath(e);
+  if (!e.grounded && e.y + RH > LAVA_Y + 8) lavaDeath(e);
 }
 function lavaDeath(e){
   burst(riderCX(e), LAVA_Y, 16, ['#ff5a1a', '#ffd21f', '#ff8a3a'], 170, 300, 0.6);
@@ -857,17 +1083,23 @@ function killPlayer(p){
   else { p.state = 'dead'; p.respawnT = 1.2; }
 }
 function unseatEnemy(e, winner){
-  eggs.push({x: riderCX(e), y: e.y + 30, vx: e.vx * 0.3, vy: -40,
+  eggs.push({x: riderCX(e), y: e.y + 40, vx: e.vx * 0.3, vy: -40,
     resting: false, plat: null, hatchT: 0, landed: false, bounced: false, fromCls: e.cls, shake: false});
-  birds.push({mode: 'leave', x: e.x, y: e.y, vx: (e.dir > 0 ? 1 : -1) * 260, t: 0, target: null});
+  birds.push({mode: 'leave', x: e.x, y: e.y, vx: (e.dir > 0 ? 1 : -1) * 320, t: 0, target: null});
   burst(riderCX(e), e.y + 20, 12, ['#ffffff', '#1d9e4b', '#5fd67f'], 140, 200, 0.6);
   SFX.clank(); SFX.poof();
   e.state = 'gone';
 }
+function recoil(winner, loser){
+  const d = riderCX(winner) < riderCX(loser) ? -1 : 1;
+  winner.vx += d * 170;
+  winner.vy = Math.min(winner.vy, -70);
+  winner.grounded = false;
+}
 function bounceApart(a, b){
   const d = riderCX(a) < riderCX(b) ? -1 : 1;
-  a.vx = d * 175; b.vx = -d * 175;
-  a.vy = Math.min(a.vy, -50); b.vy = Math.min(b.vy, -50);
+  a.vx = d * 230; b.vx = -d * 230;
+  a.vy = Math.min(a.vy, -120); b.vy = Math.min(b.vy, -120);
   a.grounded = false; b.grounded = false;
   a.clashCD = 0.3; b.clashCD = 0.3;
   SFX.bonk();
@@ -880,12 +1112,13 @@ function combat(){
     for (let j = i + 1; j < riders.length; j++){
       const a = riders[i], b = riders[j];
       if (a.clashCD > 0 || b.clashCD > 0) continue;
-      if (!(a.x + 50 > b.x + 12 && b.x + 50 > a.x + 12 && a.y + 42 > b.y + 8 && b.y + 42 > a.y + 8)) continue;
+      if (!(a.x + BOX_R > b.x + BOX_L && b.x + BOX_R > a.x + BOX_L && a.y + BOX_B > b.y + BOX_T && b.y + BOX_B > a.y + BOX_T)) continue;
       const dy = a.y - b.y; // lance height difference (lance row is fixed)
       if (Math.abs(dy) <= 5){ bounceApart(a, b); continue; }
       const loser = dy > 0 ? a : b, winner = dy > 0 ? b : a;
       if (loser.kind === 'enemy'){
         if (winner.kind === 'player') addScore(winner, CLS_PTS[loser.cls], riderCX(loser), loser.y, '#ffffff');
+        recoil(winner, loser);
         unseatEnemy(loser, winner);
       } else {
         if (loser.invulnT > 0){ bounceApart(a, b); continue; }
@@ -895,6 +1128,7 @@ function combat(){
           addScore(winner, pts, riderCX(loser), loser.y, '#ffffff');
           waveInfo.pvpUnseat = true;
         }
+        recoil(winner, loser);
         killPlayer(loser);
       }
     }
@@ -920,9 +1154,9 @@ function updatePlayer(p, dt){
   if (p.state !== 'play') return;
   stepRider(p, dt, playerInput(p), true);
 }
-const ENEMY_FLAP = [-300, -320, -335];
-const ENEMY_CD = [0.46, 0.38, 0.30];
-const ENEMY_SPD = [195, 240, 290];
+const ENEMY_FLAP = [-400, -420, -440];
+const ENEMY_CD = [0.44, 0.36, 0.28];
+const ENEMY_SPD = [250, 300, 355];
 function updateEnemy(e, dt){
   if (e.state === 'spawn'){
     e.spawnT -= dt;
@@ -950,8 +1184,8 @@ function updateEnemy(e, dt){
   } else {
     e.groundT = 0;
     const wantAbove = e.cls === 2 ? 26 : e.cls === 1 ? 16 : 6;
-    const desiredY = Math.max(40, Math.min(545, ty - wantAbove));
-    if (e.flapCD <= 0 && (e.y > desiredY + 8 || e.y > 556)){
+    const desiredY = Math.max(40, Math.min(520, ty - wantAbove));
+    if (e.flapCD <= 0 && (e.y > desiredY + 8 || e.y > 520)){
       e.flapQ = true;
       e.flapCD = ENEMY_CD[e.cls] * (0.9 + Math.random() * 0.2);
     }
@@ -963,20 +1197,20 @@ function updateEnemy(e, dt){
 }
 function updateEgg(e, dt){
   if (!e.resting){
-    const prevBottom = e.y + 11;
+    const prevBottom = e.y + 13;
     e.vy += GRAV * dt;
     e.x += e.vx * dt; e.y += e.vy * dt;
     if (e.x < 9) { e.x = 9; e.vx = Math.abs(e.vx) * 0.5; }
     if (e.x > VW - 9) { e.x = VW - 9; e.vx = -Math.abs(e.vx) * 0.5; }
     for (const pl of game.plats){
       if (e.x < pl.x || e.x > pl.x + pl.w) continue;
-      if (prevBottom <= pl.y + 1 && e.y + 11 >= pl.y){
-        if (e.vy > 170 && !e.bounced){ e.vy = -e.vy * 0.35; e.vx *= 0.5; e.bounced = true; e.y = pl.y - 11; }
-        else { e.resting = true; e.plat = pl; e.y = pl.y - 11; e.vy = 0; e.vx = 0; e.landed = true; }
+      if (prevBottom <= pl.y + 1 && e.y + 13 >= pl.y){
+        if (e.vy > 170 && !e.bounced){ e.vy = -e.vy * 0.35; e.vx *= 0.5; e.bounced = true; e.y = pl.y - 13; }
+        else { e.resting = true; e.plat = pl; e.y = pl.y - 13; e.vy = 0; e.vx = 0; e.landed = true; }
         break;
       }
     }
-    if (e.y + 11 > LAVA_Y + 4){
+    if (e.y + 13 > LAVA_Y + 4){
       burst(e.x, LAVA_Y, 10, ['#ff5a1a', '#ffd21f'], 130, 260, 0.5);
       SFX.splash();
       e.dead = true;
@@ -1004,16 +1238,16 @@ function updateBird(b, dt){
   if (b.mode === 'leave'){
     b.x += b.vx * dt;
     b.y += Math.sin(b.t * 9) * 0.5;
-    if (b.x < -90 || b.x > VW + 30) b.dead = true;
+    if (b.x < -RW - 20 || b.x > VW + 20) b.dead = true;
     return;
   }
   const s = b.target;
-  if (!s || s.dead){ b.mode = 'leave'; b.vx = (b.x < VW / 2 ? -1 : 1) * 260; return; }
-  const tx = s.x - 31, ty = s.feetY - 46;
+  if (!s || s.dead){ b.mode = 'leave'; b.vx = (b.x < VW / 2 ? -1 : 1) * 320; return; }
+  const tx = s.x - RCX, ty = s.feetY - RH;
   const dx = tx - b.x, dy = ty - b.y;
   const dist = Math.hypot(dx, dy);
   if (dist < 16){
-    const e = makeEnemy(s.cls, s.x - 31, s.feetY - 46);
+    const e = makeEnemy(s.cls, s.x - RCX, s.feetY - RH);
     e.state = 'play'; e.grounded = false; e.vy = -170;
     enemies.push(e);
     s.dead = true; b.dead = true;
@@ -1025,7 +1259,7 @@ function updateBird(b, dt){
 }
 function spawnPtero(){
   const fromLeft = Math.random() < 0.5;
-  ptero = {x: fromLeft ? -90 : VW + 10, y: 250, baseY: 250, dir: fromLeft ? 1 : -1, vx: 0, t: 0, screechT: 0};
+  ptero = {x: fromLeft ? -120 : VW + 12, y: 250, baseY: 250, dir: fromLeft ? 1 : -1, vx: 0, t: 0, screechT: 0};
   SFX.screech(true);
 }
 function updatePtero(dt){
@@ -1045,21 +1279,21 @@ function updatePtero(dt){
   pt.vx += ((pt.dir * 340) - pt.vx) * 3 * dt;
   pt.x += pt.vx * dt;
   pt.y = pt.baseY + Math.sin(pt.t * 7) * 13;
-  if (pt.x < -100) pt.x = VW + 12;
-  if (pt.x > VW + 20) pt.x = -100;
+  if (pt.x < -130) pt.x = VW + 12;
+  if (pt.x > VW + 24) pt.x = -130;
   for (const p of players){
     if (p.state !== 'play') continue;
-    const tipX = p.x + (p.dir > 0 ? 62 : 0), tipY = p.y + 14;
-    const hx = pt.dir > 0 ? pt.x + 50 : pt.x - 2, hy = pt.y + 2;
-    if (tipX > hx && tipX < hx + 32 && tipY > hy && tipY < hy + 22){
-      addScore(p, 1000, pt.x + 40, pt.y, '#ffd21f');
-      burst(pt.x + 40, pt.y + 16, 16, ['#d8a860', '#a8763e', '#efe6cc'], 160, 220, 0.7);
+    const tipX = p.x + (p.dir > 0 ? RW : 0), tipY = p.y + 26;
+    const hx = pt.dir > 0 ? pt.x + 76 : pt.x + 2, hy = pt.y + 4;
+    if (tipX > hx && tipX < hx + 30 && tipY > hy && tipY < hy + 24){
+      addScore(p, 1000, pt.x + 54, pt.y, '#ffd21f');
+      burst(pt.x + 54, pt.y + 16, 16, ['#d8a860', '#a8763e', '#efe6cc'], 160, 220, 0.7);
       SFX.poof();
       ptero = null;
       return;
     }
     if (p.invulnT <= 0 &&
-        p.x + 50 > pt.x + 8 && pt.x + 72 > p.x + 12 && p.y + 42 > pt.y + 10 && pt.y + 32 > p.y + 8){
+        p.x + BOX_R > pt.x + 10 && pt.x + 100 > p.x + BOX_L && p.y + BOX_B > pt.y + 12 && pt.y + 30 > p.y + BOX_T){
       killPlayer(p);
     }
   }
@@ -1072,7 +1306,7 @@ function updateTroll(dt){
     for (const e of enemies) if (e.state === 'play') riders.push(e);
     for (const r of riders){
       if (r.trollCD > 0 || r.grounded) continue;
-      const feet = r.y + 46;
+      const feet = r.y + RH;
       if (feet <= LAVA_Y - 48) continue; // must be down in the lava band
       const cx = riderCX(r);
       // safe if a platform surface is right beneath (skimming/landing), else open lava
@@ -1091,7 +1325,7 @@ function updateTroll(dt){
   hand.t += dt;
   r.x = hand.x - 31;
   r.vx = 0; r.vy = 0;
-  r.y = LAVA_Y - 76 - (hand.phase === 'drag' ? (hand.t / 0.35) * 56 : 0);
+  r.y = LAVA_Y - 116 - (hand.phase === 'drag' ? (hand.t / 0.35) * 66 : 0);
   if (hand.phase === 'rise' && hand.t > 0.25){ hand.phase = 'hold'; hand.t = 0; }
   else if (hand.phase === 'hold'){
     if (r.kind === 'player'){
@@ -1121,16 +1355,16 @@ function playerVsStandingEggs(){
     if (p.state !== 'play') continue;
     for (const s of standings){
       if (s.dead) continue;
-      if (p.x + 50 > s.x - 11 && s.x + 11 > p.x + 12 && p.y + 42 > s.feetY - 28 && s.feetY > p.y + 8){
-        addScore(p, CLS_PTS[s.cls], s.x, s.feetY - 34, '#ffffff');
-        burst(s.x, s.feetY - 14, 10, ['#ffffff', PAL[CLS_PAL[s.cls]].Y], 120, 180, 0.5);
+      if (p.x + BOX_R > s.x - 14 && s.x + 14 > p.x + BOX_L && p.y + BOX_B > s.feetY - 40 && s.feetY > p.y + BOX_T){
+        addScore(p, CLS_PTS[s.cls], s.x, s.feetY - 48, '#ffffff');
+        burst(s.x, s.feetY - 20, 10, ['#ffffff', PAL[CLS_PAL[s.cls]].Y], 120, 180, 0.5);
         SFX.clank();
         s.dead = true;
       }
     }
     for (const e of eggs){
       if (e.dead) continue;
-      if (p.x + 50 > e.x - 9 && e.x + 9 > p.x + 12 && p.y + 42 > e.y - 11 && e.y + 11 > p.y + 8){
+      if (p.x + BOX_R > e.x - 11 && e.x + 11 > p.x + BOX_L && p.y + BOX_B > e.y - 13 && e.y + 13 > p.y + BOX_T){
         const ladder = [250, 500, 750, 1000];
         let pts = ladder[Math.min(p.eggsWave, 3)];
         if (!e.landed){ pts += 500; popup(e.x, e.y - 26, '+500 AIR', '#ffd21f'); }
@@ -1287,34 +1521,45 @@ function drawSpriteFlipped(spr, x, y, dir, alpha){
 function riderSprite(e){
   const S = SPR[e.palKey];
   if (e.grounded){
-    if (Math.abs(e.vx) > 25) return (Math.floor(e.runDist / 26) % 2 === 0) ? S.standA : S.standB;
-    return S.standA;
+    if (Math.abs(e.vx) > 25) return (Math.floor(e.runDist / 30) % 2 === 0) ? S.runA : S.runB;
+    return S.stand;
   }
-  return (Math.floor(game.time * 7 + (e.seed || 0) * 3) % 2 === 0) ? S.flyA : S.flyB;
+  if (e.wingT > 0.11) return S.dn;
+  if (e.wingT > 0.05) return S.mid;
+  if (e.wingT > 0) return S.up;
+  if (e.vy > 150) return S.glide;
+  return S.up;
 }
 function drawRider(e){
   if (e.state === 'gone' || e.state === 'out' || e.state === 'dead') return;
   let alpha = 1;
   if (e.state === 'spawn') alpha = 1 - (e.spawnT / 0.6) * 0.75;
   if (e.kind === 'player' && e.invulnT > 0 && Math.floor(game.time * 14) % 2 === 0) alpha = 0.35;
-  drawSpriteFlipped(riderSprite(e), e.x, e.y, e.dir, alpha);
+  const spr = riderSprite(e);
+  drawSpriteFlipped(spr, e.x, e.y, e.dir, alpha);
+  if (e.x < 0) drawSpriteFlipped(spr, e.x + VW, e.y, e.dir, alpha);
+  if (e.x + RW > VW) drawSpriteFlipped(spr, e.x - VW, e.y, e.dir, alpha);
 }
 function drawEntities(){
   for (const e of eggs){
     const sx = e.shake ? (Math.random() < 0.5 ? -1 : 1) : 0;
-    ctx.drawImage(SPR.egg, Math.round(e.x - 9 + sx), Math.round(e.y - 11));
+    ctx.drawImage(SPR.egg, Math.round(e.x - 11 + sx), Math.round(e.y - 13));
   }
   for (const s of standings){
     if (s.dead) continue;
-    drawSpriteFlipped(SPR[CLS_PAL[s.cls]].knight, s.x - 12, s.feetY - 28, 1, 1);
+    drawSpriteFlipped(SPR[CLS_PAL[s.cls]].knight, s.x - 16, s.feetY - 42, 1, 1);
   }
   if (hand){
-    const rise = hand.phase === 'rise' ? (0.25 - Math.min(hand.t, 0.25)) / 0.25 * 30 : 0;
-    ctx.drawImage(SPR.hand, Math.round(hand.x - 14), Math.round(LAVA_Y - 36 + rise));
+    const rise = hand.phase === 'rise' ? (0.25 - Math.min(hand.t, 0.25)) / 0.25 * 36 : 0;
+    ctx.drawImage(SPR.hand, Math.round(hand.x - 16), Math.round(LAVA_Y - 40 + rise));
   }
   for (const b of birds){
-    const spr = Math.floor(game.time * 8 + b.t * 3) % 2 === 0 ? SPR.birdA : SPR.birdB;
-    drawSpriteFlipped(spr, b.x, b.y, b.mode === 'leave' ? Math.sign(b.vx) : (b.target && b.target.x > b.x + 31 ? 1 : -1), 1);
+    const ph = Math.floor(b.t * 9) % 4;
+    const spr = ph === 0 ? SPR.birdUp : ph === 1 ? SPR.birdMid : ph === 2 ? SPR.birdDn : SPR.birdMid;
+    const bdir = b.mode === 'leave' ? Math.sign(b.vx) : (b.target && b.target.x > b.x + RCX ? 1 : -1);
+    drawSpriteFlipped(spr, b.x, b.y, bdir, 1);
+    if (b.x < 0) drawSpriteFlipped(spr, b.x + VW, b.y, bdir, 1);
+    if (b.x + RW > VW) drawSpriteFlipped(spr, b.x - VW, b.y, bdir, 1);
   }
   for (const e of enemies) drawRider(e);
   for (const p of players) drawRider(p);
