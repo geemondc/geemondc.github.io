@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="The Math Game Show — a living poster. A new game is on its way.">
+<meta name="theme-color" content="#17102e">
+<title>The Math Game Show</title>
+<link rel="icon" href="data:,">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#17102e}
+  body{
+    position:fixed;inset:0;touch-action:none;overscroll-behavior:none;
+    display:flex;align-items:center;justify-content:center;
+    font-family:Georgia,'Times New Roman',serif;
+    -webkit-user-select:none;user-select:none;
+  }
+  /* blurred clone of the painting fills whatever the stage does not */
+  .bg{position:absolute;inset:-40px;background:url('poster.webp') center/cover no-repeat;
+      filter:blur(26px) brightness(.72) saturate(1.35);z-index:0}
+  .stage{
+    position:relative;z-index:1;overflow:hidden;
+    width:min(100vw,66.6667dvh);aspect-ratio:2/3;max-height:100dvh;
+    box-shadow:0 0 60px rgba(0,0,0,.55);
+    background:#241547;
+  }
+  .painting{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:0}
+  /* soft glow breathing on the chalkboard (board spans ~x8-92%, y4.5-43% of the painting) */
+  .boardglow{
+    position:absolute;left:8%;top:4.5%;width:84%;height:38.5%;z-index:1;pointer-events:none;
+    border-radius:8px;mix-blend-mode:screen;
+    background:radial-gradient(ellipse at 50% 46%,rgba(196,255,214,.50),rgba(130,255,175,.16) 55%,rgba(130,255,175,0) 76%);
+    animation:boardBreathe 7s ease-in-out infinite alternate;
+  }
+  @keyframes boardBreathe{from{opacity:.35}to{opacity:.95}}
+  /* gentle warm light breathing over the whole painting */
+  .breathe{
+    position:absolute;inset:0;z-index:2;pointer-events:none;mix-blend-mode:screen;
+    background:radial-gradient(ellipse at 50% 30%,rgba(255,214,130,.34),rgba(255,214,130,0) 62%);
+    animation:lightBreathe 9s ease-in-out infinite alternate;
+  }
+  @keyframes lightBreathe{from{opacity:.25}to{opacity:.7}}
+  /* marquee bulbs chasing around the top arch */
+  .bulbs{position:absolute;inset:0;z-index:3;pointer-events:none}
+  .bulb{
+    position:absolute;width:15px;height:15px;border-radius:50%;transform:translate(-50%,-50%);
+    background:radial-gradient(circle,rgba(255,244,200,.95) 0%,rgba(255,196,64,.55) 42%,rgba(255,170,40,0) 72%);
+    animation:chase 1.5s ease-in-out infinite;
+  }
+  @keyframes chase{0%,100%{opacity:.3;scale:.82}50%{opacity:1;scale:1.18}}
+  /* confetti drifting and tumbling down the frame */
+  .confetti{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+  .cf{position:absolute;top:-46px;animation-name:fall;animation-timing-function:linear;animation-iteration-count:infinite;will-change:transform}
+  .cf i{display:block;animation-name:tumble;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate;will-change:transform}
+  @keyframes fall{to{transform:translateY(var(--fall,700px))}}
+  @keyframes tumble{
+    from{transform:translateX(-16px) rotate(-170deg) rotateX(35deg)}
+    to{transform:translateX(16px) rotate(195deg) rotateX(-55deg)}
+  }
+  /* words riding on the poster */
+  .furniture{
+    position:absolute;left:0;right:0;bottom:0;z-index:5;text-align:center;
+    padding:52px 18px calc(16px + env(safe-area-inset-bottom));
+    background:linear-gradient(to bottom,rgba(12,7,28,0),rgba(12,7,28,.52) 34%,rgba(12,7,28,.82));
+    color:#fff7e0;
+  }
+  .furniture h1{
+    font-size:clamp(25px,7.4vw,34px);letter-spacing:.02em;font-weight:700;
+    text-shadow:0 2px 14px rgba(0,0,0,.65),0 0 34px rgba(255,190,60,.35);
+  }
+  .furniture p{margin-top:6px;font-size:clamp(15px,4.4vw,18px);color:#ffeec2;text-shadow:0 1px 8px rgba(0,0,0,.7)}
+  .furniture a{
+    display:inline-block;margin-top:11px;padding:7px 16px;border:1.5px solid rgba(255,210,110,.85);
+    border-radius:999px;color:#ffd76e;text-decoration:none;font-size:14.5px;background:rgba(20,12,44,.45);
+  }
+  .furniture a:active{background:rgba(255,210,110,.25)}
+  @media (prefers-reduced-motion: reduce){
+    .boardglow,.breathe,.bulb,.cf,.cf i{animation:none !important}
+  }
+</style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <main class="stage" id="stage">
+    <img class="painting" src="poster.webp" alt="Goggles presenting a big green chalkboard while the seven friends cheer on a game show set">
+    <div class="boardglow" aria-hidden="true"></div>
+    <div class="breathe" aria-hidden="true"></div>
+    <div class="bulbs" id="bulbs" aria-hidden="true"></div>
+    <div class="confetti" id="confetti" aria-hidden="true"></div>
+    <div class="furniture">
+      <h1>The Math Game Show</h1>
+      <p>A new game is on its way.</p>
+      <a href="https://geemondc.github.io/future-ready-hub/">&larr; Future Ready</a>
+    </div>
+  </main>
+<script>
+(function(){
+  var stage = document.getElementById('stage');
+
+  /* marquee bulbs along the arch: edges lower, crown at the top center */
+  var bulbs = document.getElementById('bulbs'), N = 15, i, b;
+  for(i = 0; i < N; i++){
+    var t = i / (N - 1);
+    b = document.createElement('span');
+    b.className = 'bulb';
+    b.style.left = (3 + 94 * t) + '%';
+    b.style.top = (9.5 - 8 * Math.sin(Math.PI * t)) + '%';
+    b.style.animationDelay = (i * 0.1) + 's';
+    bulbs.appendChild(b);
+  }
+
+  /* confetti: colorful pieces drifting down, swaying and tumbling */
+  var confetti = document.getElementById('confetti');
+  var COLORS = ['#ff5da2','#ffd23e','#38b6d9','#7a5cff','#ff8a3e','#69d66f'];
+  var pieces = [];
+  for(i = 0; i < 26; i++){
+    var outer = document.createElement('span');
+    outer.className = 'cf';
+    var inner = document.createElement('i');
+    var w = 6 + Math.random() * 6, h = 8 + Math.random() * 7;
+    inner.style.width = w + 'px';
+    inner.style.height = h + 'px';
+    inner.style.background = COLORS[i % COLORS.length];
+    inner.style.borderRadius = (i % 4 === 0) ? '50%' : '2px';
+    inner.style.animationDuration = (1.6 + Math.random() * 1.8) + 's';
+    outer.style.left = (Math.random() * 98) + '%';
+    outer.style.animationDuration = (11 + Math.random() * 7) + 's';
+    outer.style.animationDelay = (-Math.random() * 16) + 's';
+    outer.appendChild(inner);
+    confetti.appendChild(outer);
+    pieces.push(outer);
+  }
+  function setFall(){
+    var h = stage.clientHeight + 90;
+    for(var k = 0; k < pieces.length; k++) pieces[k].style.setProperty('--fall', h + 'px');
+  }
+  setFall();
+  window.addEventListener('resize', setFall);
+})();
+</script>
+</body>
+</html>
