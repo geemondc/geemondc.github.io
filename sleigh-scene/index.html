@@ -19,6 +19,12 @@
              background:rgba(8,16,34,.55); color:#eaf4ff; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(160,200,255,.5); pointer-events:none; }
   body.wall #caption { display:none; }
+  #picker { position:absolute; left:50%; top:2.5%; transform:translateX(-50%); z-index:6; display:flex; gap:4px; max-width:98%; }
+  .pill { background:rgba(8,16,34,.62); color:#eaf4ff; border:1px solid rgba(160,200,255,.5); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(9px, 2.5vw, 12px); letter-spacing:.5px;
+          padding:7px 10px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#bcd8ff; color:#0a1428; border-color:#bcd8ff; font-weight:bold; }
+  body.wall #picker { display:none; }
   #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
              background:rgba(8,16,34,.72); color:#bcd8ff; border:2px solid #bcd8ff; border-radius:999px;
              font-family: Georgia, 'Times New Roman', serif; font-size:clamp(15px, 4.4vw, 20px); letter-spacing:2px;
@@ -29,43 +35,83 @@
 <body>
 <div id="fill"></div>
 <div id="wrap">
-  <div id="frame">
+  <div id="frame" data-clip="0">
     <img id="poster" src="still.jpg" alt="Riding in a horse-drawn sleigh through a snowy village at dusk">
-    <video class="vid" id="vidA" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
-    <video class="vid" id="vidB" src="ride.mp4" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
     <button id="startbtn" type="button">&#9654; START THE RIDE</button>
     <div id="caption">THE SLEIGH RIDE &middot; A WINTER VILLAGE</div>
+    <div id="picker">
+      <button class="pill" type="button" data-mode="ride">THE RIDE</button>
+      <button class="pill" type="button" data-mode="village">TO THE VILLAGE</button>
+      <button class="pill" type="button" data-mode="long">LONG RIDE</button>
+    </div>
   </div>
 </div>
 <script>
-  // The Sleigh Ride scene: one winter loop, crossfaded at the seam so
-  // it never jumps. In #wall (inside a Living Card) the caption hides
-  // and the ride simply plays, full frame. If autoplay is blocked, a
-  // START THE RIDE button appears; one tap starts a muted video.
+  // The Sleigh Ride: two ways to ride — The Ride (the original winter
+  // loop) and To The Village, a first-person glide down the village
+  // street toward the big lit tree — plus the Long Ride, which runs
+  // both in a row. Two stacked players crossfade every seam so it
+  // never jumps. In #wall (inside a Living Card) the caption and the
+  // picker hide and the original ride simply plays, full frame. If
+  // autoplay is blocked, a START THE RIDE button appears; one tap
+  // starts a muted video.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var LEGS = { ride:'ride.mp4', village:'ride2.mp4' };
+    var LONG = ['ride.mp4', 'ride2.mp4'];
+    var frame = document.getElementById('frame');
     var A = document.getElementById('vidA'), B = document.getElementById('vidB');
     var btn = document.getElementById('startbtn');
-    var FADE = 1.6, front = A, back = B, fading = false;
-    front.style.opacity = '1'; back.style.opacity = '0';
+    var pills = Array.prototype.slice.call(document.querySelectorAll('.pill'));
+    var list = [LEGS.ride], idx = 0, front = A, back = B, fading = false;
     function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function preload(v, i){ var src = list[i % list.length]; if (v.getAttribute('src') !== src) { v.src = src; v.load(); } }
+    function fadeLen(){ if (list.length === 1) return 1.6; return (idx + 1) % list.length === 0 ? 2.5 : 1.4; }
+    function crossTo(newList){
+      list = newList;
+      fading = true;
+      back.src = list[0]; back.load(); back.currentTime = 0; tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / 600);
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; idx = 0; frame.setAttribute('data-clip', '0'); back.pause(); preload(back, 1); fading = false; }
+      })();
+    }
     function swap(){
       fading = true;
+      var F = fadeLen();
       back.currentTime = 0;
       tryPlay(back);
       var t0 = performance.now();
       (function step(){
-        var k = Math.min(1, (performance.now() - t0) / (FADE * 1000));
+        var k = Math.min(1, (performance.now() - t0) / (F * 1000));
         front.style.opacity = String(1 - k); back.style.opacity = String(k);
         if (k < 1) requestAnimationFrame(step);
-        else { var f = front; front = back; back = f; back.pause(); fading = false; }
+        else { var f = front; front = back; back = f; idx = (idx + 1) % list.length; frame.setAttribute('data-clip', String(idx)); back.pause(); preload(back, idx + 1); fading = false; }
       })();
     }
+    function setMode(mode){
+      pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === mode); });
+      crossTo(mode === 'long' ? LONG.slice() : [LEGS[mode]]);
+    }
+    pills.forEach(function(p){ p.addEventListener('click', function(){ if (!fading) setMode(p.getAttribute('data-mode')); }); });
     setInterval(function(){
-      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - FADE) swap();
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
       btn.style.display = (front.paused && !fading) ? 'block' : 'none';
     }, 400);
     btn.addEventListener('click', function(){ tryPlay(front); });
+    // Start: ?ride=village (or long) picks the first ride.
+    var start = (new URLSearchParams(location.search).get('ride') || 'ride').toLowerCase();
+    if (!LEGS[start] && start !== 'long') start = 'ride';
+    A.src = start === 'long' ? LONG[0] : LEGS[start];
+    front.style.opacity = '1'; back.style.opacity = '0';
+    list = start === 'long' ? LONG.slice() : [LEGS[start]];
+    pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === start); });
+    preload(B, 1);
     tryPlay(A);
   })();
 </script>
