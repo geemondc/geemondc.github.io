@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>New Baby — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#f7e8ee; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.72); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#f7e8ee;
+           box-shadow:0 18px 60px rgba(120,70,90,.35); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:nbDrift 13s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes nbDrift { from { transform:scale(1.035) translate(0.5%,0.3%); } to { transform:scale(1.065) translate(-0.7%,-0.4%); } }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  /* the morning light breathing in through the window */
+  #sunbeam { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; animation:nbBreathe 11s ease-in-out infinite alternate;
+        background:radial-gradient(55% 62% at 19% 16%, rgba(255,232,170,.38), rgba(255,215,140,.12) 55%, rgba(255,215,140,0) 78%); }
+  @keyframes nbBreathe { from { opacity:.45 } to { opacity:1 } }
+  /* dust motes drifting in the sunbeam — the traveling element */
+  #motes { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .mote { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; opacity:0;
+        background:radial-gradient(closest-side, rgba(255,252,235,.95), rgba(255,240,200,.3) 55%, rgba(255,240,200,0) 78%);
+        animation:nbMote linear infinite; will-change:transform,opacity; }
+  @keyframes nbMote { 0% { transform:translate(0,0); opacity:0 } 18% { opacity:.75 } 55% { opacity:.5 } 100% { transform:translate(var(--mx), var(--my)); opacity:0 } }
+  /* the mobile's gold stars and moon, catching the light as it slowly turns */
+  .mstar { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,224,150,.95), rgba(240,190,100,.3) 55%, rgba(240,190,100,0) 78%);
+        animation:nbTwk ease-in-out infinite alternate; }
+  @keyframes nbTwk { from { opacity:.3; transform:translate(-50%,-50%) scale(.8) } to { opacity:1; transform:translate(-50%,-50%) scale(1.18) } }
+  /* the balloons' sheen, swaying almost imperceptibly */
+  #sheen { position:absolute; left:85.5%; top:14%; width:17%; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; mix-blend-mode:screen;
+        background:radial-gradient(closest-side, rgba(255,255,255,.4), rgba(255,255,255,.1) 55%, rgba(255,255,255,0) 78%);
+        animation:nbSway 7s ease-in-out infinite alternate; }
+  @keyframes nbSway { from { transform:translate(-52%,-50%); opacity:.25 } to { transform:translate(-48%,-50%); opacity:.5 } }
+  /* the little lamp on the dresser, glowing warm */
+  #lamp { position:absolute; left:7%; top:26.5%; width:4.5%; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; mix-blend-mode:screen;
+        background:radial-gradient(closest-side, rgba(255,226,160,.8), rgba(255,195,110,.25) 55%, rgba(255,195,110,0) 78%);
+        animation:nbTwk 4.5s ease-in-out infinite alternate; }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(122,62,84,.45); color:#fff5f8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,200,215,.6); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, #sunbeam, .mote, .mstar, #sheen, #lamp { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="still" src="still.jpg" alt="All eight friends gathered happily around a white crib in a soft pastel nursery in the morning light — the baby asleep under a knitted blanket, a mobile of gold stars and a crescent moon turning slowly above the crib, one friend holding up tiny knitted booties, another holding a bunch of pastel balloons, a stuffed bunny on the rocking chair">
+    </div>
+    <div id="sunbeam"></div>
+    <div id="sheen"></div>
+    <div id="lamp"></div>
+    <div id="fx"></div>
+    <div id="motes"></div>
+    <div id="caption">WELCOME, LITTLE ONE</div>
+  </div>
+</div>
+<script>
+  // New Baby (Gary's living standard): the painting stays exactly itself; the morning light breathes warm gold through the window, dust motes drift in the sunbeam, the mobile's stars and moon twinkle as it slowly turns, and the balloons sway almost imperceptibly. The gentlest of the cards — a nursery hush. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var host = document.getElementById('fx'), html = '';
+    // the mobile's hanging pieces — stars and the crescent moon over the crib
+    var pieces = [[52.5,48.5,1.5],[56,47.5,1.7],[58.5,47,1.4],[53.5,52,1.2],[60,46.3,1.0],[50.8,45.5,0.9]];
+    for (var i = 0; i < pieces.length; i++) {
+      html += '<div class="mstar" style="left:' + pieces[i][0] + '%;top:' + pieces[i][1] + '%;width:' + pieces[i][2] + '%;aspect-ratio:1;animation-duration:' + (2.6 + (i % 3) * 0.7).toFixed(1) + 's;animation-delay:-' + (i * 0.53).toFixed(2) + 's"></div>';
+    }
+    host.innerHTML = html;
+    // dust motes in the sunbeam, left of frame
+    var motes = document.getElementById('motes'), mhtml = '';
+    for (var m = 0; m < 14; m++) {
+      var mx = 5 + (m * 29) % 30, my = 6 + (m * 41) % 46;
+      var dx = ((m % 5) - 2) * 1.6, dy = 5 + (m % 4) * 1.8;
+      var mdur = (11 + (m % 5) * 2.2).toFixed(1), mdel = (m * 1.37).toFixed(2);
+      mhtml += '<div class="mote" style="left:' + mx + '%;top:' + my + '%;width:' + (0.5 + (m % 3) * 0.18).toFixed(2) + '%;aspect-ratio:1;--mx:' + dx.toFixed(1) + 'vw;--my:' + dy.toFixed(1) + 'vh;animation-duration:' + mdur + 's;animation-delay:-' + mdel + 's"></div>';
+    }
+    motes.innerHTML = mhtml;
+  })();
+</script>
+</body>
+</html>
