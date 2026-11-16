@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Mom's Page — a working demo</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mom's Page">
+<meta name="theme-color" content="#0E6B6B">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
   :root{
     --bg:#FAF4E8; --card:#FFFDF7; --ink:#22333B; --soft:#5A6B72;
@@ -175,6 +183,22 @@ details.history{margin:10px 0 4px} details.history summary{font-size:21px; font-
 <script>try{var b=localStorage.getItem('carolBg'); if(b) document.documentElement.setAttribute('data-bg', b);}catch(e){}</script>
 <div class="wrap">
   <div style="background:#FFF3C4;border:2.5px solid #C9A227;border-radius:14px;padding:14px 16px;margin:14px 0;font-size:19px;line-height:1.45"><b>This is a demo.</b> Every button below really works — and right now they all reach <b>Gary</b>, standing in as the family. Press them and try: the FaceTime call rings Gary, and the texts and email open with the words already written — just tap Send. On <i>your</i> parent&rsquo;s page, these same buttons reach <i>your</i> family.</div>
+  <div class="card" id="appCard" style="border-top-color:#0E6B6B">
+    <div style="display:flex;gap:16px;align-items:center">
+      <img src="icon-192.png" alt="The Mom's Page app picture — a gold heart on teal" style="width:76px;height:76px;border-radius:18px;flex:none;box-shadow:0 2px 8px rgba(90,70,20,.25)">
+      <div>
+        <h2 style="margin:0 0 4px">This page becomes an app</h2>
+        <p style="margin:0">On your parent&rsquo;s phone it sits on the home screen with its own picture — one tap and it&rsquo;s open. No typing, no searching, nothing to hunt for.</p>
+      </div>
+    </div>
+    <div id="appSteps">
+      <p style="margin:14px 0 6px"><b>Try it on this phone:</b></p>
+      <p style="margin:0 0 4px"><b>iPhone:</b> tap the Share button (the square with the arrow pointing up), then tap <b>Add to Home Screen</b>.</p>
+      <p style="margin:0"><b>Android:</b> tap the &#8943; menu, then <b>Add to Home screen</b>.</p>
+      <button id="installBtn" class="bigbtn" type="button" style="display:none">Put it on this phone</button>
+    </div>
+    <p id="appDone" style="display:none;margin:12px 0 0"><b>You&rsquo;re opening it as the app right now</b> — this is exactly how it opens from the home screen.</p>
+  </div>
   <button id="lookBtn" class="lookbtn" type="button">&#9881;&#65039; Settings / Adjustment</button>
   <div id="lookPanel" class="lookpanel">
     <div class="lookhead"><span>Settings / Adjustment</span><button id="lookClose" class="lookx" type="button" aria-label="Close">&#10005;</button></div>
@@ -279,5 +303,26 @@ try{
     <p style="margin-top:14px"><b>Want one for your parent?</b> Email or text Gary from the Family Pages site and we&rsquo;ll talk about what theirs should have.</p>
   </section>
 </div>
+<script>
+(function(){
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if (standalone) {
+    var s = document.getElementById('appSteps'), d = document.getElementById('appDone');
+    if (s) s.style.display = 'none';
+    if (d) d.style.display = 'block';
+    return;
+  }
+  var deferred = null, btn = document.getElementById('installBtn');
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); deferred = e;
+    if (btn) btn.style.display = 'block';
+  });
+  if (btn) btn.addEventListener('click', function(){
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function(){ deferred = null; btn.style.display = 'none'; });
+  });
+})();
+</script>
 </body>
 </html>
