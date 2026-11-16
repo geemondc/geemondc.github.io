@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Christmas Morning — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#2a0a0a; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.55); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#2a0a0a;
+           box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:drift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes drift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #glow { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; animation:breathe 7s ease-in-out infinite alternate;
+         background:radial-gradient(44% 58% at 66% 30%, rgba(255,214,130,.46), rgba(255,180,90,.13) 55%, rgba(255,170,80,0) 78%); }
+  @keyframes breathe { from { opacity:.32 } to { opacity:1 } }
+  .tl { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        animation:twk ease-in-out infinite alternate; }
+  @keyframes twk { from { transform:translate(-50%,-50%) scale(.55); filter:brightness(.65) } to { transform:translate(-50%,-50%) scale(1.5); filter:brightness(1.4) } }
+  #fire { position:absolute; pointer-events:none; mix-blend-mode:screen;
+          background:radial-gradient(closest-side, rgba(255,190,90,.85), rgba(255,120,40,.32) 55%, rgba(255,100,30,0) 78%);
+          animation:flick 1.7s ease-in-out infinite; }
+  #fireCore { position:absolute; pointer-events:none; mix-blend-mode:screen;
+          background:radial-gradient(closest-side, rgba(255,240,190,.95), rgba(255,180,80,.4) 55%, rgba(255,160,60,0) 78%);
+          animation:flick 0.95s ease-in-out infinite reverse; }
+  @keyframes flick { 0% { opacity:.5 } 22% { opacity:.92 } 41% { opacity:.62 } 63% { opacity:1 } 82% { opacity:.7 } 100% { opacity:.5 } }
+  #snow { position:absolute; left:0; top:3%; width:35%; height:37%; overflow:hidden; pointer-events:none; }
+  .flake { position:absolute; top:-4%; border-radius:50%; pointer-events:none;
+           background:radial-gradient(closest-side, rgba(255,255,255,.98), rgba(235,245,255,.55) 60%, rgba(235,245,255,0) 80%);
+           animation:fall linear infinite; will-change:transform; }
+  @keyframes fall { 0% { transform:translate(0,-3vh); opacity:0 } 8% { opacity:1 } 50% { transform:translate(1.1vw,19vh) } 92% { opacity:1 } 100% { transform:translate(-0.6vw,39vh); opacity:0 } }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(69,10,10,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, #glow, .tl, #fire, #fireCore, .flake { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="still" src="still.jpg" alt="All eight friends on Christmas morning around the tree — Teal carrying the cocoa tray, Braids hanging the star, Goggles holding up a gift, Phones in a Santa hat, Cap listening to his present, Puff opening hers, Pink tying the big red bow, Beanie stringing the popcorn garland, and the cat asleep by the presents">
+    </div>
+    <div id="glow"></div>
+    <div id="fx"></div>
+    <div id="snow"></div>
+    <div id="caption">CHRISTMAS MORNING</div>
+  </div>
+</div>
+<script>
+  // Christmas Morning (Gary's living standard): the painting stays exactly itself; the tree lights twinkle in their own colors, the garland glows along the top, the fireplace flickers at the right, and snow falls past the windows on the left. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var host = document.getElementById('fx'), html = '';
+    var palette = ['255,209,102', '255,89,100', '126,217,87', '77,178,232', '255,243,196'];
+    function light(x, y, ci, size, dur, delay){
+      var c = palette[ci % palette.length];
+      return '<div class="tl" style="left:' + x + '%;top:' + y + '%;width:' + size + '%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(' + c + ',.98), rgba(' + c + ',.34) 55%, rgba(' + c + ',0) 78%);animation-duration:' + dur + 's;animation-delay:-' + delay + 's"></div>';
+    }
+    // tree lights — scattered over the tree (x 50-80%, y 2-68%), each in its own color
+    var tree = [[60,4],[66,7],[71,3],[76,9],[58,10],[63,13],[69,12],[74,16],[79,20],[57,18],[62,21],[68,24],[73,27],[78,31],[56,27],[61,31],[66,34],[71,37],[77,40],[54,36],[59,41],[64,44],[70,47],[75,50],[53,46],[58,51],[63,55],[68,58],[73,61],[52,57],[57,62],[62,65],[67,67],[60,48],[72,20],[65,17],[55,22],[70,55],[76,58],[51,40]];
+    for (var i = 0; i < tree.length; i++){
+      html += light(tree[i][0], tree[i][1], i, (0.55 + (i % 3) * 0.18).toFixed(2), (1.5 + (i % 5) * 0.35).toFixed(2), (i * 0.37).toFixed(2));
+    }
+    // garland lights along the top of the room
+    var gar = [[6,2.5],[16,1.8],[27,2.6],[38,1.6],[47,2.4],[84,1.8],[90,2.6],[96,1.7]];
+    for (var g = 0; g < gar.length; g++){
+      html += light(gar[g][0], gar[g][1], 0, 0.62, (2 + (g % 4) * 0.4).toFixed(1), (g * 0.55).toFixed(2));
+    }
+    // the star on top of the tree gets the biggest glow
+    html += light(72.5, 8, 0, 2.3, 2.8, 0.3);
+    // fireplace glow, far right — a broad flicker and a hotter core
+    html += '<div id="fire" style="left:88.5%;top:31%;width:13%;aspect-ratio:0.82"></div>';
+    html += '<div id="fireCore" style="left:92.5%;top:39.5%;width:7%;aspect-ratio:0.9"></div>';
+    host.innerHTML = html;
+    // snow falling past the windows (the clipped pane on the left) — real travel
+    var snow = document.getElementById('snow'), shtml = '';
+    for (var f = 0; f < 26; f++){
+      var lx = (2 + (f * 37) % 94), sz = (2.2 + (f % 4) * 1.1).toFixed(1), dur = (5.5 + (f % 6) * 0.9).toFixed(1), del = (f * 0.83).toFixed(2);
+      shtml += '<div class="flake" style="left:' + lx + '%;width:' + sz + 'px;height:' + sz + 'px;animation-duration:' + dur + 's;animation-delay:-' + del + 's"></div>';
+    }
+    snow.innerHTML = shtml;
+  })();
+</script>
+</body>
+</html>
