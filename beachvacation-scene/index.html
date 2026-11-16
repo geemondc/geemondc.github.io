@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Beach Vacation — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#06384a; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.55); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#06384a;
+           box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:drift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes drift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #sun { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; animation:breathe 7s ease-in-out infinite alternate;
+         background:radial-gradient(46% 60% at 66% 9%, rgba(255,236,170,.50), rgba(255,214,120,.14) 55%, rgba(255,190,90,0) 78%); }
+  @keyframes breathe { from { opacity:.35 } to { opacity:1 } }
+  .spark { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen;
+          background:radial-gradient(closest-side, rgba(255,255,244,.98), rgba(190,240,255,.34) 55%, rgba(190,240,255,0) 78%);
+          animation:twk ease-in-out infinite alternate; }
+  @keyframes twk { from { transform:translate(-50%,-50%) scale(.62); filter:brightness(.75) } to { transform:translate(-50%,-50%) scale(1.5); filter:brightness(1.35) } }
+  .glint { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen;
+          background:radial-gradient(closest-side, rgba(255,244,200,.85), rgba(255,220,140,.26) 55%, rgba(255,220,140,0) 78%);
+          animation:twk ease-in-out infinite alternate; }
+  .cloud { position:absolute; pointer-events:none; border-radius:50%;
+          background:radial-gradient(closest-side, rgba(255,255,255,.88), rgba(255,255,255,.38) 58%, rgba(255,255,255,0) 76%);
+          filter:blur(2px); animation:cloudcross linear infinite; will-change:transform; }
+  @keyframes cloudcross { from { transform:translateX(-38vw); } to { transform:translateX(118vw); } }
+  .gull { position:absolute; pointer-events:none; animation:gullcross linear infinite; will-change:transform; }
+  .gull svg { display:block; width:100%; height:auto; animation:flap 1.15s ease-in-out infinite alternate; transform-origin:50% 60%; }
+  @keyframes gullcross { 0% { transform:translate(-12vw,0); } 25% { transform:translate(22vw,-1.6vh); } 50% { transform:translate(52vw,0.6vh); } 75% { transform:translate(82vw,-1.4vh); } 100% { transform:translate(114vw,0); } }
+  @keyframes flap { from { transform:scaleY(.72) rotate(-2deg); } to { transform:scaleY(1.12) rotate(2deg); } }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(6,50,66,.55); color:#ffedb5; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,237,181,.4); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, #sun, .spark, .glint, .cloud, .gull, .gull svg { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="still" src="still.jpg" alt="All eight friends on a beach vacation — a hammock between the palms, a sandcastle with shells, coconut drinks and a beach ball under a bright sun">
+    </div>
+    <div id="sun"></div>
+    <div id="fx"></div>
+    <div id="caption">BEACH VACATION</div>
+  </div>
+</div>
+<script>
+  // Beach Vacation (Gary's living standard): the painting stays exactly itself; the sun breathes over the bay, the sea sparkles across the water, two slow clouds cross the sky and the gulls fly the shoreline. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var host = document.getElementById('fx'), html = '';
+    // sparkles on the open water (the band between the palms, y 23-38%)
+    var sparks = [[19,27],[23,31],[27,25],[30,34],[34,28],[38,32],[43,26],[48,30],[53,25],[57,33],[61,28],[65,31],[69,26],[73,34],[77,29],[82,27],[86,32],[24,37],[46,36],[67,37],[88,24],[17,33]];
+    for (var i = 0; i < sparks.length; i++){
+      html += '<div class="spark" style="left:' + sparks[i][0] + '%;top:' + sparks[i][1] + '%;width:' + (0.55 + (i % 3) * 0.16).toFixed(2) + '%;aspect-ratio:1;animation-duration:' + (1.6 + (i % 5) * 0.4).toFixed(1) + 's;animation-delay:-' + (i * 0.45).toFixed(2) + 's"></div>';
+    }
+    // warm glints where the sun path hits the water
+    var glints = [[60,30],[64,27],[68,33],[62,35],[70,24]];
+    for (var g = 0; g < glints.length; g++){
+      html += '<div class="glint" style="left:' + glints[g][0] + '%;top:' + glints[g][1] + '%;width:' + (1.5 + (g % 3) * 0.4).toFixed(2) + '%;aspect-ratio:1;animation-duration:' + (2.6 + g * 0.5).toFixed(1) + 's;animation-delay:-' + (g * 0.8).toFixed(1) + 's"></div>';
+    }
+    // two slow clouds crossing the sky — real travel
+    html += '<div class="cloud" style="left:0;top:3.5%;width:24%;aspect-ratio:2.6;animation-duration:74s;animation-delay:-18s"></div>';
+    html += '<div class="cloud" style="left:0;top:11%;width:16%;aspect-ratio:2.6;animation-duration:102s;animation-delay:-57s;opacity:.85"></div>';
+    // gulls crossing the sky — real travel, wings flapping
+    var gullSvg = '<svg viewBox="0 0 48 20" xmlns="http://www.w3.org/2000/svg"><path d="M3 13 Q13 3 24 12 Q35 3 45 13" fill="none" stroke="rgba(255,255,255,.95)" stroke-width="2.6" stroke-linecap="round"/></svg>';
+    html += '<div class="gull" style="left:0;top:7%;width:3.4%;animation-duration:26s;animation-delay:-6s">' + gullSvg + '</div>';
+    html += '<div class="gull" style="left:0;top:14.5%;width:2.3%;animation-duration:26s;animation-delay:-17s;opacity:.85">' + gullSvg + '</div>';
+    host.innerHTML = html;
+  })();
+</script>
+</body>
+</html>
