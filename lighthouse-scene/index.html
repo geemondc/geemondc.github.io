@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Lighthouse — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#081426; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.5); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#081426;
+           box-shadow:0 18px 60px rgba(0,0,0,.55); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:drift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes drift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
+  .ph { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #phTop { opacity:0; }
+  /* the lamp: a warm halo seated on the lamp room (x 23.2%, y 10.3% of the painting), JS drives its strength with the night */
+  #lamp { position:absolute; left:23.2%; top:10.3%; width:9%; aspect-ratio:1; transform:translate(-50%,-50%);
+          pointer-events:none; mix-blend-mode:screen; opacity:.35;
+          background:radial-gradient(closest-side, rgba(255,232,160,.95), rgba(255,196,90,.38) 52%, rgba(255,196,90,0) 78%);
+          animation:lampPulse 3.2s ease-in-out infinite alternate; }
+  @keyframes lampPulse { from { scale:.92 } to { scale:1.1 } }
+  /* the beam: one long soft wedge sweeping out over the sea from the lamp, shimmer JS-driven, only at night */
+  #beam { position:absolute; left:23.6%; top:10.3%; width:58%; height:15%; transform:translateY(-50%) rotate(-1.5deg);
+          transform-origin:0 50%; pointer-events:none; mix-blend-mode:screen; opacity:0; filter:blur(3px);
+          background:linear-gradient(90deg, rgba(255,224,150,.5), rgba(255,214,130,.16) 55%, rgba(255,214,130,0) 82%);
+          border-radius:50%; }
+  .star { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; opacity:0;
+          background:radial-gradient(closest-side, rgba(255,255,255,.98), rgba(210,225,255,.3) 55%, rgba(210,225,255,0) 78%);
+          animation:twk ease-in-out infinite alternate; }
+  .spark { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen;
+          background:radial-gradient(closest-side, rgba(255,246,214,.95), rgba(255,214,130,.3) 55%, rgba(255,214,130,0) 78%);
+          animation:twk ease-in-out infinite alternate; }
+  @keyframes twk { from { transform:translate(-50%,-50%) scale(.62); filter:brightness(.75) } to { transform:translate(-50%,-50%) scale(1.5); filter:brightness(1.35) } }
+  .gull { position:absolute; pointer-events:none; animation:gullcross linear infinite; will-change:transform; }
+  .gull svg { display:block; width:100%; height:auto; animation:flap 1.15s ease-in-out infinite alternate; transform-origin:50% 60%; }
+  @keyframes gullcross { 0% { transform:translate(-12vw,0); } 25% { transform:translate(22vw,-1.6vh); } 50% { transform:translate(52vw,0.6vh); } 75% { transform:translate(82vw,-1.4vh); } 100% { transform:translate(114vw,0); } }
+  @keyframes flap { from { transform:scaleY(.72) rotate(-2deg); } to { transform:scaleY(1.12) rotate(2deg); } }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(8,20,38,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,233,168,.4); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, #lamp, .star, .spark, .gull, .gull svg { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img class="ph" id="phBase" src="still.jpg" alt="A red-and-white lighthouse on a rocky point, the keeper's cottage beside it, waves breaking on the rocks and gulls overhead">
+      <img class="ph" id="phTop" src="sunset.jpg" alt="" aria-hidden="true">
+    </div>
+    <div id="beam"></div>
+    <div id="lamp"></div>
+    <div id="fx"></div>
+    <div id="caption">THE LIGHTHOUSE</div>
+  </div>
+</div>
+<script>
+  // The Lighthouse (Gary's living standard, card speed): the painting stays exactly itself while the light
+  // travels — golden hour sinks through sunset into night and climbs back to dawn, the lamp grows stronger
+  // as the dark comes down, its beam shimmers over the sea, stars come out, the water keeps its sparkle
+  // and the gulls fly the point. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var host = document.getElementById('fx'), html = '';
+    // stars — come out with the night (opacity driven by the phase clock below)
+    var stars = [[8,4],[16,7],[33,3],[44,6],[55,4],[63,8],[71,3],[79,6],[88,4],[94,9],[38,10],[58,12],[84,13],[27,5]];
+    for (var s = 0; s < stars.length; s++){
+      html += '<div class="star" data-star style="left:' + stars[s][0] + '%;top:' + stars[s][1] + '%;width:' + (0.32 + (s % 3) * 0.13).toFixed(2) + '%;aspect-ratio:1;animation-duration:' + (1.8 + (s % 4) * 0.5).toFixed(1) + 's;animation-delay:-' + (s * 0.4).toFixed(1) + 's"></div>';
+    }
+    // sparkles on the open water and down the sun's glitter path
+    var sparks = [[58,55],[64,62],[70,52],[76,68],[82,58],[88,72],[93,60],[97,80],[67,80],[74,86],[85,90],[91,84],[79,50],[95,50],[61,70],[87,64],[80,76],[72,94]];
+    for (var i = 0; i < sparks.length; i++){
+      html += '<div class="spark" style="left:' + sparks[i][0] + '%;top:' + sparks[i][1] + '%;width:' + (0.55 + (i % 3) * 0.16).toFixed(2) + '%;aspect-ratio:1;animation-duration:' + (1.6 + (i % 5) * 0.4).toFixed(1) + 's;animation-delay:-' + (i * 0.45).toFixed(2) + 's"></div>';
+    }
+    // gulls crossing the sky — real travel, wings flapping
+    var gullSvg = '<svg viewBox="0 0 48 20" xmlns="http://www.w3.org/2000/svg"><path d="M3 13 Q13 3 24 12 Q35 3 45 13" fill="none" stroke="rgba(255,255,255,.95)" stroke-width="2.6" stroke-linecap="round"/></svg>';
+    html += '<div class="gull" style="left:0;top:6.5%;width:3.4%;animation-duration:24s;animation-delay:-5s">' + gullSvg + '</div>';
+    html += '<div class="gull" style="left:0;top:15%;width:2.3%;animation-duration:24s;animation-delay:-16s;opacity:.85">' + gullSvg + '</div>';
+    host.innerHTML = html;
+
+    // ---- the day -> sunset -> night -> dawn phase clock (card speed: 9s a leg, 36s the round trip) ----
+    var PHASES = [ {src:'still.jpg', night:0}, {src:'sunset.jpg', night:0.45}, {src:'night.jpg', night:1}, {src:'sunset.jpg', night:0.45} ];
+    var LEG = 9000;
+    var base = document.getElementById('phBase'), top = document.getElementById('phTop');
+    var lamp = document.getElementById('lamp'), beam = document.getElementById('beam');
+    var starEls = host.querySelectorAll('[data-star]');
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // preload every phase so a leg never fades to an unloaded frame
+    var ready = 0;
+    PHASES.forEach(function(p){ var im = new Image(); im.onload = im.onerror = function(){ ready++; }; im.src = p.src; });
+    var t0 = null;
+    function frame(now){
+      if (t0 === null) t0 = now;
+      var t = (now - t0) % (LEG * PHASES.length);
+      var leg = Math.floor(t / LEG), f = (t - leg * LEG) / LEG;
+      var cur = PHASES[leg], nxt = PHASES[(leg + 1) % PHASES.length];
+      if (top.getAttribute('src') !== nxt.src) top.src = nxt.src;
+      if (base.getAttribute('src') !== cur.src) base.src = cur.src;
+      top.style.opacity = f.toFixed(3);
+      var nightness = cur.night + (nxt.night - cur.night) * f;
+      lamp.style.opacity = (0.35 + 0.65 * nightness).toFixed(3);
+      var shimmer = 0.62 + 0.38 * Math.sin(now / 620);
+      beam.style.opacity = (nightness * nightness * shimmer).toFixed(3);
+      for (var k = 0; k < starEls.length; k++) starEls[k].style.opacity = (nightness * 0.9).toFixed(3);
+      requestAnimationFrame(frame);
+    }
+    if (!reduced) requestAnimationFrame(frame);
+  })();
+</script>
+</body>
+</html>
