@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>New Year's Eve — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#060b20; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.5); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#060b20;
+           box-shadow:0 18px 60px rgba(0,0,0,.55); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:nyeDrift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes nyeDrift { from { transform:scale(1.09) translate(1.4%,0.8%); } to { transform:scale(1.13) translate(-1.8%,-1.0%); } }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #skyglow { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; animation:nyeBreathe 6s ease-in-out infinite alternate;
+         background:radial-gradient(58% 46% at 50% 12%, rgba(120,140,255,.20), rgba(90,110,220,.06) 55%, rgba(90,110,220,0) 78%); }
+  @keyframes nyeBreathe { from { opacity:.25 } to { opacity:1 } }
+  /* a painted firework's soft core — breathes, then flares when a fresh burst goes off */
+  .fwcore { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        animation:nyeBloom ease-in-out infinite; will-change:transform,opacity; }
+  @keyframes nyeBloom { 0% { opacity:.30; transform:translate(-50%,-50%) scale(.92) } 58% { opacity:.42; transform:translate(-50%,-50%) scale(1.0) } 72% { opacity:1; transform:translate(-50%,-50%) scale(1.13) } 84% { opacity:.62; transform:translate(-50%,-50%) scale(1.05) } 100% { opacity:.30; transform:translate(-50%,-50%) scale(.92) } }
+  /* the sparks on each burst's ring, and sky stars — twinkle in their own colors */
+  .fwspark { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        animation:nyeTwk ease-in-out infinite alternate; will-change:transform,opacity; }
+  .star { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,255,255,.95), rgba(210,225,255,.3) 55%, rgba(210,225,255,0) 78%);
+        animation:nyeTwk ease-in-out infinite alternate; }
+  @keyframes nyeTwk { from { opacity:.25; transform:translate(-50%,-50%) scale(.7) } to { opacity:1; transform:translate(-50%,-50%) scale(1.2) } }
+  /* string-light bulbs — warm dots pulsing along the strings */
+  .bulb { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,232,170,.95), rgba(255,190,90,.32) 55%, rgba(255,180,80,0) 78%);
+        animation:nyeBulb ease-in-out infinite alternate; }
+  @keyframes nyeBulb { from { opacity:.45; transform:translate(-50%,-50%) scale(.85) } to { opacity:1; transform:translate(-50%,-50%) scale(1.12) } }
+  /* candle flames — the thanksgiving pattern, warm gold */
+  .fl { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,216,140,.92), rgba(255,166,64,.34) 55%, rgba(255,140,40,0) 78%);
+        animation:nyeFlick ease-in-out infinite; }
+  .flh { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,190,100,.34), rgba(255,155,60,.1) 55%, rgba(255,140,40,0) 78%);
+        animation:nyeFlick ease-in-out infinite; }
+  .flcore { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,246,205,.95), rgba(255,196,96,.42) 55%, rgba(255,170,70,0) 78%);
+        animation:nyeFlick ease-in-out infinite reverse; }
+  @keyframes nyeFlick { 0% { opacity:.36 } 22% { opacity:.96 } 41% { opacity:.52 } 63% { opacity:1 } 82% { opacity:.6 } 100% { opacity:.36 } }
+  /* the sparkler Cap holds — a fast, bright little star */
+  .spk { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+        background:radial-gradient(closest-side, rgba(255,252,235,.98), rgba(255,230,160,.4) 55%, rgba(255,220,140,0) 78%);
+        animation:nyeTwk ease-in-out infinite alternate; }
+  /* the clock face at midnight — a slow warm breathe */
+  #clockglow { position:absolute; left:74%; top:19.5%; width:7.5%; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; mix-blend-mode:screen;
+        background:radial-gradient(closest-side, rgba(255,214,130,.5), rgba(255,180,90,.14) 55%, rgba(255,170,80,0) 78%);
+        animation:nyeBreathe 7s ease-in-out infinite alternate-reverse; }
+  /* confetti — the traveling element, drifting down the whole frame */
+  #confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .conf { position:absolute; top:-4%; pointer-events:none; opacity:0; border-radius:2px;
+          animation:nyeConfFall linear infinite; will-change:transform,opacity; }
+  @keyframes nyeConfFall { 0% { transform:translate(0,-3vh) rotate(0deg); opacity:0 } 9% { opacity:.95 } 50% { transform:translate(1.6vw,52vh) rotate(210deg) } 90% { opacity:.85 } 100% { transform:translate(-0.8vw,106vh) rotate(430deg); opacity:0 } }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(8,16,44,.6); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.5); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, #skyglow, .fwcore, .fwspark, .star, .bulb, .fl, .flh, .flcore, .spk, #clockglow, .conf { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="still" src="still.jpg" alt="All eight friends on a rooftop at midnight on New Year's Eve, toasting with raised glasses under a sky full of fireworks — Teal lifting her glass high, Goggles waving a gold party horn, Braids in a gold party hat under the clock tower striking twelve, Phones counting down with his headphones around his neck, Pink pointing at the sky, Cap holding a sparkler, Beanie and Puff raising their glasses, gold balloons and string lights glowing, confetti in the air">
+    </div>
+    <div id="skyglow"></div>
+    <div id="fx"></div>
+    <div id="confetti"></div>
+    <div id="caption">NEW YEAR'S EVE</div>
+  </div>
+</div>
+<script>
+  // New Year's Eve (Gary's living standard): the painting stays exactly itself; the fireworks twinkle and flare in fresh staggered blooms — gold, pink, teal, rose, white — the string lights pulse warm, every candle flickers, the sparkler crackles, the clock face breathes at midnight, and a little confetti drifts down through it all. Card pace: faster than the photo. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var host = document.getElementById('fx'), html = '';
+    function rgba(hex, a){
+      var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+    }
+    function glowBg(hex){
+      return 'radial-gradient(closest-side, ' + rgba(hex,.85) + ', ' + rgba(hex,.28) + ' 55%, ' + rgba(hex,0) + ' 78%)';
+    }
+    // the five painted bursts — [x%, y%, size%, color, bloomCycle s, ring sparks]
+    var bursts = [
+      [19.0, 12.5, 27, '#ffd166', 7.0, 14],   // the big gold burst, top left
+      [49.5, 15.5, 21, '#ff7eb6', 8.6, 12],   // pink, center
+      [63.0, 12.5, 23, '#4fe3c1', 7.8, 12],   // teal, center right
+      [84.0, 18.5, 21, '#ff5d7a', 9.4, 12],   // rose, right of the tower
+      [95.0, 12.5, 16, '#ffffff', 11.0, 10]   // white, far right
+    ];
+    for (var bi = 0; bi < bursts.length; bi++){
+      var B = bursts[bi], bx = B[0], by = B[1], bs = B[2], col = B[3], cyc = B[4], n = B[5];
+      html += '<div class="fwcore" style="left:' + bx + '%;top:' + by + '%;width:' + bs + '%;aspect-ratio:1;background:' + glowBg(col) + ';animation-duration:' + cyc + 's;animation-delay:-' + (bi * 1.7).toFixed(1) + 's"></div>';
+      for (var s = 0; s < n; s++){
+        var ang = (s / n) * Math.PI * 2 + bi * 0.35;
+        var rad = bs * 0.36 + (s % 3) * bs * 0.055;
+        var sx = bx + Math.cos(ang) * rad, sy = by + Math.sin(ang) * rad * 1.78; // y squash: % of height vs width
+        var sz = (0.55 + (s % 3) * 0.22).toFixed(2);
+        html += '<div class="fwspark" style="left:' + sx.toFixed(1) + '%;top:' + sy.toFixed(1) + '%;width:' + sz + '%;aspect-ratio:1;background:' + glowBg(col) + ';animation-duration:' + (0.7 + (s % 4) * 0.23).toFixed(2) + 's;animation-delay:-' + (s * 0.29 + bi * 0.4).toFixed(2) + 's"></div>';
+      }
+    }
+    // stars in the night sky between the bursts
+    var stars = [[7,5],[30,4],[40,8],[56,5],[70,6],[90,4],[12,26],[35,26],[58,27],[98,30],[3,14],[45,27]];
+    for (var st = 0; st < stars.length; st++){
+      html += '<div class="star" style="left:' + stars[st][0] + '%;top:' + stars[st][1] + '%;width:' + (0.4 + (st % 3) * 0.14).toFixed(2) + '%;aspect-ratio:1;animation-duration:' + (1.1 + (st % 4) * 0.35).toFixed(2) + 's;animation-delay:-' + (st * 0.43).toFixed(2) + 's"></div>';
+    }
+    // string lights — the swag across the right railing, then the left fairy lights and the little lit trees
+    var bulbs = [];
+    var swag = [[80.5,50.5],[83.5,51.8],[86.5,52.4],[89.5,52.2],[92.5,51.2],[95.5,49.8],[97.8,48.2]];
+    for (var w = 0; w < swag.length; w++) bulbs.push([swag[w][0], swag[w][1], 1.15]);
+    var left = [[1.2,44],[2.6,52],[1.4,60],[5.5,44.5],[7.8,43]];
+    for (var l = 0; l < left.length; l++) bulbs.push([left[l][0], left[l][1], 0.95]);
+    var trees = [[86,60],[90,57],[94,62],[97,58],[99,66],[88,67],[93,70],[96,74]];
+    for (var t = 0; t < trees.length; t++) bulbs.push([trees[t][0], trees[t][1], 0.7]);
+    for (var bu = 0; bu < bulbs.length; bu++){
+      html += '<div class="bulb" style="left:' + bulbs[bu][0] + '%;top:' + bulbs[bu][1] + '%;width:' + bulbs[bu][2] + '%;aspect-ratio:1;animation-duration:' + (1.15 + (bu % 4) * 0.3).toFixed(2) + 's;animation-delay:-' + (bu * 0.21).toFixed(2) + 's"></div>';
+    }
+    // candles — the lantern at bottom left, the side table and votives at right, the candle at bottom right
+    function flame(x, y, size, dur, delay){
+      return '<div class="fl" style="left:' + x + '%;top:' + y + '%;width:' + size + '%;aspect-ratio:0.8;animation-duration:' + dur + 's;animation-delay:-' + delay + 's"></div>';
+    }
+    function core(x, y, size, dur, delay){
+      return '<div class="flcore" style="left:' + x + '%;top:' + y + '%;width:' + size + '%;aspect-ratio:0.85;animation-duration:' + dur + 's;animation-delay:-' + delay + 's"></div>';
+    }
+    var candles = [
+      [4.5, 91.5, 3.6],   // the big lantern candle, bottom left
+      [89.0, 82.0, 2.4],  // side-table candle, right
+      [84.0, 78.5, 1.7],  // votive by the ice bucket table
+      [91.5, 73.0, 1.5],  // votive higher on the right table
+      [98.3, 93.5, 2.8]   // candle at the very bottom right
+    ];
+    for (var ci = 0; ci < candles.length; ci++){
+      var c = candles[ci];
+      var dur = (0.85 + (ci % 4) * 0.22).toFixed(2), del = (ci * 0.31).toFixed(2);
+      if (c[2] >= 2.4) html += '<div class="flh" style="left:' + c[0] + '%;top:' + c[1] + '%;width:' + (c[2] * 2.4).toFixed(1) + '%;aspect-ratio:0.9;animation-duration:' + dur + 's;animation-delay:-' + del + 's"></div>';
+      html += flame(c[0], c[1], c[2], dur, del);
+    }
+    html += core(4.5, 91.5, 1.6, 0.7, 0.2);
+    html += core(98.3, 93.5, 1.3, 0.8, 0.5);
+    // the sparkler — one bright core and a few crackling satellites
+    html += '<div class="spk" style="left:30.5%;top:71%;width:3.4%;aspect-ratio:1;animation-duration:0.55s"></div>';
+    var sats = [[28.9,68.6],[32.2,68.9],[29.3,73.6],[32.0,73.3],[30.6,67.8]];
+    for (var k = 0; k < sats.length; k++){
+      html += '<div class="spk" style="left:' + sats[k][0] + '%;top:' + sats[k][1] + '%;width:' + (0.8 + (k % 3) * 0.3).toFixed(1) + '%;aspect-ratio:1;animation-duration:' + (0.45 + (k % 3) * 0.18).toFixed(2) + 's;animation-delay:-' + (k * 0.17).toFixed(2) + 's"></div>';
+    }
+    // the clock face breathing at midnight
+    html += '<div id="clockglow"></div>';
+    host.innerHTML = html;
+    // confetti drifting down — gold, pink, teal, violet
+    var confetti = document.getElementById('confetti'), chtml = '';
+    var ccols = ['#ffd166', '#ff7eb6', '#4fe3c1', '#b388ff', '#fff3c4', '#ff5d7a'];
+    for (var f = 0; f < 16; f++){
+      var cx = (3 + (f * 37) % 94), cw = (0.55 + (f % 3) * 0.22).toFixed(2), cdur = (7.5 + (f % 5) * 1.1).toFixed(1), cdel = (f * 1.53).toFixed(2);
+      chtml += '<div class="conf" style="left:' + cx + '%;width:' + cw + '%;aspect-ratio:0.55;background:' + ccols[f % ccols.length] + ';animation-duration:' + cdur + 's;animation-delay:-' + cdel + 's"></div>';
+    }
+    confetti.innerHTML = chtml;
+  })();
+</script>
+</body>
+</html>
