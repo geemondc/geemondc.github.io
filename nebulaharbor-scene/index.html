@@ -8,28 +8,38 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; overflow:hidden; background:#060a18; }
   body { font-family: Georgia, 'Times New Roman', serif; }
-  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.5); transform:scale(1.18); }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.5); transform:scale(1.18); animation:nhFill 11s ease-in-out infinite alternate; }
+  @keyframes nhFill { from { filter:blur(26px) brightness(.46) } to { filter:blur(26px) brightness(.62) } }
   #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
   #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#060a18;
            box-shadow:0 18px 60px rgba(0,0,0,.5); }
   @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
-  #drift { position:absolute; inset:0; animation:drift 13s ease-in-out infinite alternate; will-change:transform; }
-  @keyframes drift { from { transform:scale(1.015) translate(0.3%,0.15%); } to { transform:scale(1.055) translate(-0.8%,-0.5%); } }
+  #drift { position:absolute; inset:0; animation:nhDrift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes nhDrift { from { transform:scale(1.03) translate(0.7%,0.35%); } to { transform:scale(1.095) translate(-0.9%,-0.5%); } }
   #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .glow { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; animation:breathe 9s ease-in-out infinite alternate; }
-  @keyframes breathe { from { opacity:.45 } to { opacity:1 } }
-  .twk { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen;
-          background:radial-gradient(closest-side, rgba(255,255,255,.95), rgba(200,220,255,.30) 55%, rgba(200,220,255,0) 78%);
-          animation:twk ease-in-out infinite alternate; }
-  @keyframes twk { from { transform:translate(-50%,-50%) scale(.8); filter:brightness(.75) } to { transform:translate(-50%,-50%) scale(1.2); filter:brightness(1.35) } }
-  .pulse { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; animation:pl 2.6s ease-in-out infinite; }
-  @keyframes pl { 0%,100% { opacity:.25; transform:translate(-50%,-50%) scale(.85) } 50% { opacity:1; transform:translate(-50%,-50%) scale(1.15) } }
-
+  /* the nebula breathing — sky above, sea below (screen blend, light only) */
+  .shimmer { position:absolute; pointer-events:none; mix-blend-mode:screen; animation:nhBreathe ease-in-out infinite alternate; }
+  @keyframes nhBreathe { from { opacity:.45 } to { opacity:1 } }
+  .glow { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%); animation:nhBreathe ease-in-out infinite alternate; }
+  .twk { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; transform:translate(-50%,-50%);
+          animation:nhTwk ease-in-out infinite alternate; }
+  @keyframes nhTwk { from { opacity:.3; transform:translate(-50%,-50%) scale(.82) } to { opacity:1; transform:translate(-50%,-50%) scale(1.18) } }
+  /* light-fireflies drifting over the nebula water — a traveling element */
+  #flies { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .fly { position:absolute; border-radius:50%; pointer-events:none; mix-blend-mode:screen; opacity:0;
+         animation:nhFly linear infinite; will-change:transform,opacity; }
+  @keyframes nhFly { 0% { transform:translate(0,0); opacity:0 } 12% { opacity:.95 } 55% { opacity:.7 } 100% { transform:translate(var(--mx), var(--my)); opacity:0 } }
+  /* one slow shooting star crossing the upper sky, now and then */
+  .shoot { position:absolute; left:16%; top:6%; width:11%; height:3px; pointer-events:none; opacity:0; z-index:3;
+           animation:nhShoot 12s linear infinite; will-change:transform,opacity; }
+  .shoot-in { display:block; width:100%; height:100%; border-radius:999px; transform:rotate(11deg); transform-origin:100% 50%;
+           background:linear-gradient(270deg, rgba(255,255,255,.98), rgba(190,220,255,.55) 35%, rgba(190,220,255,0) 85%); }
+  @keyframes nhShoot { 0%, 55% { transform:translate(0,0); opacity:0 } 60% { opacity:.95 } 71% { transform:translate(36vw,7.5vh); opacity:0 } 100% { transform:translate(36vw,7.5vh); opacity:0 } }
   #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
              background:rgba(6,10,24,.55); color:#eaf2ff; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(110,231,242,.4); pointer-events:none; }
   body.wall #caption { display:none; }
-  @media (prefers-reduced-motion: reduce) { #drift, .glow, .twk, .pulse { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { #fill, #drift, .shimmer, .glow, .twk, .fly, .shoot { animation:none; } }
 </style>
 </head>
 <body>
@@ -37,32 +47,51 @@
 <div id="wrap">
   <div id="frame">
     <div id="drift">
-      <img id="still" src="still.jpg" alt="A lighthouse and a rocket on a dock under a ringed planet, reflected in still water">
+      <img id="still" src="still.jpg" alt="A harbor in deep space: a stone dock with brass lanterns, a cat asleep on a crate beside a telescope and star charts, rocket ships and a sail boat with star-printed sails moored along the dock, a lighthouse on a floating rock beaming gold across a swirling nebula sea, a ringed planet and a crescent moon in a starry sky">
     </div>
+    <div class="shimmer" style="left:22%;top:-6%;width:56%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(190,120,255,.13), rgba(190,120,255,0) 72%);animation-duration:11s"></div>
+    <div class="shimmer" style="left:52%;top:38%;width:52%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(64,224,208,.11), rgba(64,224,208,0) 72%);animation-duration:8s"></div>
     <div id="fx"></div>
+    <div id="flies"></div>
+    <div class="shoot"><span class="shoot-in"></span></div>
     <div id="caption">NEBULA HARBOR</div>
   </div>
 </div>
 <script>
-  // The harbor at night: the lighthouse beacon and window glow, the rocket's portholes and the dock lamps twinkle, the nebulas breathe, and the still water holds a slow sheen. In #wall the caption hides.
+  // Nebula Harbor, the new master painting (Gary, Nov 17): the painting stays exactly itself; the lighthouse lamp and the ringed planet breathe, every lantern and porthole twinkles in warm gold, the nebulas shimmer, light-fireflies drift over the water, and one slow shooting star crosses the sky now and then. Card pace — faster than a photo. In #wall the caption hides.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
     var host = document.getElementById('fx'), html = '';
-    html += '<div class="glow" style="left:20.4%;top:29.5%;width:4%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,205,110,0.5), rgba(255,205,110,0) 72%);animation-duration:6s"></div>';
-    html += '<div class="glow" style="left:20%;top:42%;width:4.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,190,100,0.4), rgba(255,190,100,0) 72%);animation-duration:8s"></div>';
-    html += '<div class="glow" style="left:14%;top:16%;width:22%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(64,224,208,0.13), rgba(64,224,208,0) 72%);animation-duration:12s"></div>';
-    html += '<div class="glow" style="left:88%;top:20%;width:20%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,180,90,0.13), rgba(255,180,90,0) 72%);animation-duration:11s"></div>';
-    html += '<div class="glow" style="left:50%;top:80%;width:46%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(150,200,255,0.07), rgba(150,200,255,0) 72%);animation-duration:13s"></div>';
-    var lamps = [[27.8,55],[34.5,56],[39,56],[29.8,47.5],[29.8,50],[29.8,52.5]];
+    // soft breathing glows — lighthouse lamp, rocket door, the ringed planet
+    html += '<div class="glow" style="left:70.3%;top:16.3%;width:6.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,205,110,.55), rgba(255,205,110,0) 72%);animation-duration:6s"></div>';
+    html += '<div class="glow" style="left:16%;top:40.5%;width:5.5%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,190,100,.45), rgba(255,190,100,0) 72%);animation-duration:8s"></div>';
+    html += '<div class="glow" style="left:82%;top:26%;width:23%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,180,120,.13), rgba(255,180,120,0) 72%);animation-duration:12s"></div>';
+    // warm twinkles — lamp post, portholes, dock lanterns, buoys, lighthouse windows
+    var lamps = [[4.5,26,1.7],[13.5,20,1.5],[17.5,23.5,1.5],[24.5,36,1.2],[28.3,31.5,1.3],[28.3,35.5,1.3],
+                 [41.5,44.5,1.2],[43.5,44.3,1.2],[48,47,1.3],[50.3,46.8,1.3],[52,46.3,1.3],[56.5,47,1.4],[47,7.5,1.2],
+                 [5.5,46.5,1.2],[16.5,47.5,1.2],[29.5,46.5,1.2],[9,57.5,1.8],[36.3,64.5,2.3],[67.8,75.5,2.3],
+                 [63.5,52,1.5],[71,52.5,1.5],[82,61.5,1.7],[95.5,68.5,1.7],[70.3,24,1.1],[70.3,31,1.1]];
     for (var j = 0; j < lamps.length; j++){
-      html += '<div class="twk" style="left:' + lamps[j][0] + '%;top:' + lamps[j][1] + '%;width:1.7%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,214,140,.95), rgba(255,180,90,.30) 55%, rgba(255,180,90,0) 78%);animation-duration:' + (2.6 + j * 0.5).toFixed(1) + 's;animation-delay:-' + (j * 0.7).toFixed(1) + 's"></div>';
+      html += '<div class="twk" style="left:' + lamps[j][0] + '%;top:' + lamps[j][1] + '%;width:' + lamps[j][2] + '%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,214,140,.95), rgba(255,180,90,.30) 55%, rgba(255,180,90,0) 78%);animation-duration:' + (2.2 + (j % 5) * 0.45).toFixed(1) + 's;animation-delay:-' + (j * 0.53).toFixed(2) + 's"></div>';
     }
-    var stars = [[8,10],[30,8],[44,14],[58,8],[70,14],[96,10],[86,44],[64,52],[50,44],[96,58],[12,58],[38,30],[78,56],[55,64]];
+    // white stars breathing in the sky
+    var stars = [[8,6],[22,10],[35,5],[55,12],[62,20],[90,14],[97,30],[52,26],[30,18],[75,6]];
     for (var i = 0; i < stars.length; i++){
-      var w = (0.9 + (i % 3) * 0.45).toFixed(2);
-      html += '<div class="twk" style="left:' + stars[i][0] + '%;top:' + stars[i][1] + '%;width:' + w + '%;aspect-ratio:1;animation-duration:' + (2.4 + (i % 5) * 0.65).toFixed(1) + 's;animation-delay:-' + (i * 0.55).toFixed(1) + 's"></div>';
+      var w = (0.8 + (i % 3) * 0.35).toFixed(2);
+      html += '<div class="twk" style="left:' + stars[i][0] + '%;top:' + stars[i][1] + '%;width:' + w + '%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(255,255,255,.95), rgba(200,220,255,.30) 55%, rgba(200,220,255,0) 78%);animation-duration:' + (2.6 + (i % 4) * 0.6).toFixed(1) + 's;animation-delay:-' + (i * 0.61).toFixed(2) + 's"></div>';
     }
     host.innerHTML = html;
+    // light-fireflies drifting over the nebula water
+    var flies = document.getElementById('flies'), fhtml = '';
+    var cols = ['255,214,140', '140,240,225', '255,255,255', '190,170,255'];
+    for (var m = 0; m < 16; m++) {
+      var lx = 56 + (m * 29) % 41, ly = 48 + (m * 17) % 38;
+      var dx = ((m % 5) - 2) * 1.8, dy = -(4 + (m % 4) * 1.7);
+      var fdur = (7 + (m % 5) * 1.3).toFixed(1), fdel = (m * 1.31).toFixed(2);
+      var fsz = (0.55 + (m % 3) * 0.22).toFixed(2), fc = cols[m % 4];
+      fhtml += '<div class="fly" style="left:' + lx + '%;top:' + ly + '%;width:' + fsz + '%;aspect-ratio:1;background:radial-gradient(closest-side, rgba(' + fc + ',.95), rgba(' + fc + ',.3) 55%, rgba(' + fc + ',0) 78%);--mx:' + dx.toFixed(1) + 'vw;--my:' + dy.toFixed(1) + 'vh;animation-duration:' + fdur + 's;animation-delay:-' + fdel + 's"></div>';
+    }
+    flies.innerHTML = fhtml;
   })();
 </script>
 </body>
