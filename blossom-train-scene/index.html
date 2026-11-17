@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Cherry-Blossom Train — Long Ride</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#1c1030; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.72); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:1248/704; height:100%; max-width:100vw; overflow:hidden; background:#1c1030; }
+  @media (max-aspect-ratio: 1248/704) { #frame { width:100%; height:auto; } }
+  #poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #vidB { opacity:0; }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(30,12,34,.55); color:#ffeef6; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,190,215,.5); pointer-events:none; }
+  body.wall #caption { display:none; }
+  #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
+             background:rgba(30,12,34,.72); color:#ffd3e4; border:2px solid #ffd3e4; border-radius:999px;
+             font-family: Georgia, 'Times New Roman', serif; font-size:clamp(15px, 4.4vw, 20px); letter-spacing:2px;
+             padding:13px 24px; cursor:pointer; box-shadow:0 6px 30px rgba(0,0,0,.5); }
+  #startbtn:active { background:rgba(255,211,228,.9); color:#1c1030; }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame" data-clip="0">
+    <img id="poster" src="still.jpg" alt="Riding the long way down a cherry-blossom-lined track toward a little station at sunset, from the front of the engine">
+    <video class="vid" id="vidA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <button id="startbtn" type="button">&#9654; START THE RIDE</button>
+    <div id="caption">CHERRY-BLOSSOM TRAIN &middot; THE LONG RIDE</div>
+  </div>
+</div>
+<script>
+  // The Cherry-Blossom Train — Long Ride: one thirty-second seamless
+  // loop, built from Gary's full painting. Two stacked players crossfade
+  // at the seam so it never jumps. In #wall (inside a Living Card) the
+  // caption hides and the ride simply plays, full frame. If autoplay is
+  // blocked, a START THE RIDE button appears; one tap starts a muted video.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var frame = document.getElementById('frame');
+    var A = document.getElementById('vidA'), B = document.getElementById('vidB');
+    var btn = document.getElementById('startbtn');
+    var front = A, back = B, fading = false;
+    function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function preload(v){ if (v.getAttribute('src') !== 'ride.mp4') { v.src = 'ride.mp4'; v.load(); } }
+    function swap(){
+      fading = true;
+      back.currentTime = 0;
+      tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / 1600);
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; back.pause(); preload(back); fading = false; }
+      })();
+    }
+    setInterval(function(){
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - 1.6) swap();
+      btn.style.display = (front.paused && !fading) ? 'block' : 'none';
+    }, 400);
+    btn.addEventListener('click', function(){ tryPlay(front); });
+    A.src = 'ride.mp4';
+    front.style.opacity = '1'; back.style.opacity = '0';
+    preload(B);
+    tryPlay(A);
+  })();
+</script>
+</body>
+</html>
