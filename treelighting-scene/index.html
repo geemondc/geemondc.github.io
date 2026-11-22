@@ -41,6 +41,13 @@
            background:radial-gradient(closest-side, rgba(255,255,255,.98), rgba(235,245,255,.55) 60%, rgba(235,245,255,0) 80%);
            animation:tlFall linear infinite; will-change:transform; }
   @keyframes tlFall { 0% { transform:translate(0,-4vh); opacity:0 } 6% { opacity:1 } 50% { transform:translate(1.2vw,52vh) } 94% { opacity:1 } 100% { transform:translate(-0.8vw,106vh); opacity:0 } }
+  /* BLOOM RESCUE (Nov 22 tapfix2): if a browser freezes CSS animation timelines
+     (throttled/backgrounded iframe), the bulbs would sit at opacity 0 forever.
+     The script checks ~5.6s after insertion and adds .tlforce ONLY if a mid bulb
+     is still dark — !important is required to beat a frozen animation value.
+     In a healthy browser the class never lands and nothing changes. */
+  #fx.tlforce .tlb { opacity:1 !important; }
+  #fx.tlforce #starGlow { opacity:.92 !important; }
   #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
              background:rgba(6,42,22,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
@@ -86,7 +93,7 @@
     for (var t = 0; t < tiers.length; t++){
       for (var i = 0; i < tiers[t].pts.length; i++){
         var p = tiers[t].pts[i];
-        bloomHtml += light(p[0], p[1], n, (0.55 + (n % 3) * 0.18).toFixed(2), (1.5 + (n % 5) * 0.35).toFixed(2), (n * 0.37).toFixed(2), (tiers[t].d + i * 0.06).toFixed(2));
+        bloomHtml += light(p[0], p[1], n, (0.8 + (n % 3) * 0.22).toFixed(2), (1.5 + (n % 5) * 0.35).toFixed(2), (n * 0.37).toFixed(2), (tiers[t].d + i * 0.06).toFixed(2));
         n++;
       }
     }
@@ -115,14 +122,30 @@
        the bulbs + star so a replayed opening starts from a dark tree again. */
     var bloomBox = document.createElement('div');
     host.appendChild(bloomBox);
-    var bloomed = false, armed = false;
-    function goBloom(){ bloomBox.innerHTML = bloomHtml; bloomed = true; }
+    var bloomed = false, armed = false, bloomCheck = null;
+    function goBloom(){
+      bloomBox.innerHTML = bloomHtml; bloomed = true;
+      host.classList.remove('tlforce');
+      if (window.parent !== window){ try { window.parent.postMessage('lc-bloomed', '*'); } catch(e){} }
+      /* Rescue check: by 5.6s every bulb's bloom-in has finished (max delay
+         3.86s + 1.1s) and the star has bloomed (4.6s). If a mid bulb or the
+         star still reads dark, this browser froze the animation timelines —
+         force the lit state so the tap always lands. */
+      clearTimeout(bloomCheck);
+      bloomCheck = setTimeout(function(){
+        var bulbs = bloomBox.querySelectorAll('.tlb');
+        var mid = bulbs.length ? parseFloat(getComputedStyle(bulbs[Math.floor(bulbs.length / 2)]).opacity) : 1;
+        var star = bloomBox.querySelector('#starGlow');
+        var so = star ? parseFloat(getComputedStyle(star).opacity) : 1;
+        if (mid < 0.5 || so < 0.4) host.classList.add('tlforce');
+      }, 5600);
+    }
     if (!embedded){ goBloom(); }
     else {
       window.addEventListener('message', function(e){
         if (e.data === 'lc-arm') armed = true;
         else if (e.data === 'lc-bloom') goBloom();
-        else if (e.data === 'lc-dark'){ bloomBox.innerHTML = ''; bloomed = false; }
+        else if (e.data === 'lc-dark'){ bloomBox.innerHTML = ''; bloomed = false; host.classList.remove('tlforce'); clearTimeout(bloomCheck); }
       });
       setTimeout(function(){ if (!bloomed && !armed) goBloom(); }, 7000);
       setTimeout(function(){ if (!bloomed) goBloom(); }, 120000);
