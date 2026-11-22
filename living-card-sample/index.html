@@ -5507,39 +5507,175 @@ body.fx-hearts #sealBoom .bit, body.fx-hearts #sealBoom .bit.dot{width:17px; hei
 })();
 </script>
 <script>
-  /* THE TREE LIGHTING — bloom sync (Nov 22 fix). The scene iframe is loaded
-     with this page, behind the sealed envelope, so the scene's bloom clock
-     used to run out before the card was revealed. This hook is treelighting
-     only and changes nothing for any other card: when THIS card's reveal
-     lands it posts 'lc-bloom' to the scene, which starts the bloom then.
-     The card fade starts 3.45s after the tap (body.fxcard.opening #card
-     transition delay), so the main send is tap + 3.45s. A ready/arm
-     handshake covers a scene that finishes loading after the tap, and
-     REPLAY re-fires because reseal removes body.open and the next open is
-     a fresh transition. A repeat 'lc-bloom' simply restarts the bloom. */
+  /* THE TREE LIGHTING — TAP-TO-LIGHT (Nov 22, upgrading the bloom-sync fix
+     of the same morning). Treelighting only; this script returns at once for
+     every other card and changes nothing else on the page.
+     The scene iframe loads with this page, behind the sealed envelope, and
+     holds its tree DARK until this parent posts 'lc-bloom'. The recipient
+     fires that moment: when the card lands (fade starts at tap + 3.45s) a
+     gold-on-deep-green "Tap the tree" prompt appears over the painting's
+     lower edge and a transparent catcher takes taps anywhere on the
+     painting. A tap posts the bloom AND springs a dedicated gold/white
+     sparkle burst from the tree (the seal-boom SVG system is wired to the
+     seal moment and cannot be re-aimed, so the burst lives here, WAAPI —
+     no new @keyframes). Safety: 12s after the card lands with no tap, the
+     bloom auto-fires (burst-less) so the card never sits dark forever.
+     STILL is a deliberate pause: while body.showStill is on, the prompt
+     hides and the fallback clock is suspended, resuming on LIVING.
+     REPLAY reseals (body.open drops): everything re-arms and 'lc-dark'
+     clears the scene's bulbs, so the next opening starts dark again and
+     the tap lights it again. A repeat 'lc-bloom' restarts the bloom. */
   (function(){
     if (window.__lcScene !== 'treelighting') return;
-    var fr = document.querySelector('.frame iframe');
-    if (!fr) return;
-    var t1 = null, t2 = null;
+    var frame = document.querySelector('.frame');
+    var fr = frame ? frame.querySelector('iframe') : null;
+    if (!frame || !fr) return;
     function post(msg){ if (fr.contentWindow){ try { fr.contentWindow.postMessage(msg, '*'); } catch(e){} } }
-    function sendBloom(){ post('lc-bloom'); }
+
+    /* --- prompt + tap catcher + burst layer, built once, inside the frame --- */
+    var prompt = document.createElement('div');
+    prompt.textContent = 'Tap the tree';
+    prompt.setAttribute('aria-hidden', 'true');
+    prompt.style.cssText = 'position:absolute;left:50%;bottom:5%;transform:translateX(-50%);z-index:31;' +
+      'display:none;white-space:nowrap;pointer-events:none;' +
+      'background:rgba(6,42,22,.72);color:#ffe9a8;font-family:Georgia,\'Times New Roman\',serif;' +
+      'font-size:clamp(13px,3.4vw,17px);letter-spacing:2.5px;padding:9px 20px;border-radius:999px;' +
+      'border:1px solid rgba(255,215,130,.55);box-shadow:0 6px 22px rgba(0,0,0,.35)';
+    frame.appendChild(prompt);
+    var pulse = null;
+    function promptShow(){
+      prompt.style.display = 'block'; prompt.style.opacity = '1';
+      if (prompt.animate && !pulse){
+        pulse = prompt.animate(
+          [{ opacity:.68, transform:'translateX(-50%) scale(1)' }, { opacity:1, transform:'translateX(-50%) scale(1.045)' }],
+          { duration:1500, iterations:Infinity, direction:'alternate', easing:'ease-in-out' });
+      }
+    }
+    function promptHide(fade){
+      if (pulse){ pulse.cancel(); pulse = null; }
+      if (fade && prompt.animate && prompt.style.display !== 'none'){
+        var a = prompt.animate([{ opacity:1 }, { opacity:0 }], { duration:320, easing:'ease-out' });
+        a.onfinish = function(){ prompt.style.display = 'none'; };
+      } else prompt.style.display = 'none';
+    }
+    var catcher = document.createElement('button');
+    catcher.type = 'button';
+    catcher.setAttribute('aria-label', 'Tap the tree to light it');
+    catcher.style.cssText = 'position:absolute;inset:0;z-index:30;display:none;width:100%;height:100%;' +
+      'background:transparent;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent';
+    frame.appendChild(catcher);
+    var burstBox = document.createElement('div');
+    burstBox.style.cssText = 'position:absolute;inset:0;z-index:32;pointer-events:none;overflow:hidden';
+    frame.appendChild(burstBox);
+
+    function burst(){
+      if (!burstBox.animate) return;
+      var W = frame.clientWidth || 300, H = frame.clientHeight || 260;
+      var ox = W * 0.50, oy = H * 0.36; /* the tree's heart, in frame coords */
+      var flash = document.createElement('div');
+      var fs = Math.round(W * 0.52);
+      flash.style.cssText = 'position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none;' +
+        'left:' + (ox - fs/2) + 'px;top:' + (oy - fs/2) + 'px;width:' + fs + 'px;height:' + fs + 'px;' +
+        'background:radial-gradient(closest-side, rgba(255,236,170,.95), rgba(255,196,80,.38) 55%, rgba(255,180,80,0) 78%)';
+      burstBox.appendChild(flash);
+      var fa = flash.animate(
+        [{ opacity:0, transform:'scale(.35)' }, { opacity:.95, transform:'scale(1.05)', offset:.35 }, { opacity:0, transform:'scale(1.55)' }],
+        { duration:820, easing:'ease-out' });
+      fa.onfinish = function(){ flash.remove(); };
+      var cols = ['255,230,150', '255,209,102', '255,243,196', '255,255,255', '255,166,66'];
+      for (var i = 0; i < 30; i++){
+        var s = document.createElement('div');
+        var sz = 4 + Math.random() * 5.5;
+        var c = cols[i % cols.length];
+        s.style.cssText = 'position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none;' +
+          'left:' + (ox - sz/2) + 'px;top:' + (oy - sz/2) + 'px;width:' + sz + 'px;height:' + sz + 'px;' +
+          'background:radial-gradient(closest-side, rgba(' + c + ',.98), rgba(' + c + ',.32) 55%, rgba(' + c + ',0) 80%)';
+        burstBox.appendChild(s);
+        var ang = Math.random() * Math.PI * 2;
+        var dist = W * (0.16 + Math.random() * 0.42);
+        var dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist * 0.82 - H * 0.05;
+        var dur = 900 + Math.random() * 650;
+        var an = s.animate([
+          { opacity:0, transform:'translate(0px,0px) scale(.5)' },
+          { opacity:1, transform:'translate(' + (dx * .35).toFixed(1) + 'px,' + (dy * .35).toFixed(1) + 'px) scale(1.25)', offset:.3 },
+          { opacity:0, transform:'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(.35)' }
+        ], { duration:dur, easing:'cubic-bezier(.17,.67,.35,1)' });
+        (function(el, anim){ anim.onfinish = function(){ el.remove(); }; })(s, an);
+      }
+    }
+
+    /* --- state: sealed -> await (card landed, prompt up) -> lit --- */
+    var phase = 'sealed';
+    var landTimer = null, fallbackTimer = null;
+    function clearTimers(){ clearTimeout(landTimer); clearTimeout(fallbackTimer); landTimer = fallbackTimer = null; }
+    function enterAwait(){
+      if (phase !== 'sealed') return;
+      phase = 'await';
+      if (document.body.classList.contains('showStill')) return; /* suspended until LIVING */
+      promptShow();
+      catcher.style.display = 'block';
+      clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(function(){ lightUp(false); }, 12000);
+    }
+    function lightUp(withBurst){
+      if (phase === 'lit') return;
+      phase = 'lit';
+      clearTimeout(fallbackTimer); fallbackTimer = null;
+      catcher.style.display = 'none';
+      promptHide(true);
+      post('lc-bloom');
+      if (withBurst) burst();
+    }
+    catcher.addEventListener('pointerdown', function(e){ e.preventDefault(); lightUp(true); });
+
     window.addEventListener('message', function(e){
       if (e.data === 'lc-scene-ready' && fr.contentWindow && e.source === fr.contentWindow){
         post('lc-arm');
-        if (document.body.classList.contains('open')){ clearTimeout(t2); t2 = setTimeout(sendBloom, 400); }
+        /* A scene that finishes loading after the card already landed joins
+           the await state at once — it never auto-blooms on its own. */
+        if (phase === 'sealed' && document.body.classList.contains('open') && !landTimer) enterAwait();
       }
     });
+
     var wasOpen = document.body.classList.contains('open');
+    var wasStill = document.body.classList.contains('showStill');
     function sync(){
       var isOpen = document.body.classList.contains('open');
-      if (isOpen === wasOpen) return;
-      wasOpen = isOpen;
-      if (isOpen){ clearTimeout(t1); t1 = setTimeout(sendBloom, 3450); }
-      else { clearTimeout(t1); clearTimeout(t2); }
+      var isStill = document.body.classList.contains('showStill');
+      if (isOpen !== wasOpen){
+        wasOpen = isOpen;
+        if (isOpen){
+          /* card fade starts 3.45s after the seal tap (body.fxcard.opening
+             #card transition delay) — the prompt lands with the card. */
+          clearTimeout(landTimer);
+          landTimer = setTimeout(function(){ landTimer = null; enterAwait(); }, 3450);
+        } else {
+          /* resealed (REPLAY): re-arm everything, darken the scene's tree */
+          clearTimers();
+          phase = 'sealed';
+          catcher.style.display = 'none';
+          promptHide(false);
+          post('lc-dark');
+        }
+      }
+      if (isStill !== wasStill){
+        wasStill = isStill;
+        if (phase === 'await'){
+          if (isStill){ /* STILL is a deliberate pause — nothing forced */
+            clearTimeout(fallbackTimer); fallbackTimer = null;
+            catcher.style.display = 'none';
+            promptHide(false);
+          } else { /* back to LIVING, still unlit: invite again, fresh clock */
+            promptShow();
+            catcher.style.display = 'block';
+            clearTimeout(fallbackTimer);
+            fallbackTimer = setTimeout(function(){ lightUp(false); }, 12000);
+          }
+        }
+      }
     }
     new MutationObserver(sync).observe(document.body, { attributes:true, attributeFilter:['class'] });
-    if (wasOpen){ t1 = setTimeout(sendBloom, 3450); }
+    if (wasOpen){ landTimer = setTimeout(function(){ landTimer = null; enterAwait(); }, 3450); }
   })();
 </script>
 </body>
