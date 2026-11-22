@@ -41,13 +41,14 @@
            background:radial-gradient(closest-side, rgba(255,255,255,.98), rgba(235,245,255,.55) 60%, rgba(235,245,255,0) 80%);
            animation:tlFall linear infinite; will-change:transform; }
   @keyframes tlFall { 0% { transform:translate(0,-4vh); opacity:0 } 6% { opacity:1 } 50% { transform:translate(1.2vw,52vh) } 94% { opacity:1 } 100% { transform:translate(-0.8vw,106vh); opacity:0 } }
-  /* BLOOM RESCUE (Nov 22 tapfix2): if a browser freezes CSS animation timelines
-     (throttled/backgrounded iframe), the bulbs would sit at opacity 0 forever.
-     The script checks ~5.6s after insertion and adds .tlforce ONLY if a mid bulb
-     is still dark — !important is required to beat a frozen animation value.
-     In a healthy browser the class never lands and nothing changes. */
-  #fx.tlforce .tlb { opacity:1 !important; }
-  #fx.tlforce #starGlow { opacity:.92 !important; }
+  /* BLOOM GUARANTEE (Nov 22 tapfix3): a bulb's lit state is NOT left to its
+     CSS animation (the tapfix2 rescue read getComputedStyle — the animation
+     clock, not the painted frame — and never fired on real devices). Per-tier
+     JS timers in the script below set each bulb's inline opacity with
+     !important at the moment its bloom-in animation lands, the star likewise,
+     so the full lit tree arrives by ~5s even if every animation timeline in
+     this iframe is frozen or never painted. The animations remain as the
+     build effect in healthy browsers; the timers are the guarantee. */
   #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
              background:rgba(6,42,22,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
@@ -89,13 +90,15 @@
       { d: 3.30, pts: [[45,19],[52,20],[56,19]] },
       { d: 3.80, pts: [[47,11],[53,12]] }
     ];
-    var n = 0;
+    var n = 0, tierInfo = [];
     for (var t = 0; t < tiers.length; t++){
       for (var i = 0; i < tiers[t].pts.length; i++){
         var p = tiers[t].pts[i];
         bloomHtml += light(p[0], p[1], n, (0.8 + (n % 3) * 0.22).toFixed(2), (1.5 + (n % 5) * 0.35).toFixed(2), (n * 0.37).toFixed(2), (tiers[t].d + i * 0.06).toFixed(2));
         n++;
       }
+      /* when this tier's last bulb's bloom-in lands: tier delay + last step + 1.1s */
+      tierInfo.push({ count: tiers[t].pts.length, at: tiers[t].d + (tiers[t].pts.length - 1) * 0.06 + 1.1 });
     }
     // the star on top of the tree — blooms in last, then breathes
     bloomHtml += '<div id="starGlow" style="left:50%;top:3%;width:5%;aspect-ratio:1"></div>';
@@ -122,22 +125,56 @@
        the bulbs + star so a replayed opening starts from a dark tree again. */
     var bloomBox = document.createElement('div');
     host.appendChild(bloomBox);
-    var bloomed = false, armed = false, bloomCheck = null;
+    var bloomed = false, armed = false, bloomTimers = [], tierDone = [], starDone = false, rescueTimer = null;
+    function clearBloomTimers(){
+      for (var i = 0; i < bloomTimers.length; i++) clearTimeout(bloomTimers[i]);
+      bloomTimers = []; clearTimeout(rescueTimer); rescueTimer = null;
+    }
+    function setLit(el, val){ if (el) el.style.setProperty('opacity', val, 'important'); }
     function goBloom(){
+      clearBloomTimers();
       bloomBox.innerHTML = bloomHtml; bloomed = true;
-      host.classList.remove('tlforce');
+      tierDone = []; starDone = false;
       if (window.parent !== window){ try { window.parent.postMessage('lc-bloomed', '*'); } catch(e){} }
-      /* Rescue check: by 5.6s every bulb's bloom-in has finished (max delay
-         3.86s + 1.1s) and the star has bloomed (4.6s). If a mid bulb or the
-         star still reads dark, this browser froze the animation timelines —
-         force the lit state so the tap always lands. */
-      clearTimeout(bloomCheck);
-      bloomCheck = setTimeout(function(){
-        var bulbs = bloomBox.querySelectorAll('.tlb');
-        var mid = bulbs.length ? parseFloat(getComputedStyle(bulbs[Math.floor(bulbs.length / 2)]).opacity) : 1;
-        var star = bloomBox.querySelector('#starGlow');
-        var so = star ? parseFloat(getComputedStyle(star).opacity) : 1;
-        if (mid < 0.5 || so < 0.4) host.classList.add('tlforce');
+      /* TIMER-GUARANTEED LIT STATE (tapfix3): a bulb's only road to lit used
+         to be the tlBloomIn CSS animation — positive delays (0.30–3.86s) and
+         a forwards fill holding an end frame over a base opacity of 0. Where
+         an iframe's animation timelines freeze or never paint (Safari,
+         automated browsers), the bulbs sat at opacity 0 forever; the star —
+         whose animation carries NO positive delay, its wait baked into
+         keyframe percentages — lit on its own, which is exactly the failure
+         Gary's phone reported (star glows, tree dark). The tapfix2 rescue
+         could not see it: it read getComputedStyle().opacity, which follows
+         the animation clock, not the painted frame. Now plain setTimeout
+         timers — which demonstrably run in those same browsers — set each
+         tier's bulbs' inline opacity with !important (which beats any
+         animation value, frozen or not) at the moment that tier's bloom-in
+         lands; the star gets the same at 4.6s. A 5.6s sweep, keyed on JS
+         flags rather than computed style, completes any tier whose timer
+         was lost. In a healthy browser every timer lands on an animation
+         that already finished, so nothing visibly changes. */
+      var idx = 0;
+      for (var t = 0; t < tierInfo.length; t++){
+        (function(t, start){
+          bloomTimers.push(setTimeout(function(){
+            var all = bloomBox.querySelectorAll('.tlb');
+            for (var k = 0; k < tierInfo[t].count; k++) setLit(all[start + k], '1');
+            tierDone[t] = true;
+          }, Math.round(tierInfo[t].at * 1000)));
+        })(t, idx);
+        idx += tierInfo[t].count;
+      }
+      bloomTimers.push(setTimeout(function(){
+        setLit(bloomBox.querySelector('#starGlow'), '.92'); starDone = true;
+      }, 4600));
+      rescueTimer = setTimeout(function(){
+        var all = bloomBox.querySelectorAll('.tlb');
+        var start = 0;
+        for (var t = 0; t < tierInfo.length; t++){
+          if (!tierDone[t]){ for (var k = 0; k < tierInfo[t].count; k++) setLit(all[start + k], '1'); tierDone[t] = true; }
+          start += tierInfo[t].count;
+        }
+        if (!starDone){ setLit(bloomBox.querySelector('#starGlow'), '.92'); starDone = true; }
       }, 5600);
     }
     if (!embedded){ goBloom(); }
@@ -145,7 +182,7 @@
       window.addEventListener('message', function(e){
         if (e.data === 'lc-arm') armed = true;
         else if (e.data === 'lc-bloom') goBloom();
-        else if (e.data === 'lc-dark'){ bloomBox.innerHTML = ''; bloomed = false; host.classList.remove('tlforce'); clearTimeout(bloomCheck); }
+        else if (e.data === 'lc-dark'){ clearBloomTimers(); bloomBox.innerHTML = ''; bloomed = false; tierDone = []; starDone = false; }
       });
       setTimeout(function(){ if (!bloomed && !armed) goBloom(); }, 7000);
       setTimeout(function(){ if (!bloomed) goBloom(); }, 120000);
