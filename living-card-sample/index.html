@@ -5506,5 +5506,41 @@ body.fx-hearts #sealBoom .bit, body.fx-hearts #sealBoom .bit.dot{width:17px; hei
   else card.insertBefore(sheet, card.firstChild);
 })();
 </script>
+<script>
+  /* THE TREE LIGHTING — bloom sync (Nov 22 fix). The scene iframe is loaded
+     with this page, behind the sealed envelope, so the scene's bloom clock
+     used to run out before the card was revealed. This hook is treelighting
+     only and changes nothing for any other card: when THIS card's reveal
+     lands it posts 'lc-bloom' to the scene, which starts the bloom then.
+     The card fade starts 3.45s after the tap (body.fxcard.opening #card
+     transition delay), so the main send is tap + 3.45s. A ready/arm
+     handshake covers a scene that finishes loading after the tap, and
+     REPLAY re-fires because reseal removes body.open and the next open is
+     a fresh transition. A repeat 'lc-bloom' simply restarts the bloom. */
+  (function(){
+    if (window.__lcScene !== 'treelighting') return;
+    var fr = document.querySelector('.frame iframe');
+    if (!fr) return;
+    var t1 = null, t2 = null;
+    function post(msg){ if (fr.contentWindow){ try { fr.contentWindow.postMessage(msg, '*'); } catch(e){} } }
+    function sendBloom(){ post('lc-bloom'); }
+    window.addEventListener('message', function(e){
+      if (e.data === 'lc-scene-ready' && fr.contentWindow && e.source === fr.contentWindow){
+        post('lc-arm');
+        if (document.body.classList.contains('open')){ clearTimeout(t2); t2 = setTimeout(sendBloom, 400); }
+      }
+    });
+    var wasOpen = document.body.classList.contains('open');
+    function sync(){
+      var isOpen = document.body.classList.contains('open');
+      if (isOpen === wasOpen) return;
+      wasOpen = isOpen;
+      if (isOpen){ clearTimeout(t1); t1 = setTimeout(sendBloom, 3450); }
+      else { clearTimeout(t1); clearTimeout(t2); }
+    }
+    new MutationObserver(sync).observe(document.body, { attributes:true, attributeFilter:['class'] });
+    if (wasOpen){ t1 = setTimeout(sendBloom, 3450); }
+  })();
+</script>
 </body>
 </html>

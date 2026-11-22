@@ -65,7 +65,8 @@
   // The Tree Lighting (Gary's living standard): the painting stays exactly itself; the tree arrives UNLIT, then its lights bloom in over the first few seconds — bottom tier first, spiraling up tier by tier — the star glow crowns it last and then breathes; the lampposts glow warm at both sides, steam rises off the cocoa mugs, and snow falls across the whole square. In #wall the caption hides.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
-    var host = document.getElementById('fx'), html = '';
+    var embedded = document.body.classList.contains('wall');
+    var host = document.getElementById('fx'), html = '', bloomHtml = '';
     var palette = ['255,209,102', '255,89,100', '126,217,87', '255,243,196', '255,166,66'];
     function light(x, y, ci, size, dur, phase, bloom){
       var c = palette[ci % palette.length];
@@ -85,12 +86,12 @@
     for (var t = 0; t < tiers.length; t++){
       for (var i = 0; i < tiers[t].pts.length; i++){
         var p = tiers[t].pts[i];
-        html += light(p[0], p[1], n, (0.55 + (n % 3) * 0.18).toFixed(2), (1.5 + (n % 5) * 0.35).toFixed(2), (n * 0.37).toFixed(2), (tiers[t].d + i * 0.06).toFixed(2));
+        bloomHtml += light(p[0], p[1], n, (0.55 + (n % 3) * 0.18).toFixed(2), (1.5 + (n % 5) * 0.35).toFixed(2), (n * 0.37).toFixed(2), (tiers[t].d + i * 0.06).toFixed(2));
         n++;
       }
     }
     // the star on top of the tree — blooms in last, then breathes
-    html += '<div id="starGlow" style="left:50%;top:3%;width:5%;aspect-ratio:1"></div>';
+    bloomHtml += '<div id="starGlow" style="left:50%;top:3%;width:5%;aspect-ratio:1"></div>';
     // lamppost glows, warm at both sides of the square
     html += '<div class="lamp" style="left:3%;top:30%;width:7%;aspect-ratio:1"></div>';
     html += '<div class="lamp" style="left:96%;top:35%;width:7%;aspect-ratio:1;animation-delay:-2.1s"></div>';
@@ -100,6 +101,37 @@
       html += '<div class="steam" style="left:' + mugs[m][0] + '%;top:' + mugs[m][1] + '%;width:1.6%;aspect-ratio:1.6;animation-delay:-' + (m * 0.45).toFixed(2) + 's"></div>';
     }
     host.innerHTML = html;
+    /* BLOOM GATE (Nov 22 fix): inside the card engine this page is loaded with
+       the sealed envelope, so a bloom clock started at load ran out before the
+       card was ever revealed. In an embed (#wall) the bulbs + star are held
+       back until the parent says the card has landed ('lc-bloom'); the parent
+       arms the gate with 'lc-arm' once it hears our 'lc-scene-ready'. A
+       standalone visit blooms at once, exactly as before. Fallbacks: an
+       unarmed embed blooms at 7s (theater-style embeds with no parent hook);
+       an armed embed blooms at 120s at the latest — and a late 'lc-bloom'
+       restarts the bloom visibly in any case. All bloom timings are the
+       original ones; only the start signal changed. */
+    var bloomBox = document.createElement('div');
+    host.appendChild(bloomBox);
+    var bloomed = false, armed = false;
+    function goBloom(){ bloomBox.innerHTML = bloomHtml; bloomed = true; }
+    if (!embedded){ goBloom(); }
+    else {
+      window.addEventListener('message', function(e){
+        if (e.data === 'lc-arm') armed = true;
+        else if (e.data === 'lc-bloom') goBloom();
+      });
+      setTimeout(function(){ if (!bloomed && !armed) goBloom(); }, 7000);
+      setTimeout(function(){ if (!bloomed) goBloom(); }, 120000);
+      if (window.parent !== window){
+        try { window.parent.postMessage('lc-scene-ready', '*'); } catch(e){}
+        var readyN = 0;
+        var readyTimer = setInterval(function(){
+          if (armed || bloomed || ++readyN > 6){ clearInterval(readyTimer); return; }
+          try { window.parent.postMessage('lc-scene-ready', '*'); } catch(e){}
+        }, 800);
+      }
+    }
     // snow falling across the whole square — real travel, top to bottom
     var snow = document.getElementById('snow'), shtml = '';
     for (var f = 0; f < 34; f++){
