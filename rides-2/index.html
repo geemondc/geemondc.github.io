@@ -68,9 +68,12 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
 
   /* ===== the stage: one ride at a time, whole picture ===== */
   .stage{max-width:880px; margin:18px auto 0; padding:0 12px}
-  .frame{position:relative; border-radius:18px; overflow:hidden; box-shadow:0 14px 40px rgba(43,18,24,.28); background:#17110d; aspect-ratio:16/9; cursor:pointer}
+  .frame{position:relative; border-radius:18px; overflow:hidden; box-shadow:0 14px 40px rgba(43,18,24,.28); background:#17110d; aspect-ratio:16/9; cursor:zoom-in}
   .frame .blur{position:absolute; inset:-30px; background-size:cover; background-position:center; filter:blur(24px) brightness(.8) saturate(1.15); transform:scale(1.12)}
   .frame img{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; transition:opacity .28s ease}
+  .frame video{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; transition:opacity .28s ease}
+  .frame video.fading{opacity:0}
+  .frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
   #frameFsBtn{position:absolute;right:10px;bottom:10px;z-index:3;appearance:none;border:1.5px solid #a87f24;background:linear-gradient(180deg,#e9cf8f,#c9a227);color:#2a1e05;font-family:Georgia,serif;font-size:13px;font-weight:700;letter-spacing:.04em;padding:8px 14px;border-radius:999px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.35)}
   .frame img.fading{opacity:0}
   .rd-name{text-align:center; font-size:clamp(24px,4.4vw,32px); color:#5d1220; margin-top:20px; line-height:1.2}
@@ -119,6 +122,16 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
   body.dark #rdIntro{background:radial-gradient(120% 90% at 50% 0%, #241c12 0%, #1a140d 60%, #120e09 100%);color:#f5ecd7}
   body.dark #rdIntro h1{color:#f0dca6}
   body.dark #rdIntro .b-shelf, body.dark #rdIntro .b-slide{color:#d9c48d}
+
+  /* ===== fullscreen view ===== */
+  #fs{display:none; position:fixed; inset:0; z-index:95; background:#000; align-items:center; justify-content:center; cursor:zoom-out}
+  #fs.show{display:flex}
+  #fs img{max-width:100%; max-height:100%; object-fit:contain; display:block}
+  #fs video{width:100%; height:100%; object-fit:contain; display:block; background:#000}
+  #fs iframe{width:100%; height:100%; border:0; display:none; background:#000}
+  #fs.has-frame iframe{display:block}
+  #fs.has-frame video{display:none}
+  #fs .hint{position:absolute; left:0; right:0; bottom:calc(14px + env(safe-area-inset-bottom)); text-align:center; font-family:Georgia,serif; font-style:italic; font-size:13.5px; color:rgba(245,231,200,.75)}
 </style>
 </head>
 <body>
@@ -159,10 +172,11 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
 <nav id="picker" aria-label="Choose a ride"></nav>
 
 <main class="stage">
-  <div class="frame" id="frame" role="button" aria-label="Take this ride">
+  <div class="frame" id="frame" role="button" aria-label="See it full screen">
     <div class="blur" id="frameBlur"></div>
-    <img id="frameImg" src="poster-venice.jpg" alt="The ride">
-    <button id="frameFsBtn" type="button" data-i18n="climb">Climb in &rarr;</button>
+    <video id="frameVid" autoplay muted loop playsinline preload="auto" poster="poster-venice.jpg" src="https://geemondc.github.io/venice-gondola-scene/ride.mp4" aria-label="The ride, playing"></video>
+    <iframe id="frameFrame" title="The long ride, playing" allow="autoplay; fullscreen" style="display:none"></iframe>
+    <button id="frameFsBtn" type="button" data-i18n="climb" style="display:none">Climb in &rarr;</button>
   </div>
   <h2 class="rd-name" id="rdName"></h2>
   <p class="rd-line" id="rdLine"></p>
@@ -181,32 +195,38 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
 </div>
 
 <footer>Living Photos &middot; Future Ready</footer>
+
+<div id="fs" role="dialog" aria-label="Full screen">
+  <video id="fsVid" muted loop playsinline></video>
+  <iframe id="fsFrame" title="The ride, playing" allow="autoplay; fullscreen"></iframe>
+  <div class="hint" data-i18n="tapClose">Tap to close</div>
+</div>
 <script>
 (function(){
   var RIDES = [
-    {key:'venice',    short:'Venice',   name:'Venice Gondola',       img:'poster-venice.jpg',  href:'https://geemondc.github.io/venice-gondola-scene/',
+    {key:'venice',    short:'Venice',   name:'Venice Gondola',       img:'poster-venice.jpg',  vid:'https://geemondc.github.io/venice-gondola-scene/ride.mp4',
      en:'A gondola ride down a Venice canal at dusk.', es:'Un paseo en g\u00f3ndola por un canal de Venecia al atardecer.'},
-    {key:'cave',      short:'Cave',     name:'Crystal Cave',         img:'poster-cave.jpg',    href:'https://geemondc.github.io/crystal-cave-scene/',
+    {key:'cave',      short:'Cave',     name:'Crystal Cave',         img:'poster-cave.jpg',    vid:'https://geemondc.github.io/crystal-cave-scene/ride.mp4',
      en:'A ride through a glowing crystal cave.', es:'Un paseo por una cueva de cristales brillantes.'},
     {key:'ferry',     short:'Ferry',    name:'Fireworks Ferry',      img:'poster-ferry.jpg',   href:'https://geemondc.github.io/fireworks-ferry-scene/',
      en:'A ferry ride under the fireworks.', es:'Un paseo en ferry bajo los fuegos artificiales.'},
-    {key:'lantern',   short:'Lanterns', name:'Lantern River',        img:'poster-lantern.jpg', href:'https://geemondc.github.io/lantern-river-scene/',
+    {key:'lantern',   short:'Lanterns', name:'Lantern River',        img:'poster-lantern.jpg', vid:'https://geemondc.github.io/lantern-river-scene/ride.mp4',
      en:'A boat ride down a river of lanterns.', es:'Un paseo en barco por un r\u00edo de linternas.'},
-    {key:'sled',      short:'Sled',     name:'Dog Sled',             img:'poster-sled.jpg',    href:'https://geemondc.github.io/dog-sled-scene/',
+    {key:'sled',      short:'Sled',     name:'Dog Sled',             img:'poster-sled.jpg',    vid:'https://geemondc.github.io/dog-sled-scene/ride.mp4',
      en:'A dog sled ride under the northern lights.', es:'Un paseo en trineo de perros bajo la aurora boreal.'},
-    {key:'train',     short:'Train',    name:'Christmas Train',      img:'poster-train.jpg',   href:'https://geemondc.github.io/christmas-train-scene/',
+    {key:'train',     short:'Train',    name:'Christmas Train',      img:'poster-train.jpg',   vid:'https://geemondc.github.io/christmas-train-scene/ride.mp4',
      en:'A train ride through a snowy Christmas valley.', es:'Un paseo en tren por un valle navide\u00f1o nevado.'},
-    {key:'flight',    short:'Flight',   name:'Starry Night Flight',  img:'poster-flight.jpg',  href:'https://geemondc.github.io/starry-flight-scene/',
+    {key:'flight',    short:'Flight',   name:'Starry Night Flight',  img:'poster-flight.jpg',  vid:'https://geemondc.github.io/starry-flight-scene/ride.mp4',
      en:'A flight over the countryside under a swirling painted sky.', es:'Un vuelo sobre el campo bajo un cielo pintado que gira.'},
-    {key:'sleigh',    short:'Sleigh',   name:'The Sleigh Ride',      img:'poster-sleigh.jpg',  href:'https://geemondc.github.io/sleigh-ride-scene/',
+    {key:'sleigh',    short:'Sleigh',   name:'The Sleigh Ride',      img:'poster-sleigh.jpg',  vid:'https://geemondc.github.io/sleigh-ride-scene/ride.mp4',
      en:'A sleigh ride through a snowy village under the northern lights.', es:'Un paseo en trineo por un pueblo nevado bajo la aurora boreal.'},
-    {key:'harbor',    short:'Harbor',   name:'Space Harbor',         img:'poster-harbor.jpg',  href:'https://geemondc.github.io/space-harbor-scene/',
+    {key:'harbor',    short:'Harbor',   name:'Space Harbor',         img:'poster-harbor.jpg',  vid:'https://geemondc.github.io/space-harbor-scene/ride.mp4',
      en:'A sail through a harbor of tall ships under the stars.', es:'Una navegaci\u00f3n por un puerto de veleros bajo las estrellas.'},
-    {key:'carriage',  short:'Carriage', name:'Autumn Carriage',      img:'poster-carriage.jpg', href:'https://geemondc.github.io/autumn-carriage-scene/',
+    {key:'carriage',  short:'Carriage', name:'Autumn Carriage',      img:'poster-carriage.jpg', vid:'https://geemondc.github.io/autumn-carriage-scene/ride.mp4',
      en:'A carriage ride down an autumn lane, through the covered bridge.', es:'Un paseo en carruaje por un camino de oto\u00f1o, a trav\u00e9s del puente cubierto.'},
-    {key:'spring',    short:'Spring',   name:'Spring Railway',       img:'poster-spring.jpg',  href:'https://geemondc.github.io/spring-railway-scene/',
+    {key:'spring',    short:'Spring',   name:'Spring Railway',       img:'poster-spring.jpg',  vid:'https://geemondc.github.io/spring-railway-scene/ride.mp4',
      en:'A train ride through the cherry blossoms into the little station.', es:'Un paseo en tren entre los cerezos en flor hasta la peque\u00f1a estaci\u00f3n.'},
-    {key:'walk',      short:'Walk',     name:'The Morning Walk \u2014 a walking ride', img:'poster-walk.jpg', href:'https://geemondc.github.io/movement-is-medicine/',
+    {key:'walk',      short:'Walk',     name:'The Morning Walk \u2014 a walking ride', img:'poster-walk.jpg', vid:'https://geemondc.github.io/movement-is-medicine/walk.mp4',
      en:'A morning walk down a garden path at sunrise.', es:'Un paseo matutino por un sendero de jard\u00edn al amanecer.'}
   ];
   var ES = {
@@ -215,11 +235,11 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
     title:'Los Paseos', shelf:'M\u00e1s paseos. Ven a pasear con nosotros.',
     slide:'Toca una imagen y sube.',
     go:'Ver los paseos \u2192', headTitle:'Paseos \u2014 P\u00e1gina Dos', shelf2:'M\u00e1s paseos, gratis para ver.',
-    allTwo:'Todos los paseos de la p\u00e1gina dos', climb:'Sube \u2192', doorBack:'P\u00e1gina Uno \u2014 los primeros 25 paseos'
+    allTwo:'Todos los paseos de la p\u00e1gina dos', climb:'Sube \u2192', tapClose:'Toca para cerrar', doorBack:'P\u00e1gina Uno \u2014 los primeros 25 paseos'
   };
   var lang = 'en', cur = 0;
   var $ = function(id){ return document.getElementById(id); };
-  var picker = $('picker'), list = $('rdList'), img = $('frameImg'), blur = $('frameBlur');
+  var picker = $('picker'), list = $('rdList'), vid = $('frameVid'), blur = $('frameBlur');
 
   RIDES.forEach(function(r, i){
     var b = document.createElement('button');
@@ -237,10 +257,19 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
   function render(){
     var r = RIDES[cur];
     blur.style.backgroundImage = 'url("' + r.img + '")';
-    img.classList.add('fading');
-    img.onload = function(){ img.classList.remove('fading'); };
-    if (img.getAttribute('src') !== r.img) img.src = r.img; else img.classList.remove('fading');
-    img.alt = r.name;
+    vid.poster = r.img;
+    var ff = $('frameFrame'), fb = $('frameFsBtn');
+    if (!r.vid) {
+      if (vid.getAttribute('src')) { vid.removeAttribute('src'); vid.load(); }
+      vid.classList.remove('fading');
+      if (r.href) { ff.style.display = 'block'; if (ff.getAttribute('src') !== r.href) ff.src = r.href; fb.style.display = 'block'; }
+    } else {
+      ff.style.display = 'none'; if (ff.getAttribute('src')) ff.removeAttribute('src'); fb.style.display = 'block';
+      vid.classList.add('fading');
+      if (vid.getAttribute('src') !== r.vid) vid.src = r.vid;
+      vid.oncanplay = function(){ vid.classList.remove('fading'); };
+      var pr = vid.play(); if (pr) pr.catch(function(){});
+    }
     $('rdName').textContent = r.name;
     $('rdLine').textContent = (lang === 'es') ? r.es : r.en;
     var pbtns = picker.querySelectorAll('button');
@@ -256,24 +285,28 @@ body.dark #topBar .tbtn.on{background:#f2d98c;color:#2b1218}
     if (on && on.scrollIntoView) on.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
   }
   function go(i){ if (i < 0 || i >= RIDES.length) return; cur = i; render(); }
-  function climbIn(){ window.location.href = RIDES[cur].href; }
-  $('frameFsBtn').addEventListener('click', function(e){ e.stopPropagation(); climbIn(); });
+  $('frameFsBtn').addEventListener('click', function(e){ e.stopPropagation(); openFs(); });
   $('fcPrev').addEventListener('click', function(){ go(cur - 1); });
   $('fcNext').addEventListener('click', function(){ go(cur + 1); });
   document.addEventListener('keydown', function(e){
+    if ($('fs').classList.contains('show')){ if (e.key === 'Escape') closeFs(); return; }
     if (e.key === 'ArrowLeft') go(cur - 1);
     if (e.key === 'ArrowRight') go(cur + 1);
   });
-  var tx = null;
+  var tx = null, lastSwipe = 0;
   var frame = $('frame');
   frame.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
   frame.addEventListener('touchend', function(e){
     if (tx === null) return;
     var dx = e.changedTouches[0].clientX - tx; tx = null;
-    if (Math.abs(dx) > 48){ go(cur + (dx < 0 ? 1 : -1)); }
-    else climbIn();
+    if (Math.abs(dx) > 48){ lastSwipe = Date.now(); go(cur + (dx < 0 ? 1 : -1)); }
   }, {passive:true});
-  frame.addEventListener('click', function(){ climbIn(); });
+  frame.addEventListener('click', function(){ if (Date.now() - lastSwipe < 600) return; openFs(); });
+  function openFs(){ if (RIDES[cur].href) { $('fsFrame').src = RIDES[cur].href; $('fs').classList.add('has-frame'); $('fs').classList.add('show'); return; } var v = $('fsVid'); v.poster = RIDES[cur].img; v.src = RIDES[cur].vid; $('fs').classList.add('show'); var p = v.play(); if (p) p.catch(function(){}); }
+  function closeFs(){ var v = $('fsVid'); v.pause(); v.removeAttribute('src'); v.load(); var f = $('fsFrame'); if (f) f.removeAttribute('src'); $('fs').classList.remove('has-frame'); $('fs').classList.remove('show'); }
+  window.addEventListener('message', function(e){ if (e.data === 'lc-close-fs') closeFs(); });
+  $('fs').addEventListener('click', closeFs);
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeFs(); });
 
   /* intro */
   function closeIntro(){ $('rdIntro').style.display = 'none'; }
