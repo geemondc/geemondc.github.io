@@ -81,6 +81,11 @@
     pointer-events: none;
   }
   .scene.walking video { opacity: 1; }
+  /* The walk is a two-leg chain on stacked players (the ride-page
+     pattern): JS drives each player's opacity inline with rAF
+     crossfades, which override the .walking rule above, so the CSS
+     fade transition must not fight the crossfades. */
+  .scene video.walkvid { transition: none; }
   /* Living Photos treatment: slow, gentle light breathing over the still.
      Opacity/filter only — no zoom, no transforms, no video. */
   .scene .light {
@@ -241,7 +246,8 @@
 
     <div class="scene" aria-hidden="true">
       <img src="garden-path.jpg" alt="">
-      <video id="walkVideo" src="walk.mp4" poster="garden-path.jpg" loop muted playsinline preload="metadata"></video>
+      <video class="walkvid" id="walkVideoA" src="walk.mp4" poster="garden-path.jpg" muted playsinline preload="auto"></video>
+      <video class="walkvid" id="walkVideoB" src="walk2.mp4" muted playsinline preload="auto"></video>
       <div class="light"></div>
       <div class="warmth"></div>
     </div>
@@ -289,8 +295,64 @@
   var btnMove = document.getElementById("btnMove");
   var btnHelp = document.getElementById("btnHelp");
   var scene = document.querySelector(".scene");
-  var video = document.getElementById("walkVideo");
   var walkTimer = null, walkStart = 0, otherIdx = -1;
+
+  /* ----- the walk chain: two legs, two stacked players -----
+     Cloned from the ride pages' dual-player crossfade: the next leg
+     is always buffered in the hidden player; seams dissolve (1.4s
+     into leg 2, 2.5s at the wrap back to leg 1). */
+  var LEGS = ["walk.mp4", "walk2.mp4"];
+  var vidA = document.getElementById("walkVideoA");
+  var vidB = document.getElementById("walkVideoB");
+  var front = vidA, back = vidB, legIdx = 0, fading = false, chainOn = false, chainWatch = null;
+  function tryPlay(v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
+  function fadeLen() { return (legIdx + 1) % LEGS.length === 0 ? 2.5 : 1.4; }
+  function preloadBack() {
+    var src = LEGS[(legIdx + 1) % LEGS.length];
+    if (back.getAttribute("src") !== src) { back.src = src; back.load(); }
+  }
+  function swap() {
+    fading = true;
+    var F = fadeLen();
+    back.currentTime = 0;
+    tryPlay(back);
+    var t0 = performance.now();
+    (function step() {
+      var k = Math.min(1, (performance.now() - t0) / (F * 1000));
+      front.style.opacity = String(1 - k);
+      back.style.opacity = String(k);
+      if (k < 1 && chainOn) requestAnimationFrame(step);
+      else {
+        var f = front; front = back; back = f;
+        legIdx = (legIdx + 1) % LEGS.length;
+        back.pause(); preloadBack(); fading = false;
+      }
+    })();
+  }
+  function startChain() {
+    legIdx = 0; front = vidA; back = vidB; fading = false; chainOn = true;
+    if (front.getAttribute("src") !== LEGS[0]) { front.src = LEGS[0]; front.load(); }
+    front.style.opacity = "0"; back.style.opacity = "0";
+    preloadBack();
+    try { front.currentTime = 0; } catch (e) {}
+    tryPlay(front);
+    /* the still -> film fade-in, driven like the crossfades */
+    var t0 = performance.now();
+    (function step() {
+      var k = Math.min(1, (performance.now() - t0) / 1200);
+      front.style.opacity = String(k);
+      if (k < 1 && chainOn) requestAnimationFrame(step);
+    })();
+    chainWatch = setInterval(function () {
+      if (chainOn && !fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
+    }, 250);
+  }
+  function stopChain() {
+    chainOn = false;
+    if (chainWatch) { clearInterval(chainWatch); chainWatch = null; }
+    vidA.style.opacity = "0"; vidB.style.opacity = "0";
+    vidA.pause(); vidB.pause();
+  }
 
   function setPanel(html) {
     panel.innerHTML = html;
@@ -302,7 +364,7 @@
 
   function endWalk(line) {
     if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
-    video.pause();
+    stopChain();
     scene.classList.remove("walking");
     btnMove.querySelector(".word").textContent = "MOVE";
     if (line) setPanel("<p>" + esc(line) + "</p>");
@@ -318,9 +380,7 @@
     );
     document.getElementById("btnStop").addEventListener("click", function () { endWalk(STOP_LINE); });
     scene.classList.add("walking");
-    try { video.currentTime = 0; } catch (e) {}
-    var p = video.play();
-    if (p && p.catch) p.catch(function () { /* the minute still runs on the still */ });
+    startChain();
     walkStart = Date.now();
     var fill = document.getElementById("walkFill");
     walkTimer = setInterval(function () {
