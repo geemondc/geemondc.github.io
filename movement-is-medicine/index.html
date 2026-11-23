@@ -23,6 +23,11 @@
     padding: 20px 18px 16px;
     background: linear-gradient(180deg, #fdf6e7 0%, #f7ecd9 60%, #f3e3c8 100%);
   }
+  /* Gary (Nov 23): too much negative space — on wider screens the page
+     takes 3/4 of the width and the garden grows to fill the height. */
+  @media (min-width: 760px) {
+    .page { width: 75%; max-width: 1024px; padding: 28px 30px 22px; }
+  }
 
   /* ---------- top lines ---------- */
   .two-lines { text-align: center; margin-top: 4px; }
@@ -50,12 +55,15 @@
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 6px 24px rgba(90, 60, 20, 0.25);
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-height: 200px;
   }
   .scene img {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
-    height: clamp(180px, 32vh, 300px);
+    height: 100%;
     object-fit: cover;
     object-position: center 62%;
   }
@@ -113,6 +121,26 @@
     from { opacity: 0; }
     to   { opacity: 1; }
   }
+  /* guided-move extras */
+  .panel .step { font-size: clamp(1.3rem, 5.6vw, 1.7rem); font-weight: bold; color: #43301d; }
+  .dots { margin-top: 12px; display: flex; gap: 7px; justify-content: center; }
+  .dots span { width: 9px; height: 9px; border-radius: 50%; background: #e0c896; }
+  .dots span.on { background: #b35c1e; }
+  .stopbtn {
+    margin-top: 12px; background: none; border: none; cursor: pointer;
+    font-family: inherit; font-size: 0.98rem; color: #9a7d55;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  /* help-door extras */
+  .sendbtn {
+    display: inline-block; margin-top: 14px;
+    background: linear-gradient(160deg, #7ba23f, #55701f);
+    color: #fff8ec; text-decoration: none; font-weight: bold;
+    font-size: clamp(1.05rem, 4.6vw, 1.25rem);
+    padding: 13px 26px; border-radius: 999px;
+    box-shadow: 0 5px 16px rgba(90, 60, 20, 0.28);
+  }
+  .orline { margin-top: 14px; font-size: clamp(0.98rem, 4.2vw, 1.08rem); color: #7a6248; font-style: italic; }
 
   /* ---------- the two doors ---------- */
   .doors {
@@ -193,17 +221,17 @@
     </div>
 
     <div class="panel" id="panel" aria-live="polite">
-      <p class="hint">Tap a door below. One small thing, that&rsquo;s all.</p>
+      <p class="hint">Tap MOVE and I&rsquo;ll walk with you. Tap HELP and send a little good.</p>
     </div>
 
     <div class="doors">
       <button class="door door-move" id="btnMove" type="button">
         <span class="word">MOVE</span>
-        <span class="sub">one small movement</span>
+        <span class="sub">a guided minute, together</span>
       </button>
       <button class="door door-help" id="btnHelp" type="button">
         <span class="word">HELP</span>
-        <span class="sub">one small kindness</span>
+        <span class="sub">send a little good</span>
       </button>
     </div>
 
@@ -216,55 +244,95 @@
   </main>
 
 <script>
-  var MOVE = [
-    "Walk to the door and back. That counts.",
-    "Stretch your fingers wide, then let them rest.",
-    "Stand up and take five slow steps.",
-    "Roll your shoulders three times, nice and slow.",
-    "Walk to a window and look out for a moment.",
-    "Take three slow breaths, and let your shoulders drop.",
-    "March in place for ten soft steps.",
-    "Turn toward the light and stand in it a moment.",
-    "Walk the length of the hall, or the room, and back.",
-    "Reach both arms up high, then let them fall easy."
+  /* ---------- MOVE: a guided minute, walked together ---------- */
+  var ROUTINES = [
+    { name: "The Window Walk", steps: [
+      ["Stand up, nice and easy.", 5],
+      ["Walk slowly to a window.", 9],
+      ["Look out. Find one thing that\u2019s alive.", 9],
+      ["Take three slow breaths.", 9],
+      ["Walk back, just as slowly.", 9]
+    ]},
+    { name: "Shoulders & Breath", steps: [
+      ["Let your arms hang loose.", 5],
+      ["Roll your shoulders back \u2014 three times, slow.", 9],
+      ["Reach both arms up high.", 6],
+      ["Let them fall easy.", 5],
+      ["Three slow breaths. In\u2026 and out.", 10]
+    ]},
+    { name: "The Garden Path", steps: [
+      ["Stand up and find your balance.", 5],
+      ["Take ten soft steps \u2014 like you\u2019re on the garden path.", 10],
+      ["Halfway. Look for something green, or growing.", 8],
+      ["Ten more steps back.", 10],
+      ["Stop. Feel your feet on the ground.", 6]
+    ]}
   ];
-  var HELP = [
-    "Send someone a card that says: Thinking of you. No need to reply.",
+  var DONE_LINE = "You moved. That counts. Nicely done.";
+  var STOP_LINE = "That\u2019s enough for today \u2014 and it all counts.";
+
+  /* ---------- HELP: the card is the doing ---------- */
+  var OTHERS = [
     "Call someone just to hear their voice.",
     "Leave one kind word where someone will find it.",
-    "Hold a door, pull out a chair, slide the tissues within reach.",
     "Tell someone one thing they do that you appreciate.",
     "Ask someone, \u201CHow are you, really?\u201D \u2014 and just listen.",
-    "Set a favorite photo where a friend or roommate can see it.",
     "Make someone a cup of tea or coffee, just because.",
-    "Share a song or a story that once made you smile.",
     "Thank someone who is usually overlooked."
   ];
 
-  function picker(list) {
-    var last = -1;
-    return function () {
-      var i;
-      do { i = Math.floor(Math.random() * list.length); } while (list.length > 1 && i === last);
-      last = i;
-      return list[i];
-    };
-  }
-  var pickMove = picker(MOVE);
-  var pickHelp = picker(HELP);
-
   var panel = document.getElementById("panel");
-  function show(text) {
-    panel.innerHTML = "";
-    var p = document.createElement("p");
-    p.textContent = text;
-    panel.appendChild(p);
+  var btnMove = document.getElementById("btnMove");
+  var btnHelp = document.getElementById("btnHelp");
+  var timer = null, routineIdx = -1, otherIdx = -1;
+
+  function setPanel(html) {
+    panel.innerHTML = html;
     panel.classList.remove("swap");
-    void panel.offsetWidth; /* restart the fade */
+    void panel.offsetWidth;
     panel.classList.add("swap");
   }
-  document.getElementById("btnMove").addEventListener("click", function () { show(pickMove()); });
-  document.getElementById("btnHelp").addEventListener("click", function () { show(pickHelp()); });
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+  function stopRoutine(line) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    btnMove.querySelector(".word").textContent = "MOVE";
+    setPanel("<p>" + esc(line) + "</p>");
+  }
+
+  function runStep(r, i) {
+    if (i >= r.steps.length) { stopRoutine(DONE_LINE); return; }
+    var dots = "";
+    for (var k = 0; k < r.steps.length; k++) dots += "<span class=\"" + (k <= i ? "on" : "") + "\"></span>";
+    setPanel(
+      "<div><p class=\"step\">" + esc(r.steps[i][0]) + "</p>" +
+      "<div class=\"dots\">" + dots + "</div>" +
+      "<button class=\"stopbtn\" id=\"btnStop\" type=\"button\">that\u2019s enough</button></div>"
+    );
+    document.getElementById("btnStop").addEventListener("click", function () { stopRoutine(STOP_LINE); });
+    panel.onclick = function () { if (timer) { clearTimeout(timer); runStep(r, i + 1); } };
+    timer = setTimeout(function () { runStep(r, i + 1); }, r.steps[i][1] * 1000);
+  }
+
+  btnMove.addEventListener("click", function () {
+    if (timer) { stopRoutine(STOP_LINE); return; }
+    panel.onclick = null;
+    routineIdx = (routineIdx + 1) % ROUTINES.length;
+    btnMove.querySelector(".word").textContent = "MOVING\u2026";
+    runStep(ROUTINES[routineIdx], 0);
+  });
+
+  btnHelp.addEventListener("click", function () {
+    if (timer) { clearTimeout(timer); timer = null; btnMove.querySelector(".word").textContent = "MOVE"; }
+    panel.onclick = null;
+    otherIdx = (otherIdx + 1) % OTHERS.length;
+    setPanel(
+      "<div><p class=\"step\">\u201CThinking of you. No need to reply.\u201D</p>" +
+      "<p style=\"margin-top:8px\">Send it as a Living Card \u2014 the kind that opens, and moves.</p>" +
+      "<a class=\"sendbtn\" href=\"https://thelivingphotos.com/envelopes.html\" target=\"_blank\" rel=\"noopener\">Send this card</a>" +
+      "<p class=\"orline\">or, right where you are: " + esc(OTHERS[otherIdx]) + "</p></div>"
+    );
+  });
 </script>
 </body>
 </html>
