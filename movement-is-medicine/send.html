@@ -73,6 +73,20 @@
   .field textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
   .field input:focus, .field textarea:focus { outline: 3px solid #b35c1e; outline-offset: 1px; }
 
+  /* the thought-version picker: one tap picks which set of thoughts
+     rides along inside the card's walk */
+  .vlist { display: flex; flex-direction: column; gap: 8px; }
+  .vrow {
+    text-align: left; font-family: inherit; cursor: pointer;
+    background: #fffcf4; color: #3d2c1c;
+    border: 2px solid #e8d5ae; border-radius: 12px;
+    padding: 10px 14px; width: 100%;
+  }
+  .vrow .vname { display: block; font-weight: bold; font-size: clamp(1rem, 4.4vw, 1.12rem); color: #43301d; }
+  .vrow .vfirst { display: block; margin-top: 2px; font-style: italic; font-size: clamp(0.92rem, 4vw, 1rem); color: #7a6248; }
+  .vrow.on { border-color: #7ba23f; background: #f2f7e4; box-shadow: 0 2px 10px rgba(90, 60, 20, 0.15); }
+  .vrow.on .vname { color: #55701f; }
+
   .sendbtn {
     display: block;
     text-align: center;
@@ -150,6 +164,11 @@
         <textarea id="fWords">Thinking of you. No need to reply. — just a little good for your day.</textarea>
       </div>
 
+      <div class="field">
+        <label id="vLabel">Which thoughts ride along?</label>
+        <div class="vlist" id="vList" role="group" aria-labelledby="vLabel"></div>
+      </div>
+
       <a class="sendbtn" id="btnMail" href="mailto:">SEND BY EMAIL</a>
 
       <div class="others">
@@ -179,12 +198,53 @@
   var copied = document.getElementById('copied');
   var link = '';
 
+  /* The ten thought versions. The day's rotating version is picked
+     by default (day of year % 10); one tap picks another. The choice
+     rides the card link as &v=N (1-10). */
+  var VERSIONS = [
+    { name: 'First Steps',          first: 'One step is enough. Then another.' },
+    { name: 'A Minute of Your Own', first: 'The day can wait a minute. This one\u2019s yours.' },
+    { name: 'Your Pace',            first: 'Nothing to prove. Just a walk.' },
+    { name: 'For a Heavy Day',      first: 'You don\u2019t have to carry it all at once.' },
+    { name: 'Keep Going',           first: 'Tired is not the same as done.' },
+    { name: 'Morning Light',        first: 'The sun came up. So did you.' },
+    { name: 'Love Stays',           first: 'The people we love walk with us still.' },
+    { name: 'Small Good Things',    first: 'Notice one good thing. That\u2019s the whole assignment.' },
+    { name: 'Starting Over',        first: 'Starting over is not starting from nothing.' },
+    { name: 'Slow Down',            first: 'Slow down. The walk is the destination.' }
+  ];
+  function dayOfYear(d) {
+    var start = new Date(d.getFullYear(), 0, 0);
+    return Math.floor((d - start) / 86400000);
+  }
+  var selectedV = dayOfYear(new Date()) % VERSIONS.length + 1;
+  var vList = document.getElementById('vList');
+  VERSIONS.forEach(function (v, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'vrow' + (i + 1 === selectedV ? ' on' : '');
+    b.setAttribute('aria-pressed', i + 1 === selectedV ? 'true' : 'false');
+    b.innerHTML = '<span class="vname"></span><span class="vfirst"></span>';
+    b.querySelector('.vname').textContent = v.name;
+    b.querySelector('.vfirst').textContent = '\u201C' + v.first + '\u201D';
+    b.addEventListener('click', function () {
+      selectedV = i + 1;
+      Array.prototype.forEach.call(vList.children, function (row, j) {
+        row.classList.toggle('on', j + 1 === selectedV);
+        row.setAttribute('aria-pressed', j + 1 === selectedV ? 'true' : 'false');
+      });
+      build();
+    });
+    vList.appendChild(b);
+  });
+
   function build() {
     var to = fTo.value.trim() || 'Friend';
     var from = fFrom.value.trim() || 'Me';
     var words = fWords.value.trim();
     link = CARD + '?scene=littlegood&to=' + encodeURIComponent(to) + '&from=' + encodeURIComponent(from);
     if (words) link += '&line=' + encodeURIComponent(words.slice(0, 140));
+    link += '&v=' + selectedV;
     var body = (words ? words + '\n\n' : '') + link;
     var enc = encodeURIComponent(body);
     btnMail.href = 'mailto:?subject=' + encodeURIComponent('A Living Card for ' + to) + '&body=' + enc;

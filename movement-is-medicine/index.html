@@ -86,6 +86,24 @@
      crossfades, which override the .walking rule above, so the CSS
      fade transition must not fight the crossfades. */
   .scene video.walkvid { transition: none; }
+  /* A positive thought while you walk: soft white words low over the
+     film, crossfading gently (1.2s) as they rotate — never flashing,
+     never covering the walk. Hidden until the walk starts. */
+  .scene .thought {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 34px 22px 16px;
+    text-align: center;
+    font-size: clamp(1.05rem, 4.6vw, 1.3rem);
+    font-style: italic;
+    line-height: 1.4;
+    color: #fff8ec;
+    text-shadow: 0 1px 10px rgba(40, 24, 8, 0.55), 0 0 2px rgba(40, 24, 8, 0.4);
+    background: linear-gradient(180deg, rgba(46, 30, 14, 0) 0%, rgba(46, 30, 14, 0.38) 100%);
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
   /* Living Photos treatment: slow, gentle light breathing over the still.
      Opacity/filter only — no zoom, no transforms, no video. */
   .scene .light {
@@ -250,6 +268,7 @@
       <video class="walkvid" id="walkVideoB" src="walk2.mp4" muted playsinline preload="auto"></video>
       <div class="light"></div>
       <div class="warmth"></div>
+      <div class="thought" id="thought" aria-hidden="true"></div>
     </div>
 
     <div class="panel" id="panel" aria-live="polite">
@@ -354,6 +373,119 @@
     vidA.pause(); vidB.pause();
   }
 
+  /* ----- a positive thought while you walk -----
+     Ten named versions of the thought set; the day picks one
+     (day of year % 10) so each day brings a different set and it
+     cycles through all ten. Within the walk, that day's four
+     thoughts rotate every ~15s with a gentle 1.2s crossfade. When
+     the walk ends, rotation stops and the last thought stays up,
+     above the end lines in the panel. A replay restarts the same
+     day's set from thought 1. */
+  var THOUGHT_VERSIONS = [
+    /* V1 — First Steps */
+    [
+      "One step is enough. Then another.",
+      "You don\u2019t have to fix the whole day. Just this minute.",
+      "Someone, somewhere, is glad you exist.",
+      "Breathe in the morning. Let the rest wait."
+    ],
+    /* V2 — A Minute of Your Own */
+    [
+      "The day can wait a minute. This one\u2019s yours.",
+      "Small steps still move you forward.",
+      "You have carried hard days before. Look at you, still walking.",
+      "Let the light do some of the work today."
+    ],
+    /* V3 — Your Pace */
+    [
+      "Nothing to prove. Just a walk.",
+      "Your pace is the right pace.",
+      "Good things grow slow. So does healing.",
+      "You showed up. That was the hard part."
+    ],
+    /* V4 — For a Heavy Day */
+    [
+      "You don\u2019t have to carry it all at once.",
+      "Put it down for one minute. Walk.",
+      "Heavy days still end. You\u2019re still moving.",
+      "Be as kind to yourself as you\u2019d be to a friend."
+    ],
+    /* V5 — Keep Going */
+    [
+      "Tired is not the same as done.",
+      "One more step is a whole decision.",
+      "You\u2019ve done harder things than this minute.",
+      "Keep going. Gently, but keep going."
+    ],
+    /* V6 — Morning Light */
+    [
+      "The sun came up. So did you.",
+      "A new day is a clean page.",
+      "Yesterday doesn\u2019t get a vote this morning.",
+      "Start small. Start now. Start here."
+    ],
+    /* V7 — Love Stays */
+    [
+      "The people we love walk with us still.",
+      "Missing someone is love, still working.",
+      "Carry them with you. That\u2019s what this walk is for.",
+      "Step by step, they\u2019re not far."
+    ],
+    /* V8 — Small Good Things */
+    [
+      "Notice one good thing. That\u2019s the whole assignment.",
+      "Warm sun, a quiet minute, moving feet \u2014 that\u2019s a lot.",
+      "Small good things are still good things.",
+      "Count this walk as one of them."
+    ],
+    /* V9 — Starting Over */
+    [
+      "Starting over is not starting from nothing.",
+      "You bring everything you\u2019ve learned with you.",
+      "The first step is the brave one. You just took it.",
+      "New roads start exactly where you are."
+    ],
+    /* V10 — Slow Down */
+    [
+      "Slow down. The walk is the destination.",
+      "There\u2019s nowhere else you have to be for this minute.",
+      "Quiet is doing something, even when it looks like nothing.",
+      "End this minute softer than you started it."
+    ]
+  ];
+  function dayOfYear(d) {
+    var start = new Date(d.getFullYear(), 0, 0);
+    return Math.floor((d - start) / 86400000);
+  }
+  var versionIndex = dayOfYear(new Date()) % THOUGHT_VERSIONS.length;
+  var THOUGHTS = THOUGHT_VERSIONS[versionIndex];
+  var THOUGHT_MS = 15000, THOUGHT_FADE_MS = 1200;
+  var thoughtEl = document.getElementById("thought");
+  var thoughtIdx = 0, thoughtTimer = null, thoughtFadeTO = null, thoughtOn = false;
+  function showThought(i) {
+    thoughtEl.textContent = THOUGHTS[i];
+    thoughtEl.style.opacity = "1";
+  }
+  function startThoughts() {
+    stopThoughts();
+    thoughtOn = true;
+    thoughtIdx = 0;
+    showThought(0);
+    thoughtTimer = setInterval(function () {
+      thoughtEl.style.opacity = "0";
+      thoughtFadeTO = setTimeout(function () {
+        if (!thoughtOn) return;
+        thoughtIdx = (thoughtIdx + 1) % THOUGHTS.length;
+        showThought(thoughtIdx);
+      }, THOUGHT_FADE_MS);
+    }, THOUGHT_MS);
+  }
+  function stopThoughts() {
+    thoughtOn = false;
+    if (thoughtTimer) { clearInterval(thoughtTimer); thoughtTimer = null; }
+    if (thoughtFadeTO) { clearTimeout(thoughtFadeTO); thoughtFadeTO = null; }
+  }
+
   function setPanel(html) {
     panel.innerHTML = html;
     panel.classList.remove("swap");
@@ -365,6 +497,8 @@
   function endWalk(line) {
     if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
     stopChain();
+    stopThoughts(); /* the last thought stays visible above the end lines */
+    if (thoughtEl.textContent) thoughtEl.style.opacity = "1";
     scene.classList.remove("walking");
     btnMove.querySelector(".word").textContent = "MOVE";
     if (line) setPanel("<p>" + esc(line) + "</p>");
@@ -381,6 +515,7 @@
     document.getElementById("btnStop").addEventListener("click", function () { endWalk(STOP_LINE); });
     scene.classList.add("walking");
     startChain();
+    startThoughts();
     walkStart = Date.now();
     var fill = document.getElementById("walkFill");
     walkTimer = setInterval(function () {
