@@ -15,24 +15,35 @@
   @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
   #drift { position:absolute; inset:0; animation:drift 9s ease-in-out infinite alternate; will-change:transform; }
   @keyframes drift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
-  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  /* THE POP-UP (Nov 23): three layers cut from this same painting — the tree,
-     the friends-and-ground foreground band, the star — lie folded flat over
-     the base plate (the full painting, so no hole can ever show) and spring
-     upright in sequence when the parent posts 'lc-rise': tree first, the
-     foreground next, the star last with a bounce. The rise is WAAPI for
-     smoothness, but per the tapfix3 lesson every layer's END STATE is also
-     set by a plain setTimeout writing inline styles with !important, so no
-     browser's animation clock can leave a layer folded. When the rise
-     completes, the stack crossfades out over the identical clean painting
-     beneath, this page posts 'lc-risen', and the tap-to-light bloom gate
-     (inherited from treelighting-scene) takes over. */
-  #popup { position:absolute; inset:0; pointer-events:none; perspective:1050px; }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; opacity:0; }
+  /* THE POP-UP (Nov 23; PASS 2 same day — Gary's verdict on pass 1: "slight
+     pop up but not really", because the layers sat pixel-identical on their
+     own footprints). Now the rise plays over an EMPTY BACKDROP
+     (plate-empty.webp: the painting with tree + foreground removed and the
+     holes filled), so the pieces stand physically OFF a real background.
+     While risen they hold REAL SEPARATION — tree scaled 1.05, foreground
+     1.10 and nudged down, star 1.15 — each with a hard offset cast shadow
+     (a brightness(0) blurred silhouette twin) thrown onto the layer behind.
+     The whole stage TILTS like an open book (rotateX 14deg) while the
+     pieces rise, then eases flat as the stack crossfades to the full
+     original painting (#still, faded in over the plate), so the settled
+     card is pixel-perfect the original and tap-to-light plays on the flat
+     painting exactly as before. The rise is WAAPI for smoothness, but per
+     the tapfix3 lesson every landing is ALSO set by a plain setTimeout
+     writing inline styles with !important, so no browser's animation clock
+     can leave a layer folded, the stage tilted, or the painting hidden. */
+  #popup { position:absolute; inset:0; pointer-events:none; perspective:1050px; transform-origin:50% 88%; will-change:transform,opacity; }
+  #plate { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .pulayer { position:absolute; will-change:transform,opacity; transform:rotateX(72deg); opacity:0; }
   .pulayer img { width:100%; height:100%; display:block; }
   #puTree { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; }
   #puFg { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; }
   #puStar { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:rotateX(84deg); }
+  .pucast { position:absolute; will-change:transform,opacity; transform:rotateX(72deg); opacity:0; pointer-events:none; }
+  .pucast img { width:100%; height:100%; display:block; filter:brightness(0) blur(5px); }
+  #puTreeCast { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; }
+  #puFgCast { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; }
+  #puStarCast { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:rotateX(84deg); }
   .pushadow { position:absolute; border-radius:50%; pointer-events:none; opacity:0;
               background:radial-gradient(closest-side, rgba(2,10,6,.55), rgba(2,10,6,0) 72%); }
   #shTree { left:31%; top:58.5%; width:42%; height:9%; }
@@ -73,7 +84,7 @@
              background:rgba(6,42,22,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
   body.wall #caption { display:none; }
-  @media (prefers-reduced-motion: reduce) { #drift, #glow, .tlb, #starGlow, .lamp, .steam, .flake { animation:none; } .tlb, #starGlow { opacity:1; } #popup { display:none; } }
+  @media (prefers-reduced-motion: reduce) { #drift, #glow, .tlb, #starGlow, .lamp, .steam, .flake { animation:none; } .tlb, #starGlow { opacity:1; } #popup { display:none; } #still { opacity:1; } }
 </style>
 </head>
 <body>
@@ -83,10 +94,14 @@
     <div id="drift">
       <img id="still" src="still.jpg" alt="All eight friends in a snowy village square at blue dusk, cocoa mugs in hand, gathered before a giant Christmas tree hung with ornaments and topped with a gold star — the moment just before the lights come on; lampposts glowing at both sides, the church steeple behind, snow falling">
       <div id="popup">
+        <img id="plate" src="plate-empty.webp" alt="">
         <div class="pushadow" id="shTree"></div>
+        <div class="pucast" id="puTreeCast"><img src="layer-tree.webp" alt=""></div>
         <div class="pulayer" id="puTree"><img src="layer-tree.webp" alt=""></div>
         <div class="pushadow" id="shFg"></div>
+        <div class="pucast" id="puFgCast"><img src="layer-fg.webp" alt=""></div>
         <div class="pulayer" id="puFg"><img src="layer-fg.webp" alt=""></div>
+        <div class="pucast" id="puStarCast"><img src="layer-star.webp" alt=""></div>
         <div class="pulayer" id="puStar"><img src="layer-star.webp" alt=""></div>
       </div>
     </div>
@@ -97,13 +112,16 @@
   </div>
 </div>
 <script>
-  // The Pop-Up Tree (Nov 23): the Tree Lighting painting, presented as a
-  // pop-up book. The painting first RISES in layers — tree, then the friends
-  // in front, then the star pops in last — settles into the clean painting,
-  // and only then can the tree be lit by a tap (the parent's tap rig posts
-  // 'lc-bloom'). In #wall the caption hides. Bloom machinery below is the
-  // treelighting scene's, unchanged: tiers land bottom-first by animation,
-  // guaranteed by plain timers writing inline opacity !important.
+  // The Pop-Up Tree (Nov 23; pass 2 same day): the Tree Lighting painting,
+  // presented as a pop-up book. Over an EMPTY BACKDROP the painting RISES
+  // in layers — tree, then the friends in front, then the star pops in
+  // last — the stage tilted like an open book, each piece landing proud of
+  // the layer behind with its own cast shadow; then the stage flattens,
+  // the stack crossfades to the clean original painting, and only then can
+  // the tree be lit by a tap (the parent's tap rig posts 'lc-bloom'). In
+  // #wall the caption hides. Bloom machinery below is the treelighting
+  // scene's, unchanged: tiers land bottom-first by animation, guaranteed
+  // by plain timers writing inline opacity !important.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
     var embedded = document.body.classList.contains('wall');
@@ -145,19 +163,37 @@
     }
     host.innerHTML = html;
 
-    /* ================= THE POP-UP RISE =================
-       Layers start folded (CSS: rotateX 72-84deg, opacity 0). goRise()
-       springs them upright in sequence — tree at .15s, foreground at .75s,
-       star at 1.35s with an overshoot bounce — while contact shadows grow
-       beneath them; at ~2.25s the whole stack crossfades out over the
-       identical clean painting and 'lc-risen' is posted. Every landing is
-       ALSO written by a plain timer as an inline !important style (the
+    /* ================= THE POP-UP RISE (pass 2) =================
+       Layers start folded (CSS: rotateX 72-84deg, opacity 0) over the
+       EMPTY BACKDROP (#plate). goRise() tilts the whole stage back like
+       an open book (rotateX 14deg, scaled a touch to hold framing) and
+       springs the pieces upright in sequence — tree at .15s/1.0s,
+       foreground at .85s/1.0s, star at 1.55s/.75s with a big overshoot
+       bounce and a shadow pulse as it locks. Each piece lands at a REAL
+       SEPARATION (tree scale 1.05, foreground 1.10 + nudged down, star
+       1.15) with its cast-shadow twin (a brightness(0) blurred silhouette,
+       offset down-left) thrown onto the layer behind. At ~2.6s the tilt
+       eases flat while the stack crossfades out and the full original
+       painting (#still) fades in — the settled card is the original,
+       pixel-perfect — and 'lc-risen' is posted. Every landing is ALSO
+       written by a plain timer as an inline !important style (the
        tapfix3 discipline): if every WAAPI timeline in this iframe froze,
-       the timers alone still stand the scene up, fade the stack, and post
-       the ack. 'lc-dark' folds everything flat again for a replay. */
+       the timers alone still stand the scene up at its separated pose,
+       flatten the stage, reveal the painting, and post the ack.
+       'lc-dark' folds everything flat again for a replay. */
     var popup = document.getElementById('popup');
+    var stillImg = document.getElementById('still'), plateImg = document.getElementById('plate');
     var puTree = document.getElementById('puTree'), puFg = document.getElementById('puFg'), puStar = document.getElementById('puStar');
+    var puTreeCast = document.getElementById('puTreeCast'), puFgCast = document.getElementById('puFgCast'), puStarCast = document.getElementById('puStarCast');
     var shTree = document.getElementById('shTree'), shFg = document.getElementById('shFg');
+    /* If the empty backdrop ever fails to load, fall back to pass-1
+       behaviour: the original painting itself is the backdrop. */
+    if (plateImg){
+      plateImg.addEventListener('error', function(){
+        plateImg.style.display = 'none';
+        stillImg.style.setProperty('opacity', '1', 'important');
+      });
+    }
     var puAnims = [], puTimers = [], risen = false, rising = false;
     function puLater(fn, ms){ puTimers.push(setTimeout(fn, ms)); }
     function puClear(){
@@ -170,14 +206,18 @@
       el.style.setProperty('transform', transform, 'important');
       el.style.setProperty('opacity', opacity, 'important');
     }
+    var TREE_END = 'rotateX(0deg) scale(1.05)', TREE_CAST_END = 'rotateX(0deg) scale(1.05) translate(-2.2%, 3.2%)';
+    var FG_END = 'rotateX(0deg) scale(1.10) translateY(1.5%)', FG_CAST_END = 'rotateX(0deg) scale(1.10) translate(-1.6%, 3.9%)';
+    var STAR_END = 'rotateX(0deg) scale(1.15)', STAR_CAST_END = 'rotateX(0deg) scale(1.15) translate(-5%, 7%)';
     function resetPopup(){
       puClear();
-      var els = [puTree, puFg, puStar, shTree, shFg, popup];
+      var els = [puTree, puFg, puStar, puTreeCast, puFgCast, puStarCast, shTree, shFg, popup];
       for (var i = 0; i < els.length; i++){
         els[i].style.removeProperty('transform');
         els[i].style.removeProperty('opacity');
         els[i].style.removeProperty('display');
       }
+      stillImg.style.removeProperty('opacity');
       risen = false; rising = false;
     }
     function postRisen(){
@@ -192,52 +232,88 @@
         if (!el.animate) return;
         var a = el.animate(frames, opts); puAnims.push(a);
       }
-      /* tree first — a V-fold springing up from its base line */
+      /* CAMERA TILT — the stage tips back like an open book while the
+         pieces rise, then eases flat across the crossfade (2.6s→3.3s);
+         the slight scale keeps the painting's framing matched so the
+         settle does not jump. */
+      anim(popup, [
+        { transform:'rotateX(14deg) scale(1.07)', offset:0 },
+        { transform:'rotateX(14deg) scale(1.07)', offset:.79 },
+        { transform:'rotateX(0deg) scale(1)', offset:1, easing:'ease-in-out' }
+      ], { duration:3300, easing:'linear', fill:'forwards' });
+      /* tree first — a V-fold springing up from its base line, landing
+         proud of the backdrop at scale 1.05, its shadow thrown down-left */
       anim(puTree, [
         { transform:'rotateX(72deg)', opacity:0 },
-        { transform:'rotateX(0deg)', opacity:1, offset:1 }
-      ], { duration:950, delay:150, easing:'cubic-bezier(.22,1.32,.36,1)', fill:'forwards' });
+        { transform:TREE_END, opacity:1, offset:1 }
+      ], { duration:1000, delay:150, easing:'cubic-bezier(.22,1.32,.36,1)', fill:'forwards' });
       anim(puTree, [
         { opacity:0 }, { opacity:1, offset:.3 }, { opacity:1 }
-      ], { duration:950, delay:150, easing:'ease-out', fill:'forwards' });
+      ], { duration:1000, delay:150, easing:'ease-out', fill:'forwards' });
+      anim(puTreeCast, [
+        { transform:'rotateX(72deg)', opacity:0 },
+        { transform:TREE_CAST_END, opacity:.5, offset:1 }
+      ], { duration:1000, delay:150, easing:'cubic-bezier(.22,1.32,.36,1)', fill:'forwards' });
       anim(shTree, [
         { opacity:0, transform:'scale(.65)' }, { opacity:.55, transform:'scale(1)' }
-      ], { duration:950, delay:150, easing:'ease-out', fill:'forwards' });
-      /* foreground — the friends stand up in front of the tree */
+      ], { duration:1000, delay:150, easing:'ease-out', fill:'forwards' });
+      /* foreground — the friends stand up in front of the tree, closer
+         to the viewer (scale 1.10, nudged down), shadowing the tree */
       anim(puFg, [
-        { transform:'rotateX(66deg)' }, { transform:'rotateX(0deg)' }
-      ], { duration:950, delay:750, easing:'cubic-bezier(.22,1.25,.36,1)', fill:'forwards' });
+        { transform:'rotateX(66deg)' }, { transform:FG_END }
+      ], { duration:1000, delay:850, easing:'cubic-bezier(.22,1.25,.36,1)', fill:'forwards' });
       anim(puFg, [
         { opacity:0 }, { opacity:1, offset:.3 }, { opacity:1 }
-      ], { duration:950, delay:750, easing:'ease-out', fill:'forwards' });
+      ], { duration:1000, delay:850, easing:'ease-out', fill:'forwards' });
+      anim(puFgCast, [
+        { transform:'rotateX(66deg)', opacity:0 },
+        { transform:FG_CAST_END, opacity:.5, offset:1 }
+      ], { duration:1000, delay:850, easing:'cubic-bezier(.22,1.25,.36,1)', fill:'forwards' });
       anim(shFg, [
         { opacity:0, transform:'scale(.7)' }, { opacity:.4, transform:'scale(1)' }
-      ], { duration:950, delay:750, easing:'ease-out', fill:'forwards' });
-      /* the star pops in last, with a bounce */
+      ], { duration:1000, delay:850, easing:'ease-out', fill:'forwards' });
+      /* the star pops in last — bigger overshoot bounce at scale 1.15,
+         and its shadow pulses once as it locks (~2.3s) */
       anim(puStar, [
         { transform:'rotateX(84deg) scale(.65)', opacity:0 },
-        { transform:'rotateX(-11deg) scale(1.07)', opacity:1, offset:.6 },
-        { transform:'rotateX(4deg) scale(.99)', opacity:1, offset:.82 },
-        { transform:'rotateX(0deg) scale(1)', opacity:1 }
-      ], { duration:700, delay:1350, easing:'ease-out', fill:'forwards' });
+        { transform:'rotateX(-16deg) scale(1.24)', opacity:1, offset:.55 },
+        { transform:'rotateX(6deg) scale(1.10)', opacity:1, offset:.78 },
+        { transform:STAR_END, opacity:1 }
+      ], { duration:750, delay:1550, easing:'ease-out', fill:'forwards' });
+      anim(puStarCast, [
+        { transform:'rotateX(84deg) scale(.65)', opacity:0 },
+        { transform:STAR_CAST_END, opacity:.45, offset:1 }
+      ], { duration:750, delay:1550, easing:'ease-out', fill:'forwards' });
+      anim(puStarCast, [
+        { transform:STAR_CAST_END, opacity:.45 },
+        { transform:'rotateX(0deg) scale(1.23) translate(-5%, 7%)', opacity:.7, offset:.4 },
+        { transform:STAR_CAST_END, opacity:.45 }
+      ], { duration:380, delay:2320, easing:'ease-out', fill:'forwards' });
       /* TIMER-GUARANTEED LANDINGS — the same end states, written plainly. */
-      puLater(function(){ land(puTree, 'rotateX(0deg)', '1'); shTree.style.setProperty('opacity', '.55', 'important'); }, 1250);
-      puLater(function(){ land(puFg, 'rotateX(0deg)', '1'); shFg.style.setProperty('opacity', '.4', 'important'); }, 1850);
-      puLater(function(){ land(puStar, 'rotateX(0deg) scale(1)', '1'); }, 2200);
-      /* crossfade the stack out over the clean painting, then ack */
+      puLater(function(){ land(puTree, TREE_END, '1'); land(puTreeCast, TREE_CAST_END, '.5'); shTree.style.setProperty('opacity', '.55', 'important'); }, 1300);
+      puLater(function(){ land(puFg, FG_END, '1'); land(puFgCast, FG_CAST_END, '.5'); shFg.style.setProperty('opacity', '.4', 'important'); }, 2000);
+      puLater(function(){ land(puStar, STAR_END, '1'); land(puStarCast, STAR_CAST_END, '.45'); }, 2450);
+      /* crossfade: the stack fades out as the full original painting
+         fades in beneath it (the tilt is easing flat over the same span) */
       puLater(function(){
         if (popup.animate){
-          var f = popup.animate([{ opacity:1 }, { opacity:0 }], { duration:650, easing:'ease-out', fill:'forwards' });
+          var f = popup.animate([{ opacity:1 }, { opacity:0 }], { duration:700, easing:'ease-out', fill:'forwards' });
           puAnims.push(f);
         }
-      }, 2250);
+        if (stillImg.animate){
+          var s = stillImg.animate([{ opacity:0 }, { opacity:1 }], { duration:700, easing:'ease-out', fill:'forwards' });
+          puAnims.push(s);
+        }
+      }, 2600);
       puLater(function(){
+        stillImg.style.setProperty('opacity', '1', 'important');
         popup.style.setProperty('opacity', '0', 'important');
+        popup.style.setProperty('transform', 'none', 'important');
         rising = false; risen = true;
         postRisen();
         if (autoBloom) goBloom();
-      }, 2950);
-      puLater(function(){ popup.style.setProperty('display', 'none', 'important'); }, 3050);
+      }, 3400);
+      puLater(function(){ popup.style.setProperty('display', 'none', 'important'); }, 3500);
     }
 
     /* ================= THE BLOOM GATE (from treelighting) =================
