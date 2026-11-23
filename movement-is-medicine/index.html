@@ -67,6 +67,20 @@
     object-fit: cover;
     object-position: center 62%;
   }
+  /* The walk film: fades in over the still when MOVE is tapped. */
+  .scene video {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 62%;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+  .scene.walking video { opacity: 1; }
   /* Living Photos treatment: slow, gentle light breathing over the still.
      Opacity/filter only — no zoom, no transforms, no video. */
   .scene .light {
@@ -121,11 +135,22 @@
     from { opacity: 0; }
     to   { opacity: 1; }
   }
-  /* guided-move extras */
+  /* walk + panel extras */
   .panel .step { font-size: clamp(1.3rem, 5.6vw, 1.7rem); font-weight: bold; color: #43301d; }
-  .dots { margin-top: 12px; display: flex; gap: 7px; justify-content: center; }
-  .dots span { width: 9px; height: 9px; border-radius: 50%; background: #e0c896; }
-  .dots span.on { background: #b35c1e; }
+  .walkbar {
+    margin: 14px auto 2px;
+    width: min(320px, 82%);
+    height: 6px;
+    border-radius: 3px;
+    background: #e8d5ae;
+    overflow: hidden;
+  }
+  .walkfill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #d97b2f, #b35c1e);
+  }
   .stopbtn {
     margin-top: 12px; background: none; border: none; cursor: pointer;
     font-family: inherit; font-size: 0.98rem; color: #9a7d55;
@@ -216,6 +241,7 @@
 
     <div class="scene" aria-hidden="true">
       <img src="garden-path.jpg" alt="">
+      <video id="walkVideo" src="walk.mp4" poster="garden-path.jpg" loop muted playsinline preload="metadata"></video>
       <div class="light"></div>
       <div class="warmth"></div>
     </div>
@@ -227,7 +253,7 @@
     <div class="doors">
       <button class="door door-move" id="btnMove" type="button">
         <span class="word">MOVE</span>
-        <span class="sub">a guided minute, together</span>
+        <span class="sub">a one-minute walk</span>
       </button>
       <button class="door door-help" id="btnHelp" type="button">
         <span class="word">HELP</span>
@@ -244,32 +270,10 @@
   </main>
 
 <script>
-  /* ---------- MOVE: a guided minute, walked together ---------- */
-  var ROUTINES = [
-    { name: "The Window Walk", steps: [
-      ["Stand up, nice and easy.", 5],
-      ["Walk slowly to a window.", 9],
-      ["Look out. Find one thing that\u2019s alive.", 9],
-      ["Take three slow breaths.", 9],
-      ["Walk back, just as slowly.", 9]
-    ]},
-    { name: "Shoulders & Breath", steps: [
-      ["Let your arms hang loose.", 5],
-      ["Roll your shoulders back \u2014 three times, slow.", 9],
-      ["Reach both arms up high.", 6],
-      ["Let them fall easy.", 5],
-      ["Three slow breaths. In\u2026 and out.", 10]
-    ]},
-    { name: "The Garden Path", steps: [
-      ["Stand up and find your balance.", 5],
-      ["Take ten soft steps \u2014 like you\u2019re on the garden path.", 10],
-      ["Halfway. Look for something green, or growing.", 8],
-      ["Ten more steps back.", 10],
-      ["Stop. Feel your feet on the ground.", 6]
-    ]}
-  ];
+  /* ---------- MOVE: a one-minute walk in the garden ---------- */
   var DONE_LINE = "You moved. That counts. Nicely done.";
   var STOP_LINE = "That\u2019s enough for today \u2014 and it all counts.";
+  var WALK_MS = 60000;
 
   /* ---------- HELP: the card is the doing ---------- */
   var OTHERS = [
@@ -284,7 +288,9 @@
   var panel = document.getElementById("panel");
   var btnMove = document.getElementById("btnMove");
   var btnHelp = document.getElementById("btnHelp");
-  var timer = null, routineIdx = -1, otherIdx = -1;
+  var scene = document.querySelector(".scene");
+  var video = document.getElementById("walkVideo");
+  var walkTimer = null, walkStart = 0, otherIdx = -1;
 
   function setPanel(html) {
     panel.innerHTML = html;
@@ -294,36 +300,43 @@
   }
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
 
-  function stopRoutine(line) {
-    if (timer) { clearTimeout(timer); timer = null; }
+  function endWalk(line) {
+    if (walkTimer) { clearInterval(walkTimer); walkTimer = null; }
+    video.pause();
+    scene.classList.remove("walking");
     btnMove.querySelector(".word").textContent = "MOVE";
-    setPanel("<p>" + esc(line) + "</p>");
+    if (line) setPanel("<p>" + esc(line) + "</p>");
   }
 
-  function runStep(r, i) {
-    if (i >= r.steps.length) { stopRoutine(DONE_LINE); return; }
-    var dots = "";
-    for (var k = 0; k < r.steps.length; k++) dots += "<span class=\"" + (k <= i ? "on" : "") + "\"></span>";
+  function startWalk() {
+    panel.onclick = null;
+    btnMove.querySelector(".word").textContent = "WALKING\u2026";
     setPanel(
-      "<div><p class=\"step\">" + esc(r.steps[i][0]) + "</p>" +
-      "<div class=\"dots\">" + dots + "</div>" +
+      "<div><p class=\"step\">Walk with me.</p>" +
+      "<div class=\"walkbar\"><div class=\"walkfill\" id=\"walkFill\"></div></div>" +
       "<button class=\"stopbtn\" id=\"btnStop\" type=\"button\">that\u2019s enough</button></div>"
     );
-    document.getElementById("btnStop").addEventListener("click", function () { stopRoutine(STOP_LINE); });
-    panel.onclick = function () { if (timer) { clearTimeout(timer); runStep(r, i + 1); } };
-    timer = setTimeout(function () { runStep(r, i + 1); }, r.steps[i][1] * 1000);
+    document.getElementById("btnStop").addEventListener("click", function () { endWalk(STOP_LINE); });
+    scene.classList.add("walking");
+    try { video.currentTime = 0; } catch (e) {}
+    var p = video.play();
+    if (p && p.catch) p.catch(function () { /* the minute still runs on the still */ });
+    walkStart = Date.now();
+    var fill = document.getElementById("walkFill");
+    walkTimer = setInterval(function () {
+      var pct = (Date.now() - walkStart) / WALK_MS * 100;
+      if (fill) fill.style.width = Math.min(pct, 100) + "%";
+      if (pct >= 100) endWalk(DONE_LINE);
+    }, 200);
   }
 
   btnMove.addEventListener("click", function () {
-    if (timer) { stopRoutine(STOP_LINE); return; }
-    panel.onclick = null;
-    routineIdx = (routineIdx + 1) % ROUTINES.length;
-    btnMove.querySelector(".word").textContent = "MOVING\u2026";
-    runStep(ROUTINES[routineIdx], 0);
+    if (walkTimer) { endWalk(STOP_LINE); return; }
+    startWalk();
   });
 
   btnHelp.addEventListener("click", function () {
-    if (timer) { clearTimeout(timer); timer = null; btnMove.querySelector(".word").textContent = "MOVE"; }
+    if (walkTimer) endWalk(null);
     panel.onclick = null;
     otherIdx = (otherIdx + 1) % OTHERS.length;
     setPanel(
