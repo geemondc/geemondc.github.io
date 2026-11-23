@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fireworks Ferry — A Harbor Finale</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#070d24; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('master.jpg') center/cover no-repeat; filter:blur(26px) brightness(.72); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:1248/704; height:100%; max-width:100vw; overflow:hidden; background:#070d24; }
+  @media (max-aspect-ratio: 1248/704) { #frame { width:100%; height:auto; } }
+  #poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #vidB { opacity:0; }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(6,8,18,.55); color:#ffffff; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,209,102,0.5); pointer-events:none; }
+  body.wall #caption, body.wall #picker { display:none; }
+  #picker { position:absolute; left:50%; top:2%; transform:translateX(-50%); z-index:6; display:flex; gap:4px; max-width:98%; }
+  .pill { background:rgba(6,8,18,.62); color:#ffeec2; border:1px solid rgba(255,209,102,.45); border-radius:999px;
+          font-family: Georgia, 'Times New Roman', serif; font-size:clamp(9px, 2.5vw, 12px); letter-spacing:.5px;
+          padding:7px 8px; cursor:pointer; white-space:nowrap; }
+  .pill.on { background:#ffd166; color:#0a1428; border-color:#ffd166; font-weight:bold; }
+  #startbtn { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:9; display:none;
+             background:rgba(6,8,18,.72); color:#ffd166; border:2px solid #ffd166; border-radius:999px;
+             font-family: Georgia, 'Times New Roman', serif; font-size:clamp(15px, 4.4vw, 20px); letter-spacing:2px;
+             padding:13px 24px; cursor:pointer; box-shadow:0 6px 30px rgba(0,0,0,.5); }
+  #startbtn:active { background:rgba(255,209,102,0.9); color:#0a1428; }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame" data-clip="0">
+    <img id="poster" src="still.jpg" alt="First-person ferry ride across a harbor at night under a fireworks finale">
+    <video class="vid" id="vidA" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <button id="startbtn" type="button">&#9654; START THE RIDE</button>
+    <div id="caption">FIREWORKS FERRY &middot; A HARBOR FINALE</div>
+    <div id="picker">
+      <button class="pill" type="button" data-mode="harbor">HARBOR</button>
+      <button class="pill" type="button" data-mode="finale">FINALE</button>
+      <button class="pill" type="button" data-mode="long">LONG RIDE</button>
+    </div>
+  </div>
+</div>
+<script>
+  // Two ways to cross, one long way: the Harbor glide and the Finale,
+  // each a 10-second AI image-to-video leg from the same painting, and
+  // the Long Ride, which chains both with dissolves. Two stacked
+  // players crossfade every seam; the next leg is always buffered in
+  // the hidden player. In #wall (inside a Living Card) the caption and
+  // picker hide and the ride simply plays. If autoplay is blocked, a
+  // START THE RIDE button appears; one tap starts a muted video.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var LEGS = { harbor:'ride.mp4', finale:'ride2.mp4' };
+    var LONG = ['ride.mp4', 'ride2.mp4'];
+    var frame = document.getElementById('frame');
+    var A = document.getElementById('vidA'), B = document.getElementById('vidB');
+    var btn = document.getElementById('startbtn');
+    var pills = Array.prototype.slice.call(document.querySelectorAll('.pill'));
+    var list = [LEGS.harbor], idx = 0, front = A, back = B, fading = false;
+    function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function preload(v, i){ var src = list[i % list.length]; if (v.getAttribute('src') !== src) { v.src = src; v.load(); } }
+    function fadeLen(){ if (list.length === 1) return 1.6; return (idx + 1) % list.length === 0 ? 2.5 : 1.4; }
+    function crossTo(newList){
+      list = newList;
+      fading = true;
+      back.src = list[0]; back.load(); back.currentTime = 0; tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / 600);
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; idx = 0; frame.setAttribute('data-clip', '0'); back.pause(); preload(back, 1); fading = false; }
+      })();
+    }
+    function swap(){
+      fading = true;
+      var F = fadeLen();
+      back.currentTime = 0;
+      tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / (F * 1000));
+        front.style.opacity = String(1 - k); back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else { var f = front; front = back; back = f; idx = (idx + 1) % list.length; frame.setAttribute('data-clip', String(idx)); back.pause(); preload(back, idx + 1); fading = false; }
+      })();
+    }
+    function setMode(mode){
+      pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === mode); });
+      crossTo(mode === 'long' ? LONG.slice() : [LEGS[mode]]);
+    }
+    pills.forEach(function(p){ p.addEventListener('click', function(){ if (!fading) setMode(p.getAttribute('data-mode')); }); });
+    setInterval(function(){
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
+      btn.style.display = (front.paused && !fading) ? 'block' : 'none';
+    }, 400);
+    btn.addEventListener('click', function(){ tryPlay(front); });
+    // Start: ?ride=long (or harbor/finale) picks the first ride.
+    var start = (new URLSearchParams(location.search).get('ride') || 'harbor').toLowerCase();
+    if (!LEGS[start] && start !== 'long') start = 'harbor';
+    A.src = start === 'long' ? LONG[0] : LEGS[start];
+    front.style.opacity = '1'; back.style.opacity = '0';
+    list = start === 'long' ? LONG.slice() : [LEGS[start]];
+    pills.forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-mode') === start); });
+    preload(B, 1);
+    tryPlay(A);
+  })();
+</script>
+</body>
+</html>
