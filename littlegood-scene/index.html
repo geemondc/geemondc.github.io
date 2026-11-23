@@ -13,39 +13,128 @@
   #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#26301f;
            box-shadow:0 18px 60px rgba(0,0,0,.5); }
   @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
-  #drift { position:absolute; inset:0; animation:drift 11s ease-in-out infinite alternate; will-change:transform; }
-  @keyframes drift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.09) translate(-1%,-0.5%); } }
-  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  #glow { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; animation:breathe 8s ease-in-out infinite alternate;
-         background:radial-gradient(46% 60% at 68% 30%, rgba(255,214,130,.42), rgba(255,180,90,.12) 55%, rgba(255,170,80,0) 78%); }
-  @keyframes breathe { from { opacity:.32 } to { opacity:1 } }
-  #warmth { position:absolute; inset:0; pointer-events:none;
-         background:linear-gradient(180deg, rgba(255,196,110,.10), rgba(120,70,20,.10));
-         animation:warm 17s ease-in-out infinite alternate; }
-  @keyframes warm { from { opacity:.25 } to { opacity:.8 } }
+  #poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  .vid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  #vidB { opacity:0; }
+  /* The thoughts that ride along with the walk: soft white words low
+     in the frame, crossfading gently as they rotate. In #wall (inside
+     the card) they sit at the very bottom, clear of the card's own
+     greeting and words; standalone they lift above the caption. */
+  #thought { position:absolute; left:0; right:0; bottom:11%; z-index:4;
+             padding:30px 22px 12px; text-align:center; pointer-events:none;
+             font-size:clamp(13px, 3.4vw, 19px); font-style:italic; line-height:1.4; color:#fff8ec;
+             text-shadow:0 1px 10px rgba(40,24,8,.55), 0 0 2px rgba(40,24,8,.4);
+             background:linear-gradient(180deg, rgba(38,48,31,0) 0%, rgba(38,48,31,.42) 100%);
+             opacity:0; transition:opacity 1.2s ease; }
+  body.wall #thought { bottom:3.5%; }
   #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
              background:rgba(38,48,31,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
   body.wall #caption { display:none; }
-  @media (prefers-reduced-motion: reduce) { #drift, #glow, #warmth { animation:none; } }
 </style>
 </head>
 <body>
 <div id="fill"></div>
 <div id="wrap">
   <div id="frame">
-    <div id="drift">
-      <img id="still" src="still.jpg" alt="A painted cottage garden at sunrise — a stone path winds between flower beds toward a wooden gate, a cup of coffee steaming on the porch table, the sun rising over a misty valley beyond">
-    </div>
-    <div id="glow"></div>
-    <div id="warmth"></div>
+    <img id="poster" src="still.jpg" alt="A painted cottage garden at sunrise — a stone path winds between flower beds toward a wooden gate, a cup of coffee steaming on the porch table, the sun rising over a misty valley beyond">
+    <video class="vid" id="vidA" src="walk.mp4" poster="still.jpg" muted playsinline webkit-playsinline autoplay preload="auto" disablepictureinpicture></video>
+    <video class="vid" id="vidB" src="walk2.mp4" poster="still.jpg" muted playsinline webkit-playsinline preload="auto" disablepictureinpicture></video>
+    <div id="thought" aria-hidden="true"></div>
     <div id="caption">A LITTLE GOOD FOR YOU</div>
   </div>
 </div>
 <script>
-  // A Little Good for You (Gary's living standard, the gentle scenery class): the painting stays exactly itself; the sunrise light breathes slowly over the garden and the warmth of the morning comes and goes — nothing else moves. In #wall the caption hides.
+  // A Little Good for You: the card carries the morning walk itself.
+  // The same two-leg chain as the Movement Is Medicine page — leg 1
+  // down the garden path to the gate, leg 2 through the gate into the
+  // sunrise valley — on two stacked players that crossfade every seam
+  // (1.4s dissolve into leg 2, 2.5s at the wrap back to leg 1) and
+  // loop forever. The still painting sits underneath as the poster,
+  // so the card never opens black. In #wall (inside the card) the
+  // caption hides and the walk simply plays.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var LEGS = ["walk.mp4", "walk2.mp4"];
+    var A = document.getElementById('vidA'), B = document.getElementById('vidB');
+    var front = A, back = B, legIdx = 0, fading = false;
+    function tryPlay(v){ var p = v.play(); if (p && p.catch) p.catch(function(){}); }
+    function fadeLen(){ return (legIdx + 1) % LEGS.length === 0 ? 2.5 : 1.4; }
+    function preloadBack(){
+      var src = LEGS[(legIdx + 1) % LEGS.length];
+      if (back.getAttribute('src') !== src) { back.src = src; back.load(); }
+    }
+    function swap(){
+      fading = true;
+      var F = fadeLen();
+      back.currentTime = 0;
+      tryPlay(back);
+      var t0 = performance.now();
+      (function step(){
+        var k = Math.min(1, (performance.now() - t0) / (F * 1000));
+        front.style.opacity = String(1 - k);
+        back.style.opacity = String(k);
+        if (k < 1) requestAnimationFrame(step);
+        else {
+          var f = front; front = back; back = f;
+          legIdx = (legIdx + 1) % LEGS.length;
+          back.pause(); preloadBack(); fading = false;
+        }
+      })();
+    }
+    setInterval(function(){
+      if (!fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
+    }, 250);
+    front.style.opacity = '1'; back.style.opacity = '0';
+    preloadBack();
+    tryPlay(front);
+    // If autoplay was blocked, a tap anywhere on the scene starts it.
+    document.getElementById('frame').addEventListener('click', function(){ if (front.paused) tryPlay(front); });
+
+    /* ----- the thoughts that ride along -----
+       Ten versions of four thoughts, rotating every ~15s with the
+       same gentle 1.2s crossfade as the Movement page. The sender
+       picks the version on the send page; it reaches this scene as
+       the v param (1-10) on the card link. The scene reads it from
+       the parent card page's URL first (same origin), then from its
+       own src query; with no v anywhere, the day's rotating version
+       (day of year % 10) plays. The engine is untouched. */
+    var SETS = [
+      ["One step is enough. Then another.", "You don\u2019t have to fix the whole day. Just this minute.", "Someone, somewhere, is glad you exist.", "Breathe in the morning. Let the rest wait."],
+      ["The day can wait a minute. This one\u2019s yours.", "Small steps still move you forward.", "You have carried hard days before. Look at you, still walking.", "Let the light do some of the work today."],
+      ["Nothing to prove. Just a walk.", "Your pace is the right pace.", "Good things grow slow. So does healing.", "You showed up. That was the hard part."],
+      ["You don\u2019t have to carry it all at once.", "Put it down for one minute. Walk.", "Heavy days still end. You\u2019re still moving.", "Be as kind to yourself as you\u2019d be to a friend."],
+      ["Tired is not the same as done.", "One more step is a whole decision.", "You\u2019ve done harder things than this minute.", "Keep going. Gently, but keep going."],
+      ["The sun came up. So did you.", "A new day is a clean page.", "Yesterday doesn\u2019t get a vote this morning.", "Start small. Start now. Start here."],
+      ["The people we love walk with us still.", "Missing someone is love, still working.", "Carry them with you. That\u2019s what this walk is for.", "Step by step, they\u2019re not far."],
+      ["Notice one good thing. That\u2019s the whole assignment.", "Warm sun, a quiet minute, moving feet \u2014 that\u2019s a lot.", "Small good things are still good things.", "Count this walk as one of them."],
+      ["Starting over is not starting from nothing.", "You bring everything you\u2019ve learned with you.", "The first step is the brave one. You just took it.", "New roads start exactly where you are."],
+      ["Slow down. The walk is the destination.", "There\u2019s nowhere else you have to be for this minute.", "Quiet is doing something, even when it looks like nothing.", "End this minute softer than you started it."]
+    ];
+    function dayOfYear(d){ var s = new Date(d.getFullYear(), 0, 0); return Math.floor((d - s) / 86400000); }
+    function vFrom(search){
+      var m = /[?&]v=(\d{1,2})(?:&|$)/.exec(search || '');
+      if (!m) return -1;
+      var n = parseInt(m[1], 10);
+      return (n >= 1 && n <= SETS.length) ? n - 1 : -1;
+    }
+    var vIdx = -1;
+    try { vIdx = vFrom(window.parent.location.search); } catch (e) { vIdx = -1; }
+    if (vIdx < 0) vIdx = vFrom(location.search);
+    if (vIdx < 0) vIdx = dayOfYear(new Date()) % SETS.length;
+    var LINES = SETS[vIdx];
+    document.getElementById('frame').setAttribute('data-version', String(vIdx + 1));
+    var thoughtEl = document.getElementById('thought');
+    var tIdx = 0;
+    function showLine(i){ thoughtEl.textContent = LINES[i]; thoughtEl.style.opacity = '1'; }
+    showLine(0);
+    setInterval(function(){
+      thoughtEl.style.opacity = '0';
+      setTimeout(function(){
+        tIdx = (tIdx + 1) % LINES.length;
+        showLine(tIdx);
+      }, 1200);
+    }, 15000);
   })();
 </script>
 </body>
