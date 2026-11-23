@@ -13,63 +13,77 @@
   #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#062417;
            box-shadow:0 18px 60px rgba(0,0,0,.5); }
   @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
-  #drift { position:absolute; inset:0; }
+  /* PASS 5: the perspective now lives on #drift (the stage's parent), so
+     the STAGE ITSELF is projected in true 3D — passes 2-4 set perspective
+     on #popup, which flattened the stage's own tilt into an orthographic
+     squash and collapsed all the depth the pieces had. */
+  #drift { position:absolute; inset:0; perspective:1100px; }
   #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; opacity:0; }
-  /* THE POP-UP (Nov 23; PASS 3 same day — Gary's verdict on pass 2: "it
-     folds out but it does other things after that makes it look not real":
-     pass 2 crossfaded the risen stack into the flat photograph and switched
-     the photo's living treatments on, and the paper illusion died. PASS 3
-     DOCTRINE: THE STACK IS THE CARD. There is NO crossfade to still.jpg —
-     the held state is the risen paper stack itself: plate-empty backdrop +
-     tree layer + foreground layer + star, cast shadows ON, layer scales
-     held at their landed values (1.05 / 1.10 / 1.15), and the stage tilt
-     easing only to a slight residual rotateX(6deg) so the depth persists
-     while the card sits there. The bloom lights the PAPER tree: the bulbs
-     live in a twin overlay (#puBloomTree) that carries the tree layer's own
-     box and landed transform, the star glow in a twin (#puBloomStar) with
-     the star's — so the lights ride the paper geometry exactly. All photo
-     treatments are gone from this scene: no camera drift, no warm-glow
-     breathing, no lamp pulses, no cocoa steam. What moves in the held
-     state: the snowfall, and (after lighting) the bulbs' own gentle glow
-     breathing. The rise is WAAPI for smoothness, but per the tapfix3
-     lesson every landing is ALSO set by a plain setTimeout writing inline
-     styles with !important, so no browser's animation clock can leave a
-     layer folded or the stage over-tilted. */
-  #popup { position:absolute; inset:0; pointer-events:none; perspective:1050px; transform-origin:50% 88%; will-change:transform,opacity; }
-  #plate { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .pulayer { position:absolute; will-change:transform,opacity; transform:rotateX(72deg); opacity:0; }
+  /* THE POP-UP (Nov 23; PASS 3 doctrine: THE STACK IS THE CARD — no
+     crossfade to still.jpg, the held state is the risen paper stack.
+     PASS 5 — THE GEOMETRY PASS (Gary's verdicts: pass 3 "not great but a
+     little better", pass 4's full diorama "Little improving. Need more
+     pop up effect for final"): piece count was never the bottleneck —
+     VIEWPOINT was. The stage sat nearly flat-on (residual tilt 6deg,
+     rendered without perspective), pieces landed on their footprints at
+     near-painting scales, the camera never moved. Now:
+     - #popup IS THE PAGE: a cream card-stock sheet overscanned past the
+       frame (inset -10% -6%), tilted a held rotateX(23deg) in true
+       perspective for the card's whole life — the open-book angle.
+     - #stage is the painting area centred on the page (the cream margin
+       around it is the book frame); plate + pieces inside keep their
+       painting coordinates.
+     - preserve-3d runs drift -> popup -> stage, and the layers are
+       separated in Z by depth (skyline 5px ... snowdrift 55px), landing
+       at harder graduated scales (1.0 back -> 1.22 front) with a slight
+       lift off their footprints, so pieces stand perpendicular to the
+       PAGE and project toward the viewer.
+     - A slow one-way camera push-in (stage scale x1.10 over ~7s,
+       ease-out, timer-landed, never loops) makes the Z-separated layers
+       parallax as it settles.
+     - Each piece lands with a small decaying paper wobble, and its
+       cast shadow stretches long while it rises, shortening as it
+       stands. Every landing is ALSO written by a plain setTimeout as an
+       inline !important style (the tapfix3 discipline). */
+  #popup { position:absolute; inset:-10% -6%; pointer-events:none; transform-origin:50% 50%;
+           transform-style:preserve-3d; will-change:transform;
+           transform:rotateX(23deg) translateY(1.5%) scale(1.03);
+           background:linear-gradient(165deg, #f7eed6 0%, #f1e4c3 55%, #ead9b0 100%); }
+  #stage { position:absolute; left:5.357%; top:8.333%; width:89.286%; height:83.333%; transform-style:preserve-3d; }
+  #plate { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; transform:translateZ(1px); }
+  .pulayer { position:absolute; will-change:transform,opacity; opacity:0; }
   .pulayer img { width:100%; height:100%; display:block; }
-  #puTree { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; }
-  #puFg { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; }
-  #puStar { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:rotateX(84deg); }
-  .pucast { position:absolute; will-change:transform,opacity; transform:rotateX(72deg); opacity:0; pointer-events:none; }
+  #puTree { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; transform:translateZ(29px) rotateX(72deg); }
+  #puFg { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; transform:translateZ(43px) rotateX(66deg); }
+  #puStar { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:translateZ(29px) rotateX(84deg); }
+  .pucast { position:absolute; will-change:transform,opacity; opacity:0; pointer-events:none; }
   .pucast img { width:100%; height:100%; display:block; filter:brightness(0) blur(5px); }
-  #puTreeCast { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; }
-  #puFgCast { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; }
-  #puStarCast { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:rotateX(84deg); }
-  .pushadow { position:absolute; border-radius:50%; pointer-events:none; opacity:0;
+  #puTreeCast { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; transform:translateZ(27px) rotateX(72deg); }
+  #puFgCast { left:0; top:38%; width:100%; height:62%; transform-origin:50% 100%; transform:translateZ(41px) rotateX(66deg); }
+  #puStarCast { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; transform:translateZ(27px) rotateX(84deg); }
+  .pushadow { position:absolute; border-radius:50%; pointer-events:none; opacity:0; transform:translateZ(3px);
               background:radial-gradient(closest-side, rgba(2,10,6,.55), rgba(2,10,6,0) 72%); }
   #shTree { left:31%; top:58.5%; width:42%; height:9%; }
   #shFg { left:6%; top:93%; width:88%; height:7%; }
   /* PASS 4 PIECES (Nov 23 — Gary: "more stuff needs to pop up not just the
-     friends"): the diorama fills in back-to-front — skyline strip, church,
-     left + right shop rows, the two lampposts, then tree / friends as
-     before, a snowdrift lip in front of everything, and the star. Boxes
-     are the pieces' cut boxes in the 1600x900 painting. */
-  #puSky { left:0; top:4%; width:100%; height:34.9%; transform-origin:50% 100%; }
-  #puChurch { left:61.6%; top:0.9%; width:18.4%; height:53%; transform-origin:50% 100%; }
-  #puShopsL { left:0; top:17.8%; width:21.9%; height:50.6%; transform-origin:50% 100%; }
-  #puShopsR { left:77.5%; top:10.6%; width:22.5%; height:57.8%; transform-origin:50% 100%; }
-  #puLampL { left:0; top:4%; width:6.75%; height:67.7%; transform-origin:50% 100%; }
-  #puLampR { left:92.25%; top:19.6%; width:7.75%; height:58.8%; transform-origin:50% 100%; }
-  #puDrift { left:0; top:79.4%; width:100%; height:20.6%; transform-origin:50% 100%; }
-  #puSkyCast { left:0; top:4%; width:100%; height:34.9%; transform-origin:50% 100%; }
-  #puChurchCast { left:61.6%; top:0.9%; width:18.4%; height:53%; transform-origin:50% 100%; }
-  #puShopsLCast { left:0; top:17.8%; width:21.9%; height:50.6%; transform-origin:50% 100%; }
-  #puShopsRCast { left:77.5%; top:10.6%; width:22.5%; height:57.8%; transform-origin:50% 100%; }
-  #puLampLCast { left:0; top:4%; width:6.75%; height:67.7%; transform-origin:50% 100%; }
-  #puLampRCast { left:92.25%; top:19.6%; width:7.75%; height:58.8%; transform-origin:50% 100%; }
-  #puDriftCast { left:0; top:79.4%; width:100%; height:20.6%; transform-origin:50% 100%; }
+     friends"): skyline strip, church, left + right shop rows, the two
+     lampposts, tree / friends, a snowdrift lip in front, and the star.
+     Boxes are the pieces' cut boxes in the 1600x900 painting. PASS 5 adds
+     each piece's folded base transform with its Z depth (see script). */
+  #puSky { left:0; top:4%; width:100%; height:34.9%; transform-origin:50% 100%; transform:translateZ(5px) rotateX(72deg); }
+  #puChurch { left:61.6%; top:0.9%; width:18.4%; height:53%; transform-origin:50% 100%; transform:translateZ(15px) rotateX(72deg); }
+  #puShopsL { left:0; top:17.8%; width:21.9%; height:50.6%; transform-origin:50% 100%; transform:translateZ(15px) rotateX(72deg); }
+  #puShopsR { left:77.5%; top:10.6%; width:22.5%; height:57.8%; transform-origin:50% 100%; transform:translateZ(15px) rotateX(72deg); }
+  #puLampL { left:0; top:4%; width:6.75%; height:67.7%; transform-origin:50% 100%; transform:translateZ(21px) rotateX(72deg); }
+  #puLampR { left:92.25%; top:19.6%; width:7.75%; height:58.8%; transform-origin:50% 100%; transform:translateZ(21px) rotateX(72deg); }
+  #puDrift { left:0; top:79.4%; width:100%; height:20.6%; transform-origin:50% 100%; transform:translateZ(55px) rotateX(72deg); }
+  #puSkyCast { left:0; top:4%; width:100%; height:34.9%; transform-origin:50% 100%; transform:translateZ(3px) rotateX(72deg); }
+  #puChurchCast { left:61.6%; top:0.9%; width:18.4%; height:53%; transform-origin:50% 100%; transform:translateZ(13px) rotateX(72deg); }
+  #puShopsLCast { left:0; top:17.8%; width:21.9%; height:50.6%; transform-origin:50% 100%; transform:translateZ(13px) rotateX(72deg); }
+  #puShopsRCast { left:77.5%; top:10.6%; width:22.5%; height:57.8%; transform-origin:50% 100%; transform:translateZ(13px) rotateX(72deg); }
+  #puLampLCast { left:0; top:4%; width:6.75%; height:67.7%; transform-origin:50% 100%; transform:translateZ(19px) rotateX(72deg); }
+  #puLampRCast { left:92.25%; top:19.6%; width:7.75%; height:58.8%; transform-origin:50% 100%; transform:translateZ(19px) rotateX(72deg); }
+  #puDriftCast { left:0; top:79.4%; width:100%; height:20.6%; transform-origin:50% 100%; transform:translateZ(53px) rotateX(72deg); }
   #shSky { left:3%; top:37.5%; width:94%; height:5%; }
   #shChurch { left:62%; top:51.5%; width:18%; height:5%; }
   #shShopsL { left:1.5%; top:65.5%; width:19%; height:5.5%; }
@@ -79,8 +93,9 @@
   #shDrift { left:5%; top:96.5%; width:90%; height:3.5%; }
   /* BLOOM TWINS (pass 3): transparent overlays with the tree / star layers'
      exact boxes and transform origins. At bloom time the script lands each
-     twin at its layer's landed transform, so bulbs + star glow ride the
-     risen paper geometry — and paint above the foreground layer. */
+     twin at its layer's landed transform (at a Z just above the friends
+     layer, so base-tier bulbs are never swallowed by the friends' heads),
+     so bulbs + star glow ride the risen paper geometry. */
   .publm { position:absolute; pointer-events:none; }
   #puBloomTree { left:30%; top:5%; width:45%; height:62%; transform-origin:50% 100%; }
   #puBloomStar { left:44.5%; top:0; width:11%; height:9.5%; transform-origin:50% 100%; }
@@ -109,6 +124,10 @@
              background:rgba(6,42,22,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
              padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
   body.wall #caption { display:none; }
+  /* PASS 5 book frame: a soft inner shadow over the page edges so the
+     construction reads as a paper page mounted in a card. */
+  #frame::after { content:''; position:absolute; inset:0; z-index:6; pointer-events:none;
+                  box-shadow:inset 0 0 34px rgba(24,14,2,.34), inset 0 0 7px rgba(24,14,2,.22); }
   @media (prefers-reduced-motion: reduce) { #snow { display:none; } .tlb, #starGlow { animation:none; } }
 </style>
 </head>
@@ -119,6 +138,7 @@
     <div id="drift">
       <img id="still" src="still.jpg" alt="All eight friends in a snowy village square at blue dusk, cocoa mugs in hand, gathered before a giant Christmas tree hung with ornaments and topped with a gold star — the moment just before the lights come on; lampposts glowing at both sides, the church steeple behind, snow falling">
       <div id="popup">
+       <div id="stage">
         <img id="plate" src="plate-empty.webp" alt="">
         <div class="pushadow" id="shSky"></div>
         <div class="pucast" id="puSkyCast"><img src="layer-skyline.webp" alt=""></div>
@@ -151,6 +171,7 @@
         <div class="pulayer" id="puStar"><img src="layer-star.webp" alt=""></div>
         <div class="publm" id="puBloomTree"></div>
         <div class="publm" id="puBloomStar"></div>
+       </div>
       </div>
     </div>
     <div id="fx"></div>
@@ -159,20 +180,29 @@
   </div>
 </div>
 <script>
-  // The Pop-Up Tree (Nov 23; pass 3 same day; FULL DIORAMA pass 4): the
-  // Tree Lighting painting, presented as a pop-up book. Over an EMPTY
-  // BACKDROP the painting RISES in layers — pass 4: skyline, church, shop
-  // rows, lampposts, tree, friends, snowdrift, and the star pops in last —
-  // the stage tilted like an open book, each piece landing proud of
-  // the layer behind with its own cast shadow. PASS 3: the risen stack IS
-  // the card — no crossfade to the flat painting, no photo treatments; the
-  // tilt eases only to a residual 6deg, the scales hold, and the tap (the
-  // parent's tap rig posts 'lc-bloom') lights the PAPER tree: bulbs ride a
-  // twin overlay carrying the tree layer's own landed transform, the star
-  // glow a twin carrying the star's. In #wall the caption hides. Bloom
-  // machinery below is the treelighting scene's, unchanged: tiers land
-  // bottom-first by animation, guaranteed by plain timers writing inline
-  // opacity !important.
+  // The Pop-Up Tree (Nov 23; pass 3 same day; FULL DIORAMA pass 4; GEOMETRY
+  // pass 5): the Tree Lighting painting, presented as a pop-up book. Over
+  // an EMPTY BACKDROP the painting RISES in layers — skyline, church, shop
+  // rows, lampposts, tree, friends, snowdrift, and the star pops in last.
+  // PASS 3 DOCTRINE: the risen stack IS the card — no crossfade to the
+  // flat painting, no photo treatments; the tap (the parent's tap rig
+  // posts 'lc-bloom') lights the PAPER tree: bulbs ride a twin overlay
+  // carrying the tree layer's own landed transform, the star glow a twin
+  // carrying the star's. PASS 5 GEOMETRY: the cream page (#popup) is
+  // overscanned past the frame and held at a true-perspective
+  // rotateX(23deg) open-book angle for the card's whole life; the layers
+  // sit in ONE preserve-3d space at Z depths by distance (skyline 5px,
+  // church/shops 15, lampposts 21, tree 29, friends 43, snowdrift 55 —
+  // the brief's 0/10/16/24/38/50 ladder lifted +5 so nothing renders
+  // behind the page's own cream plane), land at graduated scales
+  // (1.0 -> 1.22) with a slight lift off their footprints, wobble once
+  // like card stock as they land, and throw long cast shadows while
+  // rising. A one-way camera push-in (stage scale x1.10 over ~7s,
+  // ease-out, timer-landed, never loops) parallaxes the layers as it
+  // settles. In #wall the caption hides. Bloom machinery below is the
+  // treelighting scene's, unchanged: tiers land bottom-first by
+  // animation, guaranteed by plain timers writing inline opacity
+  // !important.
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
     var embedded = document.body.classList.contains('wall');
@@ -180,11 +210,12 @@
     var palette = ['255,209,102', '255,89,100', '126,217,87', '255,243,196', '255,166,66'];
     /* PASS 3: the bulbs are NOT positioned in frame coordinates any more.
        They live in #puBloomTree, a twin of the tree layer (box left 30%,
-       top 5%, width 45%, height 62% of the frame) that lands with the tree
-       layer's own transform — so each bulb's position is converted from
-       frame % into tree-box % here: left (x-30)/45, top (y-5)/62, width
-       size/45 (width % resolves against the box width, top % against its
-       height; aspect-ratio keeps the bulb round at the same pixel size). */
+       top 5%, width 45%, height 62% of the painting) that lands with the
+       tree layer's own transform — so each bulb's position is converted
+       from frame % into tree-box % here: left (x-30)/45, top (y-5)/62,
+       width size/45 (width % resolves against the box width, top %
+       against its height; aspect-ratio keeps the bulb round at the same
+       pixel size). */
     function light(x, y, ci, size, dur, phase, bloom){
       var c = palette[ci % palette.length];
       var lx = ((x - 30) / 45 * 100).toFixed(2), ly = ((y - 5) / 62 * 100).toFixed(2), lw = (size / 45 * 100).toFixed(2);
@@ -211,34 +242,35 @@
       tierInfo.push({ count: tiers[t].pts.length, at: tiers[t].d + (tiers[t].pts.length - 1) * 0.06 + 1.1 });
     }
     // the star's glow — blooms in last, then breathes. PASS 3: it lives in
-    // #puBloomStar, the star layer's twin (box left 44.5%, top 0, width 11%,
-    // height 9.5%); the star art sits at ~(49%, 44%) inside its cut
+    // #puBloomStar, the star layer's twin (box left 44.5%, top 0, width
+    // 11%, height 9.5%); the star art sits at ~(49%, 44%) inside its cut
     // (alpha bbox 21-152 x 0-74 of 176x85), and width 45% of the twin's
     // width ≈ the old 5%-of-frame glow diameter.
     starHtml = '<div id="starGlow" style="left:49%;top:44%;width:45%;aspect-ratio:1"></div>';
 
-    /* ================= THE POP-UP RISE (pass 3; FULL DIORAMA pass 4) ===
-       Layers start folded (CSS: rotateX 72-84deg, opacity 0) over the
-       EMPTY BACKDROP (#plate — pass 4: the painting defocused, every
-       piece's footprint filled). goRise() tilts the whole stage back
-       like an open book (rotateX 14deg, scaled a touch to hold framing)
-       and springs TEN pieces upright back-to-front — skyline .1s,
-       church + shops .4s, lampposts .7s, tree 1.0s, friends 1.5s,
-       snowdrift 1.9s, star 2.2s/.75s with a big overshoot bounce and a
-       shadow pulse as it locks. Each piece lands at a REAL SEPARATION
-       (scales graduate 1.02 back → 1.15 star) with its cast-shadow twin
-       (a brightness(0) blurred silhouette, offset down-left) thrown onto
-       the layer behind. PASS 3 DOCTRINE HOLDS: that is where the motion
-       STOPS. The tilt eases only to a residual rotateX(6deg)
-       scale(1.03), the scales hold, the shadows stay on, and 'lc-risen'
-       is posted — the held card is the paper stack, and the bloom later
-       lights it in place. There is no crossfade and #popup is never
-       hidden. Every landing is ALSO written by a plain timer as an
-       inline !important style (the tapfix3 discipline): if every WAAPI
-       timeline in this iframe froze, the timers alone still stand the
-       scene up at its separated pose, settle the stage at the residual
-       tilt, and post the ack. 'lc-dark' folds everything flat again for
-       a replay. */
+    /* ================= THE POP-UP RISE (pass 5 geometry) =================
+       The folded state lives under the same held 23deg page tilt (the
+       tilt is #popup's CSS base transform). goRise() starts the one-way
+       CAMERA PUSH-IN (stage scale 1.03 -> 1.133, i.e. x1.10, over 7s
+       ease-out, timer-landed at 7050ms — it settles and stops dead) and
+       springs TEN pieces upright back-to-front — skyline .1s, church +
+       shops .4s, lampposts .7s, tree 1.0s, friends 1.5s, snowdrift 1.9s,
+       star 2.2s/.75s with a big overshoot bounce and a shadow pulse as
+       it locks. Each piece lands at its Z depth with its graduated
+       scale and lift, wobbles once (+2.5 -> -1.5 -> +0.6 -> 0 over
+       .9s), and its cast-shadow twin stretches LONG across the page
+       while it rises (offset -7%,11% and +7px of extra blur) and
+       shortens to the held shadow as it stands. PASS 3 DOCTRINE HOLDS:
+       that is where the motion stops — the tilt, the Z separation and
+       the scales hold for the card's whole life, 'lc-risen' is posted,
+       and the bloom later lights the stack in place. There is no
+       crossfade and #popup is never hidden. Every landing is ALSO
+       written by a plain timer as an inline !important style (the
+       tapfix3 discipline): if every WAAPI timeline in this iframe
+       froze, the timers alone still stand the scene up at its
+       separated pose, settle the stage at the pushed-in scale, and
+       post the ack. 'lc-dark' folds everything flat again for a
+       replay. */
     var popup = document.getElementById('popup');
     var stillImg = document.getElementById('still'), plateImg = document.getElementById('plate');
     var puTree = document.getElementById('puTree'), puFg = document.getElementById('puFg'), puStar = document.getElementById('puStar');
@@ -277,18 +309,24 @@
       el.style.setProperty('transform', transform, 'important');
       el.style.setProperty('opacity', opacity, 'important');
     }
-    var TREE_END = 'rotateX(0deg) scale(1.05)', TREE_CAST_END = 'rotateX(0deg) scale(1.05) translate(-2.2%, 3.2%)';
-    var FG_END = 'rotateX(0deg) scale(1.10) translateY(1.5%)', FG_CAST_END = 'rotateX(0deg) scale(1.10) translate(-1.6%, 3.9%)';
-    var STAR_END = 'rotateX(0deg) scale(1.15)', STAR_CAST_END = 'rotateX(0deg) scale(1.15) translate(-5%, 7%)';
-    /* PASS 4 landed transforms — scales graduate by depth (back 1.02,
-       lamps 1.04, tree 1.05, friends 1.10, drift 1.13, star 1.15) */
-    var SKY_END = 'rotateX(0deg) scale(1.02)', SKY_CAST_END = 'rotateX(0deg) scale(1.02) translate(-1.2%, 2.2%)';
-    var CHURCH_END = 'rotateX(0deg) scale(1.02)', CHURCH_CAST_END = 'rotateX(0deg) scale(1.02) translate(-1.8%, 2.8%)';
-    var SHOPSL_END = 'rotateX(0deg) scale(1.02)', SHOPSL_CAST_END = 'rotateX(0deg) scale(1.02) translate(-1.8%, 2.8%)';
-    var SHOPSR_END = 'rotateX(0deg) scale(1.02)', SHOPSR_CAST_END = 'rotateX(0deg) scale(1.02) translate(-1.8%, 2.8%)';
-    var LAMPL_END = 'rotateX(0deg) scale(1.04)', LAMPL_CAST_END = 'rotateX(0deg) scale(1.04) translate(-3%, 4.5%)';
-    var LAMPR_END = 'rotateX(0deg) scale(1.04)', LAMPR_CAST_END = 'rotateX(0deg) scale(1.04) translate(-3%, 4.5%)';
-    var DRIFT_END = 'rotateX(0deg) scale(1.13) translateY(1%)', DRIFT_CAST_END = 'rotateX(0deg) scale(1.13) translate(-1.3%, 2.8%)';
+    /* PASS 5 transform builder: T(z, rx, s, ty) — a piece at Z depth z,
+       folded/standing at rotateX rx, scaled s, lifted ty (or none). The
+       cast-shadow twin rides 2px behind its piece (CT) with its own
+       down-left translate. STAGE strings must match #popup's CSS base. */
+    function T(z, rx, s, ty){
+      return 'translateZ(' + z + 'px) rotateX(' + rx + 'deg) scale(' + s + ')' + (ty ? ' translateY(' + ty + ')' : '');
+    }
+    function CT(z, rx, s, tx, ty){
+      return 'translateZ(' + z + 'px) rotateX(' + rx + 'deg) scale(' + s + ') translate(' + tx + ', ' + ty + ')';
+    }
+    var STAGE_BASE = 'rotateX(23deg) translateY(1.5%) scale(1.03)';
+    var STAGE_IN   = 'rotateX(23deg) translateY(1.5%) scale(1.133)';
+    var STAR_END = T(29, 0, 1.18, null), STAR_CAST_END = CT(27, 0, 1.18, '-5%', '7%');
+    /* Bloom twins land at the tree's / star's landed scale+lift, at a Z
+       just above the friends layer (45/46px) so the lights paint over
+       the friends' heads exactly as the flat DOM order did in pass 3. */
+    var BLOOM_TREE_END = T(45, 0, 1.08, '-2%');
+    var BLOOM_STAR_END = T(46, 0, 1.18, null);
     function resetPopup(){
       puClear();
       var els = [puTree, puFg, puStar, puTreeCast, puFgCast, puStarCast, shTree, shFg, popup, bloomTree, bloomStar,
@@ -299,6 +337,7 @@
         els[i].style.removeProperty('transform');
         els[i].style.removeProperty('opacity');
         els[i].style.removeProperty('display');
+        els[i].style.removeProperty('filter');
       }
       stillImg.style.removeProperty('opacity');
       risen = false; rising = false;
@@ -315,78 +354,106 @@
         if (!el.animate) return;
         var a = el.animate(frames, opts); puAnims.push(a);
       }
-      /* CAMERA TILT — the stage tips back like an open book while the
-         pieces rise (rotateX 14deg), then eases to a RESIDUAL
-         rotateX(6deg) scale(1.03) and STAYS there (pass 3): the depth
-         persists for the whole life of the card, nothing flattens. */
+      /* CAMERA PUSH-IN (pass 5): the whole stage eases scale 1.03 ->
+         1.133 (x1.10) over ~7s while the pieces rise and into the first
+         seconds of the hold, so the Z-separated layers parallax against
+         each other — then it STOPS. Timer-landed at 7050ms with
+         !important; no loop, no drift after it settles (the pass-3
+         drift stays dead — this is a one-way settle). */
       anim(popup, [
-        { transform:'rotateX(14deg) scale(1.07)', offset:0 },
-        { transform:'rotateX(14deg) scale(1.07)', offset:.79 },
-        { transform:'rotateX(6deg) scale(1.03)', offset:1, easing:'ease-in-out' }
-      ], { duration:3650, easing:'linear', fill:'forwards' });
-      /* PASS 4 — THE FULL DIORAMA WAVE. Ten pieces stand back-to-front:
-         skyline .1s, church + shop rows .4s, lampposts .7s, tree 1.0s,
-         friends 1.5s, snowdrift 1.9s, star 2.2s. risePiece() runs the
-         V-fold spring (WAAPI), the cast-shadow twin, and the ground
-         contact shadow — and registers the TIMER-GUARANTEED landing
-         (tapfix3 discipline) at delay+duration+150ms. */
-      function risePiece(el, cast, sh, delay, dur, end, castEnd, castOp, shOp, foldDeg, ease){
-        anim(el, [
-          { transform:'rotateX(' + foldDeg + 'deg)', opacity:0 },
+        { transform:STAGE_BASE },
+        { transform:STAGE_IN }
+      ], { duration:7000, easing:'cubic-bezier(.25,.6,.3,1)', fill:'forwards' });
+      puLater(function(){
+        popup.style.setProperty('transform', STAGE_IN, 'important');
+      }, 7050);
+      /* THE DIORAMA WAVE at true depth. risePiece() runs the V-fold
+         spring (WAAPI), the PAPER WOBBLE as the piece lands, the
+         LONG-SHADOW cast twin, and the ground contact shadow — and
+         registers the TIMER-GUARANTEED landings (tapfix3 discipline):
+         cast + shadow at delay+dur+150, the piece itself at
+         delay+dur+1000, after its wobble completes. */
+      function risePiece(o){
+        var end = T(o.z, 0, o.s, o.ty), castEnd = CT(o.cz, 0, o.s, o.ctx, o.cty);
+        var ease = o.ease || 'cubic-bezier(.22,1.28,.36,1)';
+        anim(o.el, [
+          { transform:T(o.z, o.fold, 1, null), opacity:0 },
           { transform:end, opacity:1, offset:1 }
-        ], { duration:dur, delay:delay, easing:ease || 'cubic-bezier(.22,1.28,.36,1)', fill:'forwards' });
-        anim(el, [
+        ], { duration:o.dur, delay:o.delay, easing:ease, fill:'forwards' });
+        anim(o.el, [
           { opacity:0 }, { opacity:1, offset:.3 }, { opacity:1 }
-        ], { duration:dur, delay:delay, easing:'ease-out', fill:'forwards' });
-        anim(cast, [
-          { transform:'rotateX(' + foldDeg + 'deg)', opacity:0 },
-          { transform:castEnd, opacity:castOp, offset:1 }
-        ], { duration:dur, delay:delay, easing:ease || 'cubic-bezier(.22,1.28,.36,1)', fill:'forwards' });
-        anim(sh, [
-          { opacity:0, transform:'scale(.65)' }, { opacity:shOp, transform:'scale(1)' }
-        ], { duration:dur, delay:delay, easing:'ease-out', fill:'forwards' });
+        ], { duration:o.dur, delay:o.delay, easing:'ease-out', fill:'forwards' });
+        /* PAPER WOBBLE — card stock finding its rest: rotateX
+           0 -> +2.5 -> -1.5 -> +0.6 -> 0 over .9s from the landing. */
+        anim(o.el, [
+          { transform:end },
+          { transform:T(o.z, 2.5, o.s, o.ty), offset:.25 },
+          { transform:T(o.z, -1.5, o.s, o.ty), offset:.55 },
+          { transform:T(o.z, 0.6, o.s, o.ty), offset:.8 },
+          { transform:end }
+        ], { duration:900, delay:o.delay + o.dur, easing:'ease-out', fill:'forwards' });
+        /* LONG SHADOW — while the piece is folded / mid-rise its cast
+           silhouette is thrown long across the page (offset -7%, 11%)
+           and extra-soft (+7px blur on the twin); it shortens to the
+           held shadow as the piece stands. */
+        anim(o.cast, [
+          { transform:CT(o.cz, o.fold, o.s, '-7%', '11%'), opacity:0 },
+          { transform:CT(o.cz, 38, o.s, '-4.5%', '6.5%'), opacity:o.cop, offset:.55 },
+          { transform:castEnd, opacity:o.cop }
+        ], { duration:o.dur, delay:o.delay, easing:ease, fill:'forwards' });
+        anim(o.cast, [
+          { filter:'blur(7px)' }, { filter:'blur(0px)' }
+        ], { duration:o.dur, delay:o.delay, easing:'ease-out', fill:'forwards' });
+        anim(o.sh, [
+          { opacity:0, transform:'translateZ(3px) scale(.65)' }, { opacity:o.sop, transform:'translateZ(3px) scale(1)' }
+        ], { duration:o.dur, delay:o.delay, easing:'ease-out', fill:'forwards' });
         puLater(function(){
-          land(el, end, '1'); land(cast, castEnd, String(castOp));
-          sh.style.setProperty('opacity', String(shOp), 'important');
-        }, delay + dur + 150);
+          land(o.cast, castEnd, String(o.cop));
+          o.cast.style.setProperty('filter', 'none', 'important');
+          o.sh.style.setProperty('opacity', String(o.sop), 'important');
+        }, o.delay + o.dur + 150);
+        puLater(function(){ land(o.el, end, '1'); }, o.delay + o.dur + 1000);
       }
-      risePiece(puSky, puSkyCast, shSky, 100, 900, SKY_END, SKY_CAST_END, .35, .3, 72);
-      risePiece(puChurch, puChurchCast, shChurch, 400, 900, CHURCH_END, CHURCH_CAST_END, .45, .4, 72);
-      risePiece(puShopsL, puShopsLCast, shShopsL, 400, 900, SHOPSL_END, SHOPSL_CAST_END, .45, .4, 72);
-      risePiece(puShopsR, puShopsRCast, shShopsR, 450, 900, SHOPSR_END, SHOPSR_CAST_END, .45, .4, 72);
-      risePiece(puLampL, puLampLCast, shLampL, 700, 900, LAMPL_END, LAMPL_CAST_END, .5, .45, 72);
-      risePiece(puLampR, puLampRCast, shLampR, 750, 900, LAMPR_END, LAMPR_CAST_END, .5, .45, 72);
-      risePiece(puTree, puTreeCast, shTree, 1000, 1000, TREE_END, TREE_CAST_END, .5, .55, 72, 'cubic-bezier(.22,1.32,.36,1)');
-      risePiece(puFg, puFgCast, shFg, 1500, 1000, FG_END, FG_CAST_END, .5, .4, 66, 'cubic-bezier(.22,1.25,.36,1)');
-      risePiece(puDrift, puDriftCast, shDrift, 1900, 900, DRIFT_END, DRIFT_CAST_END, .4, .35, 72);
-      /* the star pops in last — bigger overshoot bounce at scale 1.15,
+      risePiece({ el:puSky, cast:puSkyCast, sh:shSky, z:5, cz:3, s:1.0, ty:null, ctx:'-1.2%', cty:'2.2%', cop:.35, sop:.3, delay:100, dur:900, fold:72 });
+      risePiece({ el:puChurch, cast:puChurchCast, sh:shChurch, z:15, cz:13, s:1.0, ty:'-1%', ctx:'-1.8%', cty:'2.8%', cop:.45, sop:.4, delay:400, dur:900, fold:72 });
+      risePiece({ el:puShopsL, cast:puShopsLCast, sh:shShopsL, z:15, cz:13, s:1.0, ty:'-1%', ctx:'-1.8%', cty:'2.8%', cop:.45, sop:.4, delay:400, dur:900, fold:72 });
+      risePiece({ el:puShopsR, cast:puShopsRCast, sh:shShopsR, z:15, cz:13, s:1.0, ty:'-1%', ctx:'-1.8%', cty:'2.8%', cop:.45, sop:.4, delay:450, dur:900, fold:72 });
+      risePiece({ el:puLampL, cast:puLampLCast, sh:shLampL, z:21, cz:19, s:1.05, ty:'-1.5%', ctx:'-3%', cty:'4.5%', cop:.5, sop:.45, delay:700, dur:900, fold:72 });
+      risePiece({ el:puLampR, cast:puLampRCast, sh:shLampR, z:21, cz:19, s:1.05, ty:'-1.5%', ctx:'-3%', cty:'4.5%', cop:.5, sop:.45, delay:750, dur:900, fold:72 });
+      risePiece({ el:puTree, cast:puTreeCast, sh:shTree, z:29, cz:27, s:1.08, ty:'-2%', ctx:'-2.2%', cty:'3.2%', cop:.5, sop:.55, delay:1000, dur:1000, fold:72, ease:'cubic-bezier(.22,1.32,.36,1)' });
+      risePiece({ el:puFg, cast:puFgCast, sh:shFg, z:43, cz:41, s:1.16, ty:'-2.5%', ctx:'-1.6%', cty:'3.9%', cop:.5, sop:.4, delay:1500, dur:1000, fold:66, ease:'cubic-bezier(.22,1.25,.36,1)' });
+      risePiece({ el:puDrift, cast:puDriftCast, sh:shDrift, z:55, cz:53, s:1.22, ty:'-1%', ctx:'-1.3%', cty:'2.8%', cop:.4, sop:.35, delay:1900, dur:900, fold:72 });
+      /* the star pops in last — its 3-keyframe bounce (-16deg -> +6deg
+         -> settle) IS its paper settle, at scale 1.18 on the tree's Z,
          and its shadow pulses once as it locks (~3.0s) */
       anim(puStar, [
-        { transform:'rotateX(84deg) scale(.65)', opacity:0 },
-        { transform:'rotateX(-16deg) scale(1.24)', opacity:1, offset:.55 },
-        { transform:'rotateX(6deg) scale(1.10)', opacity:1, offset:.78 },
+        { transform:T(29, 84, .65, null), opacity:0 },
+        { transform:T(29, -16, 1.28, null), opacity:1, offset:.55 },
+        { transform:T(29, 6, 1.13, null), opacity:1, offset:.78 },
         { transform:STAR_END, opacity:1 }
       ], { duration:750, delay:2200, easing:'ease-out', fill:'forwards' });
       anim(puStarCast, [
-        { transform:'rotateX(84deg) scale(.65)', opacity:0 },
+        { transform:CT(27, 84, .65, '-9%', '13%'), opacity:0 },
         { transform:STAR_CAST_END, opacity:.45, offset:1 }
       ], { duration:750, delay:2200, easing:'ease-out', fill:'forwards' });
       anim(puStarCast, [
+        { filter:'blur(7px)' }, { filter:'blur(0px)' }
+      ], { duration:750, delay:2200, easing:'ease-out', fill:'forwards' });
+      anim(puStarCast, [
         { transform:STAR_CAST_END, opacity:.45 },
-        { transform:'rotateX(0deg) scale(1.23) translate(-5%, 7%)', opacity:.7, offset:.4 },
+        { transform:CT(27, 0, 1.26, '-5%', '7%'), opacity:.7, offset:.4 },
         { transform:STAR_CAST_END, opacity:.45 }
       ], { duration:380, delay:2970, easing:'ease-out', fill:'forwards' });
-      puLater(function(){ land(puStar, STAR_END, '1'); land(puStarCast, STAR_CAST_END, '.45'); }, 3100);
+      puLater(function(){ land(puStar, STAR_END, '1'); land(puStarCast, STAR_CAST_END, '.45'); puStarCast.style.setProperty('filter', 'none', 'important'); }, 3100);
       /* THE HOLD (pass 3): no crossfade, nothing fades, #popup is never
-         hidden. The plain timer lands the stage at the residual tilt with
-         !important (overriding the WAAPI fill), marks the rise complete,
-         posts the ack, and starts the bloom for standalone embeds. */
+         hidden. This timer marks the rise complete and posts the ack
+         (the push-in keeps easing into the hold and lands itself at
+         7050ms); standalone embeds start the bloom here. */
       puLater(function(){
-        popup.style.setProperty('transform', 'rotateX(6deg) scale(1.03)', 'important');
         rising = false; risen = true;
         postRisen();
         if (autoBloom) goBloom();
-      }, 3650);
+      }, 3900);
     }
 
     /* ================= THE BLOOM GATE (from treelighting) =================
@@ -397,10 +464,11 @@
        at 120s at the latest — and a late 'lc-bloom' restarts the bloom in
        any case. 'lc-dark' (parent reseal) clears the bulbs AND folds the
        pop-up flat, so a replayed opening rises and lights all over again. */
-    /* PASS 3: the bloom lives in the two paper twins declared in the HTML.
-       At bloom time each twin is landed at its layer's landed transform
-       (land() writes inline !important), so the bulbs ride the risen tree
-       and the glow rides the risen star — in place, on the paper. */
+    /* PASS 3/5: the bloom lives in the two paper twins declared in the
+       HTML. At bloom time each twin is landed at its layer's landed
+       transform (land() writes inline !important), so the bulbs ride the
+       risen tree and the glow rides the risen star — in place, on the
+       paper, at the pass-5 geometry. */
     var bloomTree = document.getElementById('puBloomTree');
     var bloomStar = document.getElementById('puBloomStar');
     var bloomed = false, armed = false, bloomTimers = [], tierDone = [], starDone = false, rescueTimer = null;
@@ -411,8 +479,8 @@
     function setLit(el, val){ if (el) el.style.setProperty('opacity', val, 'important'); }
     function goBloom(){
       clearBloomTimers();
-      land(bloomTree, TREE_END, '1');
-      land(bloomStar, STAR_END, '1');
+      land(bloomTree, BLOOM_TREE_END, '1');
+      land(bloomStar, BLOOM_STAR_END, '1');
       bloomTree.innerHTML = bloomHtml;
       bloomStar.innerHTML = starHtml;
       bloomed = true;
