@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Sailboat — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #164a73 0%, #0b2c4a 46%, #04182c 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#eaf8ff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(80,170,230,.20) 0%, rgba(255,190,80,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfSailSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfSailSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #1d5c8f 0%, #144a75 55%, #0d3a5f 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm sun-glint the harbor casts onto the base */
+  #sunGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,214,110,.55) 0%, rgba(120,200,245,.22) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f2fbff 0%, #d8f0fc 58%, #b8dcf2 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(60,130,180,.22);
+  }
+  /* the face that greets you once the card stands — bright harbor backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #8fd4f7 0%, #b8e6fb 46%, #dff6ff 78%, #a8dcf2 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(8,30,52,.35), inset 0 0 52px rgba(30,90,140,.25);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* backdrop life: clouds drift, gulls cross */
+  .pfSailCloud { animation:pfSailCloudDrift 13s ease-in-out infinite alternate; }
+  .pfSailCloud.c2 { animation-duration:17s; animation-delay:-6s; }
+  @keyframes pfSailCloudDrift { from { transform:translateX(-7px); } to { transform:translateX(9px); } }
+  .pfSailGull { opacity:0; animation:pfSailGullCross 19s linear infinite; }
+  .pfSailGull.g2 { animation-duration:26s; animation-delay:-11s; }
+  @keyframes pfSailGullCross {
+    0% { transform:translate(-56px,0); opacity:0; }
+    5% { opacity:.85; }
+    46% { transform:translate(196px,-13px); opacity:.85; }
+    88% { transform:translate(420px,3px); opacity:.85; }
+    93%, 100% { transform:translate(440px,3px); opacity:0; }
+  }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #2e86c9 0%, #1c66a3 52%, #124a7d 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfSailFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfSailFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfSailFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfSailFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the harbor (rises out of the base) ---------- */
+  #boatWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+
+  /* water: three paper wave bands lying on the base, light to deep.
+     Each band's inner svg is two pattern-widths wide and rolls sideways
+     forever — the crest pattern tiles every 50 units, so a -200px loop
+     is seamless. */
+  .band { position:absolute; left:-10px; width:400px; overflow:hidden; border-radius:4px; opacity:0; }
+  .band svg { display:block; width:800px; height:100%; animation:pfSailWaveRoll linear infinite; }
+  #band1 { top:44px; height:42px; }
+  #band1 svg { animation-duration:12s; }
+  #band2 { top:72px; height:44px; }
+  #band2 svg { animation-duration:9s; animation-direction:reverse; }
+  #band3 { top:100px; height:46px; }
+  #band3 svg { animation-duration:6.5s; }
+  @keyframes pfSailWaveRoll { from { transform:translateX(0); } to { transform:translateX(-200px); } }
+
+  /* sun-glints twinkling on the water once open */
+  .glint {
+    position:absolute; height:4px; border-radius:50%;
+    background:rgba(255,255,255,.9); filter:blur(1px); opacity:0; pointer-events:none;
+  }
+  #world.open .glint { animation:pfSailGlint 2.8s ease-in-out infinite alternate; animation-delay:var(--d, 0s); }
+  @keyframes pfSailGlint { from { opacity:.15; transform:scaleX(.6); } to { opacity:.95; transform:scaleX(1.25); } }
+
+  /* the sailboat: #boatMove glides + bobs (JS), #boatFlip turns it at
+     each end of the run (JS), .boatStand stands it up off the water */
+  #boatMove { position:absolute; left:190px; top:100px; width:0; height:0; transform-style:preserve-3d; }
+  #boatFlip { position:absolute; left:0; top:0; transform-style:preserve-3d; }
+  .boatStand {
+    position:absolute; left:-100px; top:-168px; width:200px; height:170px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+  }
+  .boatStand svg { width:100%; height:100%; display:block; overflow:visible; }
+  /* assembly: each part of the boat grows in its rise window (JS sets
+     the scale); origins are the part's own box edges */
+  #gHull { transform-box:fill-box; transform-origin:50% 100%; }
+  #gMast { transform-box:fill-box; transform-origin:50% 100%; }
+  #gMain { transform-box:fill-box; transform-origin:100% 50%; }
+  #gJib  { transform-box:fill-box; transform-origin:0% 50%; }
+  #gFlag { transform-box:fill-box; transform-origin:0% 50%; }
+  /* the wake: a soft foam ellipse lying on the water behind the stern,
+     inside the flip group so it always trails the boat */
+  #wake {
+    position:absolute; left:-118px; top:-7px; width:74px; height:15px; border-radius:50%;
+    transform:translateZ(1px);
+    background:radial-gradient(ellipse at center, rgba(255,255,255,.85) 0%, rgba(255,255,255,.35) 55%, transparent 78%);
+    filter:blur(2px); opacity:0; pointer-events:none;
+  }
+
+  /* a little red buoy bobbing at the right of the harbor */
+  .buoy { position:absolute; width:0; height:0; transform-style:preserve-3d; opacity:0; transition:opacity .5s ease 0s; }
+  #world.open .buoy { opacity:1; transition:opacity .7s ease 1.55s; }
+  .buoyBob { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfSailBob 3.4s ease-in-out infinite alternate; }
+  .buoyStand {
+    position:absolute; left:-17px; top:-46px; width:34px; height:46px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    animation:pfSailBuoySway 4.1s ease-in-out infinite alternate;
+  }
+  @keyframes pfSailBob { from { transform:translateZ(3px); } to { transform:translateZ(10px); } }
+  @keyframes pfSailBuoySway { from { transform:rotateX(-90deg) rotateZ(-3deg); } to { transform:rotateX(-90deg) rotateZ(3deg); } }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(10,34,58,.72); border:1px solid rgba(160,210,245,.55);
+    color:#eaf8ff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfSailPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfSailPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(4,20,36,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the sea-blue envelope front itself, in the free
+     area below the harbor (same geometry as the Sea Card), inside the
+     gilt trim. No separate panel. They fade in as the boat settles and
+     are gone quickly on close, before the front returns. One clean
+     block — swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#eaf8ff;
+    text-shadow:0 0 10px rgba(160,220,255,.35), 0 1px 3px rgba(4,20,36,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .band svg, .buoyBob, .buoyStand, .pfSailCloud, .pfSailGull { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSailSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#7cc6f2"/><stop offset=".55" stop-color="#b8e6fb"/><stop offset="1" stop-color="#e8faff"/>
+                      </linearGradient>
+                      <radialGradient id="pfSailSunGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#ffe9a8" stop-opacity=".95"/>
+                        <stop offset=".45" stop-color="#ffd166" stop-opacity=".45"/>
+                        <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfSailSkyGrad)"/>
+                    <!-- sun -->
+                    <circle cx="66" cy="50" r="40" fill="url(#pfSailSunGlow)"/>
+                    <circle cx="66" cy="50" r="17" fill="#ffd166"/>
+                    <circle cx="66" cy="50" r="13.5" fill="#ffe29a"/>
+                    <!-- clouds -->
+                    <g class="pfSailCloud" fill="#ffffff" opacity=".92">
+                      <ellipse cx="168" cy="42" rx="30" ry="10"/>
+                      <ellipse cx="188" cy="35" rx="20" ry="9"/>
+                      <ellipse cx="148" cy="36" rx="16" ry="7"/>
+                    </g>
+                    <g class="pfSailCloud c2" fill="#ffffff" opacity=".75">
+                      <ellipse cx="292" cy="76" rx="24" ry="8"/>
+                      <ellipse cx="308" cy="70" rx="15" ry="7"/>
+                    </g>
+                    <!-- paper gulls crossing -->
+                    <g class="pfSailGull" fill="none" stroke="#33627e" stroke-width="2.4" stroke-linecap="round">
+                      <path d="M0 0 q6 -6 12 0 q6 -6 12 0" transform="translate(0,58)"/>
+                      <path d="M0 0 q5 -5 10 0 q5 -5 10 0" transform="translate(30,44) scale(.8)" opacity=".7"/>
+                    </g>
+                    <g class="pfSailGull g2" fill="none" stroke="#33627e" stroke-width="2.2" stroke-linecap="round">
+                      <path d="M0 0 q6 -6 12 0 q6 -6 12 0" transform="translate(0,96) scale(.9)"/>
+                    </g>
+                    <!-- distant shore, left -->
+                    <path d="M0 208 Q52 188 108 200 Q150 208 176 214 L176 248 L0 248 Z" fill="#8fc9de" opacity=".85"/>
+                    <path d="M0 220 Q60 206 130 218 L176 226 L176 248 L0 248 Z" fill="#6fb3cf" opacity=".8"/>
+                    <!-- lighthouse point, right -->
+                    <path d="M286 248 Q306 206 344 198 Q372 202 380 214 L380 248 Z" fill="#2e7ea6"/>
+                    <path d="M286 248 Q306 206 344 198 Q356 200 366 206 L352 248 Z" fill="#3590ba" opacity=".7"/>
+                    <g>
+                      <path d="M322 204 L326 158 L342 158 L346 204 Z" fill="#ffffff"/>
+                      <path d="M324.5 182 L343.5 182 L344.5 194 L323.5 194 Z" fill="#ff7a59"/>
+                      <path d="M325.5 164 L342.5 164 L343.2 174 L324.8 174 Z" fill="#ff7a59"/>
+                      <rect x="321" y="150" width="26" height="7" rx="2" fill="#274b63"/>
+                      <rect x="329" y="140" width="10" height="10" fill="#ffe29a"/>
+                      <path d="M334 135 l-4 6 h8 z" fill="#274b63"/>
+                      <path d="M329 145 L272 128 L272 158 L329 152 Z" fill="#ffe9a8" opacity=".28"/>
+                    </g>
+                    <!-- horizon water at the backdrop's foot -->
+                    <rect x="0" y="228" width="380" height="20" fill="#7ec8e3" opacity=".65"/>
+                    <g stroke="#ffffff" stroke-width="1.6" opacity=".55" stroke-linecap="round">
+                      <path d="M52 236 h26"/><path d="M196 240 h32"/><path d="M120 243 h20"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="sunGlow"></div>
+
+            <!-- the harbor: three rolling wave bands, the sailboat, a buoy -->
+            <div id="boatWrap">
+              <div class="band" id="band1">
+                <svg viewBox="0 0 800 58" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 L800,58 L0,58 Z" fill="#8fd0ee"/>
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0" fill="none" stroke="rgba(255,255,255,.65)" stroke-width="2.5"/>
+                </svg>
+              </div>
+              <div class="band" id="band2">
+                <svg viewBox="0 0 800 62" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 L800,62 L0,62 Z" fill="#45a5dd"/>
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2.5"/>
+                </svg>
+              </div>
+
+              <!-- the sailboat -->
+              <div id="boatMove">
+                <div id="boatFlip">
+                  <div id="wake"></div>
+                  <div class="boatStand">
+                    <svg viewBox="0 0 200 170" aria-hidden="true">
+                      <!-- mainsail: white, aft of the mast -->
+                      <g id="gMain">
+                        <path d="M95 28 L95 110 L42 110 C58 82 76 54 95 28 Z" fill="#ffffff"/>
+                        <path d="M95 28 L95 110 L42 110 C58 82 76 54 95 28 Z" fill="none" stroke="#d9e6ee" stroke-width="1.6"/>
+                        <path d="M88 48 C76 68 66 86 56 104" fill="none" stroke="#e3eef5" stroke-width="2"/>
+                      </g>
+                      <!-- jib: coral, forward of the mast -->
+                      <g id="gJib">
+                        <path d="M105 34 L105 110 L154 112 C132 84 116 58 105 34 Z" fill="#ff7a59"/>
+                        <path d="M105 34 L105 110 L154 112 C132 84 116 58 105 34 Z" fill="none" stroke="#e85f3d" stroke-width="1.6"/>
+                      </g>
+                      <!-- mast + boom -->
+                      <g id="gMast">
+                        <rect x="98" y="16" width="4.6" height="102" rx="2" fill="#8a5a2b"/>
+                        <rect x="42" y="108" width="60" height="4" rx="2" fill="#8a5a2b"/>
+                      </g>
+                      <!-- flag at the masthead -->
+                      <g id="gFlag">
+                        <path d="M102 13 L128 18.5 L102 25 Z" fill="#ffd166"/>
+                      </g>
+                      <!-- hull -->
+                      <g id="gHull">
+                        <path d="M26 118 L174 118 L158 146 Q100 158 42 146 Z" fill="#d84f35"/>
+                        <path d="M26 118 L174 118 L169.5 127 L30.5 127 Z" fill="#fff3e2"/>
+                        <path d="M42 146 Q100 158 158 146 L154 152 Q100 162 46 152 Z" fill="#b23c24"/>
+                        <rect x="86" y="106" width="30" height="12" rx="3" fill="#fff3e2"/>
+                        <rect x="93" y="109.5" width="16" height="6" rx="2" fill="#7cc6f2"/>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="band" id="band3">
+                <svg viewBox="0 0 800 64" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 L800,64 L0,64 Z" fill="#2b83c6"/>
+                  <path d="M0,20 q25,-15 50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0 t50,0" fill="none" stroke="rgba(255,255,255,.75)" stroke-width="2.5"/>
+                </svg>
+              </div>
+
+              <!-- sun-glints on the water -->
+              <div class="glint" style="left:66px; top:70px; width:20px; --d:0s;"></div>
+              <div class="glint" style="left:262px; top:86px; width:15px; --d:.8s;"></div>
+              <div class="glint" style="left:150px; top:106px; width:24px; --d:1.5s;"></div>
+              <div class="glint" style="left:316px; top:118px; width:17px; --d:2.1s;"></div>
+              <div class="glint" style="left:44px; top:124px; width:14px; --d:2.6s;"></div>
+
+              <!-- a little red buoy -->
+              <div class="buoy" style="left:322px; top:116px;">
+                <div class="buoyBob"><div class="buoyStand">
+                  <svg viewBox="0 0 34 46" width="34" height="46" aria-hidden="true">
+                    <path d="M17 2 l4 8 h-8 z" fill="#274b63"/>
+                    <rect x="15.6" y="9" width="2.8" height="7" fill="#274b63"/>
+                    <path d="M7 20 L27 20 L23 40 Q17 44 11 40 Z" fill="#e23c22"/>
+                    <path d="M9.5 27 L24.5 27 L23 34 L11 34 Z" fill="#fff3e2"/>
+                    <ellipse cx="13" cy="23" rx="2.4" ry="3.4" fill="#ffffff" opacity=".4"/>
+                  </svg>
+                </div></div>
+              </div>
+            </div><!-- /boatWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a boat made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>smooth sailing...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSailFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#256ea8"/><stop offset="1" stop-color="#174e7c"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSailFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#cfeaff">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSailFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#3f97d6"/><stop offset="1" stop-color="#1c66a3"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSailFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var boatWrap = document.getElementById('boatWrap');
+  var sunGlow = document.getElementById('sunGlow');
+  var pill = document.getElementById('pill');
+  var boatMove = document.getElementById('boatMove');
+  var boatFlip = document.getElementById('boatFlip');
+  var boatStand = boatMove.querySelector('.boatStand');
+  var wake = document.getElementById('wake');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the water bands ----------
+     Each band fades in and settles onto the base in its own staggered
+     window of the rise; its crest keeps rolling via CSS. */
+  var BANDS = [
+    { id:'band1', start:0.04, end:0.30 },
+    { id:'band2', start:0.20, end:0.46 },
+    { id:'band3', start:0.36, end:0.62 }
+  ];
+  BANDS.forEach(function(b){ b.el = document.getElementById(b.id); b.p = 0; });
+
+  /* ---------- the boat's assembly ----------
+     Each part of the boat grows in its rise window: hull, mast, then
+     the sails fill from the mast, flag last. */
+  var PARTS = [
+    { id:'gHull', start:0.44, end:0.62, mode:'scale'  },
+    { id:'gMast', start:0.54, end:0.70, mode:'scaleY' },
+    { id:'gMain', start:0.64, end:0.82, mode:'scaleX' },
+    { id:'gJib',  start:0.72, end:0.88, mode:'scaleX' },
+    { id:'gFlag', start:0.84, end:0.96, mode:'scale'  }
+  ];
+  PARTS.forEach(function(p){ p.el = document.getElementById(p.id); p.p = 0; });
+
+  /* ---------- the sailing ----------
+     Once the boat is fully assembled it glides across the harbor and
+     back on a slow sine: position from sin, heading from cos — at each
+     end of the run the heading fades through zero (the turn) and the
+     wake brightens with speed. */
+  var sailT = 2.4, flipCur = 1;
+  function applySail(dt){
+    if (opened && rise > 0.97 && !reduceMotion) sailT += dt;
+    var ph = sailT * 0.21;
+    var sx = Math.sin(ph) * 84;
+    var speed = Math.abs(Math.cos(ph));
+    var dir = Math.cos(ph) >= 0 ? 1 : -1;
+    flipCur += (dir - flipCur) * Math.min(1, dt * 2.2);
+    if (Math.abs(flipCur) < 0.02) flipCur = 0.02 * (dir >= 0 ? 1 : -1) * (flipCur >= 0 ? 1 : -1);
+    var bob = Math.sin(sailT * 1.6) * 3;
+    boatMove.style.transform = 'translateX(' + sx.toFixed(1) + 'px) translateZ(' + (9 + bob).toFixed(1) + 'px)';
+    boatFlip.style.transform = 'scaleX(' + flipCur.toFixed(3) + ')';
+    boatStand.style.transform = 'rotateX(' + (-90 + Math.sin(sailT * 1.05) * 1.8).toFixed(2) + 'deg)';
+    var wakeOn = clamp01((rise - 0.9) * 10) * (opened ? 1 : 0);
+    wake.style.opacity = (speed * 0.75 * wakeOn).toFixed(2);
+  }
+
+  function applyRise(){
+    /* the harbor hides inside the envelope while settled shut: it
+       fades in as it rises (the Sea Card's tank trick) */
+    boatWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    boatWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<BANDS.length;i++){
+      var b = BANDS[i];
+      b.p = clamp01((rise - b.start) / (b.end - b.start));
+      b.el.style.opacity = b.p.toFixed(3);
+      b.el.style.transform = 'translateZ(' + (1 + b.p * 3).toFixed(2) + 'px)';
+    }
+    for (var j=0;j<PARTS.length;j++){
+      var p = PARTS[j];
+      p.p = clamp01((rise - p.start) / (p.end - p.start));
+      var v = p.p.toFixed(3);
+      p.el.style.transform = p.mode === 'scale' ? 'scale(' + v + ')' :
+                             p.mode === 'scaleY' ? 'scaleY(' + v + ')' : 'scaleX(' + v + ')';
+    }
+    /* sun-glint on the base: grows as the harbor rises */
+    sunGlow.style.opacity = (rise * 0.5).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    applySail(dt);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> water rises band by band (target set at
+            850ms), the boat assembles, then it sails.
+     Close: everything settles in clean reverse (CSS delays reseal). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); applySail(0); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); applySail(0); fit();
+  }
+})();
+</script>
+</body>
+</html>
