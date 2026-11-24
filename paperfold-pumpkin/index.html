@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Pumpkin Patch — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #33184d 0%, #1c0d33 46%, #0a0516 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#ffedd6;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(217,108,30,.17) 0%, rgba(120,60,180,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfPumpSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfPumpSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #7a3408 0%, #5c2706 55%, #3f1a04 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm lantern light the patch casts onto the base */
+  #patchGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,170,60,.85) 0%, rgba(255,120,30,.34) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fdf6e9 0%, #f7e7c8 58%, #eed3a3 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(150,90,20,.20);
+  }
+  /* the face that greets you once the card stands — autumn-night backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #462273 0%, #2d1450 46%, #1b0a33 78%, #12061f 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(10,4,26,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* a paper bat that crosses the moon now and then */
+  .bat {
+    position:absolute; left:0; top:24px; width:46px; height:24px;
+    opacity:0; pointer-events:none;
+  }
+  #world.open .bat { animation:pfPumpBatFly 17s linear infinite; animation-delay:2.6s; }
+  .bat svg { width:100%; height:100%; display:block; animation:pfPumpBatFlap .3s ease-in-out infinite alternate; transform-origin:50% 50%; }
+  @keyframes pfPumpBatFly {
+    0% { transform:translateX(-60px) translateY(8px); opacity:0; }
+    3% { opacity:1; }
+    20% { transform:translateX(430px) translateY(-10px); opacity:1; }
+    23% { transform:translateX(430px) translateY(-10px); opacity:0; }
+    100% { transform:translateX(430px) translateY(-10px); opacity:0; }
+  }
+  @keyframes pfPumpBatFlap { from { transform:scaleY(.55); } to { transform:scaleY(1); } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #e07f26 0%, #bc5f10 52%, #93470a 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfPumpFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfPumpFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfPumpFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfPumpFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the patch (rises out of the base) ---------- */
+  #patchWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the soil mound the patch grows from */
+  #ground {
+    position:absolute; left:28px; top:50px; width:324px; height:198px; border-radius:50%;
+    transform:translateZ(4px); overflow:hidden;
+    background:radial-gradient(ellipse at 50% 42%, #6e4522 0%, #4a2b11 55%, #2e1a09 82%, #201004 100%);
+    box-shadow: inset 0 0 0 3px rgba(0,0,0,.28), inset 0 -12px 24px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.35);
+  }
+  #ground svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* standees: flat paper pieces stood up from a ground anchor point and
+     grown by JS (scale + a settle roll rides the rise, like the Sea
+     Card's tank and the Birthday Card's candles) */
+  .stand { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .standIn {
+    position:absolute; transform-origin:50% 100%;
+    transform:rotateX(-90deg) scale(0);
+  }
+  .standIn svg { width:100%; height:100%; display:block; }
+  /* the haunted house's windows burn on their own */
+  .winLit { animation:pfPumpWin 1.9s ease-in-out infinite alternate; }
+  @keyframes pfPumpWin { from { opacity:.78; } to { opacity:1; } }
+
+  /* pumpkins: JS-built standees; the carved face is dark until the
+     lantern lights, then it burns gold and flickers */
+  .pump { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .pumpStand {
+    position:absolute; transform-origin:50% 100%;
+    transform:rotateX(-90deg) scale(0);
+  }
+  .pumpStand svg { width:100%; height:100%; display:block; }
+  .pump .halo { opacity:0; transition:opacity .45s ease; }
+  .pump .faceShape { fill:#38190a; transition:fill .35s ease; }
+  .pump.lit .halo { opacity:.9; }
+  .pump.lit .faceShape {
+    fill:#ffd23c;
+    filter:drop-shadow(0 0 5px rgba(255,166,40,.95)) drop-shadow(0 0 13px rgba(255,120,20,.55));
+    animation:pfPumpFlick .5s ease-in-out infinite alternate;
+  }
+  @keyframes pfPumpFlick { from { opacity:.86; } to { opacity:1; } }
+
+  /* leaves: little paper leaves drifting over the patch once open */
+  .leaf {
+    position:absolute; width:9px; height:9px; border-radius:1px 70% 1px 70%; opacity:0; pointer-events:none;
+  }
+  #world.open .leaf { animation:pfPumpLeaf 6.4s ease-in-out infinite; animation-delay:calc(2.2s + var(--d, 0s)); }
+  @keyframes pfPumpLeaf {
+    0% { opacity:0; transform:translate3d(0,0,var(--z,120px)) rotate(0deg); }
+    12% { opacity:.95; }
+    50% { transform:translate3d(var(--dx,10px), var(--dy,16px), var(--z,120px)) rotate(190deg); }
+    88% { opacity:.9; }
+    100% { opacity:0; transform:translate3d(0,0,var(--z,120px)) rotate(360deg); }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(43,18,2,.75); border:1px solid rgba(255,183,102,.55);
+    color:#ffe9d2; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfPumpPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfPumpPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffedc9;
+    text-shadow:0 0 9px rgba(255,190,90,.4), 0 1px 3px rgba(40,14,0,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the orange envelope front itself, in the free area
+     below the patch (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the patch settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffedc9;
+    text-shadow:0 0 10px rgba(255,190,90,.35), 0 1px 3px rgba(40,14,0,.9);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .bat, .bat svg, .winLit, .pump.lit .faceShape, #world.open .leaf { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfPumpMoonGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#ffd76e" stop-opacity=".38"/>
+                        <stop offset=".6" stop-color="#ffb84d" stop-opacity=".14"/>
+                        <stop offset="1" stop-color="#ffb84d" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <!-- distant hill -->
+                    <path d="M0 228 Q120 206 240 222 T380 216 V248 H0 Z" fill="#170a28" opacity=".85"/>
+                    <!-- harvest moon + halo -->
+                    <circle cx="292" cy="58" r="56" fill="url(#pfPumpMoonGlow)"/>
+                    <circle cx="292" cy="58" r="38" fill="#f7d774"/>
+                    <circle cx="278" cy="46" r="6" fill="#e8c25e" opacity=".55"/>
+                    <circle cx="304" cy="68" r="4.5" fill="#e8c25e" opacity=".5"/>
+                    <circle cx="296" cy="40" r="3" fill="#e8c25e" opacity=".45"/>
+                    <!-- wispy clouds across the moon -->
+                    <ellipse cx="286" cy="52" rx="52" ry="7" fill="#241040" opacity=".5"/>
+                    <ellipse cx="306" cy="70" rx="40" ry="5.5" fill="#241040" opacity=".42"/>
+                    <!-- stars -->
+                    <g fill="#ffe9b8">
+                      <circle cx="36" cy="34" r="1.7" opacity=".85"/><circle cx="96" cy="20" r="1.3" opacity=".6"/>
+                      <circle cx="150" cy="44" r="1.5" opacity=".7"/><circle cx="206" cy="24" r="1.2" opacity=".55"/>
+                      <circle cx="238" cy="66" r="1.4" opacity=".6"/><circle cx="52" cy="82" r="1.2" opacity=".5"/>
+                      <circle cx="128" cy="96" r="1.3" opacity=".55"/><circle cx="344" cy="120" r="1.5" opacity=".65"/>
+                      <circle cx="180" cy="120" r="1.1" opacity=".45"/><circle cx="70" cy="140" r="1.2" opacity=".5"/>
+                      <circle cx="330" cy="30" r="1.3" opacity=".6"/><circle cx="356" cy="76" r="1.2" opacity=".5"/>
+                    </g>
+                    <!-- bare tree silhouette, left -->
+                    <g fill="#0d0518">
+                      <path d="M34 248 L40 168 Q41 150 36 128 L42 126 Q46 148 46 166 L50 248 Z"/>
+                      <path d="M40 140 Q22 118 8 108 L11 103 Q28 112 44 132 Z"/>
+                      <path d="M43 128 Q58 104 76 94 L79 99 Q62 110 48 132 Z"/>
+                      <path d="M45 156 Q64 142 84 140 L85 145 Q66 148 48 162 Z"/>
+                      <path d="M14 110 Q10 98 12 88 L16 89 Q15 99 18 108 Z"/>
+                      <path d="M74 96 Q80 86 88 80 L91 84 Q83 90 78 100 Z"/>
+                    </g>
+                    <!-- fence along the bottom -->
+                    <g fill="#0d0518">
+                      <rect x="0" y="222" width="380" height="5"/>
+                      <rect x="0" y="235" width="380" height="5"/>
+                      <rect x="8" y="212" width="7" height="36"/><rect x="52" y="212" width="7" height="36"/>
+                      <rect x="96" y="212" width="7" height="36"/><rect x="140" y="212" width="7" height="36"/>
+                      <rect x="184" y="212" width="7" height="36"/><rect x="228" y="212" width="7" height="36"/>
+                      <rect x="272" y="212" width="7" height="36"/><rect x="316" y="212" width="7" height="36"/>
+                      <rect x="360" y="212" width="7" height="36"/>
+                      <rect x="0" y="242" width="380" height="6"/>
+                    </g>
+                  </svg>
+                  <div class="bat" aria-hidden="true">
+                    <svg viewBox="0 0 46 24">
+                      <path d="M23 10 Q17 2 8 3 Q3 4 1 1 Q1 9 5 13 Q10 10 14 13 Q18 11 20 14 L23 12 L26 14 Q28 11 32 13 Q36 10 41 13 Q45 9 45 1 Q43 4 38 3 Q29 2 23 10 Z" fill="#12081f"/>
+                      <circle cx="20.5" cy="11" r="1" fill="#ffb84d"/>
+                      <circle cx="25.5" cy="11" r="1" fill="#ffb84d"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="patchGlow"></div>
+
+            <!-- the patch: soil mound, haunted house, hay bales, pumpkins, leaves -->
+            <div id="patchWrap">
+              <!-- shared gradients for the JS-built pumpkins -->
+              <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+                <defs>
+                  <radialGradient id="pfPumpBody" cx=".5" cy=".38" r=".78">
+                    <stop offset="0" stop-color="#ffab3d"/><stop offset=".6" stop-color="#f5820d"/><stop offset="1" stop-color="#d96a06"/>
+                  </radialGradient>
+                  <radialGradient id="pfPumpHalo" cx=".5" cy=".5" r=".5">
+                    <stop offset="0" stop-color="#ffbf4d" stop-opacity=".85"/>
+                    <stop offset=".55" stop-color="#ff9a2e" stop-opacity=".32"/>
+                    <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+              </svg>
+
+              <div id="ground">
+                <svg viewBox="0 0 312 190" preserveAspectRatio="none" aria-hidden="true">
+                  <g fill="none" stroke="rgba(0,0,0,.38)" stroke-width="3">
+                    <ellipse cx="156" cy="95" rx="52" ry="30"/>
+                    <ellipse cx="156" cy="95" rx="88" ry="52"/>
+                    <ellipse cx="156" cy="95" rx="122" ry="72"/>
+                  </g>
+                  <g fill="none" stroke="rgba(255,190,110,.10)" stroke-width="2">
+                    <ellipse cx="156" cy="92" rx="70" ry="41"/>
+                    <ellipse cx="156" cy="92" rx="105" ry="62"/>
+                  </g>
+                </svg>
+              </div>
+
+              <!-- the haunted house, back left — windows already burning -->
+              <div class="stand" style="left:100px; top:150px;" data-start="0.04" data-end="0.36" data-roll="-3">
+                <div class="standIn" style="left:-65px; top:-141px; width:130px; height:141px;">
+                  <svg viewBox="0 0 118 128" aria-hidden="true">
+                    <rect x="82" y="18" width="9" height="22" fill="#170a1c"/>
+                    <polygon points="6,56 56,12 106,56" fill="#170a1c"/>
+                    <rect x="22" y="52" width="66" height="68" fill="#241226"/>
+                    <rect x="80" y="66" width="27" height="54" fill="#1b0c1e"/>
+                    <polygon points="76,68 93,52 110,68" fill="#12060f"/>
+                    <g class="winLit" fill="#ffca6a">
+                      <path d="M33 84 v-12 a6 6 0 0 1 12 0 v12 z"/>
+                      <path d="M63 84 v-12 a6 6 0 0 1 12 0 v12 z"/>
+                      <circle cx="56" cy="38" r="5.5"/>
+                      <rect x="88" y="82" width="9" height="12" rx="4"/>
+                    </g>
+                    <g stroke="#241226" stroke-width="1.6">
+                      <path d="M39 71 v13 M33 78 h12"/>
+                      <path d="M69 71 v13 M63 78 h12"/>
+                      <path d="M56 32.5 v11 M50.5 38 h11"/>
+                    </g>
+                    <path d="M48 120 v-24 a8 8 0 0 1 16 0 v24 z" fill="#12060f"/>
+                    <circle cx="60" cy="107" r="1.8" fill="#ffca6a"/>
+                    <path d="M22 120 h88" stroke="#0d0518" stroke-width="3"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- hay bales -->
+              <div class="stand" style="left:300px; top:166px;" data-start="0.14" data-end="0.42" data-roll="5">
+                <div class="standIn" style="left:-44px; top:-62px; width:88px; height:62px;">
+                  <svg viewBox="0 0 76 54" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfPumpStraw" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#dda347"/><stop offset="1" stop-color="#a87424"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="3" y="6" width="70" height="45" rx="19" fill="url(#pfPumpStraw)"/>
+                    <g fill="none" stroke="rgba(120,74,16,.55)" stroke-width="2.4">
+                      <path d="M22 8 v41"/><path d="M38 7 v44"/><path d="M54 8 v41"/>
+                    </g>
+                    <g stroke="rgba(255,236,180,.5)" stroke-width="1.3">
+                      <path d="M10 18 l14 -3 M44 30 l16 -2 M14 38 l12 -2 M50 14 l12 2"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <div class="stand" style="left:60px; top:190px;" data-start="0.20" data-end="0.48" data-roll="-5">
+                <div class="standIn" style="left:-34px; top:-48px; width:68px; height:48px;">
+                  <svg viewBox="0 0 76 54" aria-hidden="true">
+                    <rect x="3" y="6" width="70" height="45" rx="19" fill="url(#pfPumpStraw)"/>
+                    <g fill="none" stroke="rgba(120,74,16,.55)" stroke-width="2.4">
+                      <path d="M26 8 v41"/><path d="M48 8 v41"/>
+                    </g>
+                    <g stroke="rgba(255,236,180,.5)" stroke-width="1.3">
+                      <path d="M12 22 l13 -3 M42 36 l15 -2"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- pumpkins are built by JS into this box, like the Birthday candles -->
+              <div id="pumpBox" style="position:absolute; inset:0; transform-style:preserve-3d;"></div>
+
+              <!-- leaves drifting over the patch -->
+              <div class="leaf" style="left:110px; top:88px; background:#e07a24; --z:128px; --dx:12px; --dy:18px; --d:0s;"></div>
+              <div class="leaf" style="left:190px; top:70px; background:#c94f16; --z:146px; --dx:-13px; --dy:12px; --d:.8s;"></div>
+              <div class="leaf" style="left:262px; top:92px; background:#d9a441; --z:134px; --dx:9px; --dy:20px; --d:1.6s;"></div>
+              <div class="leaf" style="left:146px; top:126px; background:#a83c10; --z:118px; --dx:-10px; --dy:15px; --d:2.4s;"></div>
+              <div class="leaf" style="left:224px; top:118px; background:#e07a24; --z:142px; --dx:13px; --dy:9px; --d:3.2s;"></div>
+              <div class="leaf" style="left:292px; top:120px; background:#b85a12; --z:124px; --dx:-12px; --dy:16px; --d:4.1s;"></div>
+              <div class="leaf" style="left:96px; top:112px; background:#d9a441; --z:138px; --dx:10px; --dy:12px; --d:5s;"></div>
+              <div class="leaf" style="left:200px; top:100px; background:#c94f16; --z:152px; --dx:-9px; --dy:19px; --d:5.7s;"></div>
+            </div><!-- /patchWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a patch made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>something's glowing...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfPumpFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#9c4f0b"/><stop offset="1" stop-color="#6e3405"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfPumpFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <g>
+                      <ellipse cx="235" cy="106" rx="14" ry="11" fill="#f5820d"/>
+                      <ellipse cx="235" cy="106" rx="6" ry="10.5" fill="#ff9a2e" opacity=".7"/>
+                      <path d="M232 96 q1 -6 6 -7 q2 2 0 5 q-4 1 -4 3 z" fill="#7a5a22"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfPumpFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#ef8c31"/><stop offset="1" stop-color="#c2630f"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfPumpFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var patchWrap = document.getElementById('patchWrap');
+  var patchGlow = document.getElementById('patchGlow');
+  var pumpBox = document.getElementById('pumpBox');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- standees (house, hay bales) ----------
+     Each .stand anchor carries its rise window and settle roll; its
+     .standIn grows from the ground as the rise passes through. */
+  var stands = [];
+  var standEls = document.querySelectorAll('.stand');
+  for (var si = 0; si < standEls.length; si++){
+    var sEl = standEls[si];
+    stands.push({
+      inner: sEl.querySelector('.standIn'),
+      start: parseFloat(sEl.getAttribute('data-start')),
+      end: parseFloat(sEl.getAttribute('data-end')),
+      roll: parseFloat(sEl.getAttribute('data-roll') || '0')
+    });
+  }
+
+  /* ---------- pumpkins ----------
+     Built like the Birthday Card's candles: anchors on the ground, each
+     standee grows (scale + a settle roll, as if it rolled into place)
+     in its own staggered window of the rise. Faced pumpkins join the
+     lantern list and light one by one once the patch has settled. */
+  function pumpkinSVG(face){
+    var s = '<svg viewBox="0 0 100 84" aria-hidden="true">'
+      + '<ellipse class="halo" cx="50" cy="48" rx="42" ry="35" fill="url(#pfPumpHalo)"/>'
+      + '<ellipse cx="50" cy="48" rx="37" ry="32" fill="url(#pfPumpBody)"/>'
+      + '<ellipse cx="31" cy="48" rx="17" ry="29" fill="#e07a16" opacity=".55"/>'
+      + '<ellipse cx="69" cy="48" rx="17" ry="29" fill="#e07a16" opacity=".55"/>'
+      + '<ellipse cx="50" cy="48" rx="16" ry="31" fill="#ffa63e" opacity=".5"/>'
+      + '<path d="M45 19 q1 -10 10 -13 q3 3 1 8 q-7 2 -8 6 z" fill="#7a5a22"/>';
+    if (face){
+      s += '<g class="faceShape">'
+        + '<path d="M29 44 L40 29 L51 44 Z"/>'
+        + '<path d="M49 44 L60 29 L71 44 Z"/>'
+        + '<path d="M43 56 L57 56 L50 44 Z"/>'
+        + '<path d="M24 58 L35 67 L42 58 L50 68 L58 58 L65 67 L76 57 L74 70 Q50 81 26 70 Z"/>'
+        + '</g>';
+    }
+    return s + '</svg>';
+  }
+  var PUMPKINS = [
+    { x:76,  y:206, w:46, h:39, face:false, s:0.34, e:0.52, roll:-10 },
+    { x:320, y:210, w:42, h:36, face:false, s:0.38, e:0.55, roll:10 },
+    { x:116, y:188, w:84, h:71, face:true,  s:0.44, e:0.64, roll:8 },
+    { x:280, y:194, w:90, h:76, face:true,  s:0.50, e:0.70, roll:-8 },
+    { x:150, y:222, w:60, h:51, face:true,  s:0.58, e:0.76, roll:-9 },
+    { x:244, y:226, w:56, h:48, face:true,  s:0.64, e:0.82, roll:9 },
+    { x:198, y:210, w:124, h:105, face:true,  s:0.70, e:0.90, roll:-6 }
+  ];
+  var LIGHT_ORDER = [2, 5, 3, 4, 6]; /* the big center pumpkin lights last */
+  var pumps = [], lanterns = [];
+  PUMPKINS.forEach(function(cfg, i){
+    var a = document.createElement('div');
+    a.className = 'pump';
+    a.style.left = cfg.x + 'px';
+    a.style.top = cfg.y + 'px';
+    var stand = document.createElement('div');
+    stand.className = 'pumpStand';
+    stand.style.left = (-cfg.w / 2) + 'px';
+    stand.style.top = (-cfg.h) + 'px';
+    stand.style.width = cfg.w + 'px';
+    stand.style.height = cfg.h + 'px';
+    stand.innerHTML = pumpkinSVG(cfg.face);
+    a.appendChild(stand);
+    pumpBox.appendChild(a);
+    var rec = { cfg: cfg, anchor: a, stand: stand };
+    pumps.push(rec);
+    if (cfg.face) lanterns[LIGHT_ORDER.indexOf(i)] = rec;
+  });
+  lanterns = lanterns.filter(Boolean);
+
+  var litCount = 0, lightTimer = null;
+  function startLighting(){
+    if (lightTimer || litCount >= lanterns.length) return;
+    lightTimer = setInterval(function(){
+      if (litCount >= lanterns.length){ clearInterval(lightTimer); lightTimer = null; return; }
+      lanterns[litCount].anchor.classList.add('lit');
+      litCount++;
+    }, 520);
+  }
+  function douseLanterns(){
+    if (lightTimer){ clearInterval(lightTimer); lightTimer = null; }
+    litCount = 0;
+    lanterns.forEach(function(p){ p.anchor.classList.remove('lit'); });
+  }
+
+  function growTransform(p, roll){
+    var rz = (roll * (1 - p)).toFixed(2);
+    return 'rotateX(-90deg) rotateZ(' + rz + 'deg) scale(' + p.toFixed(3) + ')';
+  }
+  function applyRise(){
+    /* the patch hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    patchWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    patchWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i = 0; i < stands.length; i++){
+      var st = stands[i];
+      var sp = clamp01((rise - st.start) / (st.end - st.start));
+      st.inner.style.transform = growTransform(sp, st.roll);
+    }
+    for (var k = 0; k < pumps.length; k++){
+      var pp = clamp01((rise - pumps[k].cfg.s) / (pumps[k].cfg.e - pumps[k].cfg.s));
+      pumps[k].stand.style.transform = growTransform(pp, pumps[k].cfg.roll);
+    }
+    /* lantern light on the base: a whisper while the patch rises,
+       growing warmer with every face lit */
+    patchGlow.style.opacity = (rise * 0.10 + (litCount / lanterns.length) * 0.5).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    if (opened && rise > 0.985 && litCount < lanterns.length) startLighting();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> patch rises (target set at 850ms): house and
+            bales first, pumpkins roll in, then the jack-o'-lantern
+            faces light one by one.
+     Close: lanterns out, patch settles first -> card folds -> envelope
+            returns -> flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      douseLanterns();
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    lanterns.forEach(function(p){ p.anchor.classList.add('lit'); });
+    litCount = lanterns.length;
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
