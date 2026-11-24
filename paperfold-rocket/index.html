@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Rocket — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #241a52 0%, #130c30 46%, #06030f 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#e9e7ff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(99,80,220,.22) 0%, rgba(255,150,60,.08) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfRocketSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfRocketSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #2c2160 0%, #1b1445 55%, #120c30 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease 2.4s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm launch glow the rocket casts onto the base */
+  #padGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,196,86,.85) 0%, rgba(255,140,50,.34) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) 2.0s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f2f1ff 0%, #dde0f7 58%, #c3c9ec 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(70,60,160,.22);
+  }
+  /* the face that greets you once the card stands — launch-night backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #241a56 0%, #170f3a 46%, #0d0824 78%, #070313 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(4,2,14,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) 2.4s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #3d2f7d 0%, #271b58 52%, #1a113f 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 3.2s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfRocketFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfRocketFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfRocketFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfRocketFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease 3.0s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 4.4s, transform .3s ease 4.4s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the launch pad (rises out of the base) ---------- */
+  #padWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the apron the deck sits on */
+  #padApron {
+    position:absolute; left:35px; top:48px; width:310px; height:200px; border-radius:50%;
+    transform:translateZ(2px);
+    background:radial-gradient(ellipse at 50% 42%, #2c3350 0%, #232a47 55%, #171c30 82%, #12172a 100%);
+    box-shadow: inset 0 0 0 3px rgba(120,130,170,.28), inset 0 -10px 22px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35);
+  }
+  /* one growing slab: footprint group sits at its bottom plane; its walls
+     grow upward (height set by JS) and its top rides on them — the same
+     grammar as the Sea Card's tank walls and the Birthday tiers */
+  .tier { position:absolute; transform-style:preserve-3d; }
+  .tierBase { position:absolute; inset:0; transform-style:preserve-3d; }
+  .wallWrap { position:absolute; transform-style:preserve-3d; }
+  .twall {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+  }
+  .tierTop {
+    position:absolute; inset:0; border-radius:16px; overflow:hidden;
+  }
+  #padTier .twall { background:linear-gradient(180deg, #646f8c 0%, #49536e 55%, #363f58 100%); }
+  #padTier .twall::before { /* hazard band along the top edge of the side */
+    content:""; position:absolute; left:0; right:0; top:0; height:6px;
+    background:repeating-linear-gradient(45deg, #e8b65a 0 10px, #20263c 10px 20px);
+  }
+  #padTier .tierTop {
+    background:radial-gradient(ellipse at 50% 42%, #7d87a1 0%, #5d6780 55%, #47516a 82%, #39435c 100%);
+    box-shadow: inset 0 0 0 3px rgba(232,182,90,.5), inset 0 0 22px rgba(0,0,0,.35);
+  }
+  #padTier .tierTop::after { /* the gold ring the rocket stands in */
+    content:""; position:absolute; inset:34px; border-radius:50%;
+    border:2px solid rgba(232,182,90,.5);
+  }
+
+  /* the gantry tower: a standee beside the rocket, grown by JS (scale
+     rides the rise) — the Birthday balloons' standee grammar */
+  #towerBox { position:absolute; left:128px; top:148px; width:0; height:0; transform-style:preserve-3d; }
+  #towerStand {
+    position:absolute; left:-23px; top:-124px; width:46px; height:124px;
+    transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  #towerStand svg { width:100%; height:100%; display:block; }
+
+  /* the rocket: a standee whose pieces assemble by JS (opacity/slide in
+     staggered rise windows); the lift group rides translateZ for blast-off */
+  #rocketLift { position:absolute; left:190px; top:148px; width:0; height:0; transform-style:preserve-3d; }
+  .rocketBob { position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d; }
+  #world.launched .rocketBob { animation:pfRocketBob 2.6s ease-in-out infinite alternate; }
+  @keyframes pfRocketBob { from { transform:translateZ(-2px); } to { transform:translateZ(5px); } }
+  .rocketStand {
+    position:absolute; left:-44px; top:-172px; width:88px; height:172px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+  }
+  .rocketStand svg { width:100%; height:100%; display:block; }
+  /* the plume: JS scales it open under the tail as the rocket lifts */
+  #rkPlume { transform-box:fill-box; transform-origin:50% 0%; opacity:0; }
+  #world.open .plumeInner { transform-box:fill-box; transform-origin:50% 0%; animation:pfRocketPlumeFlick .38s ease-in-out infinite alternate; }
+  @keyframes pfRocketPlumeFlick { from { transform:scale(1.04,.93); } to { transform:scale(.97,1.06); } }
+  /* countdown sparkles at the window, lit one by one by JS */
+  .spark { opacity:0; transition:opacity .3s ease; transform-box:fill-box; transform-origin:center; }
+  .spark.lit { opacity:1; animation:pfRocketTwinkle 1.5s ease-in-out infinite; }
+  @keyframes pfRocketTwinkle { 0%,100% { transform:scale(1) rotate(0deg); opacity:1; } 50% { transform:scale(1.35) rotate(20deg); opacity:.75; } }
+  /* exhaust twinkles trailing under the hovering rocket */
+  .exh { opacity:0; transform-box:fill-box; }
+  #world.launched .exh { animation:pfRocketExh 1.9s linear infinite; }
+  @keyframes pfRocketExh { 0% { opacity:0; transform:translateY(0); } 25% { opacity:.95; } 100% { opacity:0; transform:translateY(12px); } }
+
+  /* backdrop life: twinkling stars + a satellite crossing now and then */
+  .tw { animation:pfRocketStar 2.8s ease-in-out infinite; }
+  @keyframes pfRocketStar { 0%,100% { opacity:.25; } 50% { opacity:1; } }
+  .sat { animation:pfRocketSat 30s linear infinite; }
+  @keyframes pfRocketSat {
+    0% { transform:translate(-50px,30px); opacity:0; }
+    4% { opacity:1; }
+    15% { transform:translate(430px,72px); opacity:1; }
+    19%,100% { transform:translate(430px,72px); opacity:0; }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(16,10,40,.72); border:1px solid rgba(178,172,255,.55);
+    color:#e9e7ff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfRocketPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfRocketPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(8,4,24,.9);
+    opacity:1; transition:opacity .35s ease 4.2s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the indigo envelope front itself, in the free area
+     below the pad (same geometry as the Sea Card), inside the gilt trim.
+     No separate panel. They fade in as the rocket settles and are gone
+     quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(8,4,24,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .rocketBob, .plumeInner, .tw, .sat, .exh, .spark.lit { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfRocketBackGlow" cx=".5" cy=".95" r=".75">
+                        <stop offset="0" stop-color="#ff9a3c" stop-opacity=".16"/>
+                        <stop offset="1" stop-color="#ff9a3c" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfRocketBackGlow)"/>
+                    <!-- stars -->
+                    <g fill="#ffeec2">
+                      <circle cx="30" cy="30" r="1.6" opacity=".8"/><circle cx="86" cy="58" r="1.2" opacity=".6"/>
+                      <circle cx="140" cy="24" r="1.8" opacity=".85"/><circle cx="196" cy="66" r="1.2" opacity=".55"/>
+                      <circle cx="330" cy="96" r="1.4" opacity=".65"/><circle cx="356" cy="34" r="1.7" opacity=".8"/>
+                      <circle cx="52" cy="112" r="1.2" opacity=".5"/><circle cx="316" cy="150" r="1.2" opacity=".5"/>
+                      <circle cx="104" cy="150" r="1.1" opacity=".45"/><circle cx="238" cy="120" r="1.1" opacity=".5"/>
+                      <circle cx="24" cy="176" r="1.3" opacity=".5"/><circle cx="352" cy="196" r="1.2" opacity=".45"/>
+                    </g>
+                    <g fill="#cdd6ff">
+                      <circle class="tw" cx="64" cy="84" r="1.7"/>
+                      <circle class="tw" cx="168" cy="40" r="1.5" style="animation-delay:-.9s"/>
+                      <circle class="tw" cx="298" cy="66" r="1.8" style="animation-delay:-1.7s"/>
+                      <circle class="tw" cx="120" cy="104" r="1.4" style="animation-delay:-.4s"/>
+                      <circle class="tw" cx="336" cy="128" r="1.5" style="animation-delay:-2.2s"/>
+                    </g>
+                    <!-- crescent moon, up where the rocket's nose will hover -->
+                    <mask id="pfRocketMoonMask">
+                      <rect x="228" y="8" width="76" height="76" fill="black"/>
+                      <circle cx="263" cy="44" r="23" fill="white"/>
+                      <circle cx="275" cy="36" r="19" fill="black"/>
+                    </mask>
+                    <circle cx="256" cy="44" r="30" fill="#f7e7b0" opacity=".07"/>
+                    <circle cx="263" cy="44" r="23" fill="#f7e7b0" mask="url(#pfRocketMoonMask)"/>
+                    <!-- a tiny satellite crosses now and then -->
+                    <g class="sat">
+                      <rect x="-21" y="-2" width="11" height="4" fill="#7dd7ff" opacity=".8"/>
+                      <rect x="10" y="-2" width="11" height="4" fill="#7dd7ff" opacity=".8"/>
+                      <rect x="-7" y="-3" width="14" height="6" rx="1.5" fill="#aeb8d4"/>
+                      <circle cx="0" cy="0" r="1.6" fill="#ffd166" class="tw"/>
+                    </g>
+                    <!-- distant hills along the bottom -->
+                    <path d="M0 216 Q64 198 132 210 Q196 221 258 208 Q322 196 380 214 L380 248 L0 248 Z" fill="#0b0721"/>
+                    <path d="M0 232 Q90 218 190 230 Q290 240 380 228 L380 248 L0 248 Z" fill="#06030f"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="padGlow"></div>
+
+            <!-- the launch pad: apron, growing deck, gantry tower, rocket -->
+            <div id="padWrap">
+              <div id="padApron"></div>
+
+              <div class="tier" id="padTier" style="left:70px; top:73px; width:240px; height:150px;">
+                <div class="tierBase">
+                  <div class="wallWrap" style="left:0; top:150px;"><div class="twall" style="width:240px;"></div></div>
+                  <div class="wallWrap" style="left:0; top:150px; transform:rotate(-90deg);"><div class="twall" style="width:150px;"></div></div>
+                  <div class="wallWrap" style="left:240px; top:0; transform:rotate(90deg);"><div class="twall" style="width:150px;"></div></div>
+                  <div class="tierTop"></div>
+                </div>
+              </div>
+
+              <!-- the gantry tower (JS keeps this box at the deck's height
+                   and grows the standee with the rise) -->
+              <div id="towerBox">
+                <div id="towerStand">
+                  <svg viewBox="0 0 46 124" aria-hidden="true">
+                    <g stroke="#98a1ba" stroke-linecap="round">
+                      <path d="M10 122 L14 8" stroke-width="3"/><path d="M36 122 L32 8" stroke-width="3"/>
+                      <path d="M11.7 96 L34.3 96 M13 66 L33 66 M13.8 36 L32.2 36" stroke-width="2.4"/>
+                      <path d="M12.3 96 L33.2 66 M33.7 96 L12.8 66 M13.4 66 L32.4 36 M32.6 66 L13.6 36" stroke-width="1.6" opacity=".8"/>
+                    </g>
+                    <path d="M31 20 L44 27" stroke="#e8b65a" stroke-width="3" stroke-linecap="round"/>
+                    <rect x="7" y="118" width="32" height="5" rx="2" fill="#59637c"/>
+                    <circle cx="23" cy="6" r="3" fill="#ff5a4e" class="tw"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- the rocket: lift group rides translateZ for blast-off;
+                   the pieces inside assemble one by one -->
+              <div id="rocketLift">
+                <div class="rocketBob">
+                  <div class="rocketStand">
+                    <svg viewBox="0 0 88 172" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="pfRocketBodyGrad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#eef0fa"/><stop offset="1" stop-color="#c9cfe4"/>
+                        </linearGradient>
+                        <linearGradient id="pfRocketNoseGrad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0" stop-color="#ff7a6b"/><stop offset=".55" stop-color="#e0483e"/><stop offset="1" stop-color="#b9332b"/>
+                        </linearGradient>
+                        <radialGradient id="pfRocketFlameGrad" cx=".5" cy=".12" r=".9">
+                          <stop offset="0" stop-color="#fff6d8"/><stop offset=".35" stop-color="#ffd166"/>
+                          <stop offset=".7" stop-color="#ff9a3c"/><stop offset="1" stop-color="#ff6b2e"/>
+                        </radialGradient>
+                      </defs>
+                      <!-- plume: hidden until lift-off, grows under the tail -->
+                      <g id="rkPlume">
+                        <g class="plumeInner">
+                          <circle cx="25" cy="120" r="7.5" fill="#ccd2e6" opacity=".5"/>
+                          <circle cx="63" cy="122" r="8.5" fill="#ccd2e6" opacity=".45"/>
+                          <circle cx="33" cy="130" r="6" fill="#dde1ef" opacity=".5"/>
+                          <circle cx="55" cy="131" r="6.5" fill="#dde1ef" opacity=".45"/>
+                          <path d="M44 108 C52 120 56 129 54 137 C52 144 48 147 44 149 C40 147 36 144 34 137 C32 129 36 120 44 108 Z" fill="url(#pfRocketFlameGrad)"/>
+                          <path d="M44 117 C48 124 49 130 47.5 135 C46.5 138.5 45.5 140 44 141 C42.5 140 41.5 138.5 40.5 135 C39 130 40 124 44 117 Z" fill="#fff3cf"/>
+                        </g>
+                      </g>
+                      <!-- fins + tail band + nozzle -->
+                      <g id="rkFins">
+                        <path d="M31 82 L15 112 Q15 116 19 116 L31 116 Z" fill="#e0483e"/>
+                        <path d="M57 82 L73 112 Q73 116 69 116 L57 116 Z" fill="#e0483e"/>
+                        <rect x="33" y="102" width="22" height="8" fill="#b9332b"/>
+                        <rect x="39.5" y="110" width="9" height="6" fill="#59637c"/>
+                      </g>
+                      <!-- body + window -->
+                      <g id="rkBody">
+                        <path d="M30 44 L58 44 L58 109 Q58 116 51 116 L37 116 Q30 116 30 109 Z" fill="url(#pfRocketBodyGrad)"/>
+                        <rect x="30" y="90" width="28" height="7" fill="#e0483e"/>
+                        <circle cx="44" cy="60" r="10" fill="#8fd8ff" stroke="#e8b65a" stroke-width="3"/>
+                        <circle cx="40.5" cy="56.5" r="3.4" fill="#ffffff" opacity=".85"/>
+                      </g>
+                      <!-- nose cone -->
+                      <g id="rkNose">
+                        <path d="M30 46 Q29 16 44 3 Q59 16 58 46 Q44 37 30 46 Z" fill="url(#pfRocketNoseGrad)"/>
+                        <circle cx="44" cy="6" r="2.6" fill="#e8b65a"/>
+                      </g>
+                      <!-- countdown sparkles around the window -->
+                      <g transform="translate(21,40)"><polygon class="spark" points="0,-7 1.8,-1.8 7,0 1.8,1.8 0,7 -1.8,1.8 -7,0 -1.8,-1.8" fill="#ffe9a8"/></g>
+                      <g transform="translate(67,34)"><polygon class="spark" points="0,-7 1.8,-1.8 7,0 1.8,1.8 0,7 -1.8,1.8 -7,0 -1.8,-1.8" fill="#ffe9a8"/></g>
+                      <g transform="translate(66,74)"><polygon class="spark" points="0,-7 1.8,-1.8 7,0 1.8,1.8 0,7 -1.8,1.8 -7,0 -1.8,-1.8" fill="#ffe9a8"/></g>
+                      <!-- exhaust twinkles under the hovering rocket -->
+                      <g fill="#ffe9a8">
+                        <circle class="exh" cx="36" cy="152" r="1.8" style="animation-delay:0s"/>
+                        <circle class="exh" cx="52" cy="158" r="1.4" style="animation-delay:.6s"/>
+                        <circle class="exh" cx="44" cy="164" r="1.6" style="animation-delay:1.2s"/>
+                        <circle class="exh" cx="30" cy="162" r="1.2" style="animation-delay:.9s"/>
+                        <circle class="exh" cx="58" cy="150" r="1.3" style="animation-delay:1.5s"/>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div><!-- /padWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a rocket made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>to the moon...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfRocketFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#3a2a75"/><stop offset="1" stop-color="#211543"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfRocketFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfRocketFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#4a3a94"/><stop offset="1" stop-color="#2c1e63"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfRocketFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var lift = 0, sparklesDone = false;
+  var world = document.getElementById('world');
+  var padWrap = document.getElementById('padWrap');
+  var padGlow = document.getElementById('padGlow');
+  var towerBox = document.getElementById('towerBox');
+  var towerStand = document.getElementById('towerStand');
+  var rocketLift = document.getElementById('rocketLift');
+  var rkPlume = document.getElementById('rkPlume');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the launch deck ----------
+     One growing slab: its base group sits at its bottom plane; its walls
+     grow with the rise and its top rides on them (the Birthday tiers'
+     grammar, a single tier deep). */
+  var DECK = { id:'padTier', start:0.02, end:0.30, depth:12, bottom:6 };
+  var deckEl = document.getElementById(DECK.id);
+  var deckBase = deckEl.querySelector('.tierBase');
+  deckBase.style.transform = 'translateZ(' + DECK.bottom + 'px)';
+  var deckWalls = deckEl.querySelectorAll('.twall');
+  var deckTop = deckEl.querySelector('.tierTop');
+  var deckTopZ = DECK.bottom;
+
+  /* ---------- the rocket pieces ----------
+     Each piece slides/fades in over its own window of the rise:
+     fins first, then the body with its window, then the nose cone. */
+  var PIECES = [
+    { id:'rkFins', start:0.30, end:0.48 },
+    { id:'rkBody', start:0.44, end:0.62 },
+    { id:'rkNose', start:0.58, end:0.76 }
+  ];
+  PIECES.forEach(function(p){ p.el = document.getElementById(p.id); p.p = 0; });
+
+  /* ---------- countdown sparkles ----------
+     Once the rocket is assembled, sparkles pop around the window one by
+     one (the Birthday candles' lighting grammar); when the last one
+     lands, the countdown is done and lift-off may begin. */
+  var sparks = Array.prototype.slice.call(document.querySelectorAll('.spark'));
+  var litCount = 0, sparkTimer = null;
+  function startSparks(){
+    if (sparkTimer || litCount >= sparks.length) return;
+    sparkTimer = setInterval(function(){
+      if (litCount >= sparks.length){
+        clearInterval(sparkTimer); sparkTimer = null; sparklesDone = true; return;
+      }
+      sparks[litCount].classList.add('lit');
+      litCount++;
+    }, 340);
+  }
+  function douseSparks(){
+    if (sparkTimer){ clearInterval(sparkTimer); sparkTimer = null; }
+    litCount = 0; sparklesDone = false;
+    sparks.forEach(function(s){ s.classList.remove('lit'); });
+  }
+
+  function applyRise(){
+    /* the pad hides inside the envelope while settled shut: it fades in
+       as it rises (the Sea Card's tank trick) */
+    padWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    padWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    /* deck */
+    var dp = clamp01((rise - DECK.start) / (DECK.end - DECK.start));
+    var dh = (dp * DECK.depth).toFixed(2);
+    for (var w=0; w<deckWalls.length; w++){ deckWalls[w].style.height = dh + 'px'; }
+    deckTop.style.transform = 'translateZ(' + dh + 'px)';
+    deckTop.style.opacity = dp <= 0.01 ? '0' : String(Math.min(1, dp * 3));
+    deckTopZ = DECK.bottom + dp * DECK.depth;
+    /* gantry tower grows on the deck beside the rocket */
+    var tp = clamp01((rise - 0.12) / 0.26);
+    towerBox.style.transform = 'translateZ(' + deckTopZ.toFixed(2) + 'px)';
+    towerStand.style.transform = 'rotateX(-90deg) scale(' + tp.toFixed(3) + ')';
+    /* rocket assembly */
+    for (var i=0;i<PIECES.length;i++){
+      var p = PIECES[i];
+      p.p = clamp01((rise - p.start) / (p.end - p.start));
+      p.el.style.opacity = p.p.toFixed(3);
+      p.el.style.transform = 'translateY(' + ((1 - p.p) * 10).toFixed(2) + 'px)';
+    }
+    /* lift-off: the rocket's tail rests on the deck (the standee reaches
+       56 units below its tail for the plume's room), then rides up on
+       the plume, which grows only as high as the air beneath allows */
+    rocketLift.style.transform = 'translateZ(' + (deckTopZ - 56 + lift * 80).toFixed(2) + 'px)';
+    var plumeP = clamp01((lift * 80) / 54);
+    rkPlume.style.transform = 'scale(1,' + plumeP.toFixed(3) + ')';
+    rkPlume.style.opacity = plumeP <= 0.01 ? '0' : '1';
+    world.classList.toggle('launched', lift > 0.95);
+    /* launch glow on the base: a whisper while the pad rises, flaring
+       as the rocket climbs */
+    padGlow.style.opacity = (rise * 0.10 + lift * 0.5).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    /* while the rocket is still airborne the pad stays assembled: the
+       rise only falls once the rocket has come back down to the deck */
+    var rT = target;
+    if (target === 0 && lift > 0.02) rT = rise;
+    rise += (rT - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(rT - rise) < 0.0015) rise = rT;
+    if (opened && rise > 0.9 && !sparklesDone) startSparks();
+    var lT = (target === 1 && rise > 0.985 && sparklesDone) ? 1 : 0;
+    lift += (lT - lift) * Math.min(1, dt * 1.35);
+    if (Math.abs(lT - lift) < 0.002) lift = lT;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> deck rises, tower grows, rocket assembles
+            piece by piece (target set at 850ms), sparkles count down,
+            then BLAST OFF: the rocket climbs on its plume and hovers.
+     Close: the rocket descends back to the pad first -> pad settles ->
+            card folds -> envelope returns -> flap swings shut -> seal
+            reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      douseSparks();
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 4000);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open + launched instantly,
+     #mid = half-open, rocket half-assembled on the pad */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1; lift = 1; sparklesDone = true;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    sparks.forEach(function(s){ s.classList.add('lit'); });
+    litCount = sparks.length;
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
