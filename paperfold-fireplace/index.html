@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Fireplace — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #40200f 0%, #241108 46%, #0d0503 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#ffeeda;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of warm light on the "floor" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(255,140,50,.16) 0%, rgba(255,110,40,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfFireSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfFireSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #7c3222 0%, #5c2113 55%, #40150b 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm firelight the fireplace casts onto the base */
+  #fireGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,170,70,.85) 0%, rgba(255,120,40,.34) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f9eeda 0%, #eeddc0 58%, #dec69e 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(150,90,40,.22);
+  }
+  /* the face that greets you once the card stands — the cozy room wall */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #5a2c14 0%, #40200d 46%, #2a1408 78%, #1a0c05 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(10,4,2,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* snow drifting past the window, drawn inside the backdrop svg */
+  .pfFireSnowDot { animation:pfFireSnowFall linear infinite; }
+  @keyframes pfFireSnowFall {
+    0% { transform:translateY(-6px); opacity:0; }
+    12% { opacity:.9; }
+    88% { opacity:.9; }
+    100% { transform:translateY(128px); opacity:0; }
+  }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #8f3b26 0%, #6d2716 52%, #471708 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfFireFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfFireFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfFireFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfFireFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the fireplace (rises out of the base, piece by piece) ---------- */
+  #fireWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+
+  /* the stone hearth slab the fireplace stands on */
+  #hearth {
+    position:absolute; left:42px; top:118px; width:296px; height:112px; border-radius:14px;
+    transform:translateZ(3px);
+    background:radial-gradient(ellipse at 50% 42%, #9a8d80 0%, #7d6f61 55%, #5d5044 82%, #463a30 100%);
+    box-shadow: inset 0 0 0 3px rgba(60,45,32,.5), inset 0 -10px 22px rgba(40,28,18,.4), 0 4px 14px rgba(0,0,0,.35);
+    opacity:0;
+  }
+
+  /* the brick facade: a flat paper standee stood up from its bottom edge
+     and grown from the hearth by JS (scale rides the rise) */
+  #facade { position:absolute; left:190px; top:196px; width:0; height:0; transform-style:preserve-3d; }
+  #facadeStand {
+    position:absolute; left:-136px; top:-176px; width:272px; height:176px;
+    transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  #facadeStand svg { width:100%; height:100%; display:block; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+
+  /* the glow inside the firebox, behind the flames */
+  #fireboxGlow {
+    position:absolute; left:190px; top:196px; width:0; height:0; transform-style:preserve-3d;
+  }
+  #fireboxGlowInner {
+    position:absolute; left:-52px; top:-84px; width:104px; height:84px;
+    transform:rotateX(-90deg); transform-origin:50% 100%;
+    background:radial-gradient(ellipse at 50% 88%, rgba(255,190,80,.95) 0%, rgba(255,120,40,.5) 52%, rgba(255,90,30,0) 76%);
+    filter:blur(3px); opacity:0; pointer-events:none;
+  }
+
+  /* the log stack: a small standee in front of the firebox opening */
+  #logs { position:absolute; left:190px; top:197px; width:0; height:0; transform-style:preserve-3d; }
+  #logsStand {
+    position:absolute; left:-46px; top:-24px; width:92px; height:24px;
+    transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  #logsStand svg { width:100%; height:100%; display:block; }
+
+  /* flames: layered paper tongues stood up from the log line, lit one by
+     one after the fireplace has risen (the birthday candles' grammar) */
+  .flameAnchor { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .flameStand {
+    position:absolute; transform-origin:50% 100%;
+    transform:rotateX(-90deg) scale(0);
+    transition:transform .38s ease;
+  }
+  .flameStand.lit { transform:rotateX(-90deg) scale(1); }
+  .flameStand svg { width:100%; height:100%; display:block; overflow:visible; }
+  .flameStand.lit svg .flameTongue {
+    transform-box:fill-box; transform-origin:50% 96%;
+    animation:pfFireFlick ease-in-out infinite alternate;
+  }
+  @keyframes pfFireFlick {
+    from { transform:scale(1,1) rotate(-2.2deg); }
+    to   { transform:scale(1.06,1.13) rotate(2.4deg); }
+  }
+
+  /* embers: a bed of glowing coals at the foot of the firebox */
+  #emberBed {
+    position:absolute; left:190px; top:198px; width:0; height:0; transform-style:preserve-3d;
+    opacity:0; transition:opacity .6s ease;
+  }
+  #emberBed.burning { opacity:1; }
+  #emberBedInner {
+    position:absolute; left:-50px; top:-7px; width:100px; height:7px;
+    transform:rotateX(-90deg); transform-origin:50% 100%;
+  }
+  .ember {
+    position:absolute; bottom:0; width:7px; height:5px; border-radius:50%;
+    background:radial-gradient(circle, #ffd98a 0%, #ff8a30 62%, #c33d08 100%);
+    box-shadow:0 0 7px 2px rgba(255,130,40,.55);
+    animation:pfFireEmber 1.7s ease-in-out infinite alternate;
+  }
+  @keyframes pfFireEmber {
+    from { opacity:.45; transform:scale(.82); }
+    to   { opacity:1; transform:scale(1.12); }
+  }
+
+  /* sparks: a few motes that rise off the fire now and then */
+  #sparks {
+    position:absolute; left:190px; top:196px; width:0; height:0; transform-style:preserve-3d;
+    opacity:0; transition:opacity .8s ease; pointer-events:none;
+  }
+  #sparks.burning { opacity:1; }
+  .spark {
+    position:absolute; width:3.5px; height:3.5px; border-radius:50%;
+    background:#ffd166; box-shadow:0 0 6px 2px rgba(255,170,60,.7);
+    animation:pfFireSpark linear infinite;
+    opacity:0;
+  }
+  @keyframes pfFireSpark {
+    0% { transform:rotateX(-90deg) translateY(0) translateX(0); opacity:0; }
+    10% { opacity:1; }
+    70% { opacity:.85; }
+    100% { transform:rotateX(-90deg) translateY(-96px) translateX(9px); opacity:0; }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(43,17,7,.75); border:1px solid rgba(255,196,130,.55);
+    color:#ffeeda; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfFirePill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfFirePill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffe9c4;
+    text-shadow:0 0 9px rgba(255,190,110,.4), 0 1px 3px rgba(24,6,2,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the brick envelope front itself, in the free area
+     below the fireplace (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the fire settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffe9c4;
+    text-shadow:0 0 10px rgba(255,190,110,.35), 0 1px 3px rgba(24,6,2,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe2ae; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .flameStand.lit svg .flameTongue, .ember, .spark, .pfFireSnowDot { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- shared flame gradients -->
+            <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+              <defs>
+                <linearGradient id="pfFireFlameOuter" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" stop-color="#d63c06"/><stop offset=".55" stop-color="#f06414"/><stop offset="1" stop-color="#ff8a2a"/>
+                </linearGradient>
+                <linearGradient id="pfFireFlameMid" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" stop-color="#f07d10"/><stop offset=".6" stop-color="#ffa62a"/><stop offset="1" stop-color="#ffc63e"/>
+                </linearGradient>
+                <linearGradient id="pfFireFlameCore" x1="0" y1="1" x2="0" y2="0">
+                  <stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#fff3c4"/>
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfFireWallGlow" cx=".62" cy=".66" r=".6">
+                        <stop offset="0" stop-color="#ffb35c" stop-opacity=".22"/>
+                        <stop offset="1" stop-color="#ffb35c" stop-opacity="0"/>
+                      </radialGradient>
+                      <linearGradient id="pfFirePane" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#1b3050"/><stop offset="1" stop-color="#0a1626"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfFireWallGlow)"/>
+                    <!-- garland swags across the top of the wall -->
+                    <g fill="none" stroke="#2e6b34" stroke-width="3.4" stroke-linecap="round" opacity=".9">
+                      <path d="M4 8 Q95 34 190 10 Q285 34 376 6"/>
+                      <path d="M60 4 Q190 26 320 4" opacity=".55" stroke-width="2.2"/>
+                    </g>
+                    <g fill="#c23b2e">
+                      <circle cx="48" cy="17" r="2.6"/><circle cx="112" cy="22" r="2.6"/><circle cx="190" cy="12" r="2.6"/>
+                      <circle cx="268" cy="21" r="2.6"/><circle cx="334" cy="14" r="2.6"/>
+                    </g>
+                    <g fill="#e8b65a">
+                      <circle cx="80" cy="21" r="1.7"/><circle cx="152" cy="17" r="1.7"/><circle cx="228" cy="17" r="1.7"/><circle cx="302" cy="19" r="1.7"/>
+                    </g>
+                    <!-- the window, snow falling outside -->
+                    <g>
+                      <rect x="22" y="30" width="112" height="136" rx="4" fill="#2c1a0c"/>
+                      <rect x="29" y="37" width="98" height="122" fill="url(#pfFirePane)"/>
+                      <circle cx="106" cy="58" r="10" fill="#f4ead0" opacity=".92"/>
+                      <circle cx="106" cy="58" r="16" fill="#f4ead0" opacity=".14"/>
+                      <g fill="#ffffff">
+                        <circle class="pfFireSnowDot" cx="40" cy="44" r="2.1" style="animation-duration:5.2s; animation-delay:-1.2s"/>
+                        <circle class="pfFireSnowDot" cx="58" cy="40" r="1.6" style="animation-duration:6.4s; animation-delay:-3.4s"/>
+                        <circle class="pfFireSnowDot" cx="76" cy="46" r="2.3" style="animation-duration:4.7s; animation-delay:-2.1s"/>
+                        <circle class="pfFireSnowDot" cx="92" cy="42" r="1.5" style="animation-duration:5.8s; animation-delay:-4.6s"/>
+                        <circle class="pfFireSnowDot" cx="118" cy="48" r="1.9" style="animation-duration:5.5s; animation-delay:-.6s"/>
+                        <circle class="pfFireSnowDot" cx="50" cy="42" r="1.4" style="animation-duration:6.9s; animation-delay:-5.3s"/>
+                        <circle class="pfFireSnowDot" cx="86" cy="44" r="1.7" style="animation-duration:4.9s; animation-delay:-3.9s"/>
+                        <circle class="pfFireSnowDot" cx="112" cy="41" r="1.4" style="animation-duration:6.1s; animation-delay:-2.8s"/>
+                      </g>
+                      <rect x="74" y="37" width="5" height="122" fill="#2c1a0c"/>
+                      <rect x="29" y="94" width="98" height="5" fill="#2c1a0c"/>
+                      <rect x="22" y="30" width="112" height="136" rx="4" fill="none" stroke="#e8b65a" stroke-width="1.6" opacity=".55"/>
+                      <rect x="16" y="164" width="124" height="7" rx="2" fill="#3d2412"/>
+                      <!-- snow piled on the sill -->
+                      <path d="M18 164 Q50 156 82 162 Q112 167 138 163 L138 171 L18 171 Z" fill="#eef3f8" opacity=".9"/>
+                    </g>
+                    <!-- a small framed picture on the wall -->
+                    <g>
+                      <rect x="166" y="42" width="60" height="46" rx="2" fill="#120a06"/>
+                      <rect x="166" y="42" width="60" height="46" rx="2" fill="none" stroke="#e8b65a" stroke-width="2.4"/>
+                      <rect x="172" y="48" width="48" height="34" fill="#1b3050"/>
+                      <path d="M196 56 l2.2 4.4 4.8 .7 -3.5 3.4 .8 4.8 -4.3 -2.3 -4.3 2.3 .8 -4.8 -3.5 -3.4 4.8 -.7z" fill="#f4d98c"/>
+                      <path d="M172 82 L186 68 L196 76 L206 66 L220 82 Z" fill="#0d1c10"/>
+                    </g>
+                    <!-- a wreath on the wall -->
+                    <g>
+                      <circle cx="316" cy="92" r="25" fill="none" stroke="#2e6b34" stroke-width="8"/>
+                      <circle cx="316" cy="92" r="25" fill="none" stroke="#3c8544" stroke-width="3" stroke-dasharray="4 7"/>
+                      <g fill="#c23b2e">
+                        <circle cx="298" cy="78" r="2.8"/><circle cx="332" cy="80" r="2.8"/><circle cx="302" cy="108" r="2.8"/>
+                        <circle cx="330" cy="106" r="2.8"/><circle cx="316" cy="68" r="2.8"/>
+                      </g>
+                      <path d="M316 118 l-6 8 h12z" fill="#c9a227"/>
+                      <circle cx="316" cy="117" r="3.4" fill="#e8b65a"/>
+                    </g>
+                    <!-- scattered wall stars -->
+                    <g fill="#f4d98c">
+                      <circle cx="160" cy="120" r="1.5" opacity=".65"/><circle cx="252" cy="52" r="1.3" opacity=".55"/>
+                      <circle cx="356" cy="150" r="1.5" opacity=".6"/><circle cx="238" cy="140" r="1.2" opacity=".5"/>
+                      <circle cx="52" cy="196" r="1.3" opacity=".45"/><circle cx="338" cy="200" r="1.2" opacity=".45"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="fireGlow"></div>
+
+            <!-- the fireplace: hearth, brick facade, logs, flames, embers -->
+            <div id="fireWrap">
+              <div id="hearth"></div>
+
+              <div id="facade">
+                <div id="facadeStand">
+                  <svg viewBox="0 0 272 176" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfFireBrick" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#8f4630"/><stop offset="1" stop-color="#71331f"/>
+                      </linearGradient>
+                      <pattern id="pfFireBrickCourses" width="36" height="15" patternUnits="userSpaceOnUse">
+                        <rect width="36" height="15" fill="none"/>
+                        <path d="M0 14.2 H36" stroke="rgba(30,10,4,.35)" stroke-width="1.6"/>
+                        <path d="M18 0 V14 M0 7.4 H36" stroke="rgba(30,10,4,.20)" stroke-width="1.2"/>
+                        <path d="M0 1 H36" stroke="rgba(255,205,160,.10)" stroke-width="1"/>
+                      </pattern>
+                      <linearGradient id="pfFireWood" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#7d4e2a"/><stop offset=".5" stop-color="#65401f"/><stop offset="1" stop-color="#4c2d13"/>
+                      </linearGradient>
+                    </defs>
+                    <!-- brick body -->
+                    <rect x="8" y="20" width="256" height="156" rx="4" fill="url(#pfFireBrick)"/>
+                    <rect x="8" y="20" width="256" height="156" rx="4" fill="url(#pfFireBrickCourses)"/>
+                    <rect x="8" y="20" width="256" height="156" rx="4" fill="none" stroke="rgba(30,10,4,.4)" stroke-width="2"/>
+                    <!-- mantel beam -->
+                    <rect x="0" y="6" width="272" height="17" rx="3" fill="url(#pfFireWood)"/>
+                    <rect x="0" y="6" width="272" height="4" rx="2" fill="rgba(255,220,170,.28)"/>
+                    <rect x="14" y="23" width="12" height="9" fill="#54341a"/>
+                    <rect x="246" y="23" width="12" height="9" fill="#54341a"/>
+                    <!-- garland swag under the beam -->
+                    <path d="M18 30 Q136 58 254 30" fill="none" stroke="#2e6b34" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M18 30 Q136 58 254 30" fill="none" stroke="#3c8544" stroke-width="2" stroke-dasharray="3 8" stroke-linecap="round"/>
+                    <g fill="#c23b2e">
+                      <circle cx="52" cy="39" r="3"/><circle cx="96" cy="45" r="3"/><circle cx="176" cy="45" r="3"/><circle cx="220" cy="39" r="3"/>
+                    </g>
+                    <path d="M136 47 l-7 9 h14z" fill="#c9a227"/>
+                    <circle cx="136" cy="46" r="3.6" fill="#e8b65a"/>
+                    <!-- stockings hung from the beam -->
+                    <g>
+                      <path d="M56 24 h17 v20 q10 3 10 11 q0 9 -10 9 h-6 q-7 0 -9 -6 l-2 -10z" fill="#b3312c"/>
+                      <rect x="54" y="21" width="21" height="8" rx="2.5" fill="#f3e5cd"/>
+                      <circle cx="64" cy="42" r="2.2" fill="#f4d98c" opacity=".8"/>
+                    </g>
+                    <g>
+                      <path d="M199 24 h17 v20 q10 3 10 11 q0 9 -10 9 h-6 q-7 0 -9 -6 l-2 -10z" fill="#2e6b34"/>
+                      <rect x="197" y="21" width="21" height="8" rx="2.5" fill="#f3e5cd"/>
+                      <circle cx="207" cy="42" r="2.2" fill="#f4d98c" opacity=".8"/>
+                    </g>
+                    <!-- the firebox: stone arch, dark opening -->
+                    <path d="M78 176 L78 96 A58 52 0 0 1 194 96 L194 176 Z" fill="#9a8d80"/>
+                    <path d="M78 176 L78 96 A58 52 0 0 1 194 96 L194 176" fill="none" stroke="rgba(40,28,18,.45)" stroke-width="2"/>
+                    <path d="M86 176 L86 99 A50 45 0 0 1 186 99 L186 176 Z" fill="#150906"/>
+                    <ellipse cx="136" cy="168" rx="42" ry="12" fill="#ff7a26" opacity=".13"/>
+                    <!-- andiron hints -->
+                    <rect x="98" y="166" width="4" height="10" fill="#2a2a2e"/>
+                    <rect x="170" y="166" width="4" height="10" fill="#2a2a2e"/>
+                    <circle cx="100" cy="164" r="3" fill="#3a3a40"/>
+                    <circle cx="172" cy="164" r="3" fill="#3a3a40"/>
+                  </svg>
+                </div>
+              </div>
+
+              <div id="fireboxGlow"><div id="fireboxGlowInner"></div></div>
+
+              <div id="logs">
+                <div id="logsStand">
+                  <svg viewBox="0 0 92 24" aria-hidden="true">
+                    <g stroke="#3c2110" stroke-width="1.4">
+                      <rect x="30" y="3" width="56" height="10" rx="5" fill="#7a4c2a" transform="rotate(-4 58 8)"/>
+                      <rect x="4" y="11" width="58" height="10" rx="5" fill="#6b4226" transform="rotate(3 33 16)"/>
+                      <rect x="34" y="13" width="52" height="9" rx="4.5" fill="#5d3820" transform="rotate(-2 60 17)"/>
+                    </g>
+                    <ellipse cx="85" cy="7" rx="3.4" ry="4.4" fill="#c9a06a" transform="rotate(-4 85 7)"/>
+                    <ellipse cx="6" cy="15" rx="3.4" ry="4.4" fill="#c9a06a" transform="rotate(3 6 15)"/>
+                    <ellipse cx="85" cy="16" rx="3.2" ry="4" fill="#bd9257" transform="rotate(-2 85 16)"/>
+                    <circle cx="85" cy="7" r="1.6" fill="none" stroke="#8a6a3c" stroke-width=".9"/>
+                    <circle cx="6" cy="15" r="1.6" fill="none" stroke="#8a6a3c" stroke-width=".9"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- flames: three layered tongues, lit one by one -->
+              <div class="flameAnchor" style="left:163px; top:197px;">
+                <div class="flameStand" id="flameL" style="left:-17px; top:-46px; width:34px; height:46px;">
+                  <svg viewBox="0 0 46 62" aria-hidden="true">
+                    <g class="flameTongue" style="animation-duration:.5s; animation-delay:-.2s">
+                      <path d="M23 1 C33 15 41 25 41 39 A18 18 0 1 1 5 39 C5 25 13 15 23 1 Z" fill="url(#pfFireFlameOuter)"/>
+                      <path d="M23 16 C30 26 35 32 35 41 A12 12 0 1 1 11 41 C11 32 16 26 23 16 Z" fill="url(#pfFireFlameMid)"/>
+                      <path d="M23 30 C27 36 30 39 30 44 A7 7 0 1 1 16 44 C16 39 19 36 23 30 Z" fill="url(#pfFireFlameCore)"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <div class="flameAnchor" style="left:217px; top:197px;">
+                <div class="flameStand" id="flameR" style="left:-17px; top:-46px; width:34px; height:46px;">
+                  <svg viewBox="0 0 46 62" aria-hidden="true">
+                    <g class="flameTongue" style="animation-duration:.37s; animation-delay:-.1s">
+                      <path d="M23 1 C33 15 41 25 41 39 A18 18 0 1 1 5 39 C5 25 13 15 23 1 Z" fill="url(#pfFireFlameOuter)"/>
+                      <path d="M23 16 C30 26 35 32 35 41 A12 12 0 1 1 11 41 C11 32 16 26 23 16 Z" fill="url(#pfFireFlameMid)"/>
+                      <path d="M23 30 C27 36 30 39 30 44 A7 7 0 1 1 16 44 C16 39 19 36 23 30 Z" fill="url(#pfFireFlameCore)"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+              <div class="flameAnchor" style="left:190px; top:198px;">
+                <div class="flameStand" id="flameC" style="left:-24px; top:-64px; width:48px; height:64px;">
+                  <svg viewBox="0 0 46 62" aria-hidden="true">
+                    <g class="flameTongue" style="animation-duration:.43s">
+                      <path d="M23 1 C33 15 41 25 41 39 A18 18 0 1 1 5 39 C5 25 13 15 23 1 Z" fill="url(#pfFireFlameOuter)"/>
+                      <path d="M23 16 C30 26 35 32 35 41 A12 12 0 1 1 11 41 C11 32 16 26 23 16 Z" fill="url(#pfFireFlameMid)"/>
+                      <path d="M23 30 C27 36 30 39 30 44 A7 7 0 1 1 16 44 C16 39 19 36 23 30 Z" fill="url(#pfFireFlameCore)"/>
+                      <ellipse cx="23" cy="47" rx="3.4" ry="5" fill="#fff8dc" opacity=".9"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- embers under the logs -->
+              <div id="emberBed">
+                <div id="emberBedInner">
+                  <span class="ember" style="left:4px; animation-delay:-.2s"></span>
+                  <span class="ember" style="left:17px; animation-delay:-1.1s"></span>
+                  <span class="ember" style="left:29px; animation-delay:-.6s"></span>
+                  <span class="ember" style="left:41px; animation-delay:-1.5s"></span>
+                  <span class="ember" style="left:53px; animation-delay:-.9s"></span>
+                  <span class="ember" style="left:65px; animation-delay:-.3s"></span>
+                  <span class="ember" style="left:77px; animation-delay:-1.3s"></span>
+                  <span class="ember" style="left:89px; animation-delay:-.8s"></span>
+                </div>
+              </div>
+
+              <!-- sparks rising off the fire -->
+              <div id="sparks">
+                <span class="spark" style="left:-7px; animation-duration:2.7s; animation-delay:.2s"></span>
+                <span class="spark" style="left:2px; animation-duration:3.5s; animation-delay:1.4s"></span>
+                <span class="spark" style="left:10px; animation-duration:4.3s; animation-delay:2.6s"></span>
+              </div>
+            </div><!-- /fireWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a fire made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>come sit by the fire...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfFireFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#84371f"/><stop offset="1" stop-color="#571f10"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfFireFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfFireFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#a34a2e"/><stop offset="1" stop-color="#722a17"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfFireFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var fireWrap = document.getElementById('fireWrap');
+  var fireGlow = document.getElementById('fireGlow');
+  var fireboxGlowInner = document.getElementById('fireboxGlowInner');
+  var hearth = document.getElementById('hearth');
+  var facadeStand = document.getElementById('facadeStand');
+  var logsStand = document.getElementById('logsStand');
+  var emberBed = document.getElementById('emberBed');
+  var sparks = document.getElementById('sparks');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+  function windowP(r, start, end){ return clamp01((r - start) / (end - start)); }
+  function easeOut(p){ return 1 - Math.pow(1 - p, 3); }
+
+  /* ---------- the flames ----------
+     Three layered tongues stand on the log line. They light one by one
+     once the fireplace has risen — left, center, right — and the light
+     on the base and in the firebox grows with every tongue lit. */
+  var flames = [
+    document.getElementById('flameL'),
+    document.getElementById('flameC'),
+    document.getElementById('flameR')
+  ];
+  var litCount = 0, lightTimer = null;
+  function startLighting(){
+    if (lightTimer || litCount >= flames.length) return;
+    lightTimer = setInterval(function(){
+      if (litCount >= flames.length){ clearInterval(lightTimer); lightTimer = null; return; }
+      flames[litCount].classList.add('lit');
+      litCount++;
+      if (litCount === 1){
+        emberBed.classList.add('burning');
+        sparks.classList.add('burning');
+      }
+    }, 420);
+  }
+  function douseFlames(){
+    if (lightTimer){ clearInterval(lightTimer); lightTimer = null; }
+    litCount = 0;
+    flames.forEach(function(f){ f.classList.remove('lit'); });
+    emberBed.classList.remove('burning');
+    sparks.classList.remove('burning');
+  }
+
+  function applyRise(){
+    /* the fireplace hides inside the envelope while settled shut: it
+       fades in as it rises (the Sea Card's tank trick) */
+    fireWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    fireWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    /* hearth first, then the facade grows out of it, logs last */
+    var hp = windowP(rise, 0.02, 0.22);
+    hearth.style.opacity = hp.toFixed(3);
+    var fp = easeOut(windowP(rise, 0.12, 0.55));
+    facadeStand.style.transform = 'rotateX(-90deg) scale(' + fp.toFixed(3) + ')';
+    var lp = easeOut(windowP(rise, 0.45, 0.65));
+    logsStand.style.transform = 'rotateX(-90deg) scale(' + lp.toFixed(3) + ')';
+    /* firelight: a whisper while the fireplace rises, growing warmer
+       with every flame lit */
+    fireGlow.style.opacity = (rise * 0.10 + (litCount / flames.length) * 0.55).toFixed(3);
+    fireboxGlowInner.style.opacity = ((litCount / flames.length) * 0.9).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    if (opened && rise > 0.985 && litCount < flames.length) startLighting();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> hearth, facade and logs rise (target set at
+            850ms), then the flames light one by one.
+     Close: flames die first, the fireplace settles -> card folds ->
+            envelope returns -> flap swings shut -> seal reappears
+            (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      douseFlames();
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    flames.forEach(function(f){ f.classList.add('lit'); });
+    litCount = flames.length;
+    emberBed.classList.add('burning');
+    sparks.classList.add('burning');
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
