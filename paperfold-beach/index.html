@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Beach Sunset — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #1d4046 0%, #0e262c 46%, #050f13 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#fdf3e0;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of sunset light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(255,170,80,.22) 0%, rgba(64,180,170,.08) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfBeachSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfBeachSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #2e7d7b 0%, #1d5a5e 55%, #14424a 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm sunset light the scene casts onto the base */
+  #sunGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,190,90,.8) 0%, rgba(255,140,70,.3) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fdf6e3 0%, #f7ead0 58%, #f0dcb2 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(190,140,60,.22);
+  }
+  /* the face that greets you once the card stands — the sunset sky
+     (its colors are driven live by the dusk settle in the script) */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #5e8dc4 0%, #f4a460 55%, #ffd98c 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(10,26,30,.45), inset 0 0 52px rgba(0,0,0,.35);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  .bstar { animation:pfBeachTwinkle 2.8s ease-in-out infinite alternate; }
+  @keyframes pfBeachTwinkle { from { opacity:.3; } to { opacity:1; } }
+  #pfBeachClouds { animation:pfBeachCloudDrift 26s ease-in-out infinite alternate; }
+  @keyframes pfBeachCloudDrift { from { transform:translateX(-6px); } to { transform:translateX(6px); } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #eed3a0 0%, #a9c9a4 34%, #5fae9f 68%, #2e7d84 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfBeachFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfBeachFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfBeachFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfBeachFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+  /* ---------- the beach (rises out of the base in layers) ---------- */
+  #beachWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* one layer: footprint group sits at the layer's bottom plane; its walls
+     grow upward (height set by JS) and its top rides on them (translateZ
+     set by JS) — the same grammar as the Birthday Cake's tiers */
+  .layer { position:absolute; transform-style:preserve-3d; }
+  .layerBase { position:absolute; inset:0; transform-style:preserve-3d; }
+  .lwallWrap { position:absolute; transform-style:preserve-3d; }
+  .lwall {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+  }
+  .layerTop {
+    position:absolute; inset:0; border-radius:10px; overflow:hidden;
+  }
+  /* back water: deep sunset blue with the sun's reflection path */
+  #layer1 .lwall { background:linear-gradient(180deg, #2c5a7a 0%, #1e4258 100%); }
+  #layer1 .layerTop {
+    background:linear-gradient(178deg, #527ba6 0%, #3d6a94 55%, #2f5d85 100%);
+    box-shadow: inset 0 0 0 2px rgba(255,214,150,.18), inset 0 0 26px rgba(20,40,70,.4);
+  }
+  #pfBeachReflect {
+    position:absolute; left:50%; top:4%; width:56px; height:88%;
+    transform:translateX(-50%); border-radius:50%;
+    background:linear-gradient(180deg, rgba(255,214,120,.9) 0%, rgba(255,160,80,.45) 55%, rgba(255,140,70,.08) 100%);
+    filter:blur(3px); pointer-events:none;
+    animation:pfBeachReflectPulse 3.4s ease-in-out infinite alternate;
+  }
+  @keyframes pfBeachReflectPulse { from { opacity:.65; } to { opacity:.95; } }
+  /* mid water: lighter teal with drifting shimmer stripes */
+  #layer2 .lwall { background:linear-gradient(180deg, #256078 0%, #1a4a5e 100%); }
+  #layer2 .layerTop {
+    background:linear-gradient(178deg, #4795ad 0%, #357b96 60%, #2b6a86 100%);
+    box-shadow: inset 0 0 0 2px rgba(255,235,190,.14), inset 0 0 22px rgba(14,44,60,.35);
+  }
+  #layer2 .layerTop::after {
+    content:""; position:absolute; inset:0;
+    background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.13) 0 6px, rgba(255,255,255,0) 6px 15px);
+    background-size:30px 30px;
+    animation:pfBeachShimmer 7s linear infinite;
+  }
+  @keyframes pfBeachShimmer { from { background-position:0 0; } to { background-position:60px 0; } }
+  /* the shore: warm sand with speckles */
+  #layer3 .lwall { background:linear-gradient(180deg, #c9a05e 0%, #a87f42 100%); }
+  #layer3 .layerTop {
+    background:radial-gradient(ellipse at 50% 36%, #f6dc9e 0%, #f0cd82 58%, #e2b96e 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.35), inset 0 0 20px rgba(160,115,45,.3);
+  }
+  #layer3 .layerTop::after { /* sand speckles */
+    content:""; position:absolute; inset:4px; border-radius:8px; opacity:.5;
+    background-image:
+      radial-gradient(circle 1.8px at 14px 12px, #b98d4a 98%, rgba(185,141,74,0)),
+      radial-gradient(circle 1.5px at 38px 26px, #fff3d0 98%, rgba(255,243,208,0)),
+      radial-gradient(circle 1.8px at 24px 40px, #a87f42 98%, rgba(168,127,66,0)),
+      radial-gradient(circle 1.4px at 48px 10px, #c49a55 98%, rgba(196,154,85,0));
+    background-size:56px 46px;
+  }
+
+  /* the sailboat: rides on the back water's surface (JS keeps this box at
+     the water's height), drifting slowly across and rocking gently */
+  #boatBox { position:absolute; left:104px; top:34px; width:0; height:0; transform-style:preserve-3d; opacity:0; }
+  .boatDrift {
+    position:absolute; left:0; top:0; transform-style:preserve-3d;
+    animation:pfBeachDrift 11s ease-in-out infinite alternate;
+  }
+  @keyframes pfBeachDrift { from { transform:translateX(-17px); } to { transform:translateX(17px); } }
+  .boatStand {
+    position:absolute; left:-34px; top:-56px; width:68px; height:56px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    animation:pfBeachBoatRock 4.6s ease-in-out infinite alternate;
+  }
+  @keyframes pfBeachBoatRock { from { transform:rotateX(-90deg) rotateZ(-1.8deg); } to { transform:rotateX(-90deg) rotateZ(1.8deg); } }
+
+  /* shore props: this box rides on the sand's surface (JS keeps it at the
+     shore's height) — palms, umbrella, towel, starfish, shell live here */
+  #shoreBox { position:absolute; left:48px; top:150px; width:284px; height:84px; transform-style:preserve-3d; opacity:0; }
+  .palm { position:absolute; width:0; height:0; transform-style:preserve-3d; opacity:0; transition:opacity .5s ease 0s; }
+  #world.open .palm { opacity:1; transition:opacity .8s ease 1.7s; }
+  .palmBob { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfBeachBob 4.2s ease-in-out infinite alternate; }
+  .palm.p2 .palmBob { animation-duration:5s; animation-delay:-1.6s; }
+  @keyframes pfBeachBob { from { transform:translateZ(2px); } to { transform:translateZ(7px); } }
+  .palmFlip { position:absolute; left:0; top:0; transform-style:preserve-3d; transform:scaleX(-1); }
+  .palmStand {
+    position:absolute; left:-52px; top:-136px; width:104px; height:136px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    animation:pfBeachPalmSway 5.4s ease-in-out infinite alternate;
+  }
+  .palm.p2 .palmStand { animation-duration:6.3s; animation-delay:-2.2s; }
+  @keyframes pfBeachPalmSway { from { transform:rotateX(-90deg) rotateZ(-2.4deg); } to { transform:rotateX(-90deg) rotateZ(2.4deg); } }
+  .umb { position:absolute; width:0; height:0; transform-style:preserve-3d; opacity:0; transition:opacity .5s ease 0s; }
+  #world.open .umb { opacity:1; transition:opacity .8s ease 1.9s; }
+  .umbStand {
+    position:absolute; left:-41px; top:-98px; width:82px; height:98px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    animation:pfBeachPalmSway 6.8s ease-in-out infinite alternate;
+  }
+  .towel {
+    position:absolute; left:138px; top:60px; width:36px; height:17px; border-radius:2px;
+    background:repeating-linear-gradient(90deg, #ff8a70 0 8px, #fff3e0 8px 16px);
+    box-shadow:0 1px 3px rgba(120,80,20,.35);
+  }
+  .starfish { position:absolute; left:88px; top:58px; width:30px; height:30px; transform:rotate(-14deg); }
+  .shell { position:absolute; left:204px; top:64px; width:22px; height:18px; transform:rotate(10deg); }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(10,42,46,.72); border:1px solid rgba(255,220,150,.55);
+    color:#fdf3e0; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfBeachPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfBeachPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#fff6da;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(8,30,34,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the envelope front itself, in the free area below
+     the scene (same geometry as the Sea Card), inside the gilt trim.
+     No separate panel. They fade in as the scene settles and are gone
+     quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#fff3d6;
+    text-shadow:0 0 10px rgba(255,220,150,.3), 0 1px 3px rgba(8,30,34,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .boatDrift, .boatStand, .palmBob, .palmStand, .umbStand, .bstar, #pfBeachClouds { animation:none; }
+    #pfBeachReflect, #layer2 .layerTop::after { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBeachSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop id="pfBeachSkyStop1" offset="0" stop-color="#5e8dc4"/>
+                        <stop id="pfBeachSkyStop2" offset=".55" stop-color="#f4a460"/>
+                        <stop id="pfBeachSkyStop3" offset="1" stop-color="#ffd98c"/>
+                      </linearGradient>
+                      <radialGradient id="pfBeachBackGlow" cx=".5" cy=".64" r=".55">
+                        <stop offset="0" stop-color="#ffb35c" stop-opacity=".28"/>
+                        <stop offset="1" stop-color="#ffb35c" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfBeachSkyGrad)"/>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfBeachBackGlow)"/>
+                    <!-- first stars: hidden until the dusk settle (script-driven) -->
+                    <g id="pfBeachStars" fill="#ffffff" opacity="0">
+                      <circle class="bstar" cx="36" cy="26" r="1.8"/>
+                      <circle class="bstar" style="animation-delay:-.7s" cx="82" cy="14" r="1.3"/>
+                      <circle class="bstar" style="animation-delay:-1.5s" cx="128" cy="34" r="1.5"/>
+                      <circle class="bstar" style="animation-delay:-.3s" cx="168" cy="18" r="1.2"/>
+                      <circle class="bstar" style="animation-delay:-2.1s" cx="214" cy="28" r="1.7"/>
+                      <circle class="bstar" style="animation-delay:-1.1s" cx="256" cy="12" r="1.3"/>
+                      <circle class="bstar" style="animation-delay:-.9s" cx="298" cy="36" r="1.6"/>
+                      <circle class="bstar" style="animation-delay:-1.8s" cx="338" cy="18" r="1.4"/>
+                      <circle class="bstar" style="animation-delay:-.5s" cx="58" cy="52" r="1.2"/>
+                      <circle class="bstar" style="animation-delay:-2.5s" cx="322" cy="58" r="1.2"/>
+                      <circle class="bstar" style="animation-delay:-1.3s" cx="238" cy="52" r="1.1"/>
+                      <circle class="bstar" style="animation-delay:-.2s" cx="146" cy="56" r="1.1"/>
+                    </g>
+                    <!-- slow clouds in the sunset light -->
+                    <g id="pfBeachClouds" fill="#ffd9c2">
+                      <ellipse cx="70" cy="54" rx="34" ry="8" opacity=".45"/>
+                      <ellipse cx="97" cy="60" rx="23" ry="6" opacity=".4"/>
+                      <ellipse cx="288" cy="42" rx="30" ry="7" opacity=".42"/>
+                      <ellipse cx="312" cy="49" rx="19" ry="5" opacity=".38"/>
+                    </g>
+                    <!-- the sun: sinks and deepens as dusk settles (script-driven) -->
+                    <g id="pfBeachSun">
+                      <circle cx="190" cy="158" r="47" fill="#ffdf9e" opacity=".45"/>
+                      <circle id="pfBeachSunDisc" cx="190" cy="158" r="27" fill="#fff3b0"/>
+                    </g>
+                    <!-- distant headlands at the horizon -->
+                    <path d="M0 192 Q58 170 118 188 L118 248 L0 248 Z" fill="#46335e" opacity=".8"/>
+                    <path d="M380 194 Q322 172 264 190 L264 248 L380 248 Z" fill="#46335e" opacity=".8"/>
+                    <!-- distant water at the foot of the sky -->
+                    <rect x="0" y="202" width="380" height="46" fill="#35648c" opacity=".45"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="sunGlow"></div>
+
+            <!-- the beach: back water, mid water, sandy shore — rising in layers -->
+            <div id="beachWrap">
+              <div class="layer" id="layer1" style="left:20px; top:16px; width:340px; height:96px;">
+                <div class="layerBase">
+                  <div class="lwallWrap" style="left:0; top:96px;"><div class="lwall" style="width:340px;"></div></div>
+                  <div class="lwallWrap" style="left:0; top:96px; transform:rotate(-90deg);"><div class="lwall" style="width:96px;"></div></div>
+                  <div class="lwallWrap" style="left:340px; top:0; transform:rotate(90deg);"><div class="lwall" style="width:96px;"></div></div>
+                  <div class="layerTop"><div id="pfBeachReflect"></div></div>
+                </div>
+              </div>
+
+              <div class="layer" id="layer2" style="left:34px; top:94px; width:312px; height:74px;">
+                <div class="layerBase">
+                  <div class="lwallWrap" style="left:0; top:74px;"><div class="lwall" style="width:312px;"></div></div>
+                  <div class="lwallWrap" style="left:0; top:74px; transform:rotate(-90deg);"><div class="lwall" style="width:74px;"></div></div>
+                  <div class="lwallWrap" style="left:312px; top:0; transform:rotate(90deg);"><div class="lwall" style="width:74px;"></div></div>
+                  <div class="layerTop"></div>
+                </div>
+              </div>
+
+              <div class="layer" id="layer3" style="left:48px; top:150px; width:284px; height:84px;">
+                <div class="layerBase">
+                  <div class="lwallWrap" style="left:0; top:84px;"><div class="lwall" style="width:284px;"></div></div>
+                  <div class="lwallWrap" style="left:0; top:84px; transform:rotate(-90deg);"><div class="lwall" style="width:84px;"></div></div>
+                  <div class="lwallWrap" style="left:284px; top:0; transform:rotate(90deg);"><div class="lwall" style="width:84px;"></div></div>
+                  <div class="layerTop"></div>
+                </div>
+              </div>
+
+              <!-- the sailboat rides the back water (JS keeps the box at its height) -->
+              <div id="boatBox">
+                <div class="boatDrift"><div class="boatStand">
+                  <svg viewBox="0 0 68 56" width="68" height="56" aria-hidden="true">
+                    <polygon points="36,10 36,38 55,38" fill="#f6ead2"/>
+                    <polygon points="32,15 32,38 17,38" fill="#eec39a"/>
+                    <rect x="33" y="8" width="2.4" height="32" fill="#22304d"/>
+                    <path d="M5 41 L63 41 L54 52 L14 52 Z" fill="#22304d"/>
+                    <rect x="5" y="39.4" width="58" height="2.4" fill="#c96f4a"/>
+                  </svg>
+                </div></div>
+              </div>
+
+              <!-- shore props ride the sand (JS keeps the box at its height) -->
+              <div id="shoreBox">
+                <div class="palm p1" style="left:28px; top:58px;">
+                  <div class="palmBob"><div class="palmStand">
+                    <svg viewBox="0 0 104 136" width="104" height="136" aria-hidden="true">
+                      <path d="M54 136 C50 100 45 68 37 32" fill="none" stroke="#7a5230" stroke-width="7" stroke-linecap="round"/>
+                      <g fill="none" stroke-linecap="round">
+                        <path d="M37 32 Q13 15 3 28" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q28 8 11 5" stroke="#37a37c" stroke-width="5"/>
+                        <path d="M37 32 Q43 6 62 6" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q58 17 75 24" stroke="#37a37c" stroke-width="5"/>
+                        <path d="M37 32 Q60 33 77 44" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q20 34 8 46" stroke="#37a37c" stroke-width="5"/>
+                      </g>
+                      <circle cx="33" cy="37" r="4.4" fill="#6b4423"/>
+                      <circle cx="43" cy="39" r="3.8" fill="#7d5230"/>
+                    </svg>
+                  </div></div>
+                </div>
+                <div class="palm p2" style="left:240px; top:46px;">
+                  <div class="palmBob"><div class="palmFlip"><div class="palmStand">
+                    <svg viewBox="0 0 104 136" width="104" height="136" aria-hidden="true">
+                      <path d="M54 136 C50 100 45 68 37 32" fill="none" stroke="#7a5230" stroke-width="7" stroke-linecap="round"/>
+                      <g fill="none" stroke-linecap="round">
+                        <path d="M37 32 Q13 15 3 28" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q28 8 11 5" stroke="#37a37c" stroke-width="5"/>
+                        <path d="M37 32 Q43 6 62 6" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q58 17 75 24" stroke="#37a37c" stroke-width="5"/>
+                        <path d="M37 32 Q60 33 77 44" stroke="#2e8b6e" stroke-width="5"/>
+                        <path d="M37 32 Q20 34 8 46" stroke="#37a37c" stroke-width="5"/>
+                      </g>
+                      <circle cx="33" cy="37" r="4.4" fill="#6b4423"/>
+                      <circle cx="43" cy="39" r="3.8" fill="#7d5230"/>
+                    </svg>
+                  </div></div></div>
+                </div>
+                <div class="umb" style="left:158px; top:58px;">
+                  <div class="umbStand">
+                    <svg viewBox="0 0 82 98" width="82" height="98" aria-hidden="true">
+                      <path d="M43 98 L37 34" stroke="#8a6a42" stroke-width="3.4" stroke-linecap="round"/>
+                      <path d="M4 36 Q41 2 78 36 L66 36 Q58 27 50 35 L41 35 Q32 27 24 36 L14 36 Q9 32 4 36 Z" fill="#ff8a70"/>
+                      <path d="M24 36 Q32 27 41 35 L41 12 Q32 20 24 36 Z" fill="#fff3e0" opacity=".85"/>
+                      <path d="M50 35 Q58 27 66 36 L60 18 Q54 24 50 35 Z" fill="#fff3e0" opacity=".85"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="towel"></div>
+                <div class="starfish">
+                  <svg viewBox="0 0 30 30" width="30" height="30" aria-hidden="true">
+                    <polygon points="15,1.5 18.6,10.8 28.2,11.2 20.7,17.6 23.2,27 15,21.8 6.8,27 9.3,17.6 1.8,11.2 11.4,10.8" fill="#ffa25e" stroke="#e07f45" stroke-width="1.4" stroke-linejoin="round"/>
+                    <g fill="#e07f45">
+                      <circle cx="15" cy="15" r="1.3"/><circle cx="15" cy="10.5" r="1"/>
+                      <circle cx="19.5" cy="17" r="1"/><circle cx="10.5" cy="17" r="1"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="shell">
+                  <svg viewBox="0 0 22 18" width="22" height="18" aria-hidden="true">
+                    <path d="M11 17 L2.5 7.5 Q11 -2.5 19.5 7.5 Z" fill="#f6d9e8" stroke="#d9a7c4" stroke-width="1.2" stroke-linejoin="round"/>
+                    <path d="M11 17 L6 5 M11 17 L11 3.4 M11 17 L16 5" stroke="#d9a7c4" stroke-width="1" fill="none"/>
+                  </svg>
+                </div>
+              </div>
+            </div><!-- /beachWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a sunset made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>wish you were here...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBeachFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#4d948c"/><stop offset="1" stop-color="#256066"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBeachFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#ffeec2">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <circle cx="235" cy="104" r="9" fill="#ffd166" opacity=".7"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBeachFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#f2dcae"/><stop offset="1" stop-color="#57a89c"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBeachFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var dusk = 0; /* 0 = golden sunset, 1 = settled dusk (sun sunk, stars out) */
+  var world = document.getElementById('world');
+  var beachWrap = document.getElementById('beachWrap');
+  var sunGlow = document.getElementById('sunGlow');
+  var boatBox = document.getElementById('boatBox');
+  var shoreBox = document.getElementById('shoreBox');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the layers ----------
+     Each layer's base group sits at its bottom plane (translateZ = the
+     full height of every layer in back of it). Its walls grow with the
+     rise in a staggered window; its top rides on the walls. Back water
+     first, then mid water, then the sandy shore in front. */
+  var LAYERS = [
+    { id:'layer1', start:0.02, end:0.34, depth:14, bottom:6  },
+    { id:'layer2', start:0.30, end:0.60, depth:12, bottom:20 },
+    { id:'layer3', start:0.56, end:0.86, depth:10, bottom:32 }
+  ];
+  LAYERS.forEach(function(t){
+    var el = document.getElementById(t.id);
+    t.base = el.querySelector('.layerBase');
+    t.base.style.transform = 'translateZ(' + t.bottom + 'px)';
+    t.walls = el.querySelectorAll('.lwall');
+    t.top = el.querySelector('.layerTop');
+    t.p = 0;
+  });
+
+  /* ---------- the dusk settle ----------
+     Once the scene is fully risen, dusk eases 0 -> 1 over ~20 seconds:
+     the sun sinks ~30 units and deepens gold to ember, the sky cools
+     through rose, the reflection dims, and the first stars fade in.
+     Closing runs it back (faster, ~4s) so a reopen starts golden. */
+  var sunG = document.getElementById('pfBeachSun');
+  var sunDisc = document.getElementById('pfBeachSunDisc');
+  var skyStop1 = document.getElementById('pfBeachSkyStop1');
+  var skyStop2 = document.getElementById('pfBeachSkyStop2');
+  var skyStop3 = document.getElementById('pfBeachSkyStop3');
+  var starsG = document.getElementById('pfBeachStars');
+  var reflectEl = document.getElementById('pfBeachReflect');
+  function lerp(a, b, t){ return a + (b - a) * t; }
+  function lc(c1, c2, t){
+    return 'rgb(' + Math.round(lerp(c1[0], c2[0], t)) + ',' +
+                    Math.round(lerp(c1[1], c2[1], t)) + ',' +
+                    Math.round(lerp(c1[2], c2[2], t)) + ')';
+  }
+  var lastDuskApplied = -1;
+  function applyDusk(){
+    if (Math.abs(dusk - lastDuskApplied) < 0.002) return;
+    lastDuskApplied = dusk;
+    sunG.setAttribute('transform', 'translate(0 ' + (dusk * 30).toFixed(1) + ')');
+    sunDisc.setAttribute('fill', lc([255,243,176], [255,138,76], dusk));
+    skyStop1.setAttribute('stop-color', lc([94,141,196], [36,34,84], dusk));
+    skyStop2.setAttribute('stop-color', lc([244,164,96], [172,76,104], dusk));
+    skyStop3.setAttribute('stop-color', lc([255,217,140], [238,124,98], dusk));
+    starsG.setAttribute('opacity', clamp01((dusk - 0.4) / 0.6).toFixed(3));
+    reflectEl.style.opacity = (0.9 - dusk * 0.35).toFixed(3);
+  }
+
+  function applyRise(){
+    /* the scene hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    beachWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    beachWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<LAYERS.length;i++){
+      var t = LAYERS[i];
+      t.p = clamp01((rise - t.start) / (t.end - t.start));
+      var h = (t.p * t.depth).toFixed(2);
+      for (var w=0; w<t.walls.length; w++){ t.walls[w].style.height = h + 'px'; }
+      t.top.style.transform = 'translateZ(' + h + 'px)';
+      t.top.style.opacity = t.p <= 0.01 ? '0' : String(Math.min(1, t.p * 3));
+    }
+    /* the boat rides on the back water's surface */
+    var l1 = LAYERS[0], l3 = LAYERS[2];
+    boatBox.style.transform = 'translateZ(' + (l1.bottom + l1.p * l1.depth).toFixed(2) + 'px)';
+    boatBox.style.opacity = l1.p.toFixed(3);
+    /* the shore props ride on the sand */
+    shoreBox.style.transform = 'translateZ(' + (l3.bottom + l3.p * l3.depth).toFixed(2) + 'px)';
+    shoreBox.style.opacity = Math.min(1, l3.p * 1.6).toFixed(3);
+    /* sunset light on the base: grows as the scene rises, warmer at dusk */
+    sunGlow.style.opacity = (rise * 0.3 + dusk * 0.18).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    /* dusk settles in over ~20s once fully risen; runs back in ~4s on close */
+    var duskTarget = (opened && rise > 0.985) ? 1 : 0;
+    if (dusk < duskTarget) dusk = Math.min(duskTarget, dusk + dt / 20);
+    else if (dusk > duskTarget) dusk = Math.max(duskTarget, dusk - dt / 4);
+    applyDusk();
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> beach rises layer by layer (target set at
+            850ms), then the sun slowly settles into dusk.
+     Close: scene settles first -> card folds -> envelope returns ->
+            flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyDusk();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open at settled dusk instantly,
+     #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1; dusk = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    lastDuskApplied = -1;
+    applyDusk(); applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
