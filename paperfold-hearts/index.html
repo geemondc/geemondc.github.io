@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Hearts — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #47101f 0%, #26060f 46%, #12030a 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#ffe9ec;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(244,114,150,.20) 0%, rgba(255,170,80,.07) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfHeartSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfHeartSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #8e2438 0%, #671226 55%, #470a18 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm glow the big heart casts onto the base */
+  #heartGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,176,140,.85) 0%, rgba(255,110,130,.34) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fff6f1 0%, #f9e3dc 58%, #efc9bf 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,110,62,.45), inset 0 0 30px rgba(160,60,80,.20);
+  }
+  /* the face that greets you once the card stands — blush sky backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #ffd9d2 0%, #ffb3a6 55%, #ff968c 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(46,6,16,.45), inset 0 0 52px rgba(120,20,40,.28);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #b01e42 0%, #8e1030 52%, #660a22 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfHeartFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfHeartFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfHeartFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfHeartFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the garden of hearts (rises out of the base) ---------- */
+  #gardenWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the garden bed the hearts grow from */
+  #bed {
+    position:absolute; left:40px; top:53px; width:300px; height:190px; border-radius:50%;
+    transform:translateZ(5px);
+    background:
+      radial-gradient(circle 3.2px at 62px 118px, rgba(28,66,24,.5) 98%, rgba(28,66,24,0)),
+      radial-gradient(circle 2.6px at 128px 142px, rgba(28,66,24,.45) 98%, rgba(28,66,24,0)),
+      radial-gradient(circle 3px at 208px 122px, rgba(28,66,24,.5) 98%, rgba(28,66,24,0)),
+      radial-gradient(circle 2.4px at 252px 150px, rgba(28,66,24,.4) 98%, rgba(28,66,24,0)),
+      radial-gradient(circle 2.8px at 96px 84px, rgba(255,255,255,.16) 98%, rgba(255,255,255,0)),
+      radial-gradient(circle 2.2px at 236px 82px, rgba(255,255,255,.14) 98%, rgba(255,255,255,0)),
+      radial-gradient(ellipse at 50% 42%, #8cbf74 0%, #63984c 55%, #477636 82%, #38612b 100%);
+    box-shadow: inset 0 0 0 3px rgba(232,182,90,.35), inset 0 -10px 22px rgba(20,50,16,.35), 0 4px 14px rgba(0,0,0,.35);
+  }
+  /* one heart plant: a point anchor on the bed; its standee is a flat
+     paper strip stood up from its bottom edge (rotateX(-90)) and grown
+     from the bed by JS (scale rides the rise, staggered per plant) */
+  .plant { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .plantStand {
+    position:absolute; transform-origin:50% 100%;
+    transform:rotateX(-90deg) scale(0);
+  }
+  .plantStand svg { width:100%; height:100%; display:block; }
+  /* the halo that blooms behind the big heart as it lands */
+  #bigGlow {
+    position:absolute; left:50%; top:26%; width:250px; height:250px;
+    transform:translate(-50%,-50%); border-radius:50%;
+    background:radial-gradient(circle, rgba(255,214,170,.95) 0%, rgba(255,140,150,.5) 42%, rgba(255,110,130,0) 70%);
+    filter:blur(7px); opacity:0; pointer-events:none;
+  }
+  /* the big heart's gentle heartbeat once the card is open */
+  .bigPulse { position:absolute; inset:0; }
+  #world.open .bigPulse { animation:pfHeartBeat 1.7s ease-in-out 3.1s infinite; transform-origin:50% 34%; }
+  @keyframes pfHeartBeat {
+    0%, 48%, 100% { transform:scale(1); }
+    12% { transform:scale(1.05); }
+    24% { transform:scale(1); }
+    36% { transform:scale(1.035); }
+  }
+
+  /* the gold paper bird: fades in perched on the big heart, circles
+     once, and settles back onto it */
+  #birdPerch { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .birdStand {
+    position:absolute; left:-24px; top:-232px; width:48px; height:232px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    opacity:0; transition:opacity .35s ease 0s;
+  }
+  #world.open .birdStand { opacity:1; transition:opacity .5s ease 2.55s; }
+  .birdOrbit { position:absolute; left:0; top:0; width:48px; height:40px; }
+  #world.open .birdOrbit { animation:pfHeartBirdOrbit 6.5s ease-in-out 2.6s both; }
+  @keyframes pfHeartBirdOrbit {
+    0%   { transform:translate3d(0,0,0); }
+    10%  { transform:translate3d(-26px,-16px,14px); }
+    30%  { transform:translate3d(-58px,2px,-6px); }
+    50%  { transform:translate3d(0,-30px,-24px); }
+    70%  { transform:translate3d(58px,2px,-6px); }
+    88%  { transform:translate3d(26px,-8px,16px); }
+    100% { transform:translate3d(0,0,0); }
+  }
+  .birdWing { transform-box:fill-box; transform-origin:88% 62%; }
+  #world.open .birdWing { animation:pfHeartWing 6.5s linear 2.6s both; }
+  @keyframes pfHeartWing {
+    0% { transform:rotate(0deg); } 5% { transform:rotate(-27deg); }
+    10% { transform:rotate(11deg); } 15% { transform:rotate(-27deg); }
+    20% { transform:rotate(11deg); } 25% { transform:rotate(-27deg); }
+    30% { transform:rotate(11deg); } 35% { transform:rotate(-27deg); }
+    40% { transform:rotate(11deg); } 45% { transform:rotate(-27deg); }
+    50% { transform:rotate(11deg); } 55% { transform:rotate(-27deg); }
+    60% { transform:rotate(11deg); } 65% { transform:rotate(-27deg); }
+    70% { transform:rotate(11deg); } 75% { transform:rotate(-27deg); }
+    80% { transform:rotate(11deg); } 85% { transform:rotate(-14deg); }
+    90% { transform:rotate(4deg); } 95%, 100% { transform:rotate(0deg); }
+  }
+
+  /* loose hearts: drift up out of the garden and fade, endlessly */
+  .floater { position:absolute; pointer-events:none; opacity:0; }
+  .floater svg { display:block; }
+  #world.open .floater { animation:pfHeartFloat var(--t, 8s) ease-in-out infinite; animation-delay:calc(2.3s + var(--d, 0s)); }
+  @keyframes pfHeartFloat {
+    0%   { opacity:0; transform:translate3d(0,0,30px) rotate(-8deg) scale(.65); }
+    16%  { opacity:.95; }
+    52%  { transform:translate3d(var(--dx,8px), var(--dy,-10px), 128px) rotate(9deg) scale(1); }
+    84%  { opacity:.75; }
+    100% { opacity:0; transform:translate3d(0,-20px,212px) rotate(-10deg) scale(1.06); }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(43,6,16,.72); border:1px solid rgba(255,170,180,.55);
+    color:#ffe9ec; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfHeartPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfHeartPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(36,4,14,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the rose envelope front itself, in the free area
+     below the garden (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the garden settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(36,4,14,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .bigPulse, .birdOrbit, .birdWing, #world.open .floater { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfHeartSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#fff0e6"/>
+                        <stop offset=".34" stop-color="#ffd3c2"/>
+                        <stop offset=".68" stop-color="#ffab9e"/>
+                        <stop offset="1" stop-color="#ff8f88"/>
+                      </linearGradient>
+                      <radialGradient id="pfHeartSunGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#fff3d6" stop-opacity=".85"/>
+                        <stop offset="1" stop-color="#fff3d6" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfHeartSkyGrad)"/>
+                    <!-- the sun and its glow -->
+                    <circle cx="306" cy="50" r="42" fill="url(#pfHeartSunGlow)"/>
+                    <circle cx="306" cy="50" r="17" fill="#fff3d6" opacity=".95"/>
+                    <!-- tiny paper hearts drifting in the sky -->
+                    <g fill="#ffffff">
+                      <path transform="translate(48 40) scale(.20)" opacity=".38" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                      <path transform="translate(300 96) scale(.15)" opacity=".32" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                      <path transform="translate(88 126) scale(.12)" opacity=".28" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                      <path transform="translate(196 32) scale(.13)" opacity=".3" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                    </g>
+                    <g fill="#fff6da">
+                      <circle cx="66" cy="108" r="1.7" opacity=".7"/><circle cx="140" cy="66" r="1.3" opacity=".55"/>
+                      <circle cx="252" cy="120" r="1.5" opacity=".6"/><circle cx="36" cy="168" r="1.2" opacity=".45"/>
+                      <circle cx="344" cy="150" r="1.4" opacity=".55"/><circle cx="168" cy="150" r="1.1" opacity=".45"/>
+                    </g>
+                    <!-- soft hills, far to near -->
+                    <path d="M0 152 Q70 118 150 142 T380 136 V248 H0 Z" fill="#f2a0ae" opacity=".85"/>
+                    <path d="M0 180 Q90 150 190 172 T380 166 V248 H0 Z" fill="#dd7f97"/>
+                    <path d="M0 210 Q110 190 220 203 T380 199 V248 H0 Z" fill="#7fae6d"/>
+                    <!-- one small gold heart resting on the near hill -->
+                    <path transform="translate(177 202) scale(.26)" fill="#e8b65a" opacity=".92" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="heartGlow"></div>
+
+            <!-- the garden: bed, heart plants small-to-big, the bird, floaters -->
+            <div id="gardenWrap">
+              <div id="bed"></div>
+
+              <!-- back row: the small hearts rise first -->
+              <div class="plant" data-s="0.04" data-e="0.30" style="left:104px; top:118px;">
+                <div class="plantStand" style="left:-26px; top:-88px; width:52px; height:88px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#ff7d9c"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="plant" data-s="0.10" data-e="0.36" style="left:272px; top:112px;">
+                <div class="plantStand" style="left:-25px; top:-84px; width:50px; height:84px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#ff8a75"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="plant" data-s="0.16" data-e="0.40" style="left:188px; top:100px;">
+                <div class="plantStand" style="left:-23px; top:-78px; width:46px; height:78px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#ffb3c1"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".4" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- middle row: bigger hearts -->
+              <div class="plant" data-s="0.26" data-e="0.56" style="left:76px; top:160px;">
+                <div class="plantStand" style="left:-37px; top:-126px; width:74px; height:126px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#e63950"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="plant" data-s="0.32" data-e="0.60" style="left:300px; top:156px;">
+                <div class="plantStand" style="left:-36px; top:-122px; width:72px; height:122px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#d6336c"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- front row: two more small ones -->
+              <div class="plant" data-s="0.40" data-e="0.64" style="left:128px; top:198px;">
+                <div class="plantStand" style="left:-22px; top:-74px; width:44px; height:74px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#ff6b81"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="plant" data-s="0.44" data-e="0.66" style="left:246px; top:202px;">
+                <div class="plantStand" style="left:-21px; top:-72px; width:42px; height:72px;">
+                  <svg viewBox="0 0 100 170" aria-hidden="true">
+                    <path d="M50 168 C47 132 53 108 50 74" fill="none" stroke="#3e7d3a" stroke-width="5" stroke-linecap="round"/>
+                    <path d="M50 128 C38 124 30 114 30 104 C42 106 49 114 50 128 Z" fill="#57a047"/>
+                    <path d="M51 144 C62 140 68 132 69 122 C58 124 52 132 51 144 Z" fill="#4c9440"/>
+                    <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#ef476f"/>
+                    <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".35" transform="rotate(-18 33 21)"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- the biggest heart, center, rises LAST and opens with a glow -->
+              <div class="plant" id="bigPlant" data-s="0.58" data-e="0.95" style="left:190px; top:182px;">
+                <div class="plantStand" style="left:-66px; top:-200px; width:132px; height:200px;">
+                  <div id="bigGlow"></div>
+                  <div class="bigPulse">
+                    <svg viewBox="0 0 130 200" aria-hidden="true">
+                      <path d="M65 198 C61 152 69 118 65 84" fill="none" stroke="#3e7d3a" stroke-width="6" stroke-linecap="round"/>
+                      <path d="M64 152 C49 147 39 135 38 122 C54 125 62 136 64 152 Z" fill="#57a047"/>
+                      <path d="M66 170 C80 165 88 155 89 143 C75 145 67 155 66 170 Z" fill="#4c9440"/>
+                      <g transform="translate(7 0) scale(1.16)">
+                        <path d="M50 70 C28 50 16 38 16 25 C16 13 25 6 35 6 C42 6 48 10 50 16 C52 10 58 6 65 6 C75 6 84 13 84 25 C84 38 72 50 50 70 Z" fill="#e01e37"/>
+                        <ellipse cx="33" cy="21" rx="5.5" ry="8.5" fill="#ffffff" opacity=".4" transform="rotate(-18 33 21)"/>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- the gold paper bird: circles once, settles on the big heart -->
+              <div id="birdPerch" style="left:190px; top:182px;">
+                <div class="birdStand">
+                  <div class="birdOrbit">
+                    <svg viewBox="0 0 48 40" width="48" height="40" aria-hidden="true">
+                      <path d="M31 23 L46 17 L44 26 L32 28 Z" fill="#c08f2e"/>
+                      <ellipse cx="24" cy="24" rx="14" ry="10" fill="#e8b65a"/>
+                      <ellipse cx="21" cy="28" rx="9" ry="5.5" fill="#f4d98c" opacity=".85"/>
+                      <path class="birdWing" d="M19 20 C9 9 3 8 1.5 11 C6 20 12 25 21 26 Z" fill="#c99634"/>
+                      <circle cx="12" cy="15" r="7" fill="#eec25e"/>
+                      <path d="M5.5 13.5 L0.5 16 L5.5 18.5 Z" fill="#b06f1e"/>
+                      <circle cx="10.5" cy="13.5" r="1.4" fill="#4a2c05"/>
+                      <path d="M21 33.5 L21 37 M27 33.5 L27 37" stroke="#b06f1e" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- loose hearts drifting up out of the garden -->
+              <div class="floater" style="left:96px; top:150px; --t:8.5s; --d:0s; --dx:10px; --dy:-12px;">
+                <svg viewBox="0 0 100 100" width="19" height="19" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#ff8fab"/></svg>
+              </div>
+              <div class="floater" style="left:150px; top:118px; --t:9.6s; --d:1.4s; --dx:-12px; --dy:-8px;">
+                <svg viewBox="0 0 100 100" width="15" height="15" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#e8b65a"/></svg>
+              </div>
+              <div class="floater" style="left:228px; top:108px; --t:8s; --d:2.6s; --dx:9px; --dy:-14px;">
+                <svg viewBox="0 0 100 100" width="22" height="22" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#ff6b81"/></svg>
+              </div>
+              <div class="floater" style="left:284px; top:148px; --t:10.4s; --d:.8s; --dx:-9px; --dy:-10px;">
+                <svg viewBox="0 0 100 100" width="16" height="16" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#ffb3c1"/></svg>
+              </div>
+              <div class="floater" style="left:118px; top:192px; --t:9.1s; --d:3.4s; --dx:12px; --dy:-9px;">
+                <svg viewBox="0 0 100 100" width="17" height="17" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#ef476f"/></svg>
+              </div>
+              <div class="floater" style="left:256px; top:196px; --t:8.8s; --d:4.5s; --dx:-11px; --dy:-13px;">
+                <svg viewBox="0 0 100 100" width="20" height="20" aria-hidden="true"><path d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z" fill="#ff8a75"/></svg>
+              </div>
+            </div><!-- /gardenWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a heart made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>this one's for you...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfHeartFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#9c1a3c"/><stop offset="1" stop-color="#6d0b26"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfHeartFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path transform="translate(224 86) scale(.22)" fill="#e8b65a" opacity=".65" d="M50 88 C20 62 6 44 6 28 C6 14 16 6 28 6 C38 6 46 12 50 20 C54 12 62 6 72 6 C84 6 94 14 94 28 C94 44 80 62 50 88 Z"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfHeartFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#c2274f"/><stop offset="1" stop-color="#8e1030"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfHeartFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var gardenWrap = document.getElementById('gardenWrap');
+  var heartGlow = document.getElementById('heartGlow');
+  var bigGlow = document.getElementById('bigGlow');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the heart plants ----------
+     Each plant's standee grows from the bed with the rise in its own
+     staggered window (data-s / data-e): the small hearts first, the
+     bigger ones after, the big center heart last of all. Growth is a
+     smoothstepped scale off the plant's bottom edge — the same grammar
+     as the Birthday Cake's candles. */
+  var plants = [], bigPlant = null, bigP = 0;
+  document.querySelectorAll('.plant').forEach(function(el){
+    var rec = {
+      stand: el.querySelector('.plantStand'),
+      s: parseFloat(el.getAttribute('data-s')),
+      e: parseFloat(el.getAttribute('data-e'))
+    };
+    plants.push(rec);
+    if (el.id === 'bigPlant') bigPlant = rec;
+  });
+
+  function applyRise(){
+    /* the garden hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    gardenWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    gardenWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<plants.length;i++){
+      var pl = plants[i];
+      var p = clamp01((rise - pl.s) / (pl.e - pl.s));
+      var g = p * p * (3 - 2 * p); /* smoothstep */
+      pl.stand.style.transform = 'rotateX(-90deg) scale(' + g.toFixed(3) + ')';
+      if (pl === bigPlant) bigP = p;
+    }
+    /* the big heart's halo blooms as it lands, and its warmth spills
+       onto the base below */
+    bigGlow.style.opacity = (bigP * 0.95).toFixed(3);
+    heartGlow.style.opacity = (rise * 0.10 + bigP * 0.50).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> garden rises heart by heart, small to big
+            (target set at 850ms); the big heart lands with its glow,
+            the bird circles once and settles, loose hearts drift up.
+     Close: garden settles first -> card folds -> envelope returns ->
+            flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
