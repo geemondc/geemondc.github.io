@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Sea Book — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #18293e 0%, #0a141f 46%, #04070c 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#d7ecff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; }
+
+  /* soft pool of light on the "table" under the book */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(64,170,255,.20) 0%, rgba(64,170,255,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfSeaSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfSeaSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the book (lies in the tilt plane) ---------- */
+  #book { position:absolute; left:85px; top:82px; width:470px; height:316px; transform-style:preserve-3d; }
+  #bookShadow {
+    position:absolute; left:-16px; top:-10px; width:502px; height:340px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(-6px);
+  }
+  #cover {
+    position:absolute; inset:0; border-radius:8px 12px 12px 8px;
+    background:linear-gradient(135deg, #8a352c 0%, #6d271f 55%, #571d16 100%);
+    box-shadow: inset 0 0 0 3px rgba(255,205,120,.35), inset 0 0 0 7px rgba(60,18,12,.55), inset 0 0 42px rgba(0,0,0,.5);
+    transform:translateZ(0px);
+  }
+  #pages {
+    position:absolute; left:9px; top:7px; width:452px; height:302px;
+    transform:translateZ(7px); border-radius:4px 8px 8px 4px; overflow:hidden;
+    background:
+      linear-gradient(90deg, rgba(120,90,40,.00) 0%, rgba(120,90,40,.16) 46%, rgba(90,60,20,.38) 50%, rgba(120,90,40,.16) 54%, rgba(120,90,40,.00) 100%),
+      linear-gradient(180deg, #f6ecd4 0%, #f1e5c8 60%, #e9dbb8 100%);
+    box-shadow: inset 0 0 26px rgba(146,110,52,.28), 0 1px 0 rgba(255,255,255,.35);
+  }
+  #pages::after { /* page edge lines on the fore-edge */
+    content:""; position:absolute; right:0; top:0; bottom:0; width:5px;
+    background:repeating-linear-gradient(180deg, rgba(120,95,50,.20) 0 2px, transparent 2px 4px);
+  }
+  .pageArt { position:absolute; top:0; bottom:0; width:50%; }
+  .pageArt.left { left:0; } .pageArt.right { right:0; }
+  #ribbon {
+    position:absolute; left:225px; top:288px; width:17px; height:104px;
+    transform:translateZ(3px) rotate(3.5deg); transform-origin:top center;
+    background:linear-gradient(90deg, #a42318, #cf3527 45%, #9c1f14);
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
+    box-shadow:2px 3px 5px rgba(0,0,0,.35);
+  }
+  /* glow the sea casts onto the pages */
+  #seaGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(72,196,255,.85) 0%, rgba(40,140,255,.38) 52%, transparent 74%);
+    filter:blur(10px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the sea volume ---------- */
+  #volume { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  .wallWrap { position:absolute; transform-style:preserve-3d; }
+  .face {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+  }
+  /* front wall: gradient water + travelling light + surface strip */
+  #faceFront {
+    background:
+      linear-gradient(180deg, rgba(190,240,255,.34) 0%, rgba(120,215,255,.20) 14%, rgba(30,120,215,.24) 55%, rgba(5,45,100,.32) 100%);
+    box-shadow: inset 0 0 0 1px rgba(170,230,255,.35), inset 0 -18px 34px rgba(3,30,70,.35), inset 0 14px 22px rgba(210,250,255,.20);
+  }
+  #faceFront .sheen {
+    position:absolute; inset:0;
+    background:linear-gradient(105deg, transparent 30%, rgba(190,240,255,.20) 46%, rgba(255,255,255,.30) 50%, rgba(190,240,255,.20) 54%, transparent 70%);
+    background-size:280% 100%; animation:pfSeaSheen 11s ease-in-out infinite;
+  }
+  @keyframes pfSeaSheen { 0% { background-position:120% 0; } 55% { background-position:-40% 0; } 100% { background-position:-40% 0; } }
+  #faceFront .surface {
+    position:absolute; left:0; right:0; bottom:0; height:16px; overflow:hidden;
+  }
+  #faceFront .surface svg { position:absolute; left:0; bottom:0; width:200%; height:16px; animation:pfSeaSurf 5.5s linear infinite; }
+  @keyframes pfSeaSurf { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+  /* back + side walls: deeper tints */
+  #faceBack {
+    background:linear-gradient(180deg, rgba(150,220,255,.20) 0%, rgba(30,110,205,.16) 55%, rgba(4,32,80,.24) 100%);
+    box-shadow: inset 0 0 0 1px rgba(150,215,255,.22);
+  }
+  #faceLeft {
+    background:linear-gradient(180deg, rgba(140,210,250,.16) 0%, rgba(20,90,180,.16) 60%, rgba(3,26,66,.24) 100%);
+    box-shadow: inset 0 0 0 1px rgba(150,215,255,.20);
+  }
+  #faceRight {
+    background:linear-gradient(180deg, rgba(170,228,255,.24) 0%, rgba(28,105,195,.15) 60%, rgba(4,30,76,.22) 100%);
+    box-shadow: inset 0 0 0 1px rgba(150,215,255,.26);
+  }
+  /* light rays slanting through the water */
+  .ray {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden; pointer-events:none;
+  }
+  .ray i {
+    position:absolute; inset:0; display:block;
+    background:linear-gradient(100deg, transparent 12%, rgba(170,235,255,.16) 30%, rgba(230,255,255,.26) 38%, rgba(170,235,255,.12) 48%, transparent 62%, rgba(170,235,255,.10) 76%, transparent 90%);
+    animation:pfSeaRay 8s ease-in-out infinite alternate;
+  }
+  @keyframes pfSeaRay { from { opacity:.55; transform:translateX(-14px); } to { opacity:1; transform:translateX(14px); } }
+  /* interior fish layers */
+  .layer { position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg); overflow:hidden; }
+  #layerBack  { background:linear-gradient(180deg, rgba(120,205,255,.10) 0%, rgba(16,80,170,.10) 60%, rgba(3,26,66,.14) 100%); }
+  #layerFront { background:linear-gradient(180deg, rgba(160,225,255,.07) 0%, rgba(20,95,185,.05) 60%, rgba(3,26,66,.08) 100%); }
+  .coral { position:absolute; left:0; right:0; top:0; transform:scaleY(-1); pointer-events:none; }
+  .weed { transform-box:fill-box; transform-origin:50% 100%; animation:pfSeaWeed 3.8s ease-in-out infinite alternate; }
+  .weed.w2 { animation-duration:4.7s; animation-delay:-1.6s; }
+  .weed.w3 { animation-duration:3.1s; animation-delay:-.8s; }
+  @keyframes pfSeaWeed { from { transform:rotate(-3.6deg); } to { transform:rotate(3.6deg); } }
+  .fish { position:absolute; left:0; top:0; will-change:transform; pointer-events:none; }
+  .fish .wig { animation:pfSeaWig .46s ease-in-out infinite alternate; transform-origin:62% 50%; }
+  @keyframes pfSeaWig { from { transform:rotate(-3.4deg); } to { transform:rotate(3.4deg); } }
+  .bubble {
+    position:absolute; top:6px; border-radius:50%;
+    background:radial-gradient(circle at 32% 30%, rgba(255,255,255,.95), rgba(190,235,255,.35) 60%, rgba(190,235,255,.08));
+    box-shadow: inset 0 0 2px rgba(255,255,255,.6);
+    animation:pfSeaBubble linear infinite; opacity:0;
+  }
+  @keyframes pfSeaBubble {
+    0% { transform:translateY(0); opacity:0; }
+    12% { opacity:.85; }
+    88% { opacity:.7; }
+    100% { transform:translateY(calc(var(--H, 190px) - 22px)); opacity:0; }
+  }
+  /* translucent floor of the sea — tints everything seen through the volume */
+  #seafloor {
+    position:absolute; left:0; top:0; width:380px; height:252px; border-radius:3px;
+    background:linear-gradient(155deg, rgba(16,90,160,.40) 0%, rgba(8,55,115,.50) 55%, rgba(4,34,80,.58) 100%);
+    box-shadow: inset 0 0 44px rgba(2,20,50,.45);
+  }
+  /* the wavy top surface of the sea */
+  #topface {
+    position:absolute; left:0; top:0; width:380px; height:252px; overflow:hidden; border-radius:3px;
+    background:linear-gradient(160deg, rgba(140,220,255,.34) 0%, rgba(64,170,245,.26) 55%, rgba(30,120,220,.30) 100%);
+    box-shadow: inset 0 0 0 1px rgba(190,240,255,.45), inset 0 0 34px rgba(220,250,255,.30);
+  }
+  #topface svg { position:absolute; inset:0; width:100%; height:100%; }
+  #topface .wmove { animation:pfSeaTop 7s linear infinite; }
+  #topface .wmove2 { animation:pfSeaTop 11s linear infinite reverse; }
+  @keyframes pfSeaTop { from { transform:translateX(0); } to { transform:translateX(-120px); } }
+
+  /* ---------- words & furniture ---------- */
+  #line {
+    position:absolute; left:0; right:0; top:424px; text-align:center;
+    font-size:21px; font-style:italic; letter-spacing:.14em; color:#b9dcf7;
+    text-shadow:0 2px 14px rgba(0,0,0,.8); pointer-events:none;
+  }
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(10,26,44,.72); border:1px solid rgba(150,215,255,.55);
+    color:#d9f1ff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfSeaPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfSeaPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    #faceFront .sheen, .ray i { animation:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="book">
+            <div id="bookShadow"></div>
+            <div id="cover"></div>
+            <div id="pages">
+              <div class="pageArt left">
+                <!-- constellation + wave line drawing, in ink on the left page -->
+                <svg width="226" height="302" viewBox="0 0 226 302">
+                  <g fill="none" stroke="#8a6f3e" stroke-width="1.1" opacity="0.75">
+                    <polyline points="38,66 74,50 108,62 132,40 168,52 188,30" stroke-dasharray="3 3"/>
+                    <polyline points="52,120 88,104 120,116" stroke-dasharray="3 3"/>
+                  </g>
+                  <g fill="#a8842f">
+                    <circle cx="38" cy="66" r="2.6"/><circle cx="74" cy="50" r="1.8"/><circle cx="108" cy="62" r="2.2"/>
+                    <circle cx="132" cy="40" r="1.6"/><circle cx="168" cy="52" r="2.4"/><circle cx="188" cy="30" r="1.7"/>
+                    <circle cx="52" cy="120" r="1.8"/><circle cx="88" cy="104" r="2.3"/><circle cx="120" cy="116" r="1.6"/>
+                    <circle cx="160" cy="128" r="1.5" opacity=".7"/><circle cx="30" cy="160" r="1.4" opacity=".6"/>
+                    <circle cx="196" cy="96" r="1.4" opacity=".6"/><circle cx="70" cy="196" r="1.3" opacity=".5"/>
+                  </g>
+                  <g fill="none" stroke="#7d94a8" stroke-width="1.6" opacity="0.8" stroke-linecap="round">
+                    <path d="M22 238 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0"/>
+                    <path d="M22 258 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0" opacity=".65"/>
+                    <path d="M22 278 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0" opacity=".45"/>
+                  </g>
+                  <path d="M170 190 q10 -14 24 -10 q-3 12 -14 16 q-8 3 -10 -6z" fill="none" stroke="#8a6f3e" stroke-width="1.2" opacity=".7"/>
+                </svg>
+              </div>
+              <div class="pageArt right">
+                <!-- faint written lines + a small shell on the right page -->
+                <svg width="226" height="302" viewBox="0 0 226 302">
+                  <g fill="#b49b62" opacity="0.5">
+                    <rect x="34" y="52" width="150" height="3" rx="1.5"/><rect x="34" y="68" width="168" height="3" rx="1.5"/>
+                    <rect x="34" y="84" width="138" height="3" rx="1.5"/><rect x="34" y="106" width="160" height="3" rx="1.5"/>
+                    <rect x="34" y="122" width="146" height="3" rx="1.5"/><rect x="34" y="138" width="166" height="3" rx="1.5"/>
+                    <rect x="34" y="160" width="128" height="3" rx="1.5"/><rect x="34" y="176" width="152" height="3" rx="1.5"/>
+                  </g>
+                  <g transform="translate(158,224)" fill="none" stroke="#8a6f3e" stroke-width="1.3" opacity=".8">
+                    <path d="M0 26 a24 24 0 1 1 48 0 z" fill="rgba(200,160,80,.12)"/>
+                    <path d="M24 2 v24 M10 8 l8 18 M38 8 l-8 18 M2 20 h44"/>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <div id="ribbon"></div>
+            <div id="seaGlow"></div>
+
+            <div id="volume">
+              <div id="seafloor"></div>
+              <!-- back wall: wrapper on the back edge, rotated 180 in-plane -->
+              <div class="wallWrap" style="left:380px; top:0; transform:rotate(180deg);">
+                <div class="face" id="faceBack" style="width:380px;"></div>
+              </div>
+              <!-- deep interior layer (smaller, dimmer life) -->
+              <div class="wallWrap" style="left:10px; top:74px;">
+                <div class="layer" id="layerBack" style="width:360px;">
+                  <svg class="coral" width="360" height="52" viewBox="0 0 360 52" preserveAspectRatio="none">
+                    <g fill="none" stroke-linecap="round">
+                      <path d="M28 52 v-16 m0 -6 v-8 m0 8 l-8 -8 m8 4 l8 -9" stroke="#c75b8f" stroke-width="4" opacity=".75"/>
+                      <path d="M330 52 v-13 m0 -5 v-9 m0 7 l-7 -7 m7 3 l7 -8" stroke="#c78a4a" stroke-width="4" opacity=".75"/>
+                      <path class="weed w2" d="M70 52 q-5 -18 2 -34 q5 -12 -1 -20" stroke="#3f9e63" stroke-width="4"/>
+                      <path class="weed w3" d="M292 52 q6 -16 -1 -30 q-5 -11 2 -20" stroke="#35795a" stroke-width="4"/>
+                    </g>
+                    <g fill="#e8a2c8" opacity=".8"><circle cx="20" cy="28" r="2.2"/><circle cx="36" cy="22" r="2.2"/><circle cx="330" cy="26" r="2.2"/></g>
+                  </svg>
+                  <div class="fishHost"></div>
+                </div>
+              </div>
+              <!-- light rays -->
+              <div class="wallWrap" style="left:6px; top:118px;">
+                <div class="ray" id="ray1" style="width:368px;"><i></i></div>
+              </div>
+              <!-- front interior layer (the main life) -->
+              <div class="wallWrap" style="left:8px; top:196px;">
+                <div class="layer" id="layerFront" style="width:364px;">
+                  <svg class="coral" width="364" height="64" viewBox="0 0 364 64" preserveAspectRatio="none">
+                    <g fill="none" stroke-linecap="round">
+                      <path d="M36 64 v-20 m0 -8 v-12 m0 10 l-11 -11 m11 6 l11 -12 m-11 22 l-13 -6 m13 2 l14 -7" stroke="#ff7e5f" stroke-width="5.5"/>
+                      <path d="M120 64 v-13 m0 -6 v-10 m0 8 l-8 -9 m8 5 l9 -10" stroke="#ff5da2" stroke-width="5"/>
+                      <path d="M318 64 v-17 m0 -7 v-11 m0 9 l-10 -10 m10 5 l10 -11" stroke="#b388ff" stroke-width="5"/>
+                      <path d="M238 64 v-11 m0 -5 v-8 m0 6 l-7 -7 m7 3 l7 -8" stroke="#ffb35c" stroke-width="4.5"/>
+                      <path class="weed" d="M84 64 q-7 -22 2 -42 q6 -14 -2 -24" stroke="#2ee6a8" stroke-width="5" opacity=".85"/>
+                      <path class="weed w2" d="M168 64 q7 -19 -1 -38 q-6 -13 2 -22" stroke="#35c48d" stroke-width="5" opacity=".85"/>
+                      <path class="weed w3" d="M282 64 q-6 -18 2 -34 q5 -12 -1 -20" stroke="#2ee6a8" stroke-width="4.5" opacity=".8"/>
+                    </g>
+                    <g>
+                      <circle cx="25" cy="34" r="2.6" fill="#ffc4a8"/><circle cx="47" cy="26" r="2.6" fill="#ffc4a8"/>
+                      <circle cx="120" cy="30" r="2.4" fill="#ffc2dc"/><circle cx="318" cy="32" r="2.4" fill="#d9c2ff"/>
+                      <path d="M196 58 l3.4 6.6 7.3 1 -5.3 5.1 1.3 7.2 -6.7 -3.5 -6.6 3.5 1.3 -7.2 -5.3 -5.1 7.3 -1z" fill="#ffd166" transform="translate(-7,-14) scale(.9)"/>
+                    </g>
+                  </svg>
+                  <div class="fishHost"></div>
+                  <div class="bubbles"></div>
+                </div>
+              </div>
+              <!-- side walls -->
+              <div class="wallWrap" style="left:0; top:252px; transform:rotate(-90deg);">
+                <div class="face" id="faceLeft" style="width:252px;"></div>
+              </div>
+              <div class="wallWrap" style="left:380px; top:0; transform:rotate(90deg);">
+                <div class="face" id="faceRight" style="width:252px;"></div>
+              </div>
+              <!-- front wall -->
+              <div class="wallWrap" style="left:0; top:252px;">
+                <div class="face" id="faceFront" style="width:380px;">
+                  <div class="sheen"></div>
+                  <div class="surface">
+                    <svg width="760" height="16" viewBox="0 0 760 16" preserveAspectRatio="none">
+                      <path d="M0 10 q23 -9 47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 V16 H0 Z" fill="rgba(215,248,255,.55)"/>
+                      <path d="M0 12 q23 -7 47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0 t47 0" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.6"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <!-- the wavy top of the sea -->
+              <div id="topface">
+                <svg width="380" height="252" viewBox="0 0 380 252" preserveAspectRatio="none">
+                  <g class="wmove" fill="none" stroke="rgba(225,250,255,.5)" stroke-width="2">
+                    <path d="M-10 40 q30 -14 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+                    <path d="M-10 96 q30 -14 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" opacity=".7"/>
+                    <path d="M-10 152 q30 -14 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" opacity=".5"/>
+                    <path d="M-10 208 q30 -14 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" opacity=".35"/>
+                  </g>
+                  <g class="wmove2" fill="none" stroke="rgba(160,225,255,.4)" stroke-width="1.6">
+                    <path d="M-10 68 q30 -12 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
+                    <path d="M-10 180 q30 -12 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0" opacity=".6"/>
+                  </g>
+                </svg>
+              </div>
+            </div><!-- /volume -->
+          </div><!-- /book -->
+        </div>
+      </div>
+    </div>
+    <div id="line">there is a sea in this book.</div>
+    <div id="pill">TAP THE BOOK</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var H_MIN = 9, H_MAX = 192;
+  var rise = 0, target = 0, opened = false;
+  var volume = document.getElementById('volume');
+  var topface = document.getElementById('topface');
+  var seafloor = document.getElementById('seafloor');
+  seafloor.style.transform = 'translateZ(8px)';
+  var seaGlow = document.getElementById('seaGlow');
+  var pill = document.getElementById('pill');
+  var faces = ['faceFront','faceBack','faceLeft','faceRight','layerBack','layerFront','ray1'].map(function(id){ return document.getElementById(id); });
+
+  function applyRise(){
+    var H = H_MIN + (H_MAX - H_MIN) * rise;
+    volume.style.setProperty('--H', H + 'px');
+    for (var i=0;i<faces.length;i++){ faces[i].style.height = H + 'px'; }
+    topface.style.transform = 'translateZ(' + H + 'px)';
+    topface.style.opacity = (0.72 + 0.28 * rise).toFixed(3);
+    seaGlow.style.opacity = (rise * 0.55).toFixed(3);
+    var lf = document.getElementById('layerFront'), lb = document.getElementById('layerBack');
+    lf.style.opacity = Math.max(0, Math.min(1, (rise - 0.18) / 0.6)).toFixed(3);
+    lb.style.opacity = Math.max(0, Math.min(1, (rise - 0.10) / 0.6)).toFixed(3);
+    return H;
+  }
+
+  /* ---------- fish ---------- */
+  function fishSVG(body, belly){
+    return '<svg viewBox="0 0 64 34" width="100%" height="100%">'
+      + '<g class="wig">'
+      + '<path d="M14 17 L2 7 Q6 17 2 27 Z" fill="' + body + '" opacity=".82"/>'
+      + '<path d="M10 17 Q26 3 44 6 Q60 9 62 17 Q60 25 44 28 Q26 31 10 17 Z" fill="' + body + '"/>'
+      + '<path d="M16 20 Q30 27 46 25 Q34 30 22 26 Q14 23 16 20Z" fill="' + belly + '" opacity=".55"/>'
+      + '<path d="M30 6 Q36 -1 43 4 Q36 7 30 6Z" fill="' + body + '" opacity=".8"/>'
+      + '<circle cx="52" cy="14" r="2.4" fill="#06263f"/>'
+      + '<circle cx="52.8" cy="13.2" r=".9" fill="#fff"/>'
+      + '</g></svg>';
+  }
+  function turtleSVG(){
+    return '<svg viewBox="0 0 76 36" width="100%" height="100%">'
+      + '<g class="wig">'
+      + '<ellipse cx="36" cy="18" rx="24" ry="12.5" fill="#3f9e63"/>'
+      + '<ellipse cx="36" cy="17" rx="17" ry="8.6" fill="#57b877"/>'
+      + '<path d="M24 10 q12 -5 24 0 M22 18 h28 M26 26 q10 4 20 0" stroke="#2c7a49" stroke-width="1.6" fill="none" opacity=".7"/>'
+      + '<circle cx="66" cy="15" r="5.4" fill="#57b877"/>'
+      + '<path d="M14 8 q-7 -4 -10 1 q5 5 11 3z M14 28 q-7 4 -10 -1 q5 -5 11 -3z M56 6 q2 -6 8 -5 q0 6 -6 8z M56 30 q2 6 8 5 q0 -6 -6 -8z" fill="#3f9e63"/>'
+      + '<circle cx="67.6" cy="13.6" r="1.1" fill="#06263f"/>'
+      + '</g></svg>';
+  }
+  var fishes = [];
+  function addFish(hostId, opts){
+    var host = document.querySelector('#' + hostId + ' .fishHost');
+    var el = document.createElement('div');
+    el.className = 'fish';
+    el.style.width = opts.size + 'px';
+    el.style.height = (opts.size * (opts.turtle ? 36/76 : 34/64)) + 'px';
+    el.innerHTML = opts.turtle ? turtleSVG() : fishSVG(opts.body, opts.belly);
+    if (opts.dim) el.style.opacity = opts.dim;
+    host.appendChild(el);
+    fishes.push({
+      el: el, w: host.parentNode.clientWidth || 360,
+      x: opts.x, y: opts.y, dir: opts.dir, speed: opts.speed,
+      size: opts.size, h: opts.size * (opts.turtle ? 36/76 : 34/64),
+      phase: Math.random() * 6.28, bob: 1.4 + Math.random() * 1.6
+    });
+  }
+  addFish('layerFront', { body:'#ff9f43', belly:'#ffd9a0', size:58, x:0.16, y:0.60, dir: 1, speed:0.052 });
+  addFish('layerFront', { body:'#ff5da2', belly:'#ffc2dc', size:46, x:0.62, y:0.38, dir:-1, speed:0.064 });
+  addFish('layerFront', { body:'#ffd166', belly:'#ffedb5', size:40, x:0.38, y:0.76, dir: 1, speed:0.075 });
+  addFish('layerFront', { body:'#4dd8ff', belly:'#c8f4ff', size:36, x:0.80, y:0.66, dir:-1, speed:0.082 });
+  addFish('layerBack',  { body:'#b388ff', belly:'#e2d2ff', size:34, x:0.55, y:0.52, dir: 1, speed:0.034, dim:.8 });
+  addFish('layerBack',  { body:'#2ee6a8', belly:'#baffdf', size:30, x:0.22, y:0.30, dir:-1, speed:0.040, dim:.8 });
+  addFish('layerBack',  { turtle:true, size:66, x:0.68, y:0.74, dir:-1, speed:0.020, dim:.92 });
+
+  /* bubbles in the front layer */
+  var bubHost = document.querySelector('#layerFront .bubbles');
+  for (var b=0; b<9; b++){
+    var s = document.createElement('div');
+    s.className = 'bubble';
+    var sz = 3 + Math.random() * 6;
+    s.style.width = sz + 'px'; s.style.height = sz + 'px';
+    s.style.left = (4 + Math.random() * 90) + '%';
+    s.style.animationDuration = (4.5 + Math.random() * 5) + 's';
+    s.style.animationDelay = (-Math.random() * 8) + 's';
+    bubHost.appendChild(s);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    var H = applyRise();
+    var t = now / 1000;
+    for (var i=0;i<fishes.length;i++){
+      var f = fishes[i];
+      f.x += f.dir * f.speed * dt;
+      if (f.x > 0.97){ f.x = 0.97; f.dir = -1; }
+      if (f.x < 0.03){ f.x = 0.03; f.dir =  1; }
+      var px = f.x * f.w - f.size / 2;
+      var py = (1 - f.y) * H - f.h / 2 + Math.sin(t * f.bob + f.phase) * 3.2;
+      var sway = Math.sin(t * f.bob + f.phase) * 3.5;
+      f.el.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px) scaleX(' + f.dir + ') rotate(' + sway.toFixed(2) + 'deg)';
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ---------- */
+  function toggle(){
+    opened = !opened;
+    target = opened ? 1 : 0;
+    pill.style.opacity = opened ? '0' : '1';
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ---------- */
+  function fit(){
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / 500);
+    document.getElementById('world').style.transform = 'scale(' + s.toFixed(3) + ')';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen opens instantly, #mid half-rises */
+  if (location.hash === '#risen'){ opened = true; target = 1; rise = 1; pill.style.opacity = '0'; applyRise(); }
+  if (location.hash === '#mid'){ target = 0.52; rise = 0.52; applyRise(); }
+})();
+</script>
+</body>
+</html>
