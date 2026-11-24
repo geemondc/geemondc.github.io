@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Friends Cube — a paperfold proof</title>
+<link rel="preload" as="image" href="front.jpg">
+<link rel="preload" as="image" href="right.jpg">
+<link rel="preload" as="image" href="back.jpg">
+<link rel="preload" as="image" href="left.jpg">
+<link rel="preload" as="image" href="top.jpg">
+<link rel="preload" as="image" href="bottom.jpg">
+<style>
+  :root{
+    --s: min(62vmin, 340px);
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    background:#000;
+    color:#fff;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow:hidden;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+    user-select:none;
+    -webkit-user-select:none;
+    cursor:grab;
+    touch-action:none;
+  }
+  body.dragging{ cursor:grabbing; }
+  /* faint studio ambience in the void */
+  .void-glow{
+    position:fixed; inset:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 46% at 50% 62%, rgba(70,90,160,.16), transparent 70%),
+      radial-gradient(ellipse 120% 90% at 50% 45%, rgba(24,26,40,.55), transparent 75%);
+  }
+  .stage{
+    position:relative;
+    width:var(--s); height:var(--s);
+    perspective: calc(var(--s) * 3.4);
+    perspective-origin: 50% 42%;
+    opacity:0;
+    transition: opacity 1.1s ease .15s;
+    touch-action:none;
+  }
+  body.ready .stage{ opacity:1; }
+  .float{
+    position:absolute; inset:0;
+    transform-style:preserve-3d;
+    animation: cubeBob 7.5s ease-in-out infinite;
+  }
+  .cube{
+    position:absolute; inset:0;
+    transform-style:preserve-3d;
+    transform: rotateX(-17deg) rotateY(-24deg);
+    will-change: transform;
+  }
+  .face{
+    position:absolute; inset:0;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.55), inset 0 0 calc(var(--s)*.14) rgba(0,0,0,.28);
+    overflow:hidden;
+  }
+  .face .sheen, .face .shimmer{
+    position:absolute; inset:-30%;
+    pointer-events:none;
+  }
+  /* starry face: a slow drift of light across the swirls */
+  .f-front .sheen{
+    background: radial-gradient(circle at 30% 30%, rgba(255,236,180,.34), rgba(255,236,180,0) 46%);
+    mix-blend-mode:soft-light;
+    animation: lightDrift 11s ease-in-out infinite alternate;
+  }
+  /* underwater face: a slow shimmer band through the blue */
+  .f-right .shimmer{
+    background: linear-gradient(115deg, transparent 32%, rgba(190,235,255,.20) 48%, rgba(255,255,255,.30) 52%, rgba(190,235,255,.20) 56%, transparent 72%);
+    mix-blend-mode:soft-light;
+    animation: waterShimmer 9s ease-in-out infinite;
+  }
+  .f-front { transform: rotateY(0deg)    translateZ(calc(var(--s)/2)); background-image:url('front.jpg'); }
+  .f-right { transform: rotateY(90deg)   translateZ(calc(var(--s)/2)); background-image:url('right.jpg'); }
+  .f-back  { transform: rotateY(180deg)  translateZ(calc(var(--s)/2)); background-image:url('back.jpg'); }
+  .f-left  { transform: rotateY(-90deg)  translateZ(calc(var(--s)/2)); background-image:url('left.jpg'); }
+  .f-top   { transform: rotateX(90deg)   translateZ(calc(var(--s)/2)); background-image:url('top.jpg'); }
+  .f-bottom{
+    transform: rotateX(-90deg) translateZ(calc(var(--s)/2));
+    background-image:url('bottom.jpg');
+  }
+  /* dark paper core: any hairline seam reads as the cube's edge, never the void */
+  .core{ position:absolute; inset:0; transform-style:preserve-3d; transform:scale(.994); }
+  .core .cf{
+    position:absolute; inset:0; background:#0a0a10;
+    backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  }
+  .cf-front { transform: rotateY(0deg)   translateZ(calc(var(--s)/2)); }
+  .cf-right { transform: rotateY(90deg)  translateZ(calc(var(--s)/2)); }
+  .cf-back  { transform: rotateY(180deg) translateZ(calc(var(--s)/2)); }
+  .cf-left  { transform: rotateY(-90deg) translateZ(calc(var(--s)/2)); }
+  .cf-top   { transform: rotateX(90deg)  translateZ(calc(var(--s)/2)); }
+  .cf-bottom{ transform: rotateX(-90deg) translateZ(calc(var(--s)/2)); }
+  /* soft studio glow pooling under the cube */
+  .floor-glow{
+    position:absolute;
+    left:50%; top:calc(100% + var(--s)*.16);
+    width:calc(var(--s)*1.25); height:calc(var(--s)*.30);
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(150,170,255,.30), rgba(120,140,220,.12) 45%, transparent 72%);
+    filter:blur(6px);
+    border-radius:50%;
+    animation: glowPulse 7.5s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes cubeBob{
+    0%,100%{ transform: translateY(calc(var(--s)*-.018)); }
+    50%    { transform: translateY(calc(var(--s)* .022)); }
+  }
+  @keyframes glowPulse{
+    0%,100%{ transform:translateX(-50%) scaleX(1.04); opacity:.85; }
+    50%    { transform:translateX(-50%) scaleX(.94);  opacity:.6; }
+  }
+  @keyframes lightDrift{
+    from{ transform: translate(-7%, -4%); }
+    to  { transform: translate(9%, 6%); }
+  }
+  @keyframes waterShimmer{
+    0%,100%{ transform: translateX(-9%); opacity:.55; }
+    50%    { transform: translateX(9%);  opacity:1; }
+  }
+  .caption{
+    margin-top: calc(var(--s)*.30);
+    text-align:center;
+    opacity:0;
+    transition: opacity 1.2s ease .5s;
+  }
+  body.ready .caption{ opacity:1; }
+  .line{
+    font-size: clamp(17px, 2.6vmin, 22px);
+    font-style: italic;
+    letter-spacing:.14em;
+    color: rgba(255,255,255,.78);
+    text-shadow: 0 1px 14px rgba(0,0,0,.9);
+  }
+  .hint{
+    margin-top: 10px;
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing:.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.30);
+  }
+  .door{
+    margin-top: 14px;
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 12.5px;
+    letter-spacing:.06em;
+  }
+  .door a{
+    color: rgba(243,205,138,.72);
+    text-decoration:none;
+    border-bottom: 1px solid rgba(243,205,138,.28);
+    padding-bottom: 2px;
+  }
+  /* spin-mode control: three quiet pills + the auto-speed slider */
+  .modes{
+    margin-top: 14px;
+    display:flex; gap:8px; justify-content:center;
+  }
+  .modes button{
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing:.16em;
+    color: rgba(255,255,255,.55);
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .modes button.active{
+    color: #f3cd8a;
+    border-color: rgba(243,205,138,.6);
+    background: rgba(243,205,138,.13);
+  }
+  .speed{
+    margin-top: 12px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 10.5px;
+    letter-spacing:.18em;
+    color: rgba(255,255,255,.38);
+    transition: opacity .3s ease;
+  }
+  .speed.off{ opacity:.28; }
+  .speed input[type=range]{
+    width: 148px;
+    accent-color: #f3cd8a;
+    cursor: pointer;
+  }
+  .speed input[type=range]:disabled{ cursor: default; }
+  /* manual + stop: the studio float settles too — only the hand moves the cube */
+  body.mode-manual .float, body.mode-stop .float,
+  body.mode-manual .floor-glow, body.mode-stop .floor-glow{ animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce){
+    .float, .floor-glow, .f-front .sheen, .f-right .shimmer{ animation:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="void-glow"></div>
+
+  <div class="stage" id="stage" aria-label="A cube you can drag to spin, or flick to send it whirling. Each face is a painting of the eight friends: trimming the Christmas tree, building a snowman, ice skating, an Easter egg hunt, Halloween on the porch, and baking Christmas cookies.">
+    <div class="float">
+      <div class="cube" id="cube">
+        <div class="core">
+          <div class="cf cf-front"></div><div class="cf cf-right"></div>
+          <div class="cf cf-back"></div><div class="cf cf-left"></div>
+          <div class="cf cf-top"></div><div class="cf cf-bottom"></div>
+        </div>
+        <div class="face f-front"><div class="sheen"></div></div>
+        <div class="face f-right"><div class="shimmer"></div></div>
+        <div class="face f-back"></div>
+        <div class="face f-left"></div>
+        <div class="face f-top"></div>
+        <div class="face f-bottom"></div>
+      </div>
+    </div>
+    <div class="floor-glow"></div>
+  </div>
+
+  <div class="caption">
+    <div class="line">six photos, one cube.</div>
+    <div class="hint">drag to spin &middot; flick it fast</div>
+    <div class="modes" role="group" aria-label="Spin mode">
+      <button type="button" data-mode="auto" class="active">Auto Spin</button>
+      <button type="button" data-mode="manual">Manual</button>
+      <button type="button" data-mode="stop">Stop</button>
+    </div>
+    <div class="speed" id="speedRow">
+      <span>slow</span>
+      <input type="range" id="speed" min="0" max="100" value="50" aria-label="Auto spin speed">
+      <span>fast</span>
+    </div>
+    <div class="door"><a href="https://geemondc.github.io/made-for-you-cube/">Your photos on a cube &mdash; made for you &middot; $5</a></div>
+  </div>
+
+<script>
+  (function(){
+    function ready(){ document.body.classList.add('ready'); }
+    window.addEventListener('load', ready);
+    setTimeout(ready, 1600);
+
+    var cube = document.getElementById('cube');
+    var stage = document.getElementById('stage');
+    var modeBtns = document.querySelectorAll('.modes button');
+    var speedRow = document.getElementById('speedRow');
+    var speedInput = document.getElementById('speed');
+    var mode = 'auto';             /* 'auto' | 'manual' | 'stop' */
+    var speedMul = 1;              /* auto-turn rate multiplier from the slider */
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ---- rotation state (degrees) ---- */
+    var REST_X = -17;              /* resting tilt, as shipped */
+    var IDLE = 360 / 52;           /* the original slow turn: one revolution per 52s */
+    var X_MIN = -50, X_MAX = 15;   /* tilt clamp: never flips into unreadability */
+    var SENS_Y = 0.45;             /* deg of spin per px dragged horizontally */
+    var SENS_X = 0.35;             /* deg of tilt per px dragged vertically */
+    var TAP_SLOP = 6;              /* px of movement under which a press is a tap */
+    var VEL_CAP = 900;             /* deg/s, fastest flick we honour */
+
+    var rotY = -24, rotX = REST_X;
+    var momY = 0, momX = 0;        /* momentum velocity (deg/s) beyond the idle turn */
+    var dragging = false, moved = false;
+    var lastX = 0, lastY = 0, downX = 0, downY = 0;
+    var trail = [];                /* recent {t, rotY, rotX} samples for release velocity */
+
+    function clampX(v){ return Math.max(X_MIN, Math.min(X_MAX, v)); }
+    function clampV(v){ return Math.max(-VEL_CAP, Math.min(VEL_CAP, v)); }
+    function paused(){ return document.body.classList.contains('paused'); }
+    function apply(){
+      cube.style.transform = 'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
+    }
+
+    /* ---- main loop: idle turn + momentum with smooth friction, tilt settles home ---- */
+    var prevT = null;
+    function frame(now){
+      if(prevT === null) prevT = now;
+      var dt = Math.min(0.05, (now - prevT) / 1000);
+      prevT = now;
+      if(!dragging && dt > 0){
+        if(mode !== 'stop' && (momY !== 0 || momX !== 0)){
+          rotY += momY * dt;
+          rotX = clampX(rotX + momX * dt);
+          var decay = Math.exp(-dt / 0.85);   /* friction: eases out over a few seconds */
+          momY *= decay; momX *= decay;
+          if(Math.abs(momY) < 2) momY = 0;
+          if(Math.abs(momX) < 2) momX = 0;
+        }
+        if(mode === 'auto' && !paused() && !reduced) rotY += IDLE * speedMul * dt;
+        /* tilt drifts gently back to its resting angle once the hand lets go */
+        if(mode === 'auto' && Math.abs(momX) < 30) rotX += (REST_X - rotX) * (1 - Math.exp(-dt / 1.4));
+      }
+      apply();
+      requestAnimationFrame(frame);
+    }
+    apply();
+    requestAnimationFrame(frame);
+
+    /* ---- pointer: drag to turn, flick to spin, tap to pause ---- */
+    stage.addEventListener('pointerdown', function(e){
+      if(mode === 'stop') return;   /* frozen dead: the hand does nothing */
+      dragging = true; moved = false;
+      downX = lastX = e.clientX; downY = lastY = e.clientY;
+      momY = 0; momX = 0;
+      trail = [{ t: performance.now(), rotY: rotY, rotX: rotX }];
+      document.body.classList.add('dragging');
+      try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+      e.preventDefault();
+    });
+    stage.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      if(!moved && Math.hypot(e.clientX - downX, e.clientY - downY) < TAP_SLOP) return;
+      moved = true;
+      rotY -= dx * SENS_Y;   /* grab feel: the face follows the finger */
+      rotX = clampX(rotX - dy * SENS_X);
+      var now = performance.now();
+      trail.push({ t: now, rotY: rotY, rotX: rotX });
+      while(trail.length > 2 && now - trail[0].t > 120) trail.shift();
+      apply();
+    });
+    function release(){
+      if(!dragging) return;
+      dragging = false;
+      document.body.classList.remove('dragging');
+      if(!moved){
+        document.body.classList.toggle('paused');   /* a clean tap still pauses / resumes */
+        return;
+      }
+      if(reduced) return;                            /* reduced motion: no momentum */
+      var now = performance.now();
+      while(trail.length && now - trail[0].t > 120) trail.shift();
+      if(trail.length < 2) return;
+      var first = trail[0], last = trail[trail.length - 1];
+      if(now - last.t > 80) return;                  /* hand had already stopped: no flick */
+      var span = (last.t - first.t) / 1000;
+      if(span <= 0) return;
+      var vY = (last.rotY - first.rotY) / span;
+      var vX = (last.rotX - first.rotX) / span;
+      /* keep spinning at the speed of the hand, above the idle turn it returns to */
+      momY = clampV(vY - ((mode === 'auto' && !paused() && !reduced) ? IDLE * speedMul : 0));
+      momX = clampV(vX);
+    }
+    stage.addEventListener('pointerup', release);
+    stage.addEventListener('pointercancel', release);
+
+    document.addEventListener('keydown', function(e){
+      if(e.code === 'Space'){ e.preventDefault(); document.body.classList.toggle('paused'); }
+    });
+
+    /* ---- spin modes: instant, clean mid-motion ---- */
+    function setMode(m){
+      mode = m;
+      if(m === 'stop'){
+        momY = 0; momX = 0;                 /* a flick halts where it is */
+        dragging = false;
+        document.body.classList.remove('dragging');
+      }
+      for(var i = 0; i < modeBtns.length; i++){
+        modeBtns[i].classList.toggle('active', modeBtns[i].getAttribute('data-mode') === m);
+      }
+      document.body.classList.remove('mode-auto', 'mode-manual', 'mode-stop');
+      document.body.classList.add('mode-' + m);
+      var auto = (m === 'auto');
+      speedInput.disabled = !auto;          /* the slider lives only in Auto Spin */
+      speedRow.classList.toggle('off', !auto);
+    }
+    for(var b = 0; b < modeBtns.length; b++){
+      modeBtns[b].addEventListener('click', function(){
+        setMode(this.getAttribute('data-mode'));
+      });
+    }
+    speedInput.addEventListener('input', function(){
+      /* slider 0..100 -> 1/3x .. 3x the gentle turn, 1x at the middle, live */
+      speedMul = Math.pow(3, (parseFloat(speedInput.value) - 50) / 50);
+    });
+    setMode('auto');
+
+    /* test handle (invisible in normal use) */
+    window.__cube = {
+      get rotY(){ return rotY; }, get rotX(){ return rotX; },
+      get momY(){ return momY; }, get dragging(){ return dragging; },
+      get paused(){ return paused(); },
+      get mode(){ return mode; }, get speedMul(){ return speedMul; },
+      setMode: setMode,
+      pose: function(x, y){ rotX = x; rotY = y; momY = 0; momX = 0; apply(); }
+    };
+  })();
+</script>
+</body>
+</html>
