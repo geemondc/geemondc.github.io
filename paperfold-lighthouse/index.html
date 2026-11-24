@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Lighthouse — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #123441 0%, #0a2230 46%, #04121c 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#eaf6f8;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of moonlight on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(96,178,199,.20) 0%, rgba(255,214,130,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfLightSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfLightSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #20505f 0%, #143743 55%, #0d2833 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm lamplight the lighthouse casts onto the base */
+  #lampGlow {
+    position:absolute; left:40px; top:26px; width:350px; height:270px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,205,100,.8) 0%, rgba(255,170,70,.3) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #eef7f5 0%, #d7e8e4 58%, #b9d2cc 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(30,90,105,.22);
+  }
+  /* the face that greets you once the card stands — night-coast backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #0d2c49 0%, #082038 46%, #061a2e 78%, #04101f 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(2,10,20,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  .cardBack .tw { animation:pfLightTwinkle 2.8s ease-in-out infinite alternate; }
+  @keyframes pfLightTwinkle { from { opacity:.2; } to { opacity:1; } }
+  .wvA { animation:pfLightWaveA 5.5s ease-in-out infinite alternate; }
+  .wvB { animation:pfLightWaveB 7.5s ease-in-out infinite alternate; }
+  @keyframes pfLightWaveA { from { transform:translateX(-9px); } to { transform:translateX(9px); } }
+  @keyframes pfLightWaveB { from { transform:translateX(11px); } to { transform:translateX(-11px); } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #27606f 0%, #17424f 52%, #0f2f3a 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfLightFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfLightFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfLightFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfLightFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the scene (rises out of the base) ---------- */
+  #sceneWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+
+  /* the sea: a flat plane on the base in front of the backdrop, its wave
+     stripes forever rolling in layers */
+  #seaPlane {
+    position:absolute; left:6px; top:148px; width:368px; height:96px;
+    transform:translateZ(2px); border-radius:16px; overflow:hidden;
+    box-shadow: inset 0 0 0 2px rgba(140,205,220,.14), inset 0 10px 22px rgba(0,0,0,.35);
+  }
+  #seaPlane svg { width:100%; height:100%; display:block; }
+
+  /* the rocky shore: layered paper rocks the lighthouse stands on */
+  #rocks { position:absolute; left:42px; top:88px; width:270px; height:130px; transform-style:preserve-3d; opacity:0; }
+  #rocks svg { width:100%; height:100%; display:block; overflow:visible; }
+  /* foam scallops lapping the rocks — the frosting-drip trick, gone surf */
+  .foam {
+    position:absolute; height:13px; pointer-events:none; opacity:.8;
+    background-image:radial-gradient(circle at 50% 100%, rgba(240,252,253,.95) 6px, rgba(240,252,253,0) 7.5px);
+    background-size:17px 13px; background-repeat:repeat-x;
+    animation:pfLightFoam 3.4s ease-in-out infinite alternate;
+  }
+  @keyframes pfLightFoam { from { opacity:.45; } to { opacity:.9; } }
+
+  /* the lighthouse tower: stacked bands built exactly like the cake's
+     tiers — each band's base group sits at its bottom plane, its walls
+     grow upward (height set by JS), its cap rides on the walls */
+  .band { position:absolute; transform-style:preserve-3d; }
+  .bandBase { position:absolute; inset:0; transform-style:preserve-3d; }
+  .wallWrap { position:absolute; transform-style:preserve-3d; }
+  .bwall {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+  }
+  .bwall .win { /* a tiny lit-by-day window on the front wall */
+    position:absolute; left:50%; top:5px; width:7px; height:10px; margin-left:-3.5px;
+    border-radius:2px; background:#17323e; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+  }
+  .bandTop {
+    position:absolute; inset:0; border-radius:4px; overflow:hidden;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.14), inset 0 0 14px rgba(255,255,255,.14);
+  }
+  #band1 .bwall { background:linear-gradient(180deg, #fdfdf6 0%, #e9e9dc 55%, #cfcfbc 100%); }
+  #band1 .bandTop { background:radial-gradient(ellipse at 50% 40%, #f4f4e8 0%, #dedecf 62%, #c9c9b4 100%); }
+  #band2 .bwall { background:linear-gradient(180deg, #e8544a 0%, #d23a31 55%, #b02a24 100%); }
+  #band2 .bandTop { background:radial-gradient(ellipse at 50% 40%, #e88a80 0%, #d95f55 62%, #c0453c 100%); }
+  #band3 .bwall { background:linear-gradient(180deg, #fdfdf6 0%, #e9e9dc 55%, #cfcfbc 100%); }
+  #band3 .bandTop { background:radial-gradient(ellipse at 50% 40%, #f4f4e8 0%, #dedecf 62%, #c9c9b4 100%); }
+  #band4 .bwall { background:linear-gradient(180deg, #e8544a 0%, #d23a31 55%, #b02a24 100%); }
+  #band4 .bandTop { background:radial-gradient(ellipse at 50% 40%, #e88a80 0%, #d95f55 62%, #c0453c 100%); }
+  /* the lamp room: dark walls, one amber window that lights with the lamp */
+  #band5 .bwall { background:linear-gradient(180deg, #31434e 0%, #22333d 55%, #16242c 100%); }
+  #band5 .bandTop { background:radial-gradient(ellipse at 50% 40%, #3d545f 0%, #2a3d47 62%, #1d2d36 100%); }
+  #band5 .bwall .lampWin {
+    position:absolute; left:50%; top:50%; width:15px; height:12px; margin:-6px 0 0 -7.5px;
+    border-radius:3px; background:#3a2c14;
+    box-shadow: inset 0 0 0 1.5px rgba(232,182,90,.5);
+    transition:background .6s ease, box-shadow .6s ease;
+  }
+  #world.lamp-on #band5 .bwall .lampWin {
+    background:radial-gradient(circle at 50% 50%, #fff8dc 0%, #ffd166 58%, #ff9a3c 100%);
+    box-shadow: inset 0 0 0 1.5px rgba(232,182,90,.8), 0 0 20px 7px rgba(255,205,100,.8);
+  }
+
+  /* the gallery slab the lamp room stands on, and the roof cap */
+  #gallery {
+    position:absolute; left:114px; top:97px; width:112px; height:86px; border-radius:9px;
+    background:radial-gradient(ellipse at 50% 42%, #42565f 0%, #2c4049 58%, #1d3038 100%);
+    box-shadow: inset 0 0 0 2.5px rgba(232,182,90,.55), inset 0 -8px 16px rgba(0,0,0,.4), 0 3px 10px rgba(0,0,0,.35);
+    opacity:0;
+  }
+  #roofDisc {
+    position:absolute; left:141px; top:118px; width:58px; height:44px; border-radius:50%;
+    background:radial-gradient(ellipse at 50% 38%, #b04035 0%, #84302a 58%, #5f1712 100%);
+    box-shadow: inset 0 0 0 2.5px rgba(232,182,90,.5), inset 0 -6px 12px rgba(0,0,0,.4);
+    opacity:0;
+  }
+  #finial {
+    position:absolute; left:165px; top:135px; width:10px; height:10px; border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 55%, #a87a24 100%);
+    box-shadow:0 1px 3px rgba(0,0,0,.5);
+    opacity:0;
+  }
+
+  /* ---------- the lamp, its halo and the sweeping beam ----------
+     The anchor sits on the lamp room's front face; a paper standee stands
+     up from it carrying the halo, the lamp glass and a soft cone of light
+     that swings side to side once the lamp is lit. */
+  #lampAnchor { position:absolute; left:170px; top:158px; width:0; height:0; transform-style:preserve-3d; }
+  #beamStand {
+    position:absolute; left:-16px; top:-170px; width:360px; height:170px;
+    transform-origin:16px 170px; transform:rotateX(-90deg);
+    transform-style:preserve-3d; pointer-events:none;
+  }
+  #lampHalo {
+    position:absolute; left:-39px; top:115px; width:110px; height:110px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,230,160,.95) 0%, rgba(255,200,95,.4) 42%, rgba(255,200,95,0) 70%);
+    filter:blur(3px); opacity:0; transition:opacity .9s ease;
+  }
+  #world.lamp-on #lampHalo { opacity:.95; }
+  #lampGlass {
+    position:absolute; left:6px; top:160px; width:20px; height:16px; border-radius:4px;
+    background:radial-gradient(circle at 50% 50%, #57431c 0%, #3a2c14 100%);
+    box-shadow: inset 0 0 0 1.5px rgba(232,182,90,.55);
+    transition:background .6s ease, box-shadow .6s ease;
+  }
+  #world.lamp-on #lampGlass {
+    background:radial-gradient(circle at 50% 50%, #fffbe8 0%, #ffd166 55%, #ff9a3c 100%);
+    box-shadow: inset 0 0 0 1.5px rgba(232,182,90,.9), 0 0 26px 10px rgba(255,205,100,.75);
+  }
+  #beamWrap {
+    position:absolute; left:16px; top:170px; width:0; height:0;
+    opacity:0; transition:opacity .9s ease;
+  }
+  #world.lamp-on #beamWrap { opacity:1; animation:pfLightBeamSweep 7.5s ease-in-out infinite alternate; }
+  @keyframes pfLightBeamSweep { from { transform:rotateZ(-17deg); } to { transform:rotateZ(15deg); } }
+  .beamCone {
+    position:absolute; left:4px; top:-23px; width:272px; height:46px;
+    background:linear-gradient(90deg, rgba(255,246,205,.8) 0%, rgba(255,240,190,.34) 46%, rgba(255,240,190,0) 80%);
+    clip-path:polygon(0 43%, 100% 0, 100% 100%, 0 57%);
+    filter:blur(2.5px); mix-blend-mode:screen;
+  }
+  .beamCore {
+    position:absolute; left:4px; top:-10px; width:256px; height:20px;
+    background:linear-gradient(90deg, rgba(255,252,230,.9) 0%, rgba(255,244,200,.4) 50%, rgba(255,244,200,0) 82%);
+    clip-path:polygon(0 32%, 100% 0, 100% 100%, 0 68%);
+    filter:blur(1.2px); mix-blend-mode:screen;
+  }
+
+  /* ---------- the little boat crossing the water ---------- */
+  #boatAnchor {
+    position:absolute; left:0; top:176px; width:0; height:0; transform-style:preserve-3d;
+    opacity:0; transition:opacity .5s ease 0s;
+    animation:pfLightBoat 30s ease-in-out infinite alternate;
+  }
+  #world.open #boatAnchor { opacity:1; transition:opacity .8s ease 1.7s; }
+  @keyframes pfLightBoat {
+    from { transform:translateX(16px) translateZ(7px); }
+    to   { transform:translateX(296px) translateZ(7px); }
+  }
+  .boatBob { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfLightBoatBob 3.2s ease-in-out infinite alternate; }
+  @keyframes pfLightBoatBob { from { transform:translateZ(0px); } to { transform:translateZ(4px); } }
+  .boatStand {
+    position:absolute; left:-38px; top:-56px; width:76px; height:56px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(9,32,42,.75); border:1px solid rgba(140,205,220,.5);
+    color:#eaf7f9; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfLightPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfLightPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(4,20,28,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the slate envelope front itself, in the free area
+     below the scene (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the scene settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(4,20,28,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter, .wvA, .wvB, .cardBack .tw, .foam, .boatBob, #boatAnchor { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world.lamp-on #beamWrap { animation:none; transform:rotateZ(-2deg); }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfLightBackGlow" cx=".72" cy=".3" r=".5">
+                        <stop offset="0" stop-color="#ffe9b0" stop-opacity=".13"/>
+                        <stop offset="1" stop-color="#ffe9b0" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfLightBackGlow)"/>
+                    <!-- stars -->
+                    <g fill="#eaf6ff">
+                      <circle class="tw" cx="28" cy="30" r="1.8"/><circle cx="64" cy="58" r="1.2" opacity=".6"/>
+                      <circle class="tw" cx="102" cy="24" r="1.5" style="animation-delay:-1.2s"/><circle cx="140" cy="66" r="1.1" opacity=".5"/>
+                      <circle class="tw" cx="176" cy="36" r="1.7" style="animation-delay:-2s"/><circle cx="212" cy="70" r="1.2" opacity=".55"/>
+                      <circle cx="238" cy="22" r="1.3" opacity=".7"/><circle class="tw" cx="52" cy="104" r="1.3" style="animation-delay:-.6s"/>
+                      <circle cx="92" cy="88" r="1" opacity=".5"/><circle class="tw" cx="150" cy="102" r="1.4" style="animation-delay:-1.7s"/>
+                      <circle cx="196" cy="92" r="1" opacity=".5"/><circle cx="262" cy="58" r="1.2" opacity=".6"/>
+                      <circle class="tw" cx="288" cy="96" r="1.4" style="animation-delay:-2.4s"/><circle cx="338" cy="82" r="1.1" opacity=".55"/>
+                      <circle cx="356" cy="34" r="1.5" opacity=".75"/><circle class="tw" cx="24" cy="140" r="1.2" style="animation-delay:-.9s"/>
+                      <circle cx="330" cy="130" r="1" opacity=".5"/><circle cx="120" cy="140" r="1" opacity=".45"/>
+                      <circle cx="230" cy="128" r="1.1" opacity=".5"/><circle cx="70" cy="160" r="1" opacity=".4"/>
+                    </g>
+                    <!-- crescent moon -->
+                    <path fill-rule="evenodd" d="M320 20 a20 20 0 1 0 0 40 a20 20 0 1 0 0 -40 Z M329 25 a15.5 15.5 0 1 1 0 30 a15.5 15.5 0 1 1 0 -30 Z" fill="#f7ecc9"/>
+                    <!-- distant headland, left -->
+                    <path d="M0 208 L0 186 Q40 172 84 182 Q118 189 132 200 L132 208 Z" fill="#05182b"/>
+                    <!-- the dark sea at the foot of the backdrop -->
+                    <rect x="0" y="206" width="380" height="42" fill="#07293c"/>
+                    <g fill="none" stroke-linecap="round">
+                      <g class="wvA" stroke="#9fd4e6" stroke-width="1.6" opacity=".34">
+                        <path d="M-14 218 q10 -4 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"/>
+                        <path d="M-4 236 q10 -4 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"/>
+                      </g>
+                      <g class="wvB" stroke="#cfeef8" stroke-width="1.3" opacity=".22">
+                        <path d="M-18 227 q10 -4 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"/>
+                      </g>
+                      <g stroke="#ffe9b0" stroke-width="1.4" opacity=".28">
+                        <path d="M296 214 h16 M306 222 h12 M288 230 h14"/>
+                      </g>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="lampGlow"></div>
+
+            <!-- the scene: sea plane, rocky shore, the lighthouse, the boat -->
+            <div id="sceneWrap">
+              <div id="seaPlane">
+                <svg viewBox="0 0 368 96" preserveAspectRatio="none" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="pfLightSeaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="#0e3d54"/><stop offset=".55" stop-color="#093046"/><stop offset="1" stop-color="#062231"/>
+                    </linearGradient>
+                  </defs>
+                  <rect x="0" y="0" width="368" height="96" fill="url(#pfLightSeaGrad)"/>
+                  <g fill="none" stroke-linecap="round">
+                    <g class="wvA" stroke="#a8dcee" stroke-width="2" opacity=".4">
+                      <path d="M-16 16 q11 -5 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0"/>
+                      <path d="M-6 52 q11 -5 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0"/>
+                      <path d="M-16 84 q11 -5 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0"/>
+                    </g>
+                    <g class="wvB" stroke="#d8f2fa" stroke-width="1.6" opacity=".26">
+                      <path d="M-20 34 q11 -5 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0"/>
+                      <path d="M-10 68 q11 -5 22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0 t22 0"/>
+                    </g>
+                  </g>
+                </svg>
+              </div>
+
+              <!-- layered paper rocks -->
+              <div id="rocks">
+                <svg viewBox="0 0 270 130" aria-hidden="true">
+                  <polygon points="8,120 30,78 72,58 92,82 82,120" fill="#40616f"/>
+                  <polygon points="176,120 192,68 232,52 262,80 260,120" fill="#385664"/>
+                  <polygon points="60,122 80,62 134,40 178,58 192,90 184,122" fill="#33505c"/>
+                  <polygon points="80,62 134,40 178,58 138,66 102,74" fill="#527282"/>
+                  <polygon points="96,122 114,84 162,72 194,94 188,122" fill="#2a4653"/>
+                  <polygon points="114,84 162,72 194,94 152,96 128,98" fill="#40616f"/>
+                  <polygon points="18,120 40,98 64,108 58,120" fill="#2e4854"/>
+                </svg>
+                <div class="foam" style="left:2px; top:113px; width:264px;"></div>
+                <div class="foam" style="left:80px; top:102px; width:130px; animation-delay:-1.6s;"></div>
+              </div>
+
+              <!-- the lighthouse: five bands stripe by stripe, gallery, lamp room, roof -->
+              <div class="band" id="band1" style="left:122px; top:108px; width:96px; height:64px;">
+                <div class="bandBase">
+                  <div class="wallWrap" style="left:0; top:64px;"><div class="bwall" style="width:96px;"></div></div>
+                  <div class="wallWrap" style="left:0; top:64px; transform:rotate(-90deg);"><div class="bwall" style="width:64px;"></div></div>
+                  <div class="wallWrap" style="left:96px; top:0; transform:rotate(90deg);"><div class="bwall" style="width:64px;"></div></div>
+                  <div class="bandTop"></div>
+                </div>
+              </div>
+
+              <div class="band" id="band2" style="left:126px; top:111px; width:88px; height:58px;">
+                <div class="bandBase">
+                  <div class="wallWrap" style="left:0; top:58px;"><div class="bwall" style="width:88px;"><div class="win"></div></div></div>
+                  <div class="wallWrap" style="left:0; top:58px; transform:rotate(-90deg);"><div class="bwall" style="width:58px;"></div></div>
+                  <div class="wallWrap" style="left:88px; top:0; transform:rotate(90deg);"><div class="bwall" style="width:58px;"></div></div>
+                  <div class="bandTop"></div>
+                </div>
+              </div>
+
+              <div class="band" id="band3" style="left:130px; top:114px; width:80px; height:52px;">
+                <div class="bandBase">
+                  <div class="wallWrap" style="left:0; top:52px;"><div class="bwall" style="width:80px;"><div class="win"></div></div></div>
+                  <div class="wallWrap" style="left:0; top:52px; transform:rotate(-90deg);"><div class="bwall" style="width:52px;"></div></div>
+                  <div class="wallWrap" style="left:80px; top:0; transform:rotate(90deg);"><div class="bwall" style="width:52px;"></div></div>
+                  <div class="bandTop"></div>
+                </div>
+              </div>
+
+              <div class="band" id="band4" style="left:134px; top:117px; width:72px; height:46px;">
+                <div class="bandBase">
+                  <div class="wallWrap" style="left:0; top:46px;"><div class="bwall" style="width:72px;"></div></div>
+                  <div class="wallWrap" style="left:0; top:46px; transform:rotate(-90deg);"><div class="bwall" style="width:46px;"></div></div>
+                  <div class="wallWrap" style="left:72px; top:0; transform:rotate(90deg);"><div class="bwall" style="width:46px;"></div></div>
+                  <div class="bandTop"></div>
+                </div>
+              </div>
+
+              <div id="gallery"></div>
+
+              <div class="band" id="band5" style="left:148px; top:122px; width:44px; height:36px;">
+                <div class="bandBase">
+                  <div class="wallWrap" style="left:0; top:36px;"><div class="bwall" style="width:44px;"><div class="lampWin"></div></div></div>
+                  <div class="wallWrap" style="left:0; top:36px; transform:rotate(-90deg);"><div class="bwall" style="width:36px;"></div></div>
+                  <div class="wallWrap" style="left:44px; top:0; transform:rotate(90deg);"><div class="bwall" style="width:36px;"></div></div>
+                  <div class="bandTop"></div>
+                </div>
+              </div>
+
+              <div id="roofDisc"></div>
+              <div id="finial"></div>
+
+              <!-- the lamp face: halo, glass and the sweeping beam -->
+              <div id="lampAnchor">
+                <div id="beamStand">
+                  <div id="lampHalo"></div>
+                  <div id="beamWrap">
+                    <div class="beamCone"></div>
+                    <div class="beamCore"></div>
+                  </div>
+                  <div id="lampGlass"></div>
+                </div>
+              </div>
+
+              <!-- the little boat, crossing and returning -->
+              <div id="boatAnchor">
+                <div class="boatBob"><div class="boatStand">
+                  <svg viewBox="0 0 54 40" width="76" height="56" aria-hidden="true">
+                    <path d="M27 4 v19" stroke="#0d2432" stroke-width="2.2"/>
+                    <path d="M29 6 L42 21 L29 21 Z" fill="#b9c8c2" opacity=".92"/>
+                    <path d="M25 9 L16 21 L25 21 Z" fill="#8fa8a0" opacity=".85"/>
+                    <path d="M6 25 L48 25 L43 34 L12 34 Z" fill="#274b5e"/>
+                    <path d="M6 25 L48 25 L46.4 28.4 L8 28.4 Z" fill="#38677f"/>
+                    <rect x="23" y="19" width="8" height="6" rx="1" fill="#1a3547"/>
+                    <rect x="25.4" y="20.8" width="3.4" height="3" fill="#ffca7a"/>
+                  </svg>
+                </div></div>
+              </div>
+            </div><!-- /sceneWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a light made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>guiding you home...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfLightFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#1d5568"/><stop offset="1" stop-color="#123743"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfLightFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#cfeef8">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfLightFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#2a7285"/><stop offset="1" stop-color="#17424f"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfLightFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false, lampOn = false;
+  var world = document.getElementById('world');
+  var sceneWrap = document.getElementById('sceneWrap');
+  var lampGlow = document.getElementById('lampGlow');
+  var rocks = document.getElementById('rocks');
+  var gallery = document.getElementById('gallery');
+  var roofDisc = document.getElementById('roofDisc');
+  var finial = document.getElementById('finial');
+  var lampAnchor = document.getElementById('lampAnchor');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the lighthouse bands ----------
+     Each band's base group sits at its bottom plane (translateZ = the
+     rock height plus the full height of every band below). Its walls
+     grow with the rise in a staggered window — stripe by stripe — and
+     its cap rides on the walls. Band 5 is the lamp room. */
+  var BANDS = [
+    { id:'band1', start:0.10, end:0.36, depth:38, bottom:12  },
+    { id:'band2', start:0.32, end:0.56, depth:36, bottom:50  },
+    { id:'band3', start:0.52, end:0.74, depth:36, bottom:86  },
+    { id:'band4', start:0.70, end:0.88, depth:34, bottom:122 },
+    { id:'band5', start:0.86, end:0.97, depth:24, bottom:156 }
+  ];
+  BANDS.forEach(function(b){
+    var el = document.getElementById(b.id);
+    b.base = el.querySelector('.bandBase');
+    b.base.style.transform = 'translateZ(' + b.bottom + 'px)';
+    b.walls = el.querySelectorAll('.bwall');
+    b.top = el.querySelector('.bandTop');
+    b.p = 0;
+  });
+  function bandTopZ(b){ return b.bottom + b.p * b.depth; }
+
+  /* ---------- the lamp ---------- */
+  function lightLamp(){
+    if (lampOn) return;
+    lampOn = true;
+    world.classList.add('lamp-on');
+  }
+  function douseLamp(){
+    lampOn = false;
+    world.classList.remove('lamp-on');
+  }
+
+  function applyRise(){
+    /* the scene hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    sceneWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    sceneWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+
+    /* the rocky shore settles in first */
+    var rp = clamp01((rise - 0.02) / 0.22);
+    rocks.style.opacity = rp.toFixed(3);
+    rocks.style.transform = 'translateZ(' + (2 + rp * 3).toFixed(2) + 'px) translateY(' + ((1 - rp) * 5).toFixed(2) + 'px)';
+
+    for (var i=0;i<BANDS.length;i++){
+      var b = BANDS[i];
+      b.p = clamp01((rise - b.start) / (b.end - b.start));
+      var h = (b.p * b.depth).toFixed(2);
+      for (var w=0; w<b.walls.length; w++){ b.walls[w].style.height = h + 'px'; }
+      b.top.style.transform = 'translateZ(' + h + 'px)';
+      b.top.style.opacity = b.p <= 0.01 ? '0' : String(Math.min(1, b.p * 3));
+    }
+
+    /* the gallery slab rides on band 4; the roof rides on the lamp room */
+    var gTop = bandTopZ(BANDS[3]);
+    gallery.style.transform = 'translateZ(' + gTop.toFixed(2) + 'px)';
+    gallery.style.opacity = clamp01((BANDS[3].p - 0.55) / 0.45).toFixed(3);
+    var rTop = bandTopZ(BANDS[4]);
+    roofDisc.style.transform = 'translateZ(' + rTop.toFixed(2) + 'px)';
+    roofDisc.style.opacity = clamp01((BANDS[4].p - 0.5) / 0.5).toFixed(3);
+    finial.style.transform = 'translateZ(' + (rTop + 5).toFixed(2) + 'px)';
+    finial.style.opacity = roofDisc.style.opacity;
+
+    /* the lamp face rides at the middle of the lamp room's front wall */
+    lampAnchor.style.transform = 'translateZ(' + (BANDS[4].bottom + BANDS[4].p * BANDS[4].depth * 0.55).toFixed(2) + 'px)';
+
+    /* lamplight on the base: a whisper while the tower rises, warm and
+       full once the lamp is lit */
+    lampGlow.style.opacity = (rise * 0.1 + (lampOn ? 0.5 : 0)).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    if (opened && rise > 0.985 && !lampOn) lightLamp();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> shore rises -> lighthouse assembles stripe
+            by stripe (target set at 850ms) -> the lamp lights and its
+            beam begins to sweep.
+     Close: the beam dies first, the tower settles -> card folds ->
+            envelope returns -> flap swings shut -> seal reappears
+            (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      douseLamp();
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    lightLamp();
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
