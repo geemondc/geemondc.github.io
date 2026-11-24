@@ -270,34 +270,23 @@
   }
   @keyframes pfSeaPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
 
-  /* ---------- the written card (white card face below the tank) ---------- */
-  #cardWords {
-    width:min(88vw, 430px); flex:0 0 auto;
-    margin-top:0; opacity:0; visibility:hidden;
-    transition:opacity .35s ease 0s, visibility 0s linear .4s, margin-top .45s ease .05s;
+  /* ---------- the writing on the envelope base ----------
+     The words live on the teal envelope front itself, in the free area
+     below the tank (the tank floor's bottom edge lands at envFront-local
+     y≈166 once the front has slid down), inside the gilt trim. No
+     separate panel. They fade in as the tank settles (same beat the old
+     panel used) and are gone quickly on close, before the front returns. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(2,24,52,.85);
+    opacity:0; transition:opacity .3s ease 0s;
   }
-  #world.open ~ #cardWords {
-    margin-top:16px; opacity:1; visibility:visible;
-    transition:opacity .8s ease 1.95s, visibility 0s linear 1.95s, margin-top .9s ease 1.9s;
-  }
-  /* reveal by max-height, not grid rows: animating grid-template-rows
-     between fr values is unreliable in some phone webviews and can leave
-     the written card collapsed forever; max-height transitions run
-     everywhere. JS sets the exact open height inline (see fit()). */
-  .cwInner { overflow:hidden; min-height:0; max-height:0; transition:max-height .45s ease .05s; }
-  #world.open ~ #cardWords .cwInner { max-height:240px; transition:max-height .9s ease 1.9s; }
-  #cwLeaf {
-    background:linear-gradient(180deg, #ffffff 0%, #f3f8fa 100%);
-    border:1px solid rgba(232,182,90,.7); border-radius:8px;
-    box-shadow:0 16px 36px rgba(0,0,0,.55), inset 0 0 0 4px #ffffff, inset 0 0 0 5px rgba(232,182,90,.4);
-    padding:19px 24px 20px;
-    text-align:center; color:#0d3a4d;
-    font-family:Georgia, 'Times New Roman', serif;
-  }
-  #cwLeaf p { margin:0; }
-  .cw-greet { font-size:21px; line-height:1.4; }
-  .cw-msg { font-size:20px; line-height:1.4; font-style:italic; margin-top:3px; color:#155e75; }
-  .cw-sign { margin-top:13px; font-size:25px; line-height:1.3; font-style:italic; color:#0a5064; letter-spacing:.01em; }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
 
   /* QA: freeze every transition so hash states render instantly */
   .qa * { transition:none !important; }
@@ -456,7 +445,12 @@
             <!-- the sealed envelope front: covers everything while closed,
                  slides down-front to lie before the card once open -->
             <div id="envGroup">
-              <div class="envFront"></div>
+              <div class="envFront">
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone, I SEA you.</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
               <div class="envFlap">
                 <div class="envFlapBack">
                   <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
@@ -491,15 +485,6 @@
       </div>
     </div>
     <div id="pill">TAP TO OPEN</div>
-  </div>
-  <div id="cardWords" aria-hidden="true">
-    <div class="cwInner">
-      <div id="cwLeaf">
-        <p class="cw-greet">Hey everyone,</p>
-        <p class="cw-msg">a view of the sea...</p>
-        <p class="cw-sign">Dr. Gee</p>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -640,28 +625,20 @@
   document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
 
   /* ---------- fit to screen ---------- */
-  var cwLeaf = document.getElementById('cwLeaf');
-  var cardWordsEl = document.getElementById('cardWords');
-  var cwInnerEl = document.querySelector('#cardWords .cwInner');
   function fit(){
-    /* once open, reserve room under the stage for the written card, so
-       tank + white card together fit one screen with no scrolling */
+    /* the words ride on the envelope base now, so the stage alone is the
+       whole composition in both states. Measured on the open page, the
+       visual span (standing card's top to the slid-down base's bottom)
+       is ~510 world units, running from ~48 above the layout box's top
+       to ~462 below it — its center sits ~33 units above the box's
+       center. So the open fit uses a taller divisor (the whole span,
+       with margin, fits the viewport height) and settles the stage down
+       33 units to center that span. The closed state keeps the plain
+       centered fit it has always had. */
     var isOpen = world.classList.contains('open');
-    var reserve = isOpen ? cwLeaf.offsetHeight + 18 : 0;
-    var s = Math.min(window.innerWidth / 660, (window.innerHeight - reserve) / 530);
-    world.style.transform = 'scale(' + s.toFixed(3) + ')';
-    /* when the stage renders smaller than its layout box, reclaim part of
-       the dead space under it so the written card sits up close beneath
-       the tank instead of floating far below */
-    var dead = Math.max(0, (480 - 480 * s) / 2);
-    /* when the stage scales UP past its layout box, its visual bottom
-       spills below the box — add that overshoot to the gap so the
-       written card always clears the tank's base */
-    var over = Math.max(0, (480 * s - 480) / 2);
-    cardWordsEl.style.marginTop = isOpen ? Math.round(16 - dead * 0.5 + over) + 'px' : '';
-    /* exact reveal height for the written card (the CSS cap is only a
-       fallback if this ever measures 0) */
-    cwInnerEl.style.maxHeight = isOpen ? cwLeaf.offsetHeight + 'px' : '';
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
   }
   window.addEventListener('resize', fit);
   fit();
