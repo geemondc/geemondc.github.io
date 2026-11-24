@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Snow Globe — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #33183f 0%, #1c0b26 46%, #0a0410 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#f6ecff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(150,90,200,.18) 0%, rgba(255,190,90,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfGlobeSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfGlobeSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #452257 0%, #30163f 55%, #200e2c 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm cabin light the globe casts onto the base */
+  #globeGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,205,110,.8) 0%, rgba(255,170,80,.3) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f7eefb 0%, #e9dcf5 58%, #d6c2ec 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(110,70,150,.22);
+  }
+  /* the face that greets you once the card stands — quiet winter backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #2a2148 0%, #1d1738 46%, #130d28 78%, #0c0720 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(8,4,20,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #63307a 0%, #472259 52%, #2e153f 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfGlobeFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfGlobeFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfGlobeFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfGlobeFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the globe (rises out of the base) ---------- */
+  #globeWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the wooden base: one growing tier (the Sea Card / Birthday grammar) —
+     its walls grow upward with the rise and its top rides on them */
+  .tier { position:absolute; transform-style:preserve-3d; }
+  .tierBase { position:absolute; inset:0; transform-style:preserve-3d; }
+  .wallWrap { position:absolute; transform-style:preserve-3d; }
+  .twall {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+  }
+  #globeBase .twall {
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,.055) 0 7px, rgba(255,255,255,.02) 7px 14px),
+      linear-gradient(180deg, #96683c 0%, #7c4f2a 52%, #5f3a1e 100%);
+  }
+  #globeBase .tierTop { /* the turned-wood top of the base */
+    position:absolute; inset:0; border-radius:30px; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 42%, #8a5a33 0%, #6f4525 60%, #59371e 100%);
+    box-shadow: inset 0 0 0 3px rgba(60,36,16,.5), inset 0 0 22px rgba(0,0,0,.3);
+  }
+  /* the snow floor inside the globe: a white disc that lives entirely
+     within the dome's footprint, seated on the wooden top */
+  #snowDisc {
+    position:absolute; left:88px; top:90px; width:204px; height:112px; border-radius:50%;
+    background:radial-gradient(ellipse at 50% 40%, #ffffff 0%, #eef3fa 60%, #d9e4f2 100%);
+    box-shadow: inset 0 0 18px rgba(150,170,200,.35), 0 1px 4px rgba(0,0,0,.25);
+  }
+  /* the little gold name plate on the front rim of the wooden base */
+  #namePlate {
+    position:absolute; left:164px; top:204px; width:52px; height:16px; border-radius:4px;
+    transform:translateZ(24px);
+    background:linear-gradient(180deg, #f3d98b 0%, #d9ab4e 55%, #b8862f 100%);
+    box-shadow: inset 0 0 0 1.5px rgba(122,78,12,.55), 0 1px 3px rgba(0,0,0,.35);
+    display:flex; align-items:center; justify-content:center;
+    color:#7a4e0c; font-size:10px; line-height:1;
+  }
+
+  /* scene pieces: point anchors on the snow ground; each standee is a flat
+     paper cutout stood up from its bottom edge (rotateX(-90)) and grown
+     from the ground by JS (scale rides the rise) — the candle grammar */
+  #sceneBox { position:absolute; left:190px; top:146px; width:0; height:0; transform-style:preserve-3d; }
+  .piece { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .pieceStand {
+    position:absolute; transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  .pieceStand svg { width:100%; height:100%; display:block; }
+
+  /* chimney smoke: soft puffs curling up from the cabin, endlessly */
+  .smokePuff { transform-box:fill-box; transform-origin:50% 50%; animation:pfGlobeSmoke 3.9s ease-out infinite; }
+  .smokePuff.p2 { animation-delay:1.3s; }
+  .smokePuff.p3 { animation-delay:2.6s; }
+  @keyframes pfGlobeSmoke {
+    0% { transform:translate(0,0) scale(.55); opacity:0; }
+    18% { opacity:.75; }
+    60% { opacity:.45; }
+    100% { transform:translate(7px,-21px) scale(1.5); opacity:0; }
+  }
+  /* the cabin window's warm breathing glow */
+  .winGlow { animation:pfGlobeWindow 3.4s ease-in-out infinite alternate; }
+  @keyframes pfGlobeWindow { from { opacity:.78; } to { opacity:1; } }
+
+  /* ---------- the glass dome ----------
+     A paper-glass standee that grows over the scene last. Everything
+     inside it (the snow) is clipped by its round shape — the snow can
+     only ever appear inside the glass. */
+  #domeStand { overflow:visible; }
+  #dome {
+    position:absolute; inset:0; border-radius:50%; overflow:hidden;
+    border:2.5px solid rgba(235,245,255,.55);
+    background:
+      radial-gradient(ellipse 90% 42% at 50% 108%, rgba(255,255,255,.38) 0%, rgba(255,255,255,0) 70%),
+      radial-gradient(circle at 34% 26%, rgba(255,255,255,.30) 0%, rgba(196,220,248,.10) 42%, rgba(165,195,232,.15) 76%, rgba(224,238,255,.24) 100%);
+    box-shadow:
+      inset 0 0 0 2px rgba(240,248,255,.5),
+      inset 0 0 22px rgba(190,215,245,.28),
+      inset 0 -20px 32px rgba(255,255,255,.12),
+      inset 0 16px 26px rgba(255,255,255,.15);
+  }
+  #dome::before { /* the soft glint on the dome's shoulder */
+    content:""; position:absolute; left:15%; top:7%; width:42%; height:21%;
+    border-radius:50%; transform:rotate(-22deg);
+    background:radial-gradient(ellipse at center, rgba(255,255,255,.65) 0%, rgba(255,255,255,.18) 55%, rgba(255,255,255,0) 75%);
+    filter:blur(2px);
+  }
+  #dome::after { /* a small bright catch of light */
+    content:""; position:absolute; left:24%; top:15%; width:9%; height:5%;
+    border-radius:50%; transform:rotate(-22deg);
+    background:rgba(255,255,255,.85); filter:blur(1.5px);
+  }
+  /* the snow layers live inside the glass, invisible until the dome is
+     complete; they vanish quickly on close */
+  .snowLayer { position:absolute; inset:0; opacity:0; transition:opacity .3s ease 0s; }
+  #world.open .snowLayer { opacity:1; transition:opacity .9s ease 2.15s; }
+  .flake {
+    position:absolute; top:-8px; border-radius:50%; background:#fff;
+    box-shadow:0 0 3px rgba(255,255,255,.8);
+    animation:pfGlobeSnow linear infinite;
+  }
+  @keyframes pfGlobeSnow {
+    0% { transform:translate3d(0,-6px,0); opacity:0; }
+    9% { opacity:.95; }
+    50% { transform:translate3d(var(--sway,6px), 112px, 0); }
+    91% { opacity:.9; }
+    100% { transform:translate3d(0, 224px, 0); opacity:0; }
+  }
+  /* the shaken burst: a dense fast fall that plays as the dome settles,
+     then gives way to the gentle endless snow */
+  .burstFlake {
+    position:absolute; top:-8px; border-radius:50%; background:#fff;
+    box-shadow:0 0 3px rgba(255,255,255,.85); opacity:0;
+  }
+  #world.open .burstFlake { animation:pfGlobeBurst linear 2.1s both; animation-delay:2s; }
+  @keyframes pfGlobeBurst {
+    0% { transform:translate3d(0,-6px,0) rotate(0deg); opacity:0; }
+    10% { opacity:1; }
+    50% { transform:translate3d(var(--sway,10px), 112px, 0) rotate(140deg); }
+    92% { opacity:.95; }
+    100% { transform:translate3d(0, 224px, 0) rotate(300deg); opacity:0; }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(38,16,54,.72); border:1px solid rgba(216,180,254,.55);
+    color:#f6ecff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfGlobePill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfGlobePill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(16,4,36,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the plum envelope front itself, in the free area
+     below the globe (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the globe settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(16,4,36,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .smokePuff, .winGlow, .flake, .burstFlake { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGlobeSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#c3cfe6"/>
+                        <stop offset=".55" stop-color="#a7b4d2"/>
+                        <stop offset="1" stop-color="#8ea1c2"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfGlobeSky)"/>
+                    <!-- pale winter moon -->
+                    <circle cx="312" cy="42" r="17" fill="#f5f7fc" opacity=".85"/>
+                    <circle cx="312" cy="42" r="24" fill="#f5f7fc" opacity=".18"/>
+                    <!-- faint early stars -->
+                    <g fill="#ffffff">
+                      <circle cx="42" cy="30" r="1.4" opacity=".55"/><circle cx="96" cy="18" r="1.1" opacity=".4"/>
+                      <circle cx="150" cy="38" r="1.2" opacity=".45"/><circle cx="238" cy="22" r="1.3" opacity=".5"/>
+                      <circle cx="60" cy="66" r="1" opacity=".35"/><circle cx="200" cy="58" r="1" opacity=".3"/>
+                    </g>
+                    <!-- distant snowy hills -->
+                    <path d="M0 148 Q70 116 140 138 Q215 160 285 132 Q335 112 380 134 L380 248 L0 248 Z" fill="#e8eef8"/>
+                    <path d="M0 182 Q90 152 185 176 Q280 198 380 168 L380 248 L0 248 Z" fill="#f4f7fc"/>
+                    <!-- tiny distant pines on the far hill -->
+                    <g fill="#7b8aa5" opacity=".8">
+                      <path d="M58 138 l7 -18 l7 18 z"/><path d="M63 128 l5 -13 l5 13 z"/>
+                      <path d="M322 128 l6 -16 l6 16 z"/><path d="M327 120 l4.5 -11 l4.5 11 z"/>
+                      <path d="M282 140 l5.5 -14 l5.5 14 z"/>
+                    </g>
+                    <!-- bare trees, standing still at the edges -->
+                    <g stroke="#45405a" stroke-width="3" fill="none" stroke-linecap="round">
+                      <path d="M26 226 L26 168"/>
+                      <path d="M26 186 L12 168 M26 178 L42 160 M26 196 L14 186 M26 190 L40 180"/>
+                    </g>
+                    <g stroke="#45405a" stroke-width="2.6" fill="none" stroke-linecap="round">
+                      <path d="M352 230 L352 178"/>
+                      <path d="M352 196 L340 180 M352 188 L366 172 M352 204 L342 196"/>
+                    </g>
+                    <g stroke="#565064" stroke-width="2" fill="none" stroke-linecap="round">
+                      <path d="M78 232 L78 198 M78 210 L68 198 M78 206 L88 194"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="globeGlow"></div>
+
+            <!-- the globe: wooden base tier, the tiny winter scene, the dome -->
+            <div id="globeWrap">
+
+              <div class="tier" id="globeBase" style="left:70px; top:68px; width:240px; height:156px;">
+                <div class="tierBase">
+                  <div class="wallWrap" style="left:0; top:156px;"><div class="twall" style="width:240px;"></div></div>
+                  <div class="wallWrap" style="left:0; top:156px; transform:rotate(-90deg);"><div class="twall" style="width:156px;"></div></div>
+                  <div class="wallWrap" style="left:240px; top:0; transform:rotate(90deg);"><div class="twall" style="width:156px;"></div></div>
+                  <div class="tierTop"></div>
+                </div>
+              </div>
+              <div id="snowDisc"></div>
+              <div id="namePlate">&#9733;</div>
+
+              <!-- scene pieces ride on the snow ground (JS keeps this box at the lid's height) -->
+              <div id="sceneBox">
+
+                <!-- back pine -->
+                <div class="piece" id="pineBack" style="left:56px; top:-12px;">
+                  <div class="pieceStand" style="left:-30px; top:-106px; width:60px; height:106px;">
+                    <svg viewBox="0 0 54 96" aria-hidden="true">
+                      <rect x="24" y="84" width="6" height="12" fill="#5f3a1e"/>
+                      <path d="M27 2 L46 40 L8 40 Z" fill="#2e5d43"/>
+                      <path d="M27 24 L50 62 L4 62 Z" fill="#35704f"/>
+                      <path d="M27 48 L52 88 L2 88 Z" fill="#2e5d43"/>
+                      <path d="M27 2 L35 18 L19 18 Z" fill="#f4f8ff"/>
+                      <path d="M16 52 L38 52 L27 36 Z" fill="#eef4fd" opacity=".85"/>
+                      <path d="M12 78 L42 78 L27 60 Z" fill="#eef4fd" opacity=".7"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- the cabin: lit window, snow roof, curling chimney smoke -->
+                <div class="piece" id="cabin" style="left:-36px; top:4px;">
+                  <div class="pieceStand" style="left:-52px; top:-100px; width:104px; height:100px;">
+                    <svg viewBox="0 0 96 92" aria-hidden="true">
+                      <!-- chimney smoke (behind the roof line) -->
+                      <g fill="#e8ecf4">
+                        <circle class="smokePuff" cx="70" cy="10" r="4.5"/>
+                        <circle class="smokePuff p2" cx="70" cy="10" r="5.5"/>
+                        <circle class="smokePuff p3" cx="70" cy="10" r="4"/>
+                      </g>
+                      <rect x="64" y="12" width="11" height="22" fill="#7a4a30"/>
+                      <rect x="62" y="10" width="15" height="5" rx="1.5" fill="#f4f8ff"/>
+                      <!-- roof, snow-capped -->
+                      <path d="M6 44 L48 18 L90 44 L82 44 L48 24 L14 44 Z" fill="#8a4a3a"/>
+                      <path d="M6 44 L48 18 L90 44 L84 45 L48 22 L12 45 Z" fill="#f7faff"/>
+                      <!-- walls -->
+                      <rect x="16" y="44" width="64" height="42" fill="#9c6a42"/>
+                      <g stroke="#7c4f2a" stroke-width="2.4">
+                        <path d="M16 56 H80 M16 68 H80 M16 79 H80"/>
+                      </g>
+                      <!-- door -->
+                      <rect x="24" y="58" width="15" height="28" rx="2" fill="#5f3a1e"/>
+                      <circle cx="35.5" cy="73" r="1.8" fill="#eec25e"/>
+                      <!-- the lit window -->
+                      <g>
+                        <rect x="52" y="56" width="20" height="18" rx="2" fill="#3a2415"/>
+                        <rect class="winGlow" x="54.5" y="58.5" width="15" height="13" rx="1.5" fill="#ffd166"/>
+                        <path d="M62 58.5 V71.5 M54.5 65 H69.5" stroke="#7c4f2a" stroke-width="1.8"/>
+                        <rect x="48" y="52" width="28" height="26" rx="4" fill="#ffca70" opacity=".18"/>
+                      </g>
+                      <!-- snow drift at the foot -->
+                      <path d="M10 86 Q30 80 48 86 Q68 91 86 85 L86 92 L10 92 Z" fill="#f7faff"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- front pine -->
+                <div class="piece" id="pineFront" style="left:-84px; top:-16px;">
+                  <div class="pieceStand" style="left:-25px; top:-86px; width:50px; height:86px;">
+                    <svg viewBox="0 0 46 78" aria-hidden="true">
+                      <rect x="20" y="68" width="5" height="10" fill="#5f3a1e"/>
+                      <path d="M23 2 L39 32 L7 32 Z" fill="#35704f"/>
+                      <path d="M23 20 L42 50 L4 50 Z" fill="#2e5d43"/>
+                      <path d="M23 40 L44 72 L2 72 Z" fill="#35704f"/>
+                      <path d="M23 2 L30 14 L16 14 Z" fill="#f4f8ff"/>
+                      <path d="M14 42 L32 42 L23 29 Z" fill="#eef4fd" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- the tiny snowman -->
+                <div class="piece" id="snowman" style="left:36px; top:16px;">
+                  <div class="pieceStand" style="left:-22px; top:-58px; width:44px; height:58px;">
+                    <svg viewBox="0 0 40 52" aria-hidden="true">
+                      <path d="M13 22 L3 14 M27 22 L37 12" stroke="#7c4f2a" stroke-width="2.2" stroke-linecap="round"/>
+                      <ellipse cx="20" cy="40" rx="12.5" ry="10.5" fill="#fbfdfe"/>
+                      <circle cx="20" cy="24" r="8.5" fill="#ffffff"/>
+                      <circle cx="20" cy="10.5" r="6.5" fill="#ffffff"/>
+                      <circle cx="17.8" cy="9.5" r="1.1" fill="#22242c"/>
+                      <circle cx="22.2" cy="9.5" r="1.1" fill="#22242c"/>
+                      <path d="M20 11.5 L27 13.5 L20 14.5 Z" fill="#ff8c3a"/>
+                      <path d="M13.5 15.5 Q20 19 26.5 15.5 L26.5 19 Q20 22.5 13.5 19 Z" fill="#c93a4a"/>
+                      <circle cx="20" cy="24" r="1.2" fill="#22242c"/>
+                      <circle cx="20" cy="37" r="1.3" fill="#22242c"/>
+                      <circle cx="20" cy="43" r="1.3" fill="#22242c"/>
+                      <ellipse cx="20" cy="50" rx="13" ry="2.4" fill="#e6eef9"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <!-- the glass dome: grows over the scene last; the snow lives inside it -->
+                <div class="piece" id="domePiece" style="left:20px; top:22px;">
+                  <div class="pieceStand" id="domeStand" style="left:-102px; top:-204px; width:204px; height:204px;">
+                    <div id="dome">
+                      <!-- the shaken burst: dense snow the moment the dome settles -->
+                      <div class="burstLayer" aria-hidden="true">
+                        <div class="burstFlake" style="left:18%; width:5px; height:5px; --sway:12px;"></div>
+                        <div class="burstFlake" style="left:30%; width:4px; height:4px; --sway:-9px; animation-delay:2.12s;"></div>
+                        <div class="burstFlake" style="left:42%; width:6px; height:6px; --sway:14px; animation-delay:2.05s;"></div>
+                        <div class="burstFlake" style="left:55%; width:4px; height:4px; --sway:-12px; animation-delay:2.18s;"></div>
+                        <div class="burstFlake" style="left:66%; width:5px; height:5px; --sway:9px; animation-delay:2.08s;"></div>
+                        <div class="burstFlake" style="left:76%; width:4px; height:4px; --sway:-14px; animation-delay:2.22s;"></div>
+                        <div class="burstFlake" style="left:24%; width:4px; height:4px; --sway:-7px; animation-delay:2.28s;"></div>
+                        <div class="burstFlake" style="left:60%; width:6px; height:6px; --sway:11px; animation-delay:2.3s;"></div>
+                        <div class="burstFlake" style="left:48%; width:5px; height:5px; --sway:-10px; animation-delay:2.26s;"></div>
+                        <div class="burstFlake" style="left:82%; width:5px; height:5px; --sway:8px; animation-delay:2.15s;"></div>
+                        <div class="burstFlake" style="left:12%; width:4px; height:4px; --sway:-11px; animation-delay:2.2s;"></div>
+                        <div class="burstFlake" style="left:36%; width:5px; height:5px; --sway:7px; animation-delay:2.33s;"></div>
+                      </div>
+                      <!-- the gentle endless snow -->
+                      <div class="snowLayer" aria-hidden="true">
+                        <div class="flake" style="left:14%; width:4px; height:4px; --sway:7px; animation-duration:5.2s; animation-delay:-1.2s;"></div>
+                        <div class="flake" style="left:22%; width:3px; height:3px; --sway:-6px; animation-duration:6.4s; animation-delay:-3.8s;"></div>
+                        <div class="flake" style="left:31%; width:5px; height:5px; --sway:9px; animation-duration:4.6s; animation-delay:-.6s;"></div>
+                        <div class="flake" style="left:39%; width:3px; height:3px; --sway:-8px; animation-duration:5.8s; animation-delay:-2.4s;"></div>
+                        <div class="flake" style="left:47%; width:4px; height:4px; --sway:6px; animation-duration:5s; animation-delay:-4.4s;"></div>
+                        <div class="flake" style="left:54%; width:3px; height:3px; --sway:-7px; animation-duration:6.8s; animation-delay:-1.7s;"></div>
+                        <div class="flake" style="left:61%; width:5px; height:5px; --sway:10px; animation-duration:4.9s; animation-delay:-3.1s;"></div>
+                        <div class="flake" style="left:69%; width:3px; height:3px; --sway:-6px; animation-duration:5.6s; animation-delay:-.3s;"></div>
+                        <div class="flake" style="left:76%; width:4px; height:4px; --sway:8px; animation-duration:6.1s; animation-delay:-5s;"></div>
+                        <div class="flake" style="left:84%; width:3px; height:3px; --sway:-9px; animation-duration:5.4s; animation-delay:-2.9s;"></div>
+                        <div class="flake" style="left:18%; width:3px; height:3px; --sway:-5px; animation-duration:7s; animation-delay:-4.9s;"></div>
+                        <div class="flake" style="left:35%; width:4px; height:4px; --sway:11px; animation-duration:6.2s; animation-delay:-5.6s;"></div>
+                        <div class="flake" style="left:51%; width:3px; height:3px; --sway:-10px; animation-duration:4.4s; animation-delay:-1.9s;"></div>
+                        <div class="flake" style="left:66%; width:4px; height:4px; --sway:5px; animation-duration:5.9s; animation-delay:-4.1s;"></div>
+                        <div class="flake" style="left:80%; width:5px; height:5px; --sway:-8px; animation-duration:6.6s; animation-delay:-.9s;"></div>
+                        <div class="flake" style="left:27%; width:3px; height:3px; --sway:6px; animation-duration:4.8s; animation-delay:-3.5s;"></div>
+                        <div class="flake" style="left:44%; width:3px; height:3px; --sway:-6px; animation-duration:6.9s; animation-delay:-2.2s;"></div>
+                        <div class="flake" style="left:58%; width:3px; height:3px; --sway:7px; animation-duration:5.3s; animation-delay:-5.9s;"></div>
+                        <div class="flake" style="left:72%; width:3px; height:3px; --sway:-5px; animation-duration:4.7s; animation-delay:-1.4s;"></div>
+                        <div class="flake" style="left:88%; width:3px; height:3px; --sway:-7px; animation-duration:6.3s; animation-delay:-4.6s;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div><!-- /sceneBox -->
+            </div><!-- /globeWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a world in a globe, made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>shake things up...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGlobeFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#542a6e"/><stop offset="1" stop-color="#33183f"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfGlobeFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGlobeFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#74408e"/><stop offset="1" stop-color="#472259"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfGlobeFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var globeWrap = document.getElementById('globeWrap');
+  var globeGlow = document.getElementById('globeGlow');
+  var sceneBox = document.getElementById('sceneBox');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the wooden base ----------
+     One tier: its base group sits at its bottom plane; its walls grow
+     with the rise in an early window; its top (the snow ground) rides
+     on the walls — the same grammar as the Birthday Cake's tiers. */
+  var BASE = { id:'globeBase', start:0.02, end:0.32, depth:16, bottom:6 };
+  var baseEl = document.getElementById(BASE.id);
+  var baseGroup = baseEl.querySelector('.tierBase');
+  baseGroup.style.transform = 'translateZ(' + BASE.bottom + 'px)';
+  var baseWalls = baseEl.querySelectorAll('.twall');
+  var baseTop = baseEl.querySelector('.tierTop');
+  var snowDisc = document.getElementById('snowDisc');
+  var snowTopZ = BASE.bottom;
+
+  /* ---------- the scene pieces ----------
+     Each standee grows off the snow ground in its own staggered window;
+     the glass dome grows last, over everything. */
+  var PIECES = [
+    { id:'pineBack',  start:0.30, len:0.16 },
+    { id:'cabin',     start:0.38, len:0.18 },
+    { id:'pineFront', start:0.48, len:0.15 },
+    { id:'snowman',   start:0.56, len:0.14 },
+    { id:'domePiece', start:0.64, len:0.30 }
+  ];
+  PIECES.forEach(function(p){
+    p.stand = document.getElementById(p.id).querySelector('.pieceStand');
+    p.cp = 0;
+  });
+  var domeStand = document.getElementById('domeStand');
+
+  function applyRise(){
+    /* the globe hides inside the envelope while settled shut: it fades in
+       as it rises (the Sea Card's tank trick) */
+    globeWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    globeWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    /* the wooden base grows */
+    var bp = clamp01((rise - BASE.start) / (BASE.end - BASE.start));
+    var h = (bp * BASE.depth).toFixed(2);
+    for (var w=0; w<baseWalls.length; w++){ baseWalls[w].style.height = h + 'px'; }
+    baseTop.style.transform = 'translateZ(' + h + 'px)';
+    baseTop.style.opacity = bp <= 0.01 ? '0' : String(Math.min(1, bp * 3));
+    snowTopZ = BASE.bottom + bp * BASE.depth;
+    snowDisc.style.transform = 'translateZ(' + (snowTopZ + 1).toFixed(2) + 'px)';
+    snowDisc.style.opacity = baseTop.style.opacity;
+    sceneBox.style.transform = 'translateZ(' + snowTopZ.toFixed(2) + 'px)';
+    /* the scene pieces grow off the snow, one by one; the dome last */
+    for (var k=0;k<PIECES.length;k++){
+      var p = PIECES[k];
+      p.cp = clamp01((rise - p.start) / p.len);
+      p.stand.style.transform = 'rotateX(-90deg) scale(' + p.cp.toFixed(3) + ')';
+    }
+    domeStand.style.opacity = String(Math.min(1, PIECES[4].cp * 1.8));
+    /* warm cabin light on the base: a whisper while the globe rises,
+       growing as the little scene settles in */
+    globeGlow.style.opacity = (rise * 0.10 + clamp01((rise - 0.55) / 0.45) * 0.42).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> wooden base grows -> cabin, pines and snowman
+            grow -> the glass dome grows over them -> snow begins inside.
+     Close: everything settles in clean reverse (CSS delays reseal). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
