@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>A Tree Made of Paper — Paperfold</title>
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(120% 90% at 50% 30%, #fdf7ea 0%, #f6ecd4 52%, #ecdfc0 100%);
+    color: #5d4a2f;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stage {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px 20px;
+    box-sizing: border-box;
+  }
+  .wrap { width: min(94vw, 600px); }
+
+  /* ---------- scene frame ---------- */
+  .scene {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 10 / 9.6;
+    perspective: 1150px;
+    perspective-origin: 50% 40%;
+    cursor: pointer;
+    outline: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tableShadow {
+    position: absolute;
+    left: 50%; bottom: 1.5%;
+    width: 72%; height: 9%;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(93, 70, 38, .34), rgba(93, 70, 38, 0) 68%);
+    border-radius: 50%;
+    transition: transform 1.1s ease, opacity 1.1s ease;
+    opacity: .55;
+  }
+  .open ~ .tableShadow, .scene.open .tableShadow { opacity: .95; transform: translateX(-50%) scaleX(1.18); }
+
+  .world {
+    position: absolute; inset: 0;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--tilt, 20deg)) rotateY(var(--orbit, 0deg));
+  }
+
+  /* ---------- standing panels (the two pages on one spine) ---------- */
+  .panel {
+    position: absolute;
+    bottom: 43%;
+    height: 50%;
+    width: 47.5%;
+    border-radius: 6px 6px 3px 3px;
+    box-shadow: inset 0 0 0 2px rgba(242, 182, 61, .55), inset 0 0 34px rgba(0,0,0,.35);
+    transition: transform 1s cubic-bezier(.55,.06,.35,1);
+    overflow: hidden;
+    background: #123324;
+  }
+  .panel svg { display: block; width: 100%; height: 100%; }
+  .panelL { right: 50%; transform-origin: 100% 50%; transform: rotateY(-76deg); transition-delay: var(--cd, .5s); }
+  .panelR { left: 50%; transform-origin: 0% 50%; transform: rotateY(76deg); transition-delay: var(--cd, .5s); }
+  .scene.open .panelL { transform: rotateY(27deg); transition-delay: var(--od, .18s); }
+  .scene.open .panelR { transform: rotateY(-27deg); transition-delay: var(--od, .18s); }
+
+  /* ---------- fan ground ---------- */
+  .groundWrap {
+    position: absolute;
+    left: 2.5%; width: 95%;
+    top: 57%; height: 47%;
+    transform-origin: 50% 0%;
+    transform-style: preserve-3d;
+    transform: rotateX(178deg);
+    transition: transform .95s cubic-bezier(.6,.02,.3,1);
+    transition-delay: var(--cd, .34s);
+  }
+  .scene.open .groundWrap { transform: rotateX(0deg); transition-delay: var(--od, .5s); }
+  .ground {
+    position: absolute; inset: 0;
+    transform-origin: 50% 0%;
+    transform: rotateX(90deg) scale(.44);
+    transition: transform .95s cubic-bezier(.6,.02,.3,1);
+    transition-delay: var(--cd, .34s);
+    transform-style: preserve-3d;
+  }
+  .scene.open .ground { transform: rotateX(90deg) scale(1); transition-delay: var(--od, .5s); }
+  /* fan visuals live on a flat child: border-radius on the 3D parent itself
+     makes the compositor tear the scene at desktop sizes */
+  .groundArt {
+    position: absolute; inset: 0;
+    border-radius: 4% 4% 50% 50% / 6% 6% 58% 58%;
+    background:
+      radial-gradient(circle, rgba(255,255,255,.95) 1px, rgba(255,255,255,0) 1.7px) 0 0 / 26px 26px,
+      radial-gradient(circle, rgba(214,228,238,.8) 1px, rgba(214,228,238,0) 1.6px) 13px 11px / 34px 34px,
+      linear-gradient(rgba(18, 48, 32, .28), rgba(18,48,32,0) 30%),
+      radial-gradient(120% 105% at 50% 0%, #fdfaf1 0%, #f6efdc 58%, #e9dfc6 100%);
+    box-shadow: inset 0 0 0 2px rgba(214, 192, 138, .5), inset 0 -14px 30px rgba(160, 140, 95, .18);
+  }
+  .path {
+    position: absolute; left: 50%; top: 26%;
+    width: 17%; height: 68%;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(217, 164, 65, .30), rgba(217,164,65,0) 70%);
+    border-radius: 50%;
+  }
+
+  /* ---------- cast shadows (painted on the snow, one per piece) ---------- */
+  .pshadow {
+    position: absolute;
+    left: var(--x); top: var(--y);
+    width: calc(var(--w) * 1.34);
+    height: 13%;
+    transform: translate(-58%, -34%) skewX(-17deg);
+    background: radial-gradient(ellipse at center, rgba(24, 42, 30, .62), rgba(24,42,30,0) 66%);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity .7s ease;
+    transition-delay: var(--cd, 0s);
+  }
+  .scene.open .pshadow { opacity: .95; transition-delay: var(--od, 1s); }
+
+  /* ---------- pop-up pieces ---------- */
+  .piece {
+    position: absolute;
+    transform-style: preserve-3d;
+    left: var(--x);
+    bottom: calc(100% - var(--y));
+    width: var(--w);
+    margin-left: calc(var(--w) / -2);
+    transform-origin: 50% 100%;
+    transform: rotateX(0deg);
+    opacity: 0;
+    transition: transform .95s cubic-bezier(.34, 1.28, .42, 1) var(--cd, 0s), opacity .3s ease var(--cd, 0s);
+  }
+  .scene.open .piece { transform: rotateX(-90deg); opacity: 1; transition-delay: var(--od, 1s), calc(var(--od, 1s) - .25s); }
+  .piece svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .piece.tree { transition-duration: 1.1s, .3s; transition-timing-function: cubic-bezier(.3, 1.4, .45, 1), ease; }
+
+  /* windows glow once open */
+  .win { opacity: .92; }
+  .scene.open .win { animation: pfWin 3.6s ease-in-out infinite alternate; }
+  @keyframes pfWin { from { opacity: .78; } to { opacity: 1; } }
+
+  /* panel stars twinkle once open */
+  .scene.open .tw { animation: pfStar 2.8s ease-in-out infinite alternate; }
+  @keyframes pfStar { from { opacity: .35; } to { opacity: 1; } }
+
+  /* ---------- tree bulbs ---------- */
+  .bulb {
+    position: absolute;
+    width: 7.2%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(.2);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .scene.open .bulb { animation: pfBulb 3.1s ease-in-out infinite; animation-delay: var(--bd, 3.2s); }
+  @keyframes pfBulb {
+    0%   { opacity: 0; transform: translate(-50%,-50%) scale(.2); }
+    7%   { opacity: 1; transform: translate(-50%,-50%) scale(1.25); }
+    13%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    48%  { opacity: .5; transform: translate(-50%,-50%) scale(.82); }
+    100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  }
+  .bGold  { background: #ffd166; box-shadow: 0 0 11px 3px rgba(255, 209, 102, .85); }
+  .bRed   { background: #f0765a; box-shadow: 0 0 11px 3px rgba(240, 118, 90, .8); }
+  .bCream { background: #fff3d6; box-shadow: 0 0 11px 3px rgba(255, 243, 214, .85); }
+  .bGreen { background: #8fce7e; box-shadow: 0 0 11px 3px rgba(143, 206, 126, .8); }
+
+  /* ---------- star ---------- */
+  .star {
+    position: absolute;
+    left: 50%; top: 4.5%;
+    width: 17%;
+    transform: translate(-50%, -50%) scale(0) rotate(-30deg);
+    transition: transform .55s cubic-bezier(.34, 1.6, .5, 1);
+    transition-delay: var(--cd, 0s);
+    pointer-events: none;
+  }
+  .scene.open .star { transform: translate(-50%, -50%) scale(1) rotate(0deg); transition-delay: var(--od, 3.05s); }
+  .scene.open .star svg { animation: pfGlowStar 2.6s ease-in-out infinite alternate; }
+  @keyframes pfGlowStar { from { filter: drop-shadow(0 0 3px rgba(255, 205, 92, .65)); } to { filter: drop-shadow(0 0 10px rgba(255, 205, 92, 1)); } }
+
+  /* ---------- the paper bird ---------- */
+  .orbit {
+    position: absolute;
+    left: 50%; top: 4%;
+    width: 132%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .scene.open .orbit { animation: pfSpin 17s linear infinite; animation-delay: 3.5s; opacity: 1; transition: opacity 1s ease 3.5s; }
+  @keyframes pfSpin { from { transform: translate(-50%,-50%) rotate(0deg); } to { transform: translate(-50%,-50%) rotate(360deg); } }
+  .bird {
+    position: absolute;
+    left: 50%; top: 0;
+    width: 21%;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 3px 4px rgba(90, 60, 10, .4));
+  }
+  .scene.open .bird { animation: pfFlap .85s ease-in-out infinite alternate; }
+  @keyframes pfFlap { from { transform: translate(-50%,-50%) rotate(-9deg) translateY(0); } to { transform: translate(-50%,-50%) rotate(9deg) translateY(-9%); } }
+
+  /* ---------- the closed cover ---------- */
+  .cover {
+    position: absolute;
+    left: 50%; bottom: 30%;
+    width: 43%;
+    aspect-ratio: 3 / 4.05;
+    transform: translateX(-50%) translateZ(34px) rotateY(0deg);
+    transform-origin: 0% 50%;
+    transition: transform .85s cubic-bezier(.55,.06,.35,1), opacity .5s ease;
+    transition-delay: var(--cd, .62s), var(--cd, .62s);
+    border-radius: 5px;
+    background: linear-gradient(160deg, #fdf6e3, #f4e8cb);
+    box-shadow: inset 0 0 0 2px rgba(201, 143, 62, .85), inset 0 0 0 6px #fdf6e3, inset 0 0 0 7.5px rgba(201, 143, 62, .5), 0 18px 34px rgba(93, 70, 38, .28);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cover svg { width: 62%; height: auto; }
+  .scene.open .cover {
+    transform: translateX(-50%) translateZ(34px) rotateY(-112deg);
+    opacity: 0;
+    transition-delay: var(--od, 0s), var(--od, .5s);
+  }
+
+  /* ---------- snowfall ---------- */
+  .snow {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.4s ease;
+    z-index: 5;
+  }
+  .scene.open .snow { opacity: 1; transition-delay: 3.2s; }
+  .snow i {
+    position: absolute; top: -3%;
+    border-radius: 50%;
+    background: #fffdf6;
+    box-shadow: 0 0 5px rgba(255,255,255,.9);
+    animation: pfFall linear infinite;
+  }
+  @keyframes pfFall {
+    0%   { transform: translate3d(0, -4vh, 0); opacity: 0; }
+    8%   { opacity: .95; }
+    92%  { opacity: .95; }
+    100% { transform: translate3d(2.4vw, 62vh, 0); opacity: 0; }
+  }
+
+  /* ---------- hint + the one line ---------- */
+  .hint {
+    position: absolute;
+    left: 50%; bottom: 15%;
+    transform: translateX(-50%);
+    z-index: 6;
+    background: rgba(38, 66, 48, .88);
+    color: #f7ecd4;
+    font-size: 13.5px;
+    letter-spacing: .04em;
+    padding: 7px 16px;
+    border-radius: 999px;
+    pointer-events: none;
+    transition: opacity .5s ease;
+    animation: pfHint 2.2s ease-in-out infinite alternate;
+  }
+  @keyframes pfHint { from { transform: translateX(-50%) translateY(0); } to { transform: translateX(-50%) translateY(-4px); } }
+  .hint.gone { opacity: 0; animation: none; }
+  .line {
+    text-align: center;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(19px, 4.6vw, 25px);
+    letter-spacing: .05em;
+    color: #71562f;
+    margin: 10px 0 0;
+  }
+  .subhint {
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: rgba(113, 86, 47, .55);
+    margin: 5px 0 0;
+    opacity: 0;
+    transition: opacity .8s ease;
+  }
+  .subhint.show { opacity: 1; }
+
+  /* QA / reduced motion helpers */
+  .noanim *, .noanim *::before, .noanim *::after { transition: none !important; animation-duration: .01s !important; animation-delay: 0s !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .snow i, .scene.open .orbit, .scene.open .bird, .scene.open .bulb, .scene.open .tw, .hint { animation: none !important; }
+    .panel, .groundWrap, .piece, .cover { transition-duration: .01s !important; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="wrap">
+    <div class="scene" id="scene" tabindex="0" role="button" aria-label="Paper Christmas tree. Activate to open or close the paperfold card.">
+
+      <div class="tableShadow"></div>
+
+      <div class="world" id="world">
+        <!-- left page -->
+        <div class="panel panelL" style="--od:.18s; --cd:.5s">
+          <svg viewBox="0 0 300 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="pfSkyL" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#1d4a33"/><stop offset=".62" stop-color="#143726"/><stop offset="1" stop-color="#0e2a1c"/>
+              </linearGradient>
+            </defs>
+            <rect width="300" height="380" fill="url(#pfSkyL)"/>
+            <circle cx="52" cy="56" r="21" fill="#f7ecd4"/>
+            <circle cx="63" cy="50" r="18" fill="#1d4a33"/>
+            <g fill="#ffd166">
+              <circle class="tw" cx="120" cy="42" r="2.2"/><circle cx="196" cy="66" r="1.7"/>
+              <circle class="tw" cx="248" cy="36" r="2.4" style="animation-delay:.7s"/><circle cx="160" cy="104" r="1.6"/>
+              <circle class="tw" cx="86" cy="128" r="1.9" style="animation-delay:1.3s"/><circle cx="228" cy="128" r="1.6"/>
+              <circle cx="36" cy="168" r="1.7"/><circle class="tw" cx="268" cy="182" r="2" style="animation-delay:.4s"/>
+              <circle cx="140" cy="170" r="1.5"/><circle cx="205" cy="205" r="1.5"/>
+            </g>
+            <path d="M0 296 Q 80 262 160 288 T 300 282 V380 H0 Z" fill="#123324"/>
+            <path d="M0 336 Q 90 310 180 330 T 300 326 V380 H0 Z" fill="#f6efdd"/>
+            <path d="M58 322 l10 -22 10 22 Z" fill="#0e2a1c"/><path d="M226 316 l9 -19 9 19 Z" fill="#0e2a1c"/>
+          </svg>
+        </div>
+        <!-- right page -->
+        <div class="panel panelR" style="--od:.18s; --cd:.5s">
+          <svg viewBox="0 0 300 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="pfSkyR" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#1b4630"/><stop offset=".62" stop-color="#13351f"/><stop offset="1" stop-color="#0d281b"/>
+              </linearGradient>
+            </defs>
+            <rect width="300" height="380" fill="url(#pfSkyR)"/>
+            <g fill="#ffd166">
+              <circle cx="58" cy="52" r="1.8"/><circle class="tw" cx="128" cy="34" r="2.3" style="animation-delay:.9s"/>
+              <circle cx="212" cy="58" r="1.6"/><circle class="tw" cx="262" cy="102" r="2" style="animation-delay:.2s"/>
+              <circle cx="96" cy="112" r="1.6"/><circle cx="176" cy="140" r="1.8"/>
+              <circle class="tw" cx="40" cy="156" r="2" style="animation-delay:1.6s"/><circle cx="238" cy="176" r="1.5"/>
+              <circle cx="150" cy="196" r="1.5"/><circle class="tw" cx="70" cy="216" r="1.7" style="animation-delay:1.1s"/>
+            </g>
+            <path d="M0 288 Q 90 258 180 284 T 300 292 V380 H0 Z" fill="#10301f"/>
+            <path d="M0 330 Q 100 306 200 328 T 300 334 V380 H0 Z" fill="#f3ecd9"/>
+            <path d="M66 318 l9 -20 9 20 Z" fill="#0d281b"/><path d="M210 324 l10 -22 10 22 Z" fill="#0d281b"/>
+          </svg>
+        </div>
+
+        <!-- fan ground + pieces -->
+        <div class="groundWrap" style="--od:.5s; --cd:.34s">
+          <div class="ground">
+            <div class="groundArt"></div>
+            <div class="path"></div>
+
+            <!-- shadows -->
+            <div class="pshadow" style="--x:17%; --y:37%; --w:33%; --od:1.2s; --cd:.24s"></div>
+            <div class="pshadow" style="--x:83%; --y:39%; --w:29%; --od:1.45s; --cd:.18s"></div>
+            <div class="pshadow" style="--x:32%; --y:52%; --w:13%; --od:1.7s; --cd:.12s"></div>
+            <div class="pshadow" style="--x:69%; --y:54%; --w:12%; --od:1.85s; --cd:.08s"></div>
+            <div class="pshadow" style="--x:23%; --y:66%; --w:11%; --od:2s; --cd:.04s"></div>
+            <div class="pshadow" style="--x:50%; --y:24%; --w:44%; --od:2.2s; --cd:0s"></div>
+
+            <!-- house, left -->
+            <div class="piece" style="--x:17%; --y:37%; --w:33%; --od:1.15s; --cd:.24s">
+              <svg viewBox="0 0 200 172" aria-hidden="true">
+                <rect x="118" y="26" width="17" height="34" fill="#a9742f" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M112 30 q7 -12 16 -3 q11 -6 15 5 q-16 6 -31 -2Z" fill="#fdfaf1"/>
+                <polygon points="14,74 100,16 186,74 172,74 100,30 28,74" fill="#c98f3e" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M28 74 L100 30 L118 42 L44 80 Z" fill="#fdfaf1" opacity=".92"/>
+                <rect x="36" y="72" width="128" height="96" fill="#f7ecd4" stroke="#fffdf4" stroke-width="3"/>
+                <rect class="win" x="54" y="92" width="24" height="24" fill="#ffd166" stroke="#a9742f" stroke-width="2.5"/>
+                <rect class="win" x="122" y="92" width="24" height="24" fill="#ffd166" stroke="#a9742f" stroke-width="2.5" style="animation-delay:.8s"/>
+                <path d="M66 92 v24 M54 104 h24 M134 92 v24 M122 104 h24" stroke="#a9742f" stroke-width="2"/>
+                <rect x="89" y="112" width="23" height="56" rx="3" fill="#2e5d43" stroke="#f7ecd4" stroke-width="2.5"/>
+                <circle cx="106" cy="142" r="2.4" fill="#ffd166"/>
+                <path d="M36 168 h128" stroke="#e2d3ac" stroke-width="3"/>
+              </svg>
+            </div>
+
+            <!-- house, right -->
+            <div class="piece" style="--x:83%; --y:39%; --w:29%; --od:1.4s; --cd:.18s">
+              <svg viewBox="0 0 200 172" aria-hidden="true">
+                <rect x="52" y="28" width="15" height="30" fill="#a9742f" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M46 32 q6 -11 14 -3 q10 -5 13 5 q-14 5 -27 -2Z" fill="#fdfaf1"/>
+                <polygon points="14,74 100,16 186,74 172,74 100,30 28,74" fill="#2e5d43" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M28 74 L100 30 L118 42 L44 80 Z" fill="#fdfaf1" opacity=".92"/>
+                <rect x="36" y="72" width="128" height="96" fill="#f3e7cf" stroke="#fffdf4" stroke-width="3"/>
+                <rect class="win" x="56" y="94" width="22" height="22" fill="#ffd166" stroke="#7a5a24" stroke-width="2.5" style="animation-delay:1.5s"/>
+                <rect class="win" x="124" y="94" width="22" height="22" fill="#ffd166" stroke="#7a5a24" stroke-width="2.5" style="animation-delay:.3s"/>
+                <path d="M67 94 v22 M56 105 h22 M135 94 v22 M124 105 h22" stroke="#7a5a24" stroke-width="2"/>
+                <rect x="90" y="112" width="21" height="56" rx="3" fill="#c98f3e" stroke="#f7ecd4" stroke-width="2.5"/>
+                <circle cx="105" cy="142" r="2.2" fill="#f7ecd4"/>
+                <path d="M36 168 h128" stroke="#e2d3ac" stroke-width="3"/>
+              </svg>
+            </div>
+
+            <!-- small pine, left -->
+            <div class="piece" style="--x:32%; --y:52%; --w:13%; --od:1.65s; --cd:.12s">
+              <svg viewBox="0 0 100 152" aria-hidden="true">
+                <rect x="44" y="128" width="12" height="20" fill="#8a5a2b" stroke="#f7ecd4" stroke-width="2.5"/>
+                <polygon points="50,4 82,58 18,58" fill="#256b47" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <polygon points="50,38 90,98 10,98" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <polygon points="50,76 96,140 4,140" fill="#256b47" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M32 52 q18 -9 36 0 q-18 7 -36 0Z" fill="#fdfaf1"/>
+                <path d="M24 92 q26 -10 52 0 q-26 8 -52 0Z" fill="#fdfaf1"/>
+                <path d="M18 132 q32 -11 64 0 q-32 9 -64 0Z" fill="#fdfaf1"/>
+              </svg>
+            </div>
+
+            <!-- small pine, right -->
+            <div class="piece" style="--x:69%; --y:54%; --w:12%; --od:1.8s; --cd:.08s">
+              <svg viewBox="0 0 100 152" aria-hidden="true">
+                <rect x="44" y="128" width="12" height="20" fill="#8a5a2b" stroke="#f7ecd4" stroke-width="2.5"/>
+                <polygon points="50,4 82,58 18,58" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <polygon points="50,38 90,98 10,98" fill="#256b47" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <polygon points="50,76 96,140 4,140" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M32 52 q18 -9 36 0 q-18 7 -36 0Z" fill="#fdfaf1"/>
+                <path d="M24 92 q26 -10 52 0 q-26 8 -52 0Z" fill="#fdfaf1"/>
+                <path d="M18 132 q32 -11 64 0 q-32 9 -64 0Z" fill="#fdfaf1"/>
+              </svg>
+            </div>
+
+            <!-- snowman -->
+            <div class="piece" style="--x:23%; --y:66%; --w:11%; --od:1.95s; --cd:.04s">
+              <svg viewBox="0 0 100 132" aria-hidden="true">
+                <path d="M50 74 L14 52 M50 78 L86 58" stroke="#8a5a2b" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="50" cy="94" r="31" fill="#fdfbf5" stroke="#e8dcbc" stroke-width="3"/>
+                <circle cx="50" cy="48" r="22" fill="#fdfbf5" stroke="#e8dcbc" stroke-width="3"/>
+                <rect x="33" y="62" width="34" height="8" rx="3" fill="#2e5d43"/>
+                <polygon points="72,48 94,52 72,56" fill="#e08a3c"/>
+                <circle cx="43" cy="44" r="2.4" fill="#26332a"/><circle cx="57" cy="44" r="2.4" fill="#26332a"/>
+                <circle cx="50" cy="86" r="2.6" fill="#26332a"/><circle cx="50" cy="100" r="2.6" fill="#26332a"/>
+                <path d="M40 58 q10 6 20 0" stroke="#26332a" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <!-- the great tree -->
+            <div class="piece tree" style="--x:50%; --y:24%; --w:44%; --od:2.15s; --cd:0s">
+              <svg viewBox="0 0 220 262" aria-hidden="true">
+                <rect x="100" y="228" width="20" height="30" fill="#8a5a2b" stroke="#f7ecd4" stroke-width="3"/>
+                <polygon points="110,6 152,66 68,66" fill="#256b47" stroke="#fffdf4" stroke-width="3.5" stroke-linejoin="round"/>
+                <polygon points="110,52 168,122 52,122" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3.5" stroke-linejoin="round"/>
+                <polygon points="110,102 186,180 34,180" fill="#256b47" stroke="#fffdf4" stroke-width="3.5" stroke-linejoin="round"/>
+                <polygon points="110,158 202,238 18,238" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3.5" stroke-linejoin="round"/>
+                <path d="M84 58 q26 -11 52 0 q-26 8 -52 0Z" fill="#fdfaf1"/>
+                <path d="M72 114 q38 -13 76 0 q-38 10 -76 0Z" fill="#fdfaf1"/>
+                <path d="M56 170 q54 -15 108 0 q-54 12 -108 0Z" fill="#fdfaf1"/>
+                <path d="M44 228 q66 -16 132 0 q-66 13 -132 0Z" fill="#fdfaf1"/>
+                <path d="M78 96 q32 16 64 0 M64 152 q46 20 92 0 M52 208 q58 22 116 0" stroke="#d9a441" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="1 7"/>
+              </svg>
+              <!-- bulbs -->
+              <i class="bulb bGold"  style="left:50%; top:24%; --bd:3.05s"></i>
+              <i class="bulb bRed"   style="left:39%; top:38%; --bd:3.14s"></i>
+              <i class="bulb bCream" style="left:61%; top:38%; --bd:3.23s"></i>
+              <i class="bulb bGreen" style="left:31%; top:54%; --bd:3.32s"></i>
+              <i class="bulb bGold"  style="left:50%; top:56%; --bd:3.41s"></i>
+              <i class="bulb bRed"   style="left:69%; top:54%; --bd:3.5s"></i>
+              <i class="bulb bCream" style="left:23%; top:72%; --bd:3.59s"></i>
+              <i class="bulb bGreen" style="left:41%; top:74%; --bd:3.68s"></i>
+              <i class="bulb bGold"  style="left:59%; top:74%; --bd:3.77s"></i>
+              <i class="bulb bRed"   style="left:77%; top:72%; --bd:3.86s"></i>
+              <i class="bulb bGold"  style="left:32%; top:87%; --bd:3.95s"></i>
+              <i class="bulb bCream" style="left:50%; top:89%; --bd:4.04s"></i>
+              <i class="bulb bGreen" style="left:68%; top:87%; --bd:4.13s"></i>
+              <!-- star -->
+              <div class="star" style="--od:3s; --cd:0s">
+                <svg viewBox="0 0 60 60" aria-hidden="true">
+                  <polygon points="30,3 37,21 56,21 41,32 47,51 30,39 13,51 19,32 4,21 23,21" fill="#f2b63d" stroke="#fff3cf" stroke-width="2.5" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <!-- paper bird circling the star -->
+              <div class="orbit">
+                <div class="bird">
+                  <svg viewBox="0 0 60 40" aria-hidden="true">
+                    <path d="M6 26 Q 22 8 40 14 Q 54 18 52 26 Q 50 33 36 33 Q 16 33 6 26Z" fill="#f2b63d" stroke="#a9742f" stroke-width="2.2"/>
+                    <path d="M24 16 Q 30 2 44 4 Q 36 12 34 20 Q 28 21 24 16Z" fill="#fdf6e3" stroke="#a9742f" stroke-width="1.8"/>
+                    <polygon points="6,26 0,21 2,30" fill="#c98f3e"/>
+                    <circle cx="44" cy="21" r="2.2" fill="#26332a"/>
+                    <polygon points="52,24 59,26 52,29" fill="#e08a3c"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- cover -->
+        <div class="cover" style="--od:0s; --cd:.62s" aria-hidden="true">
+          <svg viewBox="0 0 100 152" aria-hidden="true">
+            <polygon points="50,14 58,32 77,32 62,43 67,62 50,51 33,62 38,43 23,32 42,32" fill="#f2b63d" stroke="#fff3cf" stroke-width="2" stroke-linejoin="round" transform="translate(0,-8) scale(.82) translate(11,0)"/>
+            <rect x="44" y="128" width="12" height="18" fill="#8a5a2b"/>
+            <polygon points="50,34 80,84 20,84" fill="#256b47"/>
+            <polygon points="50,62 88,116 12,116" fill="#1e5a3c"/>
+            <polygon points="50,92 94,146 6,146" fill="#256b47"/>
+            <circle cx="50" cy="76" r="3" fill="#f0765a"/><circle cx="38" cy="104" r="3" fill="#ffd166"/><circle cx="62" cy="104" r="3" fill="#fff3d6"/><circle cx="50" cy="126" r="3" fill="#f0765a"/>
+          </svg>
+        </div>
+
+      </div>
+
+      <div class="snow" id="snow" aria-hidden="true"></div>
+      <div class="hint" id="hint">tap to open</div>
+    </div>
+    <p class="line">A tree made of paper.</p>
+    <p class="subhint" id="subhint">tap again to fold it away &nbsp;·&nbsp; drag to look around</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var scene = document.getElementById('scene');
+    var world = document.getElementById('world');
+    var hint = document.getElementById('hint');
+    var subhint = document.getElementById('subhint');
+    var snow = document.getElementById('snow');
+    var opened = false, touched = false;
+
+    // snowfall dots
+    var flakes = '';
+    for (var i = 0; i < 22; i++) {
+      var left = (Math.random() * 98).toFixed(1);
+      var size = (2.5 + Math.random() * 3.5).toFixed(1);
+      var dur = (5.5 + Math.random() * 5).toFixed(1);
+      var del = (-Math.random() * 9).toFixed(1);
+      flakes += '<i style="left:' + left + '%; width:' + size + 'px; height:' + size + 'px; animation-duration:' + dur + 's; animation-delay:' + del + 's"></i>';
+    }
+    snow.innerHTML = flakes;
+
+    function setOpen(on) {
+      opened = on;
+      scene.classList.toggle('open', on);
+      scene.setAttribute('aria-label', on
+        ? 'Paper Christmas tree, open and lit. Activate to fold it away.'
+        : 'Paper Christmas tree. Activate to open the paperfold card.');
+      if (on) {
+        touched = true;
+        hint.classList.add('gone');
+        hint.textContent = '';
+        subhint.classList.add('show');
+      } else {
+        subhint.classList.remove('show');
+        if (touched) { hint.textContent = 'tap to open again'; hint.classList.remove('gone'); }
+      }
+    }
+
+    // drag to orbit, tap to toggle
+    var drag = null;
+    scene.addEventListener('pointerdown', function (e) {
+      drag = { x: e.clientX, y: e.clientY, orbit: parseFloat(getComputedStyle(world).getPropertyValue('--orbit')) || 0,
+               tilt: parseFloat(getComputedStyle(world).getPropertyValue('--tilt')) || 20, moved: false };
+      scene.setPointerCapture(e.pointerId);
+    });
+    scene.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 7) drag.moved = true;
+      if (drag.moved) {
+        var orbit = Math.max(-20, Math.min(20, drag.orbit + dx * 0.16));
+        var tilt = Math.max(14, Math.min(28, drag.tilt + dy * 0.06));
+        world.style.setProperty('--orbit', orbit.toFixed(1) + 'deg');
+        world.style.setProperty('--tilt', tilt.toFixed(1) + 'deg');
+      }
+    });
+    scene.addEventListener('pointerup', function () {
+      if (drag && !drag.moved) setOpen(!opened);
+      drag = null;
+    });
+    scene.addEventListener('pointercancel', function () { drag = null; });
+
+    scene.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!opened); }
+      if (e.key === 'Escape') setOpen(false);
+    });
+
+    // QA hooks: #open starts open, #still jumps to the held state
+    if (location.hash.indexOf('open') !== -1 || location.hash.indexOf('still') !== -1) {
+      if (location.hash.indexOf('still') !== -1) scene.classList.add('noanim');
+      setOpen(true);
+    }
+  })();
+</script>
+</body>
+</html>
