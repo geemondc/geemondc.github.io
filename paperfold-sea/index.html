@@ -15,8 +15,8 @@
     user-select:none; -webkit-user-select:none;
     cursor:pointer;
   }
-  #fit { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
-  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
 
   /* soft pool of light on the "table" under the card */
   #floorGlow {
@@ -109,16 +109,38 @@
   .envFlap {
     position:absolute; left:0; top:-1px; width:100%; height:54%;
     transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
-    transition:transform .85s cubic-bezier(.35,.7,.3,1) 1.6s; /* closing delay */
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
   }
-  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.1s; }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
   .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
   .envFlapFront svg { width:100%; height:100%; display:block; }
   .envFlapBack {
     position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
-    background:linear-gradient(180deg, #0d6274, #084556);
-    clip-path:polygon(0 0, 100% 0, 50% 100%);
   }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns: the front face brightens
+     lifting toward the light; the back face comes around out of shade and
+     settles as it flattens onto the table (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfSeaFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfSeaFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfSeaFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfSeaFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base —
+     fades in as the flap lands, so its rest behind the card reads as a
+     physical thing lying there, not a disappearance */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
   .seal {
     position:absolute; left:50%; top:98.8%; width:62px; height:62px;
     transform:translate(-50%,-50%) translateZ(3px);
@@ -248,6 +270,31 @@
   }
   @keyframes pfSeaPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
 
+  /* ---------- the written card (white card face below the tank) ---------- */
+  #cardWords {
+    display:grid; grid-template-rows:0fr;
+    width:min(88vw, 430px); flex:0 0 auto;
+    margin-top:0; opacity:0;
+    transition:grid-template-rows .45s ease .05s, opacity .35s ease 0s, margin-top .45s ease .05s;
+  }
+  #world.open ~ #cardWords {
+    grid-template-rows:1fr; margin-top:16px; opacity:1;
+    transition:grid-template-rows .9s ease 2.5s, opacity .8s ease 2.55s, margin-top .9s ease 2.5s;
+  }
+  .cwInner { overflow:hidden; min-height:0; }
+  #cwLeaf {
+    background:linear-gradient(180deg, #ffffff 0%, #f3f8fa 100%);
+    border:1px solid rgba(232,182,90,.7); border-radius:8px;
+    box-shadow:0 16px 36px rgba(0,0,0,.55), inset 0 0 0 4px #ffffff, inset 0 0 0 5px rgba(232,182,90,.4);
+    padding:19px 24px 20px;
+    text-align:center; color:#0d3a4d;
+    font-family:Georgia, 'Times New Roman', serif;
+  }
+  #cwLeaf p { margin:0; }
+  .cw-greet { font-size:21px; line-height:1.4; }
+  .cw-msg { font-size:20px; line-height:1.4; font-style:italic; margin-top:3px; color:#155e75; }
+  .cw-sign { margin-top:13px; font-size:25px; line-height:1.3; font-style:italic; color:#0a5064; letter-spacing:.01em; }
+
   /* QA: freeze every transition so hash states render instantly */
   .qa * { transition:none !important; }
   /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
@@ -259,6 +306,8 @@
   @media (prefers-reduced-motion: reduce) {
     #orbiter { animation:none; }
     #faceFront .sheen, .ray i { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
   }
 </style>
 </head>
@@ -398,12 +447,28 @@
               </div>
             </div><!-- /volume -->
 
+            <div id="flapShadow"></div>
+
             <!-- the sealed envelope front: covers everything while closed,
                  slides down-front to lie before the card once open -->
             <div id="envGroup">
               <div class="envFront"></div>
               <div class="envFlap">
-                <div class="envFlapBack"></div>
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSeaFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#0e6a7d"/><stop offset="1" stop-color="#0a4c60"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSeaFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="none" stroke="#e8b65a" stroke-linecap="round" opacity=".55">
+                      <path d="M183 34 q13 -10 26 0 t26 0 t26 0" stroke-width="2.2"/>
+                      <path d="M196 52 q11 -8 22 0 t22 0" stroke-width="1.7"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
                 <div class="envFlapFront">
                   <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
                     <defs>
@@ -422,6 +487,15 @@
       </div>
     </div>
     <div id="pill">TAP TO OPEN</div>
+  </div>
+  <div id="cardWords" aria-hidden="true">
+    <div class="cwInner">
+      <div id="cwLeaf">
+        <p class="cw-greet">Hey everyone,</p>
+        <p class="cw-msg">a view of the sea...</p>
+        <p class="cw-sign">Dr. Gee</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -548,6 +622,7 @@
   function toggle(){
     opened = !opened;
     world.classList.toggle('open', opened);
+    fit();
     if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
     if (opened){
       pill.style.opacity = '0';
@@ -561,9 +636,20 @@
   document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
 
   /* ---------- fit to screen ---------- */
+  var cwLeaf = document.getElementById('cwLeaf');
+  var cardWordsEl = document.getElementById('cardWords');
   function fit(){
-    var s = Math.min(window.innerWidth / 660, window.innerHeight / 530);
-    document.getElementById('world').style.transform = 'scale(' + s.toFixed(3) + ')';
+    /* once open, reserve room under the stage for the written card, so
+       tank + white card together fit one screen with no scrolling */
+    var isOpen = world.classList.contains('open');
+    var reserve = isOpen ? cwLeaf.offsetHeight + 18 : 0;
+    var s = Math.min(window.innerWidth / 660, (window.innerHeight - reserve) / 530);
+    world.style.transform = 'scale(' + s.toFixed(3) + ')';
+    /* when the stage renders smaller than its layout box, reclaim part of
+       the dead space under it so the written card sits up close beneath
+       the tank instead of floating far below */
+    var dead = Math.max(0, (480 - 480 * s) / 2);
+    cardWordsEl.style.marginTop = isOpen ? Math.round(16 - dead * 0.5) + 'px' : '';
   }
   window.addEventListener('resize', fit);
   fit();
@@ -573,12 +659,12 @@
   if (location.hash === '#risen'){
     opened = true; target = 1; rise = 1;
     world.classList.add('open'); document.body.classList.add('qa');
-    pill.style.opacity = '0'; applyRise();
+    pill.style.opacity = '0'; applyRise(); fit();
   }
   if (location.hash === '#mid'){
     opened = true; target = 0.52; rise = 0.52;
     world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
-    pill.style.opacity = '0'; applyRise();
+    pill.style.opacity = '0'; applyRise(); fit();
   }
 })();
 </script>
