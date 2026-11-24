@@ -138,6 +138,12 @@
   .panel {
     margin-top: 14px;
     min-height: 96px;
+    /* Never let the page's column flex shrink the panel below its
+       content — a tall panel fill (HELP, the old exercise card)
+       would spill out of the 96px box and paint over the scene
+       above and the doors below (Gary's overlap screenshot,
+       Nov 24). The panel sizes to its content; the page scrolls. */
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -208,6 +214,7 @@
     box-shadow: 0 5px 16px rgba(90, 60, 20, 0.28);
     -webkit-tap-highlight-color: transparent;
   }
+  a.door { text-decoration: none; text-align: center; }
   .door:active { filter: brightness(1.1); }
   .door:focus-visible { outline: 3px solid #3d2c1c; outline-offset: 2px; }
   .door .word {
@@ -227,27 +234,6 @@
   .door-ex { background: linear-gradient(160deg, #cf9a35, #9c6b14); }
   .door-help { background: linear-gradient(160deg, #7ba23f, #55701f); grid-column: 1 / -1; }
   .door .word.small { font-size: clamp(1.22rem, 5.6vw, 1.55rem); }
-
-  /* ---------- today's movement showcase ---------- */
-  .panel .exlabel {
-    font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase;
-    color: #b35c1e; font-weight: bold; margin-bottom: 6px;
-  }
-  .panel .exname { font-style: italic; color: #7a6248; font-size: clamp(1rem, 4.4vw, 1.12rem); margin-top: 3px; }
-  .panel .extag {
-    display: inline-block; margin-top: 9px; padding: 3px 12px; border-radius: 999px;
-    border: 1.5px solid #d9a44e; color: #9c6b14; background: rgba(255, 248, 230, 0.8);
-    font-size: 0.9rem; font-style: italic;
-  }
-  .panel .exkind { margin-top: 9px; }
-  .exbtn {
-    display: inline-block; margin-top: 13px;
-    background: linear-gradient(160deg, #d97b2f, #b35c1e);
-    color: #fff8ec; text-decoration: none; font-weight: bold;
-    font-size: clamp(1.05rem, 4.6vw, 1.25rem);
-    padding: 13px 26px; border-radius: 999px;
-    box-shadow: 0 5px 16px rgba(90, 60, 20, 0.28);
-  }
 
   /* ---------- bottom lines ---------- */
   .bottom {
@@ -303,10 +289,10 @@
         <span class="word small">Walk With Me</span>
         <span class="sub">an endless garden walk</span>
       </button>
-      <button class="door door-ex" id="btnEx" type="button">
+      <a class="door door-ex" href="https://futurereadystretch.lovable.app/" target="_blank" rel="noopener">
         <span class="word small">Exercises at Home</span>
-        <span class="sub">a new movement each day</span>
-      </button>
+        <span class="sub" id="exSub">today&rsquo;s movement</span>
+      </a>
       <button class="door door-help" id="btnHelp" type="button">
         <span class="word">HELP</span>
         <span class="sub">send a little good</span>
@@ -339,7 +325,6 @@
 
   var panel = document.getElementById("panel");
   var btnMove = document.getElementById("btnMove");
-  var btnEx = document.getElementById("btnEx");
   var btnHelp = document.getElementById("btnHelp");
   var scene = document.querySelector(".scene");
   var walkTimer = null, walkStart = 0, otherIdx = -1;
@@ -588,14 +573,15 @@
   }
 
   /* ----- Exercises at Home: Today's Movement -----
-     One exercise a day from Pura Vida Movimiento — Adriana's real
-     library (futurereadystretch.lovable.app; each lesson opens on
-     her page). Gary's rotation: a four-day cycle of buckets —
-     Beginner Stretch, Beginner Strength, Intermediate Stretch,
-     Intermediate Strength — and within a bucket the exercises
-     advance one per cycle, so all forty get their day. The
-     visitor's own date picks the day, like the thoughts above. */
-  var PV_URL = "https://futurereadystretch.lovable.app/";
+     One exercise a day from the Pura Vida Movimiento library
+     (futurereadystretch.lovable.app). The door itself is a direct
+     link — press it and you're there (Gary, Nov 24) — and today's
+     exercise name rides quietly on the door as its sub-line.
+     Gary's rotation: a four-day cycle of buckets — Beginner
+     Stretch, Beginner Strength, Intermediate Stretch, Intermediate
+     Strength — and within a bucket the exercises advance one per
+     cycle, so all forty get their day. The visitor's own date
+     picks the day, like the thoughts above. */
   var EX_BUCKETS = [
     { tag: "Beginner \u00B7 Stretch",
       kind: "Gentle and easy \u2014 a kind way to wake your body up.",
@@ -666,20 +652,9 @@
     startWalk();
   });
 
-  btnEx.addEventListener("click", function () {
-    if (walkTimer) endWalk(null);
-    panel.onclick = null;
-    var ex = todaysExercise();
-    setPanel(
-      "<div><p class=\"exlabel\">Today\u2019s Movement</p>" +
-      "<p class=\"step\">" + esc(ex.en) + "</p>" +
-      "<p class=\"exname\">" + esc(ex.es) + "</p>" +
-      "<span class=\"extag\">" + esc(ex.tag) + "</span>" +
-      "<p class=\"exkind\">" + esc(ex.kind) + "</p>" +
-      "<a class=\"exbtn\" href=\"" + PV_URL + "\" target=\"_blank\" rel=\"noopener\">Do it with Adriana</a>" +
-      "<p class=\"orline\">from Pura Vida Movimiento \u2014 her library of 60 movements, a few minutes at home.</p></div>"
-    );
-  });
+  /* The Exercises door is a plain link now — no panel, no second
+     tap. Today's exercise name is its sub-line. */
+  document.getElementById("exSub").textContent = "today \u00B7 " + todaysExercise().en;
 
   btnHelp.addEventListener("click", function () {
     if (walkTimer) endWalk(null);
