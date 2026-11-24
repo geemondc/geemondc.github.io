@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Garden — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #274d20 0%, #12240e 46%, #060d04 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#f2f7e4;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(120,200,90,.20) 0%, rgba(255,214,90,.07) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfGardenSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfGardenSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #3c7031 0%, #2a5223 55%, #1c3a16 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm sunlight the garden casts onto the base */
+  #sunGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,224,120,.85) 0%, rgba(190,220,90,.34) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fbfff4 0%, #e9f5dc 58%, #d8ecc4 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(90,140,60,.22);
+  }
+  /* the face that greets you once the card stands — the garden sky */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #cfeeff 0%, #e8f7ff 46%, #fdf6d8 78%, #f2f9dc 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(24,50,16,.35), inset 0 0 52px rgba(80,120,40,.18);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #63b154 0%, #478c3a 52%, #2f6628 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfGardenFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfGardenFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfGardenFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfGardenFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the garden (rises out of the base, bloom by bloom) ---------- */
+  #gardenWrap { position:absolute; left:45px; top:14px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the soil bed the garden grows from — JS breathes it in as the rise begins */
+  #bed {
+    position:absolute; left:30px; top:34px; width:320px; height:196px; border-radius:50%;
+    transform:translateZ(5px) scale(.85); transform-origin:50% 50%;
+    background:radial-gradient(ellipse at 50% 38%, #9c6b3d 0%, #7d5228 52%, #5f3c1d 82%, #4a2d14 100%);
+    box-shadow: inset 0 0 0 3px rgba(60,36,16,.55), inset 0 -14px 26px rgba(40,22,6,.5), inset 0 10px 18px rgba(255,220,160,.18), 0 4px 14px rgba(0,0,0,.35);
+  }
+  #bed::before { /* soil mounds */
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:
+      radial-gradient(ellipse 90px 34px at 26% 62%, rgba(66,40,18,.55) 60%, rgba(66,40,18,0) 100%),
+      radial-gradient(ellipse 110px 38px at 55% 48%, rgba(178,128,74,.5) 55%, rgba(178,128,74,0) 100%),
+      radial-gradient(ellipse 84px 30px at 78% 66%, rgba(66,40,18,.5) 60%, rgba(66,40,18,0) 100%),
+      radial-gradient(ellipse 60px 22px at 42% 76%, rgba(178,128,74,.4) 55%, rgba(178,128,74,0) 100%);
+  }
+  #bed::after { /* tiny sprouts and flower specks resting in the soil */
+    content:""; position:absolute; inset:6px; border-radius:50%; opacity:.8;
+    background-image:
+      radial-gradient(circle 2.2px at 30px 60px, #ffd166 98%, rgba(255,209,102,0)),
+      radial-gradient(circle 2.2px at 90px 110px, #ff8fb3 98%, rgba(255,143,179,0)),
+      radial-gradient(circle 2.2px at 200px 40px, #ffffff 98%, rgba(255,255,255,0)),
+      radial-gradient(circle 2.2px at 260px 96px, #ffd166 98%, rgba(255,209,102,0)),
+      radial-gradient(circle 2.2px at 150px 140px, #ff8fb3 98%, rgba(255,143,179,0)),
+      radial-gradient(circle 2.6px at 120px 70px, #7ec850 98%, rgba(126,200,80,0)),
+      radial-gradient(circle 2.6px at 230px 128px, #7ec850 98%, rgba(126,200,80,0));
+    background-size:300px 170px;
+  }
+
+  /* one flower: a point anchor on the bed; the sway wrapper breathes,
+     the standee stands up from its bottom edge (rotateX(-90)); inside,
+     the stem's height is grown by JS and the head rides on top of it —
+     the same grammar as the Birthday Cake's tiers and the Sea's walls */
+  .flower { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .flowerSway { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfGardenSwayFlower 5.2s ease-in-out infinite alternate; }
+  .flower.f2 .flowerSway { animation-duration:6.1s; animation-delay:-1.6s; }
+  .flower.f3 .flowerSway { animation-duration:4.7s; animation-delay:-2.8s; }
+  .flower.f4 .flowerSway { animation-duration:5.8s; animation-delay:-.9s; }
+  .flower.f5 .flowerSway { animation-duration:5s; animation-delay:-3.4s; }
+  .flower.f6 .flowerSway { animation-duration:6.4s; animation-delay:-2.1s; }
+  @keyframes pfGardenSwayFlower { from { transform:rotateZ(-1.7deg); } to { transform:rotateZ(1.7deg); } }
+  .flowerStand {
+    position:absolute; left:-22px; top:0; width:44px; height:0;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    transform-style:preserve-3d;
+  }
+  .stem {
+    position:absolute; left:50%; bottom:0; width:6px; height:0; margin-left:-3px;
+    border-radius:3px;
+    background:linear-gradient(90deg, #3e7d2c 0%, #5da244 55%, #2f6121 100%);
+    box-shadow: inset -1px 0 2px rgba(0,0,0,.25);
+  }
+  .leaf {
+    position:absolute; width:20px; height:11px; border-radius:100% 4px 100% 4px;
+    background:linear-gradient(135deg, #6cb85a 0%, #478c3a 70%, #35682c 100%);
+    box-shadow: inset 0 -2px 3px rgba(0,0,0,.2);
+    opacity:0;
+  }
+  .leafL { right:3px; bottom:38%; transform-origin:100% 100%; }
+  .leafR { left:3px; bottom:58%; border-radius:4px 100% 4px 100%; transform-origin:0% 100%; }
+  /* the head: rides the stem top (bottom set by JS); the bloom wrapper
+     scales open (JS) while each petal fans out on the --bloom variable */
+  .head {
+    position:absolute; left:50%; bottom:0; width:40px; height:40px; margin-left:-20px;
+    opacity:0; transform-style:preserve-3d;
+  }
+  .bloom { position:absolute; inset:0; transform:scale(.15); transform-style:preserve-3d; }
+  .petal { position:absolute; box-shadow: inset 0 -3px 5px rgba(0,0,0,.14), inset 0 2px 3px rgba(255,255,255,.35); }
+  .headCore { position:absolute; border-radius:50%; box-shadow: inset 0 -2px 4px rgba(0,0,0,.22), inset 0 1px 2px rgba(255,255,255,.5); }
+  /* tulip: three cup petals that fan open as --bloom rises */
+  .tulip .petal { width:17px; height:26px; left:50%; top:2px; border-radius:50% 50% 46% 46% / 72% 72% 28% 28%; }
+  .tulip .p1 { margin-left:-8.5px; transform-origin:50% 100%; transform:rotate(0deg) scaleY(calc(.55 + var(--bloom, 0) * .45)); z-index:3; }
+  .tulip .p2 { margin-left:-15px; transform-origin:80% 100%; transform:rotate(calc(-14deg - var(--bloom, 0) * 22deg)); z-index:2; }
+  .tulip .p3 { margin-left:-2px; transform-origin:20% 100%; transform:rotate(calc(14deg + var(--bloom, 0) * 22deg)); z-index:2; }
+  .tulip .headCore { width:12px; height:10px; left:50%; top:16px; margin-left:-6px; z-index:4; }
+  .tulip.coral .petal { background:linear-gradient(180deg, #ff9a7a 0%, #ff6b5e 60%, #e04b3e 100%); }
+  .tulip.coral .headCore { background:#ffd166; }
+  .tulip.sunny .petal { background:linear-gradient(180deg, #ffe29a 0%, #ffd166 60%, #f2b950 100%); }
+  .tulip.sunny .headCore { background:#ff8a5e; }
+  /* daisy: eight slim petals radiating from a golden heart */
+  .daisy .petal {
+    width:8px; height:19px; left:50%; top:50%; margin:-19px 0 0 -4px;
+    border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+    background:linear-gradient(180deg, #ffffff 0%, #fdf6e3 70%, #eee3c2 100%);
+    transform-origin:50% 100%;
+    transform:rotate(var(--rot, 0deg)) scale(calc(.25 + var(--bloom, 0) * .75));
+  }
+  .daisy .headCore { width:13px; height:13px; left:50%; top:50%; margin:-6.5px 0 0 -6.5px; background:radial-gradient(circle at 38% 32%, #ffe29a 0%, #f2b950 60%, #d99a2b 100%); z-index:5; }
+  /* rose: layered paper circles that swell open */
+  .rose .petal { border-radius:50%; left:50%; top:50%; }
+  .rose .p1 { width:34px; height:34px; margin:-17px 0 0 -17px; transform:scale(calc(.3 + var(--bloom, 0) * .7)); }
+  .rose .p2 { width:25px; height:25px; margin:-12.5px 0 0 -12.5px; transform:scale(calc(.25 + var(--bloom, 0) * .75)) rotate(24deg); }
+  .rose .p3 { width:16px; height:16px; margin:-8px 0 0 -8px; transform:scale(calc(.2 + var(--bloom, 0) * .8)) rotate(-18deg); }
+  .rose .headCore { width:8px; height:8px; left:50%; top:50%; margin:-4px 0 0 -4px; z-index:5; }
+  .rose.blush .p1 { background:radial-gradient(circle at 36% 30%, #ffc2d6 0%, #ff8fb3 62%, #e56b96 100%); }
+  .rose.blush .p2 { background:radial-gradient(circle at 40% 34%, #ffd9e7 0%, #ffabc6 62%, #ef7ba4 100%); }
+  .rose.blush .p3 { background:radial-gradient(circle at 42% 36%, #ffeef5 0%, #ffc2d6 62%, #f78fb5 100%); }
+  .rose.blush .headCore { background:#e75480; }
+  .rose.deep .p1 { background:radial-gradient(circle at 36% 30%, #f78fb5 0%, #e75480 62%, #c23a68 100%); }
+  .rose.deep .p2 { background:radial-gradient(circle at 40% 34%, #ffabc6 0%, #ef7ba4 62%, #d14e7e 100%); }
+  .rose.deep .p3 { background:radial-gradient(circle at 42% 36%, #ffd9e7 0%, #f78fb5 62%, #e75480 100%); }
+  .rose.deep .headCore { background:#a82c58; }
+
+  /* butterflies: standees that arrive once the garden is open, wander a
+     small loop between the flowers, and flutter the whole time */
+  .butterfly { position:absolute; width:0; height:0; transform-style:preserve-3d; opacity:0; transition:opacity .5s ease 0s; }
+  #world.open .butterfly { opacity:1; transition:opacity .8s ease 2s; }
+  .bflyWander { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfGardenWander 9s ease-in-out infinite alternate; }
+  .butterfly.b2 .bflyWander { animation-duration:11s; animation-delay:-4s; }
+  @keyframes pfGardenWander {
+    0% { transform:translate3d(0,0,64px) rotateZ(-4deg); }
+    35% { transform:translate3d(26px,-8px,86px) rotateZ(3deg); }
+    70% { transform:translate3d(-14px,4px,74px) rotateZ(-2deg); }
+    100% { transform:translate3d(10px,-12px,92px) rotateZ(4deg); }
+  }
+  .bflyStand {
+    position:absolute; left:-17px; top:-46px; width:34px; height:46px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    transform-style:preserve-3d;
+  }
+  .wing {
+    position:absolute; top:6px; width:16px; height:22px;
+    border-radius:90% 90% 90% 90% / 80% 80% 60% 60%;
+    box-shadow: inset 0 0 4px rgba(255,255,255,.5), inset 0 -3px 5px rgba(0,0,0,.15);
+  }
+  .wingL { right:50%; margin-right:1px; transform-origin:100% 50%; animation:pfGardenFlutterL .3s ease-in-out infinite alternate; }
+  .wingR { left:50%; margin-left:1px; transform-origin:0% 50%; animation:pfGardenFlutterR .3s ease-in-out infinite alternate; }
+  @keyframes pfGardenFlutterL { from { transform:rotateY(12deg); } to { transform:rotateY(64deg); } }
+  @keyframes pfGardenFlutterR { from { transform:rotateY(-12deg); } to { transform:rotateY(-64deg); } }
+  .bflyBody {
+    position:absolute; left:50%; top:12px; width:4px; height:20px; margin-left:-2px;
+    border-radius:2px; background:#4a3220;
+  }
+  .bflyBody::before, .bflyBody::after { /* antennae */
+    content:""; position:absolute; top:-5px; width:1.6px; height:7px; background:#4a3220; border-radius:1px;
+  }
+  .bflyBody::before { left:0; transform:rotate(-24deg); transform-origin:50% 100%; }
+  .bflyBody::after { right:0; transform:rotate(24deg); transform-origin:50% 100%; }
+  .butterfly .wing { background:linear-gradient(160deg, #ffb35c 0%, #ff8a5e 55%, #e56b96 100%); }
+  .butterfly.b2 .wing { background:linear-gradient(160deg, #a5d8ff 0%, #74b9f0 55%, #b388ff 100%); }
+
+  /* pollen: tiny gold motes drifting up over the garden once open */
+  .pollen {
+    position:absolute; width:6px; height:6px; border-radius:50%; opacity:0; pointer-events:none;
+    background:radial-gradient(circle, #fff3b0 0%, #ffd94d 60%, rgba(255,217,77,0) 100%);
+  }
+  #world.open .pollen { animation:pfGardenPollen 6.4s ease-in-out infinite; animation-delay:calc(2.4s + var(--d, 0s)); }
+  @keyframes pfGardenPollen {
+    0% { opacity:0; transform:translate3d(0,0,var(--z,90px)) rotate(0deg); }
+    14% { opacity:.9; }
+    50% { transform:translate3d(var(--dx,8px), var(--dy,-16px), var(--z,90px)) rotate(140deg); }
+    86% { opacity:.75; }
+    100% { opacity:0; transform:translate3d(0,-4px,var(--z,90px)) rotate(300deg); }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(18,38,14,.72); border:1px solid rgba(190,230,150,.55);
+    color:#f2f7e4; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfGardenPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfGardenPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#fff3cf;
+    text-shadow:0 0 9px rgba(255,224,130,.4), 0 1px 3px rgba(10,30,6,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the leaf-green envelope front itself, in the free
+     area below the garden (same geometry as the Sea Card), inside the
+     gilt trim. No separate panel. They fade in as the garden settles
+     and are gone quickly on close, before the front returns. One clean
+     block — swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#fff3cf;
+    text-shadow:0 0 10px rgba(255,224,130,.35), 0 1px 3px rgba(10,30,6,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffedb5; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .flowerSway, .bflyWander, .wingL, .wingR { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGardenSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#a8dcff"/><stop offset=".55" stop-color="#d8f1ff"/>
+                        <stop offset=".8" stop-color="#fdf3cd"/><stop offset="1" stop-color="#f2f9dc"/>
+                      </linearGradient>
+                      <radialGradient id="pfGardenSunGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#ffe97a" stop-opacity=".85"/>
+                        <stop offset=".55" stop-color="#ffd94d" stop-opacity=".38"/>
+                        <stop offset="1" stop-color="#ffd94d" stop-opacity="0"/>
+                      </radialGradient>
+                      <linearGradient id="pfGardenGrass" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#8fce6d"/><stop offset="1" stop-color="#4e9a3e"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfGardenSky)"/>
+                    <!-- the gold sun, high right, with its glow and short rays -->
+                    <circle cx="316" cy="46" r="44" fill="url(#pfGardenSunGlow)"/>
+                    <g stroke="#f2b950" stroke-width="2.4" stroke-linecap="round" opacity=".75">
+                      <path d="M316 12 v-7"/><path d="M338 22 l5 -5"/><path d="M348 46 h7"/>
+                      <path d="M338 70 l5 5"/><path d="M294 22 l-5 -5"/><path d="M284 46 h-7"/>
+                    </g>
+                    <circle cx="316" cy="46" r="19" fill="#ffd94d" stroke="#f2b950" stroke-width="2"/>
+                    <!-- soft clouds -->
+                    <g fill="#ffffff" opacity=".92">
+                      <ellipse cx="66" cy="40" rx="30" ry="11"/><ellipse cx="88" cy="33" rx="20" ry="9"/>
+                      <ellipse cx="196" cy="24" rx="24" ry="9"/><ellipse cx="214" cy="18" rx="15" ry="7"/>
+                      <ellipse cx="130" cy="66" rx="18" ry="7" opacity=".8"/>
+                    </g>
+                    <!-- two far birds -->
+                    <g fill="none" stroke="#5a7a94" stroke-width="1.8" stroke-linecap="round" opacity=".7">
+                      <path d="M96 84 q5 -5 10 0 q5 -5 10 0"/>
+                      <path d="M126 96 q4 -4 8 0 q4 -4 8 0"/>
+                    </g>
+                    <!-- distant rolling hill -->
+                    <path d="M0 168 Q90 138 190 156 Q290 172 380 146 L380 248 L0 248 Z" fill="#a8d89a"/>
+                    <!-- the white picket fence along the garden -->
+                    <g fill="#ffffff" stroke="rgba(70,90,50,.25)" stroke-width="1">
+                      <rect x="0" y="176" width="380" height="5"/>
+                      <rect x="0" y="192" width="380" height="5"/>
+                      <path d="M14 202 v-34 l5 -7 5 7 v34 Z"/><path d="M44 202 v-34 l5 -7 5 7 v34 Z"/>
+                      <path d="M74 202 v-34 l5 -7 5 7 v34 Z"/><path d="M104 202 v-34 l5 -7 5 7 v34 Z"/>
+                      <path d="M134 202 v-34 l5 -7 5 7 v34 Z"/><path d="M164 202 v-34 l5 -7 5 7 v34 Z"/>
+                      <path d="M194 202 v-34 l5 -7 5 7 v34 Z"/><path d="M224 202 v-34 l5 -7 5 7 v34 Z"/>
+                      <path d="M254 202 v-34 l5 -7 5 7 v34 Z"/><path d="M284 202 v-34 l5 -7 5 7 v34 Z"/>
+                      <path d="M314 202 v-34 l5 -7 5 7 v34 Z"/><path d="M344 202 v-34 l5 -7 5 7 v34 Z"/>
+                    </g>
+                    <!-- foreground grass the flowers rise through -->
+                    <path d="M0 208 Q110 196 210 205 Q310 212 380 202 L380 248 L0 248 Z" fill="url(#pfGardenGrass)"/>
+                    <g stroke="#3e7d2c" stroke-width="2" stroke-linecap="round" fill="none" opacity=".8">
+                      <path d="M28 236 q-2 -10 -6 -14"/><path d="M34 236 q1 -9 5 -13"/>
+                      <path d="M120 240 q-2 -9 -5 -13"/><path d="M238 238 q2 -10 6 -13"/>
+                      <path d="M330 234 q-1 -9 -5 -13"/><path d="M342 235 q2 -8 5 -12"/>
+                    </g>
+                    <g>
+                      <circle cx="58" cy="226" r="2.4" fill="#ff8fb3"/><circle cx="176" cy="232" r="2.4" fill="#ffd166"/>
+                      <circle cx="282" cy="224" r="2.4" fill="#ffffff"/><circle cx="356" cy="230" r="2.4" fill="#ff8fb3"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="sunGlow"></div>
+
+            <!-- the garden: soil bed, six flowers that grow and bloom,
+                 butterflies, drifting pollen -->
+            <div id="gardenWrap">
+              <div id="bed"></div>
+
+              <div class="flower f1 tulip coral" id="fl1" style="left:78px; top:128px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal p2"></div><div class="petal p3"></div><div class="petal p1"></div><div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <div class="flower f2 daisy" id="fl2" style="left:128px; top:146px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal" style="--rot:0deg"></div><div class="petal" style="--rot:45deg"></div>
+                    <div class="petal" style="--rot:90deg"></div><div class="petal" style="--rot:135deg"></div>
+                    <div class="petal" style="--rot:180deg"></div><div class="petal" style="--rot:225deg"></div>
+                    <div class="petal" style="--rot:270deg"></div><div class="petal" style="--rot:315deg"></div>
+                    <div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <div class="flower f3 rose blush" id="fl3" style="left:182px; top:132px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal p1"></div><div class="petal p2"></div><div class="petal p3"></div><div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <div class="flower f4 tulip sunny" id="fl4" style="left:238px; top:148px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal p2"></div><div class="petal p3"></div><div class="petal p1"></div><div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <div class="flower f5 daisy" id="fl5" style="left:292px; top:130px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal" style="--rot:0deg"></div><div class="petal" style="--rot:45deg"></div>
+                    <div class="petal" style="--rot:90deg"></div><div class="petal" style="--rot:135deg"></div>
+                    <div class="petal" style="--rot:180deg"></div><div class="petal" style="--rot:225deg"></div>
+                    <div class="petal" style="--rot:270deg"></div><div class="petal" style="--rot:315deg"></div>
+                    <div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <div class="flower f6 rose deep" id="fl6" style="left:330px; top:144px;">
+                <div class="flowerSway"><div class="flowerStand">
+                  <div class="stem"><div class="leaf leafL"></div><div class="leaf leafR"></div></div>
+                  <div class="head"><div class="bloom">
+                    <div class="petal p1"></div><div class="petal p2"></div><div class="petal p3"></div><div class="headCore"></div>
+                  </div></div>
+                </div></div>
+              </div>
+
+              <!-- butterflies fluttering between the flowers -->
+              <div class="butterfly" style="left:104px; top:84px;">
+                <div class="bflyWander"><div class="bflyStand">
+                  <div class="wing wingL"></div><div class="wing wingR"></div><div class="bflyBody"></div>
+                </div></div>
+              </div>
+              <div class="butterfly b2" style="left:282px; top:74px;">
+                <div class="bflyWander"><div class="bflyStand">
+                  <div class="wing wingL"></div><div class="wing wingR"></div><div class="bflyBody"></div>
+                </div></div>
+              </div>
+
+              <!-- pollen motes drifting over the garden -->
+              <div class="pollen" style="left:110px; top:120px; --z:96px; --dx:10px; --dy:-18px; --d:0s;"></div>
+              <div class="pollen" style="left:190px; top:100px; --z:112px; --dx:-12px; --dy:-12px; --d:.9s;"></div>
+              <div class="pollen" style="left:262px; top:126px; --z:88px; --dx:9px; --dy:-20px; --d:1.7s;"></div>
+              <div class="pollen" style="left:150px; top:146px; --z:104px; --dx:-9px; --dy:-14px; --d:2.6s;"></div>
+              <div class="pollen" style="left:228px; top:142px; --z:118px; --dx:12px; --dy:-10px; --d:3.5s;"></div>
+              <div class="pollen" style="left:306px; top:112px; --z:94px; --dx:-11px; --dy:-16px; --d:4.3s;"></div>
+            </div><!-- /gardenWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a garden made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>something's blooming...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGardenFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#3a7030"/><stop offset="1" stop-color="#26501f"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfGardenFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfGardenFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#71bd5f"/><stop offset="1" stop-color="#478c3a"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfGardenFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var gardenWrap = document.getElementById('gardenWrap');
+  var sunGlow = document.getElementById('sunGlow');
+  var bed = document.getElementById('bed');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the flowers ----------
+     Each flower grows in three staggered windows of the rise: the stem
+     stretches up (its height set in px, like the Sea Card's walls), the
+     leaves unfurl partway up, then the head — riding on the stem's top
+     the whole way — blooms open (petals fan on the --bloom variable
+     while the bloom wrapper swells). */
+  var FLOWERS = [
+    { id:'fl1', h:84,  grow:0.06, growLen:0.30, bloom:0.50, bloomLen:0.26 },
+    { id:'fl2', h:70,  grow:0.11, growLen:0.30, bloom:0.55, bloomLen:0.26 },
+    { id:'fl3', h:90, grow:0.16, growLen:0.30, bloom:0.60, bloomLen:0.26 },
+    { id:'fl4', h:74,  grow:0.21, growLen:0.30, bloom:0.65, bloomLen:0.26 },
+    { id:'fl5', h:82,  grow:0.26, growLen:0.30, bloom:0.70, bloomLen:0.24 },
+    { id:'fl6', h:68,  grow:0.31, growLen:0.30, bloom:0.74, bloomLen:0.22 }
+  ];
+  FLOWERS.forEach(function(f){
+    var el = document.getElementById(f.id);
+    f.stem = el.querySelector('.stem');
+    f.leafL = el.querySelector('.leafL');
+    f.leafR = el.querySelector('.leafR');
+    f.head = el.querySelector('.head');
+    f.bloomEl = el.querySelector('.bloom');
+    f.bloomP = 0;
+  });
+
+  function applyRise(){
+    /* the garden hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    gardenWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    gardenWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    /* the soil bed breathes in first, mounds and all */
+    var bedP = clamp01(rise / 0.18);
+    bed.style.transform = 'translateZ(5px) scale(' + (0.85 + bedP * 0.15).toFixed(3) + ')';
+    var bloomSum = 0;
+    for (var i=0;i<FLOWERS.length;i++){
+      var f = FLOWERS[i];
+      var growP = clamp01((rise - f.grow) / f.growLen);
+      var stemH = growP * f.h;
+      f.stem.style.height = stemH.toFixed(2) + 'px';
+      /* leaves unfurl once the stem is partway up */
+      var leafP = clamp01((rise - (f.grow + 0.15)) / 0.18);
+      f.leafL.style.opacity = String(leafP);
+      f.leafL.style.transform = 'rotate(-38deg) scale(' + leafP.toFixed(3) + ')';
+      f.leafR.style.opacity = String(leafP);
+      f.leafR.style.transform = 'rotate(38deg) scale(' + leafP.toFixed(3) + ')';
+      /* the head rides the stem's tip; it is a bud (small) while it
+         climbs, then blooms open in its own late window */
+      f.head.style.bottom = stemH.toFixed(2) + 'px';
+      f.head.style.opacity = growP <= 0.02 ? '0' : String(Math.min(1, growP * 3));
+      f.bloomP = clamp01((rise - f.bloom) / f.bloomLen);
+      bloomSum += f.bloomP;
+      f.bloomEl.style.transform = 'scale(' + (0.18 + f.bloomP * 1.04).toFixed(3) + ')';
+      f.head.style.setProperty('--bloom', f.bloomP.toFixed(3));
+    }
+    /* sunlight on the base: a whisper while the garden rises, warming
+       as the blooms open */
+    sunGlow.style.opacity = (rise * 0.10 + (bloomSum / FLOWERS.length) * 0.42).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> bed breathes in -> stems grow, leaves
+            unfurl, heads bloom one by one (target set at 850ms),
+            butterflies arrive.
+     Close: garden settles first -> card folds -> envelope returns ->
+            flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
