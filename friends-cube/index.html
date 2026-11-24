@@ -246,6 +246,7 @@
       <button type="button" data-mode="auto" class="active">Auto Spin</button>
       <button type="button" data-mode="manual">Manual</button>
       <button type="button" data-mode="stop">Stop</button>
+      <button type="button" id="rightUp">Right Side Up</button>
     </div>
     <div class="speed" id="speedRow">
       <span>slow</span>
@@ -263,7 +264,8 @@
 
     var cube = document.getElementById('cube');
     var stage = document.getElementById('stage');
-    var modeBtns = document.querySelectorAll('.modes button');
+    var modeBtns = document.querySelectorAll('.modes button[data-mode]');
+    var rightUpBtn = document.getElementById('rightUp');
     var speedRow = document.getElementById('speedRow');
     var speedInput = document.getElementById('speed');
     var mode = 'auto';             /* 'auto' | 'manual' | 'stop' */
@@ -290,12 +292,91 @@
       cube.style.transform = 'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
     }
 
+    /* ---- "Right Side Up": ease to the nearest quarter-turn orientation in
+       which the photo currently facing the viewer is right-side up.
+       NOTE: snapping each axis independently is NOT enough — at (180, 0) the
+       back photo faces front but upside down, and the top/bottom photos can
+       sit sideways at snapped angles. So: find which face fronts at the
+       snapped pose, then pick the nearest quarter-turn (rotX, rotY) whose
+       orientation fronts that same face with its up vector pointing up. ---- */
+    var FACES = [
+      { n:[0,0,1],  u:[0,-1,0] },   /* front  */
+      { n:[1,0,0],  u:[0,-1,0] },   /* right  */
+      { n:[0,0,-1], u:[0,-1,0] },   /* back   */
+      { n:[-1,0,0], u:[0,-1,0] },   /* left   */
+      { n:[0,-1,0], u:[0,0,-1] },   /* top    */
+      { n:[0,1,0],  u:[0,0,1] }     /* bottom */
+    ];
+    function rotMat(xDeg, yDeg){           /* M = Rx(x) * Ry(y), CSS conventions */
+      var xr = xDeg * Math.PI / 180, yr = yDeg * Math.PI / 180;
+      var cx = Math.cos(xr), sx = Math.sin(xr), cy = Math.cos(yr), sy = Math.sin(yr);
+      return [[cy, 0, sy], [sx * sy, cx, -sx * cy], [-cx * sy, sx, cx * cy]];
+    }
+    function matVec(M, v){
+      return [
+        M[0][0] * v[0] + M[0][1] * v[1] + M[0][2] * v[2],
+        M[1][0] * v[0] + M[1][1] * v[1] + M[1][2] * v[2],
+        M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2]
+      ];
+    }
+    function frontFaceAt(xDeg, yDeg){      /* index of the front-facing face + its displayed up vector */
+      var M = rotMat(xDeg, yDeg), best = -1, bestZ = -2, bestUp = null;
+      for(var i = 0; i < FACES.length; i++){
+        var n = matVec(M, FACES[i].n);
+        if(n[2] > bestZ){ bestZ = n[2]; best = i; bestUp = matVec(M, FACES[i].u); }
+      }
+      return { face: best, up: bestUp };
+    }
+    function isUp(v){ return Math.round(v[0]) === 0 && Math.round(v[1]) === -1 && Math.round(v[2]) === 0; }
+    function nearestRightTarget(){
+      var sx = Math.round(rotX / 90) * 90, sy = Math.round(rotY / 90) * 90;
+      var face = frontFaceAt(sx, sy).face;
+      var steps = [0, 90, 180, 270], best = null, bestCost = Infinity;
+      for(var a = 0; a < 4; a++){
+        for(var b = 0; b < 4; b++){
+          var bx = steps[a], by = steps[b];
+          var f = frontFaceAt(bx, by);
+          if(f.face !== face || !isUp(f.up)) continue;
+          var tx = bx + 360 * Math.round((rotX - bx) / 360);
+          var ty = by + 360 * Math.round((rotY - by) / 360);
+          var cost = Math.abs(tx - rotX) + Math.abs(ty - rotY);
+          if(cost < bestCost){ bestCost = cost; best = { x: tx, y: ty }; }
+        }
+      }
+      return best;
+    }
+    var righting = null;                   /* {start, dur, fx, fy, tx, ty} while the ease runs */
+    function easeInOut(p){ return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+    function rightSideUp(){
+      momY = 0; momX = 0;                  /* a flick dies into the ease */
+      dragging = false;
+      document.body.classList.remove('dragging');
+      var t = nearestRightTarget();
+      if(!t) return;
+      if(Math.abs(t.x - rotX) < 0.01 && Math.abs(t.y - rotY) < 0.01){
+        rotX = t.x; rotY = t.y; righting = null; apply();
+        return;
+      }
+      if(reduced){ rotX = t.x; rotY = t.y; righting = null; apply(); return; }
+      righting = { start: performance.now(), dur: 500, fx: rotX, fy: rotY, tx: t.x, ty: t.y };
+    }
+
     /* ---- main loop: idle Y turn + momentum with smooth friction; X holds wherever the hand leaves it ---- */
     var prevT = null;
     function frame(now){
       if(prevT === null) prevT = now;
       var dt = Math.min(0.05, (now - prevT) / 1000);
       prevT = now;
+      if(righting){
+        var p = Math.min(1, (now - righting.start) / righting.dur);
+        var e = easeInOut(p);
+        rotX = righting.fx + (righting.tx - righting.fx) * e;
+        rotY = righting.fy + (righting.ty - righting.fy) * e;
+        if(p >= 1){ rotX = righting.tx; rotY = righting.ty; righting = null; }
+        apply();
+        requestAnimationFrame(frame);
+        return;
+      }
       if(!dragging && dt > 0){
         if(mode !== 'stop' && (momY !== 0 || momX !== 0)){
           rotY += momY * dt;
@@ -317,6 +398,7 @@
     /* ---- pointer: drag to turn, flick to spin, tap to pause ---- */
     stage.addEventListener('pointerdown', function(e){
       if(mode === 'stop') return;   /* frozen dead: the hand does nothing */
+      righting = null;              /* grabbing the cube cancels the righting ease */
       dragging = true; moved = false;
       downX = lastX = e.clientX; downY = lastY = e.clientY;
       momY = 0; momX = 0;
@@ -372,6 +454,7 @@
       mode = m;
       if(m === 'stop'){
         momY = 0; momX = 0;                 /* a flick halts where it is */
+        righting = null;                    /* and so does a righting ease */
         dragging = false;
         document.body.classList.remove('dragging');
       }
@@ -389,6 +472,10 @@
         setMode(this.getAttribute('data-mode'));
       });
     }
+    rightUpBtn.addEventListener('click', function(){
+      rightSideUp();                        /* mode, slider and pause state untouched */
+      rightUpBtn.blur();
+    });
     speedInput.addEventListener('input', function(){
       /* slider 0..100 -> 1/3x .. 3x the gentle turn, 1x at the middle, live */
       speedMul = Math.pow(3, (parseFloat(speedInput.value) - 50) / 50);
@@ -398,11 +485,15 @@
     /* test handle (invisible in normal use) */
     window.__cube = {
       get rotY(){ return rotY; }, get rotX(){ return rotX; },
-      get momY(){ return momY; }, get dragging(){ return dragging; },
+      get momY(){ return momY; }, get momX(){ return momX; },
+      get dragging(){ return dragging; },
       get paused(){ return paused(); },
       get mode(){ return mode; }, get speedMul(){ return speedMul; },
+      get righting(){ return !!righting; },
+      get rightTarget(){ return righting ? [righting.tx, righting.ty] : null; },
       setMode: setMode,
-      pose: function(x, y){ rotX = x; rotY = y; momY = 0; momX = 0; apply(); }
+      rightUp: rightSideUp,
+      pose: function(x, y){ rotX = x; rotY = y; momY = 0; momX = 0; righting = null; apply(); }
     };
   })();
 </script>
