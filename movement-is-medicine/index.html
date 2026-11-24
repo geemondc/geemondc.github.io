@@ -81,10 +81,10 @@
     pointer-events: none;
   }
   .scene.walking video { opacity: 1; }
-  /* The walk is a two-leg chain on stacked players (the ride-page
-     pattern): JS drives each player's opacity inline with rAF
-     crossfades, which override the .walking rule above, so the CSS
-     fade transition must not fight the crossfades. */
+  /* The walk is a chain on stacked players (the ride-page pattern):
+     JS drives each player's opacity inline with rAF crossfades,
+     which override the .walking rule above, so the CSS fade
+     transition must not fight the crossfades. */
   .scene video.walkvid { transition: none; }
   /* A positive thought while you walk: soft white words low over the
      film, crossfading gently (1.2s) as they rotate — never flashing,
@@ -224,7 +224,30 @@
     opacity: 0.92;
   }
   .door-move { background: linear-gradient(160deg, #d97b2f, #b35c1e); }
-  .door-help { background: linear-gradient(160deg, #7ba23f, #55701f); }
+  .door-ex { background: linear-gradient(160deg, #cf9a35, #9c6b14); }
+  .door-help { background: linear-gradient(160deg, #7ba23f, #55701f); grid-column: 1 / -1; }
+  .door .word.small { font-size: clamp(1.22rem, 5.6vw, 1.55rem); }
+
+  /* ---------- today's movement showcase ---------- */
+  .panel .exlabel {
+    font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: #b35c1e; font-weight: bold; margin-bottom: 6px;
+  }
+  .panel .exname { font-style: italic; color: #7a6248; font-size: clamp(1rem, 4.4vw, 1.12rem); margin-top: 3px; }
+  .panel .extag {
+    display: inline-block; margin-top: 9px; padding: 3px 12px; border-radius: 999px;
+    border: 1.5px solid #d9a44e; color: #9c6b14; background: rgba(255, 248, 230, 0.8);
+    font-size: 0.9rem; font-style: italic;
+  }
+  .panel .exkind { margin-top: 9px; }
+  .exbtn {
+    display: inline-block; margin-top: 13px;
+    background: linear-gradient(160deg, #d97b2f, #b35c1e);
+    color: #fff8ec; text-decoration: none; font-weight: bold;
+    font-size: clamp(1.05rem, 4.6vw, 1.25rem);
+    padding: 13px 26px; border-radius: 999px;
+    box-shadow: 0 5px 16px rgba(90, 60, 20, 0.28);
+  }
 
   /* ---------- bottom lines ---------- */
   .bottom {
@@ -272,13 +295,17 @@
     </div>
 
     <div class="panel" id="panel" aria-live="polite">
-      <p class="hint">Tap MOVE and I&rsquo;ll walk with you. Tap HELP and send a little good.</p>
+      <p class="hint">Tap Walk With Me and I&rsquo;ll walk with you. Tap Exercises at Home for today&rsquo;s movement. Tap HELP and send a little good.</p>
     </div>
 
     <div class="doors">
       <button class="door door-move" id="btnMove" type="button">
-        <span class="word">MOVE</span>
-        <span class="sub">a one-minute walk</span>
+        <span class="word small">Walk With Me</span>
+        <span class="sub">an endless garden walk</span>
+      </button>
+      <button class="door door-ex" id="btnEx" type="button">
+        <span class="word small">Exercises at Home</span>
+        <span class="sub">a new movement each day</span>
       </button>
       <button class="door door-help" id="btnHelp" type="button">
         <span class="word">HELP</span>
@@ -295,7 +322,7 @@
   </main>
 
 <script>
-  /* ---------- MOVE: a one-minute walk in the garden ---------- */
+  /* ---------- MOVE door 1: Walk With Me, the garden walk ---------- */
   var DONE_LINE = "You moved. That counts. Nicely done.";
   var STOP_LINE = "That\u2019s enough for today \u2014 and it all counts.";
   var WALK_MS = 60000;
@@ -312,29 +339,55 @@
 
   var panel = document.getElementById("panel");
   var btnMove = document.getElementById("btnMove");
+  var btnEx = document.getElementById("btnEx");
   var btnHelp = document.getElementById("btnHelp");
   var scene = document.querySelector(".scene");
   var walkTimer = null, walkStart = 0, otherIdx = -1;
 
-  /* ----- the walk chain: two legs, two stacked players -----
-     Cloned from the ride pages' dual-player crossfade: the next leg
-     is always buffered in the hidden player; seams dissolve (1.4s
-     into leg 2, 2.5s at the wrap back to leg 1). */
-  var LEGS = ["walk.mp4", "walk2.mp4"];
+  /* ----- the walk chain: through the gate once, then the
+     countryside goes on and on (Gary, Nov 24) -----
+     Two stacked players, the ride pages' crossfade pattern.
+     Phase "gate": walk.mp4 plays once — out of the cottage garden,
+     down the path, to the gate. It crossfades (1.4s) into walk2.mp4
+     as it passes through. Phase "nature": walk2.mp4's countryside
+     stretch (from NATURE_START, where the gate has fully left the
+     frame) loops forever through a soft 2.5s dissolve — the same
+     sun, the same flower-lined stone path — so the walk seems
+     endless and the gate never comes back. */
+  var GATE_SRC = "walk.mp4";
+  var NATURE_SRC = "walk2.mp4";
+  var NATURE_START = 3.6;
+  /* The endless phase plays walk2.mp4 through a media fragment that
+     starts at NATURE_START, so the loop point is the resource's own
+     beginning — no mid-file seek is ever needed to stay gate-free
+     (a streamed player can refuse a mid-file seek and restart at 0,
+     which is exactly the gate coming back). */
+  var NATURE_LOOP_SRC = "walk2.mp4#t=3.6";
   var vidA = document.getElementById("walkVideoA");
   var vidB = document.getElementById("walkVideoB");
-  var front = vidA, back = vidB, legIdx = 0, fading = false, chainOn = false, chainWatch = null;
+  var front = vidA, back = vidB, phase = "gate", fading = false, chainOn = false, chainWatch = null;
   function tryPlay(v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); }
-  function fadeLen() { return (legIdx + 1) % LEGS.length === 0 ? 2.5 : 1.4; }
+  function fadeLen() { return phase === "gate" ? 1.4 : 2.5; }
   function preloadBack() {
-    var src = LEGS[(legIdx + 1) % LEGS.length];
-    if (back.getAttribute("src") !== src) { back.src = src; back.load(); }
+    var target = phase === "gate" ? NATURE_SRC : NATURE_LOOP_SRC;
+    if (back.getAttribute("src") !== target) { back.src = target; back.load(); }
+  }
+  /* Seek, THEN play once the seek lands: on a player that has run to
+     its end, a play() issued in the same breath as the seek can win
+     the race and restart it from 0 — which would flash the gate. */
+  function playFrom(v, t) {
+    if (!v.ended && v.readyState >= 2 && Math.abs(v.currentTime - t) < 0.05) { tryPlay(v); return; }
+    var done = false;
+    var to = setTimeout(go, 150);
+    function go() { if (done) return; done = true; clearTimeout(to); v.removeEventListener("seeked", go); tryPlay(v); }
+    v.addEventListener("seeked", go);
+    try { v.currentTime = t; } catch (e) { go(); }
   }
   function swap() {
     fading = true;
     var F = fadeLen();
-    back.currentTime = 0;
-    tryPlay(back);
+    var startAt = phase === "gate" ? 0 : NATURE_START;
+    playFrom(back, startAt);
     var t0 = performance.now();
     (function step() {
       var k = Math.min(1, (performance.now() - t0) / (F * 1000));
@@ -343,14 +396,19 @@
       if (k < 1 && chainOn) requestAnimationFrame(step);
       else {
         var f = front; front = back; back = f;
-        legIdx = (legIdx + 1) % LEGS.length;
-        back.pause(); preloadBack(); fading = false;
+        phase = "nature";
+        back.pause(); preloadBack();
+        /* Cue the hidden player at the loop point now, while it sits
+           paused: a player left at its end can restart from 0 on the
+           next play() and flash the gate back in. */
+        try { back.currentTime = NATURE_START; } catch (e) {}
+        fading = false;
       }
     })();
   }
   function startChain() {
-    legIdx = 0; front = vidA; back = vidB; fading = false; chainOn = true;
-    if (front.getAttribute("src") !== LEGS[0]) { front.src = LEGS[0]; front.load(); }
+    phase = "gate"; front = vidA; back = vidB; fading = false; chainOn = true;
+    if (front.getAttribute("src") !== GATE_SRC) { front.src = GATE_SRC; front.load(); }
     front.style.opacity = "0"; back.style.opacity = "0";
     preloadBack();
     try { front.currentTime = 0; } catch (e) {}
@@ -363,7 +421,11 @@
       if (k < 1 && chainOn) requestAnimationFrame(step);
     })();
     chainWatch = setInterval(function () {
-      if (chainOn && !fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen()) swap();
+      /* In the nature phase, start the dissolve a breath early so the
+         outgoing player is paused mid-stream, never at its end —
+         an ended player is the one that can restart from 0. */
+      var slack = phase === "nature" ? 0.4 : 0;
+      if (chainOn && !fading && front.duration && front.currentTime > 0 && front.currentTime >= front.duration - fadeLen() - slack) swap();
     }, 250);
   }
   function stopChain() {
@@ -500,7 +562,7 @@
     stopThoughts(); /* the last thought stays visible above the end lines */
     if (thoughtEl.textContent) thoughtEl.style.opacity = "1";
     scene.classList.remove("walking");
-    btnMove.querySelector(".word").textContent = "MOVE";
+    btnMove.querySelector(".word").textContent = "Walk With Me";
     if (line) setPanel("<p>" + esc(line) + "</p>");
   }
 
@@ -525,9 +587,98 @@
     }, 200);
   }
 
+  /* ----- Exercises at Home: Today's Movement -----
+     One exercise a day from Pura Vida Movimiento — Adriana's real
+     library (futurereadystretch.lovable.app; each lesson opens on
+     her page). Gary's rotation: a four-day cycle of buckets —
+     Beginner Stretch, Beginner Strength, Intermediate Stretch,
+     Intermediate Strength — and within a bucket the exercises
+     advance one per cycle, so all forty get their day. The
+     visitor's own date picks the day, like the thoughts above. */
+  var PV_URL = "https://futurereadystretch.lovable.app/";
+  var EX_BUCKETS = [
+    { tag: "Beginner \u00B7 Stretch",
+      kind: "Gentle and easy \u2014 a kind way to wake your body up.",
+      items: [
+        ["Estiramiento lateral de cuello", "Side Neck Stretch"],
+        ["Estiramiento de hombro cruzando el cuerpo", "Cross-Body Shoulder Stretch"],
+        ["Apertura de pecho de pie", "Standing Chest Opener"],
+        ["Gato\u2013vaca sentada", "Seated Cat\u2013Cow"],
+        ["Postura del ni\u00F1o con alcance", "Child\u2019s Pose with Reach"],
+        ["Estiramiento de flexor de cadera en media rodilla", "Half-Kneeling Hip Flexor Stretch"],
+        ["Alcance de isquiotibiales sentada", "Seated Hamstring Reach"],
+        ["Estiramiento de cu\u00E1driceps de pie", "Standing Quadriceps Stretch"],
+        ["Estiramiento de pantorrilla en la pared", "Wall Calf Stretch"],
+        ["Estiramiento de gl\u00FAteo en cuatro sentada", "Seated Figure-Four Glute Stretch"]
+      ] },
+    { tag: "Beginner \u00B7 Strength",
+      kind: "Small moves count. Strong grows one kind day at a time.",
+      items: [
+        ["Sentadilla con silla", "Chair Squat"],
+        ["Flexi\u00F3n en la pared", "Wall Push-Up"],
+        ["Puente de gl\u00FAteos", "Glute Bridge"],
+        ["Perro-p\u00E1jaro", "Bird Dog"],
+        ["Toque de tal\u00F3n boca arriba", "Lying Heel Taps"],
+        ["Remo con banda el\u00E1stica", "Resistance Band Row"],
+        ["Press de pecho de pie con banda el\u00E1stica", "Standing Band Chest Press"],
+        ["Elevaci\u00F3n lateral con banda el\u00E1stica", "Band Lateral Raise"],
+        ["Almeja acostada de lado", "Side-Lying Clamshell"],
+        ["Zancada hacia atr\u00E1s con apoyo", "Supported Reverse Lunge"]
+      ] },
+    { tag: "Intermediate \u00B7 Stretch",
+      kind: "A little deeper today. Breathe, soften, never force.",
+      items: [
+        ["Estiramiento de isquiotibiales con banda", "Band Hamstring Stretch"],
+        ["Flexores de cadera de rodillas con alcance arriba", "Kneeling Hip Flexor Reach"],
+        ["Estiramiento de dorsales con rodillo", "Foam Roller Lat Stretch"],
+        ["Postura de la paloma", "Pigeon Pose"],
+        ["Pase de hombros con banda", "Band Shoulder Pass-Through"],
+        ["El mejor estiramiento del mundo", "The World\u2019s Greatest Stretch"],
+        ["Estiramiento lateral de pie con banda anclada", "Anchored Band Side Stretch"],
+        ["Mariposa con flexi\u00F3n hacia adelante", "Butterfly with Forward Fold"],
+        ["Estiramiento de tr\u00EDceps y dorsales en banca", "Bench Triceps and Lat Stretch"],
+        ["Estiramiento de cu\u00E1driceps de pie con banda", "Standing Quad Stretch with Band"]
+      ] },
+    { tag: "Intermediate \u00B7 Strength",
+      kind: "For the days you feel ready for a little more.",
+      items: [
+        ["Sentadilla goblet con mancuerna", "Dumbbell Goblet Squat"],
+        ["Peso muerto rumano con mancuernas", "Dumbbell Romanian Deadlift"],
+        ["Press de hombro de pie", "Standing Shoulder Press"],
+        ["Remo con mancuerna", "Dumbbell Row"],
+        ["Press de banca con mancuernas", "Dumbbell Bench Press"],
+        ["Zancada caminando con mancuernas", "Dumbbell Walking Lunge"],
+        ["Jal\u00F3n lateral con banda", "Band Lat Pulldown"],
+        ["Elevaci\u00F3n lateral con mancuernas", "Dumbbell Lateral Raise"],
+        ["Plancha con toques de hombro", "Plank with Shoulder Taps"],
+        ["Subida al banco con mancuernas", "Dumbbell Step-Up"]
+      ] }
+  ];
+  function todaysExercise() {
+    var doy = dayOfYear(new Date());
+    var bucket = EX_BUCKETS[doy % 4];
+    var item = bucket.items[Math.floor(doy / 4) % bucket.items.length];
+    return { tag: bucket.tag, kind: bucket.kind, es: item[0], en: item[1] };
+  }
+
   btnMove.addEventListener("click", function () {
     if (walkTimer) { endWalk(STOP_LINE); return; }
     startWalk();
+  });
+
+  btnEx.addEventListener("click", function () {
+    if (walkTimer) endWalk(null);
+    panel.onclick = null;
+    var ex = todaysExercise();
+    setPanel(
+      "<div><p class=\"exlabel\">Today\u2019s Movement</p>" +
+      "<p class=\"step\">" + esc(ex.en) + "</p>" +
+      "<p class=\"exname\">" + esc(ex.es) + "</p>" +
+      "<span class=\"extag\">" + esc(ex.tag) + "</span>" +
+      "<p class=\"exkind\">" + esc(ex.kind) + "</p>" +
+      "<a class=\"exbtn\" href=\"" + PV_URL + "\" target=\"_blank\" rel=\"noopener\">Do it with Adriana</a>" +
+      "<p class=\"orline\">from Pura Vida Movimiento \u2014 her library of 60 movements, a few minutes at home.</p></div>"
+    );
   });
 
   btnHelp.addEventListener("click", function () {
