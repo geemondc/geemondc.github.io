@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Fireworks — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #16295c 0%, #0a1430 46%, #04081a 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#e8ecff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(90,130,255,.16) 0%, rgba(255,190,90,.06) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfFwSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfFwSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #182f5e 0%, #0f1f42 55%, #081430 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.5);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* light the bursts cast onto the base (JS drives opacity: a whisper
+     while the harbor rises, flashing warmer with every burst) */
+  #fwGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,205,110,.85) 0%, rgba(255,160,80,.32) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #eef1ff 0%, #d7def7 58%, #bcc8ee 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(40,70,160,.22);
+  }
+  /* the face that greets you once the card stands — night-sky backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #13264f 0%, #0d1b3a 46%, #081226 78%, #050b1c 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(2,6,18,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #1e3468 0%, #12234d 52%, #0a1734 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfFwFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfFwFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfFwFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfFwFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the harbor (rises out of the base) ---------- */
+  #fwWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the water: a flat plane lying on the base, like the cake's plate */
+  #water {
+    position:absolute; left:26px; top:112px; width:328px; height:128px; border-radius:10px;
+    transform:translateZ(5px); overflow:hidden;
+    background:linear-gradient(180deg, #10325f 0%, #0a2148 52%, #061631 100%);
+    box-shadow: inset 0 0 0 3px rgba(150,180,255,.28), inset 0 -12px 24px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.4);
+  }
+  /* slow shimmer crawling across the water */
+  #waterShimmer {
+    position:absolute; inset:0; pointer-events:none;
+    background-image:repeating-linear-gradient(180deg, rgba(160,200,255,0) 0 6px, rgba(160,200,255,.07) 6px 7px, rgba(160,200,255,0) 7px 14px);
+    background-size:100% 14px;
+    animation:pfFwShimmer 1.6s linear infinite;
+  }
+  @keyframes pfFwShimmer { from { background-position:0 0; } to { background-position:0 14px; } }
+  /* standing light-streaks on the water: the moon's path + skyline glow */
+  .streak {
+    position:absolute; top:4px; width:22px; height:96px; border-radius:50%; filter:blur(3px); pointer-events:none;
+  }
+  /* a burst's reflection: spawned by JS inside the water */
+  .refl {
+    position:absolute; top:2px; width:30px; height:78px; border-radius:50%;
+    filter:blur(4px); opacity:0; pointer-events:none; transform-origin:50% 0;
+  }
+
+  /* skyline standees: flat paper strips stood up from the shoreline
+     (rotateX(-90) about the bottom edge) and grown by JS — the same
+     grammar as the birthday candles */
+  .skyAnchor { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .skyStand {
+    position:absolute; transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  .skyStand svg { display:block; }
+
+  /* a little paper boat bobbing on the water once open */
+  .boat { position:absolute; width:0; height:0; transform-style:preserve-3d; opacity:0; transition:opacity .5s ease 0s; }
+  #world.open .boat { opacity:1; transition:opacity .7s ease 1.55s; }
+  .boatBob { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfFwBob 3.8s ease-in-out infinite alternate; }
+  .boat.b2 .boatBob { animation-duration:4.6s; animation-delay:-1.7s; }
+  .boatStand {
+    position:absolute; left:-27px; top:-46px; width:54px; height:46px;
+    transform-origin:50% 100%; transform:rotateX(-90deg);
+    animation:pfFwBoatSway 4.6s ease-in-out infinite alternate;
+  }
+  .boat.b2 .boatStand { animation-duration:5.4s; animation-delay:-2.2s; }
+  @keyframes pfFwBob { from { transform:translateZ(6px); } to { transform:translateZ(13px); } }
+  @keyframes pfFwBoatSway { from { transform:rotateX(-90deg) rotateZ(-2.6deg); } to { transform:rotateX(-90deg) rotateZ(2.6deg); } }
+
+  /* ---------- the fireworks (spawned by JS in the sky layer) ---------- */
+  #skyLayer {
+    position:absolute; inset:0; transform:translateZ(118px);
+    transform-style:preserve-3d; pointer-events:none;
+  }
+  .shell {
+    position:absolute; width:5px; height:5px; margin-left:-2.5px; border-radius:50%;
+    background:#ffeec2; box-shadow:0 0 9px 2px rgba(255,214,130,.85), 0 6px 8px -2px rgba(255,190,90,.5);
+    pointer-events:none;
+  }
+  /* billboarded: the burst counter-tilts to face the viewer, so its
+     rays bloom as a round starburst instead of a squashed smear */
+  .burst { position:absolute; width:0; height:0; pointer-events:none; transform:rotateX(-54deg); }
+  .burstFlash {
+    position:absolute; left:-26px; top:-26px; width:52px; height:52px; border-radius:50%;
+    pointer-events:none;
+  }
+  .ray {
+    position:absolute; left:-1.25px; top:0; width:2.5px; border-radius:2px;
+    transform-origin:50% 0; pointer-events:none;
+  }
+  .spark {
+    position:absolute; left:-1.75px; top:-1.75px; width:3.5px; height:3.5px; border-radius:50%;
+    pointer-events:none;
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(8,18,44,.72); border:1px solid rgba(160,185,255,.55);
+    color:#e8ecff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfFwPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfFwPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#ffeec2;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(2,6,20,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the navy envelope front itself, in the free area
+     below the harbor (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the harbor settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#ffeec2;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(2,6,20,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .boatBob, .boatStand, #waterShimmer { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfFwBackGlow" cx=".5" cy=".3" r=".6">
+                        <stop offset="0" stop-color="#7ea2ff" stop-opacity=".14"/>
+                        <stop offset="1" stop-color="#7ea2ff" stop-opacity="0"/>
+                      </radialGradient>
+                      <linearGradient id="pfFwSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#16295c"/><stop offset=".55" stop-color="#0d1b3a"/>
+                        <stop offset="1" stop-color="#081226"/>
+                      </linearGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfFwSkyGrad)"/>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfFwBackGlow)"/>
+                    <!-- stars -->
+                    <g fill="#dfe8ff">
+                      <circle cx="26" cy="30" r="1.6" opacity=".85"/><circle cx="58" cy="64" r="1.2" opacity=".6"/>
+                      <circle cx="92" cy="24" r="1.4" opacity=".75"/><circle cx="128" cy="52" r="1.1" opacity=".55"/>
+                      <circle cx="164" cy="20" r="1.5" opacity=".8"/><circle cx="198" cy="58" r="1.1" opacity=".5"/>
+                      <circle cx="228" cy="30" r="1.3" opacity=".65"/><circle cx="262" cy="66" r="1.1" opacity=".5"/>
+                      <circle cx="44" cy="104" r="1.1" opacity=".5"/><circle cx="106" cy="92" r="1.2" opacity=".55"/>
+                      <circle cx="150" cy="108" r="1" opacity=".45"/><circle cx="238" cy="98" r="1.1" opacity=".5"/>
+                      <circle cx="292" cy="26" r="1.2" opacity=".6"/><circle cx="356" cy="86" r="1.2" opacity=".55"/>
+                      <circle cx="330" cy="120" r="1" opacity=".45"/><circle cx="70" cy="140" r="1" opacity=".4"/>
+                      <circle cx="206" cy="132" r="1" opacity=".4"/><circle cx="286" cy="146" r="1" opacity=".4"/>
+                    </g>
+                    <!-- crescent moon, upper right -->
+                    <g>
+                      <circle cx="322" cy="44" r="17" fill="#f6ead0"/>
+                      <circle cx="313" cy="38" r="14.5" fill="#142a58"/>
+                      <circle cx="330" cy="52" r="1.6" fill="#d9c9a4" opacity=".7"/>
+                      <circle cx="326" cy="34" r="1.2" fill="#d9c9a4" opacity=".6"/>
+                    </g>
+                    <!-- distant skyline silhouette along the horizon -->
+                    <g fill="#040918">
+                      <rect x="0" y="196" width="34" height="52"/>
+                      <rect x="30" y="182" width="22" height="66"/>
+                      <rect x="48" y="204" width="40" height="44"/>
+                      <rect x="84" y="188" width="18" height="60"/>
+                      <rect x="98" y="172" width="26" height="76"/>
+                      <rect x="120" y="198" width="36" height="50"/>
+                      <rect x="152" y="186" width="20" height="62"/>
+                      <rect x="168" y="206" width="42" height="42"/>
+                      <rect x="206" y="178" width="24" height="70"/>
+                      <rect x="226" y="194" width="34" height="54"/>
+                      <rect x="256" y="184" width="20" height="64"/>
+                      <rect x="272" y="202" width="38" height="46"/>
+                      <rect x="306" y="190" width="22" height="58"/>
+                      <rect x="324" y="200" width="56" height="48"/>
+                      <rect x="108" y="164" width="2.5" height="10"/>
+                      <rect x="215" y="168" width="2.5" height="12"/>
+                    </g>
+                    <g fill="#ffd98a">
+                      <rect x="38" y="192" width="3" height="4" opacity=".85"/><rect x="104" y="184" width="3" height="4" opacity=".8"/>
+                      <rect x="112" y="196" width="3" height="4" opacity=".7"/><rect x="160" y="196" width="3" height="4" opacity=".75"/>
+                      <rect x="214" y="188" width="3" height="4" opacity=".85"/><rect x="264" y="194" width="3" height="4" opacity=".7"/>
+                      <rect x="314" y="200" width="3" height="4" opacity=".8"/><rect x="66" y="214" width="3" height="4" opacity=".6"/>
+                      <rect x="238" y="206" width="3" height="4" opacity=".65"/><rect x="344" y="212" width="3" height="4" opacity=".6"/>
+                    </g>
+                    <!-- water band at the very bottom, with reflection streaks -->
+                    <rect x="0" y="238" width="380" height="10" fill="#0a2148"/>
+                    <g fill="#ffd98a">
+                      <rect x="36" y="241" width="14" height="1.6" opacity=".4"/><rect x="108" y="243" width="18" height="1.6" opacity=".35"/>
+                      <rect x="212" y="241" width="12" height="1.6" opacity=".4"/><rect x="300" y="243" width="16" height="1.6" opacity=".3"/>
+                    </g>
+                    <rect x="306" y="240" width="10" height="1.8" fill="#f6ead0" opacity=".45"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="fwGlow"></div>
+
+            <!-- the harbor: water, two skyline rows, boats, and the sky
+                 layer where the fireworks live -->
+            <div id="fwWrap">
+              <div id="water">
+                <div class="streak" style="left:272px; background:linear-gradient(180deg, rgba(246,234,208,.5), rgba(246,234,208,.05) 75%, transparent);"></div>
+                <div class="streak" style="left:52px; width:16px; height:74px; background:linear-gradient(180deg, rgba(255,217,138,.34), rgba(255,217,138,.04) 75%, transparent);"></div>
+                <div class="streak" style="left:158px; width:14px; height:64px; background:linear-gradient(180deg, rgba(150,190,255,.3), rgba(150,190,255,.03) 75%, transparent);"></div>
+                <div id="waterShimmer"></div>
+              </div>
+
+              <!-- back skyline row: tall towers on the far shore -->
+              <div class="skyAnchor" style="left:190px; top:118px;">
+                <div class="skyStand" id="skyBack" style="left:-170px; top:-96px; width:340px; height:96px;">
+                  <svg viewBox="0 0 340 96" width="340" height="96" aria-hidden="true">
+                    <g fill="#060f24">
+                      <rect x="0" y="38" width="30" height="58"/>
+                      <rect x="26" y="22" width="20" height="74"/>
+                      <rect x="42" y="46" width="34" height="50"/>
+                      <rect x="72" y="30" width="16" height="66"/>
+                      <rect x="84" y="12" width="24" height="84"/>
+                      <rect x="104" y="42" width="32" height="54"/>
+                      <rect x="132" y="26" width="18" height="70"/>
+                      <rect x="146" y="48" width="38" height="48"/>
+                      <rect x="180" y="18" width="22" height="78"/>
+                      <rect x="198" y="38" width="30" height="58"/>
+                      <rect x="224" y="24" width="18" height="72"/>
+                      <rect x="238" y="44" width="34" height="52"/>
+                      <rect x="268" y="30" width="20" height="66"/>
+                      <rect x="284" y="42" width="56" height="54"/>
+                      <rect x="94" y="4" width="2.5" height="10"/>
+                      <rect x="189" y="8" width="2.5" height="12"/>
+                      <rect x="232" y="16" width="2.5" height="10"/>
+                    </g>
+                    <g fill="#ffd98a">
+                      <rect x="33" y="32" width="3.4" height="4.4" opacity=".9"/><rect x="90" y="24" width="3.4" height="4.4" opacity=".85"/>
+                      <rect x="97" y="40" width="3.4" height="4.4" opacity=".7"/><rect x="139" y="36" width="3.4" height="4.4" opacity=".8"/>
+                      <rect x="187" y="28" width="3.4" height="4.4" opacity=".9"/><rect x="231" y="34" width="3.4" height="4.4" opacity=".75"/>
+                      <rect x="275" y="40" width="3.4" height="4.4" opacity=".8"/><rect x="58" y="54" width="3.4" height="4.4" opacity=".65"/>
+                      <rect x="118" y="54" width="3.4" height="4.4" opacity=".6"/><rect x="210" y="50" width="3.4" height="4.4" opacity=".7"/>
+                      <rect x="298" y="54" width="3.4" height="4.4" opacity=".65"/><rect x="160" y="58" width="3.4" height="4.4" opacity=".6"/>
+                      <rect x="14" y="50" width="3.4" height="4.4" opacity=".7"/><rect x="320" y="58" width="3.4" height="4.4" opacity=".6"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- front skyline row: lower houses + a lighthouse, nearer shore -->
+              <div class="skyAnchor" style="left:190px; top:124px;">
+                <div class="skyStand" id="skyFront" style="left:-150px; top:-58px; width:300px; height:58px;">
+                  <svg viewBox="0 0 300 58" width="300" height="58" aria-hidden="true">
+                    <g fill="#0a1730">
+                      <rect x="0" y="26" width="26" height="32"/>
+                      <polygon points="0,26 13,14 26,26" fill="#0a1730"/>
+                      <rect x="30" y="32" width="34" height="26"/>
+                      <rect x="68" y="20" width="20" height="38"/>
+                      <rect x="92" y="30" width="30" height="28"/>
+                      <polygon points="92,30 107,19 122,30" fill="#0a1730"/>
+                      <rect x="126" y="24" width="24" height="34"/>
+                      <rect x="154" y="34" width="36" height="24"/>
+                      <rect x="194" y="22" width="20" height="36"/>
+                      <rect x="218" y="30" width="28" height="28"/>
+                      <!-- lighthouse -->
+                      <polygon points="262,58 268,10 278,10 284,58" fill="#12234d"/>
+                      <rect x="265" y="2" width="16" height="9" fill="#0a1730"/>
+                    </g>
+                    <g fill="#ffd98a">
+                      <rect x="10" y="36" width="3.4" height="4.4" opacity=".85"/><rect x="42" y="40" width="3.4" height="4.4" opacity=".75"/>
+                      <rect x="75" y="30" width="3.4" height="4.4" opacity=".85"/><rect x="104" y="38" width="3.4" height="4.4" opacity=".7"/>
+                      <rect x="135" y="34" width="3.4" height="4.4" opacity=".8"/><rect x="168" y="42" width="3.4" height="4.4" opacity=".65"/>
+                      <rect x="201" y="32" width="3.4" height="4.4" opacity=".8"/><rect x="230" y="38" width="3.4" height="4.4" opacity=".7"/>
+                      <rect x="269" y="4.5" width="8" height="4.5" opacity=".95"/>
+                    </g>
+                    <circle cx="273" cy="6" r="9" fill="#ffd98a" opacity=".18"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- little paper boats bobbing on the water -->
+              <div class="boat" style="left:86px; top:196px;">
+                <div class="boatBob"><div class="boatStand">
+                  <svg viewBox="0 0 54 46" width="54" height="46" aria-hidden="true">
+                    <polygon points="27,4 27,30 44,30" fill="#fdf6e0"/>
+                    <polygon points="24,10 24,30 12,30" fill="#ffd166"/>
+                    <rect x="25.8" y="3" width="2.4" height="29" fill="#8a5a2a"/>
+                    <path d="M6 32 L48 32 L42 43 L13 43 Z" fill="#c0392b"/>
+                    <rect x="6" y="32" width="42" height="3" fill="#e8b65a"/>
+                  </svg>
+                </div></div>
+              </div>
+              <div class="boat b2" style="left:298px; top:206px;">
+                <div class="boatBob"><div class="boatStand">
+                  <svg viewBox="0 0 54 46" width="54" height="46" aria-hidden="true">
+                    <polygon points="27,8 27,30 40,30" fill="#cfe4ff"/>
+                    <polygon points="24,14 24,30 15,30" fill="#fdf6e0"/>
+                    <rect x="25.8" y="7" width="2.4" height="25" fill="#8a5a2a"/>
+                    <path d="M9 32 L45 32 L40 41 L14 41 Z" fill="#1f5fa8"/>
+                    <rect x="9" y="32" width="36" height="3" fill="#e8b65a"/>
+                  </svg>
+                </div></div>
+              </div>
+
+              <!-- the sky: shells launch and bursts bloom here -->
+              <div id="skyLayer"></div>
+            </div><!-- /fwWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a sky made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>look up...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfFwFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#16294f"/><stop offset="1" stop-color="#0c1a38"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfFwFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#dfe8ff">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfFwFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#24407c"/><stop offset="1" stop-color="#12234d"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfFwFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var fwWrap = document.getElementById('fwWrap');
+  var fwGlow = document.getElementById('fwGlow');
+  var water = document.getElementById('water');
+  var skyLayer = document.getElementById('skyLayer');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the skyline rows ----------
+     Each standee is a flat paper strip stood up from the shoreline; JS
+     grows its scale inside a staggered rise window (the birthday
+     candles' grammar, widened for a whole row). */
+  var ROWS = [
+    { id:'skyBack',  start:0.04, end:0.46 },
+    { id:'skyFront', start:0.38, end:0.74 }
+  ];
+  ROWS.forEach(function(r){
+    r.el = document.getElementById(r.id);
+    r.p = 0;
+  });
+
+  /* ---------- the fireworks ----------
+     Shells launch from the shoreline, bloom into ray bursts in paper
+     gold, red, and teal, and throw a reflection onto the water. After
+     the first volley of three, the show keeps bursting gently in
+     rotation so the sky stays alive. */
+  var FW_COLORS = [
+    { main:'#ffd166', soft:'rgba(255,209,102,' },
+    { main:'#ff5d5d', soft:'rgba(255,93,93,' },
+    { main:'#2ee6d8', soft:'rgba(46,230,216,' }
+  ];
+  var ANCHORS = [
+    [70,46], [152,28], [230,52], [308,32], [112,78],
+    [268,82], [190,20], [332,68], [48,86], [206,66]
+  ];
+  var colorIdx = 0, anchorIdx = 0, flashBoost = 0;
+  var showStarted = false, showTimer = null, volleyTimers = [];
+
+  function spawnReflection(x, color){
+    /* map the burst's sky-layer x onto the water plane below it */
+    var rx = (x / 380) * 328 + 26 - 15;
+    var refl = document.createElement('div');
+    refl.className = 'refl';
+    refl.style.left = rx.toFixed(1) + 'px';
+    refl.style.background = 'linear-gradient(180deg, ' + color.soft + '.55), ' + color.soft + '.06) 78%, transparent)';
+    water.appendChild(refl);
+    refl.animate([
+      { opacity:0, transform:'scaleY(.45)' },
+      { opacity:.8, transform:'scaleY(1.05)', offset:.3 },
+      { opacity:0, transform:'scaleY(1.15)' }
+    ], { duration:1250, easing:'ease-out' });
+    setTimeout(function(){ refl.remove(); }, 1350);
+  }
+
+  function spawnBurst(x, y, color){
+    flashBoost = Math.min(.5, flashBoost + .4);
+    var burst = document.createElement('div');
+    burst.className = 'burst';
+    burst.style.left = x + 'px';
+    burst.style.top = y + 'px';
+    var flash = document.createElement('div');
+    flash.className = 'burstFlash';
+    flash.style.background = 'radial-gradient(circle, ' + color.soft + '.9) 0%, ' + color.soft + '.35) 45%, transparent 70%)';
+    burst.appendChild(flash);
+    flash.animate([
+      { transform:'scale(.25)', opacity:.95 },
+      { transform:'scale(1.35)', opacity:0 }
+    ], { duration:520, easing:'ease-out' });
+
+    var RAYS = 14;
+    for (var i=0;i<RAYS;i++){
+      var ray = document.createElement('div');
+      ray.className = 'ray';
+      var ang = (360 / RAYS) * i + (Math.random() * 14 - 7);
+      var streak = 20 + Math.random() * 14;
+      var dist = 40 + Math.random() * 26;
+      var dur = 880 + Math.random() * 320;
+      ray.style.height = streak.toFixed(1) + 'px';
+      ray.style.background = 'linear-gradient(180deg, #fff8e6 0%, ' + color.main + ' 45%, ' + color.soft + '0) 100%)';
+      ray.style.boxShadow = '0 0 6px ' + color.soft + '.8)';
+      burst.appendChild(ray);
+      ray.animate([
+        { transform:'rotate(' + ang + 'deg) translateY(3px) scaleY(.25)', opacity:1 },
+        { transform:'rotate(' + ang + 'deg) translateY(' + dist.toFixed(1) + 'px) scaleY(1)', opacity:1, offset:.55 },
+        { transform:'rotate(' + ang + 'deg) translateY(' + (dist + 13).toFixed(1) + 'px) scaleY(.92)', opacity:0 }
+      ], { duration:dur, easing:'cubic-bezier(.12,.68,.3,1)' });
+    }
+    for (var s=0;s<6;s++){
+      var spark = document.createElement('div');
+      spark.className = 'spark';
+      spark.style.background = color.main;
+      spark.style.boxShadow = '0 0 5px ' + color.soft + '.9)';
+      burst.appendChild(spark);
+      var sang = Math.random() * 360, sdist = 20 + Math.random() * 30;
+      var sx = Math.cos(sang * Math.PI / 180) * sdist, sy = Math.sin(sang * Math.PI / 180) * sdist;
+      spark.animate([
+        { transform:'translate(0px,0px)', opacity:1 },
+        { transform:'translate(' + sx.toFixed(1) + 'px,' + (sy + 9).toFixed(1) + 'px)', opacity:0 }
+      ], { duration:950 + Math.random() * 350, easing:'cubic-bezier(.12,.68,.3,1)' });
+    }
+    skyLayer.appendChild(burst);
+    setTimeout(function(){ burst.remove(); }, 1500);
+    spawnReflection(x, color);
+  }
+
+  function launchTo(anchor){
+    var color = FW_COLORS[colorIdx % FW_COLORS.length]; colorIdx++;
+    var x = anchor[0], y = anchor[1];
+    var startY = 224; /* just above the waterline */
+    var shell = document.createElement('div');
+    shell.className = 'shell';
+    shell.style.left = x + 'px';
+    shell.style.top = startY + 'px';
+    skyLayer.appendChild(shell);
+    var anim = shell.animate([
+      { transform:'translateY(0px)', opacity:1 },
+      { transform:'translateY(' + (y - startY) + 'px)', opacity:1 }
+    ], { duration:640, easing:'cubic-bezier(.25,.6,.4,1)' });
+    anim.onfinish = function(){
+      shell.remove();
+      if (opened) spawnBurst(x, y, color);
+    };
+  }
+
+  function startShow(){
+    if (showStarted) return;
+    showStarted = true;
+    /* the first volley: three shells, one by one */
+    var volley = [0, 3, 1];
+    volley.forEach(function(ai, i){
+      volleyTimers.push(setTimeout(function(){ if (opened) launchTo(ANCHORS[ai]); }, 300 + i * 560));
+    });
+    anchorIdx = 2;
+    /* then the sky stays alive: a gentle burst every couple of seconds */
+    showTimer = setInterval(function(){
+      if (!opened) return;
+      launchTo(ANCHORS[anchorIdx % ANCHORS.length]);
+      anchorIdx++;
+    }, 2050);
+  }
+  function stopShow(){
+    showStarted = false;
+    if (showTimer){ clearInterval(showTimer); showTimer = null; }
+    volleyTimers.forEach(clearTimeout); volleyTimers = [];
+    var junk = skyLayer.querySelectorAll('.burst,.shell');
+    for (var i=0;i<junk.length;i++) junk[i].remove();
+    var rj = water.querySelectorAll('.refl');
+    for (var j=0;j<rj.length;j++) rj[j].remove();
+  }
+
+  function applyRise(){
+    /* the harbor hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    fwWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    fwWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<ROWS.length;i++){
+      var r = ROWS[i];
+      r.p = clamp01((rise - r.start) / (r.end - r.start));
+      r.el.style.transform = 'rotateX(-90deg) scale(' + r.p.toFixed(3) + ')';
+    }
+    /* burst light on the base: a whisper while the harbor rises, plus a
+       flash that decays after every burst */
+    fwGlow.style.opacity = (rise * 0.07 + flashBoost).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    flashBoost *= Math.max(0, 1 - dt * 2.1);
+    applyRise();
+    if (opened && rise > 0.985) startShow();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> harbor rises (target set at 850ms), skyline
+            rows grow, then the first shells launch.
+     Close: the show stops, harbor settles first -> card folds ->
+            envelope returns -> flap swings shut -> seal reappears
+            (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      stopShow();
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+    startShow();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
