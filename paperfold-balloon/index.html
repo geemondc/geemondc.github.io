@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Hot Air Balloon — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #2c5a8a 0%, #17365a 46%, #0a1a30 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#eaf4ff;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(110,180,245,.20) 0%, rgba(255,190,90,.07) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfBalSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfBalSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #4a86c2 0%, #2f6199 55%, #214a75 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm morning sunlight the meadow casts onto the base */
+  #sunGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,220,130,.55) 0%, rgba(255,196,86,.22) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f2f9ff 0%, #dceefb 58%, #c2dcf2 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(70,120,180,.22);
+  }
+  /* the face that greets you once the card stands — the valley backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #a8d8ff 0%, #d8f0ff 46%, #ffedbe 78%, #ffe3ae 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(16,42,74,.35), inset 0 0 52px rgba(30,70,120,.25);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* backdrop life: clouds drift, birds cross */
+  .cloudA { animation:pfBalCloud1 26s ease-in-out infinite alternate; }
+  .cloudB { animation:pfBalCloud2 32s ease-in-out infinite alternate; }
+  @keyframes pfBalCloud1 { from { transform:translateX(-6px); } to { transform:translateX(26px); } }
+  @keyframes pfBalCloud2 { from { transform:translateX(10px); } to { transform:translateX(-20px); } }
+  .birds { animation:pfBalBirds 36s linear infinite; }
+  @keyframes pfBalBirds { from { transform:translate(-36px, 6px); } to { transform:translate(404px, -16px); } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #6db1e8 0%, #3f7fb8 52%, #2b5c8c 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfBalFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfBalFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfBalFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfBalFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the valley scene (rises out of the base) ---------- */
+  #balWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the meadow the balloon launches from */
+  #meadow {
+    position:absolute; left:40px; top:53px; width:300px; height:190px; border-radius:50%;
+    transform:translateZ(5px);
+    background:radial-gradient(ellipse at 50% 42%, #b5e28f 0%, #8cc96a 55%, #5da24e 82%, #478a3c 100%);
+    box-shadow: inset 0 0 0 3px rgba(240,255,220,.35), inset 0 -10px 22px rgba(40,90,30,.35), 0 4px 14px rgba(0,0,0,.35);
+  }
+  /* standees: flat paper pieces stood up from the meadow (rotateX(-90)),
+     grown from scale 0 by JS in staggered rise windows */
+  .stand { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .standee {
+    position:absolute; transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  .standee svg { display:block; }
+  /* the main balloon's lift: once grown, it rises off the meadow to hover */
+  #balloonLift {
+    position:absolute; width:0; height:0; transform-style:preserve-3d;
+    transition:transform 1.5s ease-in-out .1s; /* settling back on close */
+  }
+  #world.open #balloonLift { transform:translateZ(58px); transition:transform 2.4s ease-in-out 1.9s; }
+  /* ...and its slow drift/bob while it hovers */
+  .balloonBob {
+    position:absolute; left:0; top:0; transform-style:preserve-3d;
+    animation:pfBalBob 6.8s ease-in-out infinite alternate;
+  }
+  @keyframes pfBalBob { from { transform:translate3d(-9px, 0, -4px); } to { transform:translate3d(9px, 0, 5px); } }
+  /* distant balloons ride higher and wander slowly */
+  .farLift { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .farBob { position:absolute; left:0; top:0; transform-style:preserve-3d; animation:pfBalFar1 11s ease-in-out infinite alternate; }
+  .farBob2 { animation:pfBalFar2 13.5s ease-in-out infinite alternate; }
+  @keyframes pfBalFar1 { from { transform:translateX(-12px); } to { transform:translateX(12px); } }
+  @keyframes pfBalFar2 { from { transform:translateX(10px); } to { transform:translateX(-13px); } }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(14,36,64,.72); border:1px solid rgba(170,210,250,.55);
+    color:#eaf4ff; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfBalPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfBalPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#fff3d0;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(8,24,48,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the blue envelope front itself, in the free area
+     below the scene (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the scene settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#fff3d0;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(8,24,48,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter, .balloonBob, .farBob, .cloudA, .cloudB, .birds { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBalSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#8ec9f7"/><stop offset=".55" stop-color="#cfeaff"/>
+                        <stop offset=".8" stop-color="#ffedbe"/><stop offset="1" stop-color="#ffe3ae"/>
+                      </linearGradient>
+                      <radialGradient id="pfBalSunGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#fff3b0" stop-opacity=".95"/>
+                        <stop offset=".55" stop-color="#ffe082" stop-opacity=".45"/>
+                        <stop offset="1" stop-color="#ffe082" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfBalSky)"/>
+                    <!-- morning sun -->
+                    <circle cx="322" cy="40" r="34" fill="url(#pfBalSunGlow)"/>
+                    <circle cx="322" cy="40" r="17" fill="#ffdf6b"/>
+                    <!-- clouds -->
+                    <g class="cloudA" fill="#ffffff" opacity=".92">
+                      <ellipse cx="70" cy="42" rx="30" ry="10"/><ellipse cx="88" cy="35" rx="20" ry="9"/>
+                    </g>
+                    <g class="cloudB" fill="#ffffff" opacity=".8">
+                      <ellipse cx="238" cy="66" rx="24" ry="8"/><ellipse cx="252" cy="60" rx="15" ry="7"/>
+                    </g>
+                    <!-- paper birds crossing the sky -->
+                    <g class="birds" stroke="#3a5a7c" stroke-width="2" fill="none" stroke-linecap="round">
+                      <path d="M0 52 q5 -6 10 0 q5 -6 10 0"/>
+                      <path d="M26 66 q4 -5 8 0 q4 -5 8 0"/>
+                      <path d="M8 82 q3.5 -4.5 7 0 q3.5 -4.5 7 0"/>
+                    </g>
+                    <!-- layered hills -->
+                    <path d="M0 148 Q70 118 150 140 Q240 162 380 128 L380 248 L0 248 Z" fill="#8fce7e"/>
+                    <path d="M0 178 Q90 148 190 170 Q290 190 380 162 L380 248 L0 248 Z" fill="#6ab85c"/>
+                    <!-- tiny village on the mid hill -->
+                    <g>
+                      <rect x="52" y="158" width="16" height="12" fill="#fdf6e0"/><polygon points="49,158 71,158 60,149" fill="#c65b4e"/>
+                      <rect x="76" y="162" width="12" height="10" fill="#ffe9c9"/><polygon points="73,162 91,162 82,155" fill="#8a5a3c"/>
+                      <rect x="292" y="152" width="15" height="11" fill="#fdf6e0"/><polygon points="289,152 310,152 299.5,144" fill="#c65b4e"/>
+                      <rect x="314" y="157" width="11" height="9" fill="#e8f4ff"/><polygon points="311,157 328,157 319.5,150" fill="#5d7fa3"/>
+                      <rect x="57" y="163" width="3.5" height="5" fill="#7a4a2c"/><rect x="296.5" y="156" width="3.5" height="5" fill="#7a4a2c"/>
+                    </g>
+                    <path d="M0 206 Q110 182 220 200 Q310 214 380 194 L380 248 L0 248 Z" fill="#4f9c46"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="sunGlow"></div>
+
+            <!-- the valley scene: meadow, fence, flowers, balloons -->
+            <div id="balWrap">
+              <div id="meadow"></div>
+
+              <!-- picket fence along the back of the meadow -->
+              <div class="stand" style="left:190px; top:118px;">
+                <div class="standee grow" data-start="0.08" data-dur="0.22" style="left:-110px; top:-30px; width:220px; height:30px;">
+                  <svg viewBox="0 0 220 30" width="220" height="30" aria-hidden="true">
+                    <g fill="#fdf8ec" stroke="#d8c9a3" stroke-width="1">
+                      <rect x="2" y="8" width="9" height="20"/><polygon points="2,8 11,8 6.5,2"/>
+                      <rect x="28" y="8" width="9" height="20"/><polygon points="28,8 37,8 32.5,2"/>
+                      <rect x="54" y="8" width="9" height="20"/><polygon points="54,8 63,8 58.5,2"/>
+                      <rect x="80" y="8" width="9" height="20"/><polygon points="80,8 89,8 84.5,2"/>
+                      <rect x="106" y="8" width="9" height="20"/><polygon points="106,8 115,8 110.5,2"/>
+                      <rect x="132" y="8" width="9" height="20"/><polygon points="132,8 141,8 136.5,2"/>
+                      <rect x="158" y="8" width="9" height="20"/><polygon points="158,8 167,8 162.5,2"/>
+                      <rect x="184" y="8" width="9" height="20"/><polygon points="184,8 193,8 188.5,2"/>
+                      <rect x="205" y="8" width="9" height="20"/><polygon points="205,8 214,8 209.5,2"/>
+                    </g>
+                    <rect x="0" y="13" width="220" height="3.5" fill="#f3e8cd"/>
+                    <rect x="0" y="22" width="220" height="3.5" fill="#f3e8cd"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- tiny flowers scattered on the meadow -->
+              <div class="stand" style="left:118px; top:152px;">
+                <div class="standee grow" data-start="0.40" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#ff5da2"/><circle cx="6" cy="5.5" r="1.6" fill="#ffd166"/></svg>
+                </div>
+              </div>
+              <div class="stand" style="left:158px; top:170px;">
+                <div class="standee grow" data-start="0.45" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#ffd166"/><circle cx="6" cy="5.5" r="1.6" fill="#ff9a3c"/></svg>
+                </div>
+              </div>
+              <div class="stand" style="left:222px; top:164px;">
+                <div class="standee grow" data-start="0.50" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#b388ff"/><circle cx="6" cy="5.5" r="1.6" fill="#fff3d0"/></svg>
+                </div>
+              </div>
+              <div class="stand" style="left:258px; top:150px;">
+                <div class="standee grow" data-start="0.55" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#ff8fb3"/><circle cx="6" cy="5.5" r="1.6" fill="#ffd166"/></svg>
+                </div>
+              </div>
+              <div class="stand" style="left:140px; top:188px;">
+                <div class="standee grow" data-start="0.60" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#4dd8ff"/><circle cx="6" cy="5.5" r="1.6" fill="#fff3d0"/></svg>
+                </div>
+              </div>
+              <div class="stand" style="left:238px; top:186px;">
+                <div class="standee grow" data-start="0.65" data-dur="0.12" style="left:-6px; top:-20px; width:12px; height:20px;">
+                  <svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M6 20 L6 9" stroke="#3d7a34" stroke-width="1.8"/><circle cx="6" cy="5.5" r="4" fill="#ff9a3c"/><circle cx="6" cy="5.5" r="1.6" fill="#fff3d0"/></svg>
+                </div>
+              </div>
+
+              <!-- distant balloon, far left — already airborne, small -->
+              <div class="farLift" style="left:76px; top:120px; transform:translateZ(30px);">
+                <div class="farBob">
+                  <div class="stand" style="left:0; top:0;">
+                    <div class="standee grow" data-start="0.55" data-dur="0.25" style="left:-27px; top:-76px; width:54px; height:76px;">
+                      <svg viewBox="0 0 54 76" width="54" height="76" aria-hidden="true">
+                        <path d="M27 3 C40 3 48 13 48 24 C48 35 39 41 34 47 L20 47 C15 41 6 35 6 24 C6 13 14 3 27 3 Z" fill="#4dd8ff"/>
+                        <path d="M20 47 L24 58 M34 47 L30 58" stroke="#7a5a34" stroke-width="1.4"/>
+                        <rect x="21" y="58" width="12" height="9" rx="1.5" fill="#b07a3f"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- distant balloon, far right — already airborne, smaller -->
+              <div class="farLift" style="left:304px; top:110px; transform:translateZ(38px);">
+                <div class="farBob farBob2">
+                  <div class="stand" style="left:0; top:0;">
+                    <div class="standee grow" data-start="0.62" data-dur="0.25" style="left:-23px; top:-64px; width:46px; height:64px;">
+                      <svg viewBox="0 0 46 64" width="46" height="64" aria-hidden="true">
+                        <path d="M23 2.5 C34 2.5 41 11 41 20.5 C41 30 33 35 29 40 L17 40 C13 35 5 30 5 20.5 C5 11 12 2.5 23 2.5 Z" fill="#ff8fb3"/>
+                        <path d="M17 40 L20.5 49 M29 40 L25.5 49" stroke="#7a5a34" stroke-width="1.2"/>
+                        <rect x="18" y="49" width="10" height="8" rx="1.5" fill="#b07a3f"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- the main balloon: grows on the meadow, then lifts to hover -->
+              <div id="balloonLift" style="left:190px; top:152px;">
+                <div class="balloonBob">
+                  <div class="stand" style="left:0; top:0;">
+                    <div class="standee grow" data-start="0.30" data-dur="0.45" style="left:-64px; top:-178px; width:128px; height:178px;">
+                      <svg viewBox="0 0 128 178" width="128" height="178" aria-hidden="true">
+                        <defs>
+                          <clipPath id="pfBalEnvClip">
+                            <path d="M64 5 C94 5 112 28 112 54 C112 80 92 96 79 112 L49 112 C36 96 16 80 16 54 C16 28 34 5 64 5 Z"/>
+                          </clipPath>
+                        </defs>
+                        <!-- rainbow paper panels, clipped to the envelope -->
+                        <g clip-path="url(#pfBalEnvClip)">
+                          <rect x="10" y="0" width="15" height="118" fill="#ff5da2"/>
+                          <rect x="25" y="0" width="15" height="118" fill="#ff9a3c"/>
+                          <rect x="40" y="0" width="15" height="118" fill="#ffd166"/>
+                          <rect x="55" y="0" width="18" height="118" fill="#2ee6a8"/>
+                          <rect x="73" y="0" width="15" height="118" fill="#4dd8ff"/>
+                          <rect x="88" y="0" width="15" height="118" fill="#b388ff"/>
+                          <rect x="103" y="0" width="15" height="118" fill="#ff5da2"/>
+                          <ellipse cx="44" cy="34" rx="13" ry="24" fill="#ffffff" opacity=".30"/>
+                        </g>
+                        <path d="M64 5 C94 5 112 28 112 54 C112 80 92 96 79 112 L49 112 C36 96 16 80 16 54 C16 28 34 5 64 5 Z" fill="none" stroke="rgba(90,50,20,.28)" stroke-width="2"/>
+                        <!-- skirt and ropes -->
+                        <path d="M49 112 L79 112 L74 120 L54 120 Z" fill="#8a5a3c"/>
+                        <path d="M54 120 L57 140 M74 120 L71 140 M64 120 L64 140" stroke="#7a5a34" stroke-width="2"/>
+                        <!-- basket with weave -->
+                        <path d="M50 140 L78 140 L74 164 L54 164 Z" fill="#b07a3f"/>
+                        <path d="M51.5 148 L76.5 148 M53 156 L75 156" stroke="#8a5a2c" stroke-width="2"/>
+                        <path d="M58 140 L60 164 M70 140 L68 164" stroke="#8a5a2c" stroke-width="1.6"/>
+                        <rect x="48" y="137" width="32" height="5" rx="2" fill="#8a5a2c"/>
+                        <!-- sandbags -->
+                        <rect x="42" y="146" width="8" height="11" rx="3.5" fill="#d9b878"/>
+                        <rect x="78" y="146" width="8" height="11" rx="3.5" fill="#d9b878"/>
+                        <path d="M50 142 L46 146 M78 142 L82 146" stroke="#7a5a34" stroke-width="1.4"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div><!-- /balWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a balloon made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>up, up and away...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBalFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#4a86c2"/><stop offset="1" stop-color="#2b5c8c"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBalFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBalFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#7fbdf2"/><stop offset="1" stop-color="#3f7fb8"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBalFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var balWrap = document.getElementById('balWrap');
+  var sunGlow = document.getElementById('sunGlow');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the standees ----------
+     Every paper piece in the scene grows from scale 0 in its own
+     staggered rise window (data-start / data-dur), the same grammar
+     as the Birthday Cake's candles. */
+  var growers = [];
+  document.querySelectorAll('.grow').forEach(function(el){
+    growers.push({
+      el: el,
+      start: parseFloat(el.getAttribute('data-start')),
+      dur: parseFloat(el.getAttribute('data-dur'))
+    });
+  });
+
+  function applyRise(){
+    /* the scene hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    balWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    balWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<growers.length;i++){
+      var g = growers[i];
+      var p = clamp01((rise - g.start) / g.dur);
+      g.el.style.transform = 'rotateX(-90deg) scale(' + p.toFixed(3) + ')';
+    }
+    /* morning light pooling on the base as the scene rises */
+    sunGlow.style.opacity = (rise * 0.35).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> scene rises (target set at 850ms): fence,
+            balloon inflates, flowers, distant balloons; then the
+            balloon lifts off the meadow (CSS) and hovers.
+     Close: balloon settles back (CSS) -> scene settles -> card folds
+            -> envelope returns -> flap swings shut -> seal reappears. */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
