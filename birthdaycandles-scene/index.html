@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Make a Wish — a living card scene</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; background:#1c0730; }
+  body { font-family: Georgia, 'Times New Roman', serif; }
+  #fill { position:fixed; inset:0; background:url('still.jpg') center/cover no-repeat; filter:blur(26px) brightness(.5); transform:scale(1.18); }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #frame { position:relative; aspect-ratio:16/9; width:100%; max-height:100%; overflow:hidden; background:#1c0730;
+           box-shadow:0 18px 60px rgba(0,0,0,.5); }
+  @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
+  #drift { position:absolute; inset:0; animation:bcDrift 9s ease-in-out infinite alternate; will-change:transform; }
+  @keyframes bcDrift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
+  #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+  /* the unlit wait: a soft dusk dim pooled over the cake, lifted flame by flame */
+  #dim { position:absolute; inset:0; pointer-events:none; transition:opacity .7s ease;
+         background:radial-gradient(58% 62% at 48% 42%, rgba(10,3,26,.55), rgba(10,3,26,.30) 62%, rgba(10,3,26,.16) 100%); }
+  /* the warm glow that grows over the frosting as the candles catch */
+  #cakeglow { position:absolute; inset:0; pointer-events:none; mix-blend-mode:screen; transition:opacity .7s ease;
+         background:radial-gradient(34% 34% at 48% 26%, rgba(255,205,110,.85), rgba(255,170,80,.28) 55%, rgba(255,160,70,0) 80%); }
+  /* one candle flame: a halo + a teardrop, seated with its base on the wick.
+     LIT STATE IS PLAIN DOM STATE (tapfix3 lesson): the wrap starts at inline
+     opacity 0 and a JS timer sets inline opacity 1 with !important the moment
+     that candle's turn lands — no animation end-frame is ever the lit state.
+     The flicker animations move transform only, never opacity. */
+  .bcwrap { position:absolute; pointer-events:none; transform:translate(-50%,-100%); width:5.4%; aspect-ratio:1; }
+  .bchalo { position:absolute; left:50%; top:56%; width:100%; aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%);
+        mix-blend-mode:screen; background:radial-gradient(closest-side, rgba(255,205,110,.9), rgba(255,170,80,.30) 55%, rgba(255,160,70,0) 78%);
+        animation:bcHaloPulse 1.6s ease-in-out infinite alternate; }
+  @keyframes bcHaloPulse { from { transform:translate(-50%,-50%) scale(.88) } to { transform:translate(-50%,-50%) scale(1.1) } }
+  .bcflame { position:absolute; left:50%; bottom:34%; width:27%; aspect-ratio:.55; transform:translateX(-50%); transform-origin:50% 100%;
+        border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;
+        background:linear-gradient(to top, #ff8a2e 0%, #ffb52e 38%, #ffdf6b 68%, #fff8d0 100%);
+        box-shadow:0 0 6px 2px rgba(255,180,80,.55);
+        animation:bcFlick .34s ease-in-out infinite alternate; }
+  @keyframes bcFlick { from { transform:translateX(-50%) scale(1,1) skewX(-2.2deg) } to { transform:translateX(-50%) scale(.93,1.07) skewX(2.4deg) } }
+  #confetti { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .bcpiece { position:absolute; top:0; pointer-events:none; will-change:transform; }
+  #wish { position:absolute; left:50%; bottom:7.5%; transform:translateX(-50%); white-space:nowrap; z-index:6;
+             transition:opacity 1.2s ease; pointer-events:none;
+             background:rgba(43,16,64,.66); color:#ffe9a8; font-size:clamp(13px, 3.4vw, 19px); letter-spacing:2.5px;
+             padding:9px 20px; border-radius:999px; border:1px solid rgba(255,215,130,.55); }
+  #caption { position:absolute; left:50%; bottom:2.2%; transform:translateX(-50%); white-space:nowrap; z-index:5;
+             background:rgba(43,16,64,.58); color:#ffe9a8; font-size:clamp(11px, 2.9vw, 15px); letter-spacing:2.5px;
+             padding:7px 16px; border-radius:999px; border:1px solid rgba(255,215,130,.45); pointer-events:none; }
+  body.wall #caption { display:none; }
+  @media (prefers-reduced-motion: reduce) { #drift, .bchalo, .bcflame { animation:none; } }
+</style>
+</head>
+<body>
+<div id="fill"></div>
+<div id="wrap">
+  <div id="frame">
+    <div id="drift">
+      <img id="still" src="still.jpg" alt="A birthday cake at dusk — white frosting with strawberries, blueberries and daisies, seven tall striped candles standing unlit, balloons and wrapped gifts around the table, the garden going blue-dark outside the windows — the held breath just before the singing starts">
+    </div>
+    <div id="dim" style="opacity:.92"></div>
+    <div id="cakeglow" style="opacity:0"></div>
+    <div id="flames"></div>
+    <div id="confetti"></div>
+    <div id="wish" style="opacity:0">Make a wish!</div>
+    <div id="caption">MAKE A WISH</div>
+  </div>
+</div>
+<script>
+  // Make a Wish (Gary's living standard): the painting stays exactly itself; the cake arrives with its seven candles UNLIT under a soft dusk dim, and waits. When the parent says the moment has come ('lc-bloom' — the recipient's tap, or the card's 12-second fallback), the flames ignite ONE BY ONE, left to right, 400ms apart; the warm glow over the frosting grows with each flame and the dim lifts; when all seven burn, confetti drifts down and settles and the wish line fades in. In #wall the caption hides.
+  (function(){
+    if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
+    var embedded = document.body.classList.contains('wall');
+    /* wick tips measured on the painting itself (percent of frame): red, gold,
+       teal, purple, pink, coral, blue — left to right */
+    var wicks = [[35.9,17.1],[39.7,15.8],[43.8,14.8],[48.2,14.8],[53.0,15.7],[57.0,16.1],[60.6,17.4]];
+    var flamesBox = document.getElementById('flames');
+    var dim = document.getElementById('dim'), glow = document.getElementById('cakeglow');
+    var wish = document.getElementById('wish'), confettiBox = document.getElementById('confetti');
+    var toName = '';
+    try {
+      var pq = new URLSearchParams(window.parent.location.search);
+      toName = (pq.get('to') || '').replace(/[<>&"]/g, '').slice(0, 40);
+    } catch(e){}
+    wish.textContent = toName ? ('Make a wish, ' + toName + '!') : 'Make a wish!';
+    var flameHtml = '';
+    for (var i = 0; i < wicks.length; i++){
+      flameHtml += '<div class="bcwrap" style="left:' + wicks[i][0] + '%;top:' + wicks[i][1] + '%;opacity:0"><div class="bchalo"></div><div class="bcflame"></div></div>';
+    }
+    flamesBox.innerHTML = flameHtml;
+    var wraps = flamesBox.querySelectorAll('.bcwrap');
+    /* BLOOM GATE (the treelighting handshake, Nov 22): inside the card engine
+       this page loads behind the sealed envelope, so the candles hold dark
+       until the parent says the card has landed and been tapped ('lc-bloom');
+       the parent arms the gate with 'lc-arm' once it hears our
+       'lc-scene-ready'. A standalone visit lights at once. Fallbacks: an
+       unarmed embed lights at 7s; an armed embed at 120s at the latest — and
+       a late 'lc-bloom' restarts the lighting in any case. 'lc-dark' (the
+       card resealed for replay) puts every flame out and re-arms the wait. */
+    var lit = [], lighting = false, done = false, armed = false, timers = [];
+    function clearTimers(){ for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]); timers = []; }
+    function setLit(k){
+      if (lit[k]) return; lit[k] = true;
+      wraps[k].style.setProperty('opacity', '1', 'important');
+      var n = 0; for (var j = 0; j < wicks.length; j++) if (lit[j]) n++;
+      glow.style.setProperty('opacity', (n / wicks.length * 0.85).toFixed(2), 'important');
+      dim.style.setProperty('opacity', (0.92 * (1 - n / wicks.length * 0.88)).toFixed(2), 'important');
+    }
+    var confCols = ['#ff5964','#ffd166','#7ed957','#4ecdc4','#c77dff','#ff9f43','#fff3c4'];
+    function confetti(){
+      var W = confettiBox.clientWidth || 640, H = confettiBox.clientHeight || 360;
+      var html = '';
+      for (var i = 0; i < 48; i++){
+        var sz = 5 + (i * 7) % 6, c = confCols[i % confCols.length];
+        var round = (i % 3 === 0);
+        html += '<div class="bcpiece" style="left:' + ((i * 37) % 98) + '%;width:' + sz + 'px;height:' + (round ? sz : Math.round(sz * 1.7)) + 'px;background:' + c + ';border-radius:' + (round ? '50%' : '2px') + ';opacity:.95"></div>';
+      }
+      confettiBox.innerHTML = html;
+      var pieces = confettiBox.querySelectorAll('.bcpiece');
+      for (var k = 0; k < pieces.length; k++){
+        (function(el, idx){
+          var fall = H * (0.52 + ((idx * 29) % 44) / 100);
+          var sway = ((idx * 53) % 61) - 30;
+          var rot = ((idx * 97) % 540) - 270;
+          el.animate([
+            { transform:'translate(0px,-4vh) rotate(0deg)', opacity:0 },
+            { opacity:.95, offset:.08 },
+            { transform:'translate(' + Math.round(sway * .6) + 'px,' + Math.round(fall * .55) + 'px) rotate(' + Math.round(rot * .6) + 'deg)', offset:.6 },
+            { transform:'translate(' + sway + 'px,' + Math.round(fall) + 'px) rotate(' + rot + 'deg)', opacity:.95 }
+          ], { duration: 2500 + (idx % 5) * 220, easing:'cubic-bezier(.25,.6,.4,1)', fill:'forwards' });
+        })(pieces[k], k);
+      }
+    }
+    function finish(){
+      if (done) return; done = true;
+      confetti();
+      wish.style.setProperty('opacity', '1', 'important');
+    }
+    function goLight(){
+      if (lighting || done) return;
+      lighting = true;
+      if (window.parent !== window){ try { window.parent.postMessage('lc-bloomed', '*'); } catch(e){} }
+      for (var i = 0; i < wicks.length; i++){
+        (function(k){ timers.push(setTimeout(function(){ setLit(k); }, 350 + k * 400)); })(i);
+      }
+      timers.push(setTimeout(finish, 350 + wicks.length * 400 + 250));
+      /* guarantee sweep (tapfix3): keyed on JS flags, never computed style —
+         any flame whose timer was lost is lit by 4.6s regardless */
+      timers.push(setTimeout(function(){
+        for (var k = 0; k < wicks.length; k++) setLit(k);
+        finish();
+      }, 4600));
+    }
+    function goDark(){
+      clearTimers();
+      lit = []; lighting = false; done = false;
+      for (var i = 0; i < wraps.length; i++) wraps[i].style.setProperty('opacity', '0', 'important');
+      glow.style.setProperty('opacity', '0', 'important');
+      dim.style.setProperty('opacity', '.92', 'important');
+      wish.style.setProperty('opacity', '0', 'important');
+      confettiBox.innerHTML = '';
+    }
+    if (!embedded){ goLight(); }
+    else {
+      window.addEventListener('message', function(e){
+        if (e.data === 'lc-arm') armed = true;
+        else if (e.data === 'lc-bloom') goLight();
+        else if (e.data === 'lc-dark') goDark();
+      });
+      setTimeout(function(){ if (!lighting && !armed) goLight(); }, 7000);
+      setTimeout(function(){ if (!lighting) goLight(); }, 120000);
+      if (window.parent !== window){
+        try { window.parent.postMessage('lc-scene-ready', '*'); } catch(e){}
+        var readyN = 0;
+        var readyTimer = setInterval(function(){
+          if (armed || lighting || ++readyN > 6){ clearInterval(readyTimer); return; }
+          try { window.parent.postMessage('lc-scene-ready', '*'); } catch(e){}
+        }, 800);
+      }
+    }
+  })();
+</script>
+</body>
+</html>
