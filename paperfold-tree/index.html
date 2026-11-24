@@ -89,12 +89,12 @@
   .ground {
     position: absolute; inset: 0;
     transform-origin: 50% 0%;
-    transform: rotateX(90deg) scale(.44);
+    transform: rotateX(55deg) scale(.44);
     transition: transform .95s cubic-bezier(.6,.02,.3,1);
     transition-delay: var(--cd, .34s);
     transform-style: preserve-3d;
   }
-  .scene.open .ground { transform: rotateX(90deg) scale(1); transition-delay: var(--od, .5s); }
+  .scene.open .ground { transform: rotateX(55deg) scale(1); transition-delay: var(--od, .5s); }
   /* fan visuals live on a flat child: border-radius on the 3D parent itself
      makes the compositor tear the scene at desktop sizes */
   .groundArt {
@@ -105,7 +105,13 @@
       radial-gradient(circle, rgba(214,228,238,.8) 1px, rgba(214,228,238,0) 1.6px) 13px 11px / 34px 34px,
       linear-gradient(rgba(18, 48, 32, .28), rgba(18,48,32,0) 30%),
       radial-gradient(120% 105% at 50% 0%, #fdfaf1 0%, #f6efdc 58%, #e9dfc6 100%);
-    box-shadow: inset 0 0 0 2px rgba(214, 192, 138, .5), inset 0 -14px 30px rgba(160, 140, 95, .18);
+    box-shadow: inset 0 0 0 2px rgba(214, 192, 138, .5), inset 0 -14px 30px rgba(160, 140, 95, .18), inset 0 -5px 0 rgba(176, 132, 62, .5), inset 0 6px 12px rgba(120, 96, 54, .12);
+  }
+  /* fan creases + recession arcs, lying on the floor plane */
+  .fanSvg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
   }
   .path {
     position: absolute; left: 50%; top: 26%;
@@ -120,7 +126,7 @@
     position: absolute;
     left: var(--x); top: var(--y);
     width: calc(var(--w) * 1.34);
-    height: 13%;
+    height: calc(13% * var(--sl, 1));
     transform: translate(-58%, -34%) skewX(-17deg);
     background: radial-gradient(ellipse at center, rgba(24, 42, 30, .62), rgba(24,42,30,0) 66%);
     border-radius: 50%;
@@ -128,7 +134,7 @@
     transition: opacity .7s ease;
     transition-delay: var(--cd, 0s);
   }
-  .scene.open .pshadow { opacity: .95; transition-delay: var(--od, 1s); }
+  .scene.open .pshadow { opacity: var(--so, .95); transition-delay: var(--od, 1s); }
 
   /* ---------- pop-up pieces ---------- */
   .piece {
@@ -143,7 +149,7 @@
     opacity: 0;
     transition: transform .95s cubic-bezier(.34, 1.28, .42, 1) var(--cd, 0s), opacity .3s ease var(--cd, 0s);
   }
-  .scene.open .piece { transform: rotateX(-90deg); opacity: 1; transition-delay: var(--od, 1s), calc(var(--od, 1s) - .25s); }
+  .scene.open .piece { transform: rotateX(-55deg); opacity: 1; transition-delay: var(--od, 1s), calc(var(--od, 1s) - .25s); }
   .piece svg { display: block; width: 100%; height: auto; overflow: visible; }
   .piece.tree { transition-duration: 1.1s, .3s; transition-timing-function: cubic-bezier(.3, 1.4, .45, 1), ease; }
 
@@ -364,17 +370,38 @@
           <div class="ground">
             <div class="groundArt"></div>
             <div class="path"></div>
+            <svg class="fanSvg" viewBox="0 0 200 95" preserveAspectRatio="none" aria-hidden="true">
+              <g>
+                <polygon points="100,0 0,50 20,74" fill="rgba(120,96,54,.055)"/>
+                <polygon points="100,0 20,74 46,87" fill="rgba(255,255,255,.05)"/>
+                <polygon points="100,0 46,87 74,93.5" fill="rgba(120,96,54,.055)"/>
+                <polygon points="100,0 74,93.5 100,95" fill="rgba(255,255,255,.05)"/>
+                <polygon points="100,0 100,95 126,93.5" fill="rgba(120,96,54,.055)"/>
+                <polygon points="100,0 126,93.5 154,87" fill="rgba(255,255,255,.05)"/>
+                <polygon points="100,0 154,87 180,74" fill="rgba(120,96,54,.055)"/>
+                <polygon points="100,0 180,74 200,50" fill="rgba(255,255,255,.05)"/>
+              </g>
+              <g stroke="rgba(146,118,66,.30)" stroke-width="1" vector-effect="non-scaling-stroke" fill="none">
+                <path d="M100 0 L0 50"/><path d="M100 0 L20 74"/><path d="M100 0 L46 87"/>
+                <path d="M100 0 L74 93.5"/><path d="M100 0 L100 95"/><path d="M100 0 L126 93.5"/>
+                <path d="M100 0 L154 87"/><path d="M100 0 L180 74"/><path d="M100 0 L200 50"/>
+              </g>
+              <g stroke="rgba(146,118,66,.22)" stroke-width="1" vector-effect="non-scaling-stroke" fill="none">
+                <path d="M60 0 A40 40 0 0 0 140 0"/>
+                <path d="M28 0 A72 72 0 0 0 172 0"/>
+              </g>
+            </svg>
 
             <!-- shadows -->
-            <div class="pshadow" style="--x:17%; --y:37%; --w:33%; --od:1.2s; --cd:.24s"></div>
-            <div class="pshadow" style="--x:83%; --y:39%; --w:29%; --od:1.45s; --cd:.18s"></div>
-            <div class="pshadow" style="--x:32%; --y:52%; --w:13%; --od:1.7s; --cd:.12s"></div>
-            <div class="pshadow" style="--x:69%; --y:54%; --w:12%; --od:1.85s; --cd:.08s"></div>
-            <div class="pshadow" style="--x:23%; --y:66%; --w:11%; --od:2s; --cd:.04s"></div>
-            <div class="pshadow" style="--x:50%; --y:24%; --w:44%; --od:2.2s; --cd:0s"></div>
+            <div class="pshadow" style="--x:19%; --y:38%; --w:31%; --sl:.85; --so:.78; --od:1.2s; --cd:.24s"></div>
+            <div class="pshadow" style="--x:81%; --y:40%; --w:27%; --sl:.85; --so:.78; --od:1.45s; --cd:.18s"></div>
+            <div class="pshadow" style="--x:32%; --y:50%; --w:13%; --sl:1; --so:.9; --od:1.7s; --cd:.12s"></div>
+            <div class="pshadow" style="--x:69%; --y:53%; --w:12%; --sl:1; --so:.9; --od:1.85s; --cd:.08s"></div>
+            <div class="pshadow" style="--x:20%; --y:70%; --w:13%; --sl:1.25; --so:1; --od:2s; --cd:.04s"></div>
+            <div class="pshadow" style="--x:50%; --y:24%; --w:44%; --sl:1.3; --so:.95; --od:2.2s; --cd:0s"></div>
 
             <!-- house, left -->
-            <div class="piece" style="--x:17%; --y:37%; --w:33%; --od:1.15s; --cd:.24s">
+            <div class="piece" style="--x:19%; --y:38%; --w:31%; --od:1.15s; --cd:.24s">
               <svg viewBox="0 0 200 172" aria-hidden="true">
                 <rect x="118" y="26" width="17" height="34" fill="#a9742f" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
                 <path d="M112 30 q7 -12 16 -3 q11 -6 15 5 q-16 6 -31 -2Z" fill="#fdfaf1"/>
@@ -391,7 +418,7 @@
             </div>
 
             <!-- house, right -->
-            <div class="piece" style="--x:83%; --y:39%; --w:29%; --od:1.4s; --cd:.18s">
+            <div class="piece" style="--x:81%; --y:40%; --w:27%; --od:1.4s; --cd:.18s">
               <svg viewBox="0 0 200 172" aria-hidden="true">
                 <rect x="52" y="28" width="15" height="30" fill="#a9742f" stroke="#f7ecd4" stroke-width="3" stroke-linejoin="round"/>
                 <path d="M46 32 q6 -11 14 -3 q10 -5 13 5 q-14 5 -27 -2Z" fill="#fdfaf1"/>
@@ -408,7 +435,7 @@
             </div>
 
             <!-- small pine, left -->
-            <div class="piece" style="--x:32%; --y:52%; --w:13%; --od:1.65s; --cd:.12s">
+            <div class="piece" style="--x:32%; --y:50%; --w:13%; --od:1.65s; --cd:.12s">
               <svg viewBox="0 0 100 152" aria-hidden="true">
                 <rect x="44" y="128" width="12" height="20" fill="#8a5a2b" stroke="#f7ecd4" stroke-width="2.5"/>
                 <polygon points="50,4 82,58 18,58" fill="#256b47" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
@@ -421,7 +448,7 @@
             </div>
 
             <!-- small pine, right -->
-            <div class="piece" style="--x:69%; --y:54%; --w:12%; --od:1.8s; --cd:.08s">
+            <div class="piece" style="--x:69%; --y:53%; --w:12%; --od:1.8s; --cd:.08s">
               <svg viewBox="0 0 100 152" aria-hidden="true">
                 <rect x="44" y="128" width="12" height="20" fill="#8a5a2b" stroke="#f7ecd4" stroke-width="2.5"/>
                 <polygon points="50,4 82,58 18,58" fill="#1e5a3c" stroke="#fffdf4" stroke-width="3" stroke-linejoin="round"/>
@@ -434,7 +461,7 @@
             </div>
 
             <!-- snowman -->
-            <div class="piece" style="--x:23%; --y:66%; --w:11%; --od:1.95s; --cd:.04s">
+            <div class="piece" style="--x:20%; --y:70%; --w:13%; --od:1.95s; --cd:.04s">
               <svg viewBox="0 0 100 132" aria-hidden="true">
                 <path d="M50 74 L14 52 M50 78 L86 58" stroke="#8a5a2b" stroke-width="4" stroke-linecap="round"/>
                 <circle cx="50" cy="94" r="31" fill="#fdfbf5" stroke="#e8dcbc" stroke-width="3"/>
