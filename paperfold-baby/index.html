@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Baby Card — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #fff9f2 0%, #fceadd 46%, #f4d2bd 74%, #e9b48f 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#6e4530;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(255,196,150,.38) 0%, rgba(255,220,180,.16) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfBabySway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfBabySway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #fdf1e3 0%, #f9e2cf 55%, #f2d0b6 100%);
+    box-shadow: inset 0 0 0 2px rgba(200,150,80,.38), inset 0 0 34px rgba(190,120,80,.20);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(120,66,30,.35); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* soft warm light the nursery casts onto the base */
+  #cribGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,216,150,.75) 0%, rgba(255,180,110,.28) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fffaf3 0%, #fbeede 58%, #f6ddc8 100%);
+    box-shadow: inset 0 0 0 2px rgba(200,150,80,.45), inset 0 0 30px rgba(210,150,100,.22);
+  }
+  /* the face that greets you once the card stands — the nursery sky */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #dceefb 0%, #eaf3fb 46%, #fdeeda 100%);
+    box-shadow: inset 0 0 0 2px rgba(200,150,80,.55), inset 0 0 0 7px rgba(255,252,246,.6), inset 0 0 52px rgba(160,120,90,.16);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* backdrop life: drifting clouds, twinkling stars */
+  .cloudG { animation:pfBabyCloudDrift 18s ease-in-out infinite alternate; }
+  .cloudG.c2 { animation-duration:23s; animation-delay:-6s; }
+  .cloudG.c3 { animation-duration:15s; animation-delay:-3s; }
+  @keyframes pfBabyCloudDrift { from { transform:translateX(-7px); } to { transform:translateX(9px); } }
+  .bstar { animation:pfBabyTwinkle 3.2s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes pfBabyTwinkle { 0%,100% { opacity:.55; transform:scale(.82); } 50% { opacity:1; transform:scale(1.14); } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #fceedd 0%, #f8dcc4 52%, #f0c8a6 100%);
+    box-shadow:0 16px 30px rgba(120,70,40,.35), inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(190,140,70,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(150,95,55,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(150,95,55,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfBabyFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfBabyFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfBabyFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.16); }
+    70% { filter:brightness(1.06); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfBabyFlapGlowBack {
+    0% { filter:brightness(.88); } 50% { filter:brightness(.92); }
+    78% { filter:brightness(1.08); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(120,66,30,.4) 0%, rgba(120,66,30,.2) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(90,50,10,.45), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the crib (rises out of the base, piece by piece) ---------- */
+  #cribWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the soft nursery rug the crib stands on */
+  #rug {
+    position:absolute; left:30px; top:48px; width:320px; height:196px; border-radius:50%;
+    transform:translateZ(5px);
+    background:radial-gradient(ellipse at 50% 42%, #fdf3e7 0%, #f9e3d3 55%, #f2cdb2 82%, #e8b48f 100%);
+    box-shadow: inset 0 0 0 3px rgba(200,150,80,.4), inset 0 0 0 14px rgba(255,252,246,.35), inset 0 -10px 22px rgba(190,120,80,.25), 0 4px 14px rgba(120,70,40,.25);
+  }
+  /* the mattress box: footprint group sits at its bottom plane; its walls
+     grow upward (height set by JS) and the blanket rides on them
+     (translateZ set by JS) — the same grammar as the Sea Card's tank */
+  #cribBase { position:absolute; left:62px; top:66px; width:256px; height:158px; transform-style:preserve-3d; }
+  .cribBaseInner { position:absolute; inset:0; transform-style:preserve-3d; }
+  .wallWrap { position:absolute; transform-style:preserve-3d; }
+  .cwall {
+    position:absolute; left:0; top:0; transform-origin:top center; transform:rotateX(90deg);
+    overflow:hidden;
+    background:linear-gradient(180deg, #fffaf1 0%, #f6e7d2 60%, #eed9bd 100%);
+  }
+  .cwall::after { /* the soft top trim of the crib frame */
+    content:""; position:absolute; left:0; right:0; top:0; height:5px; background:#fffdf8;
+  }
+  .cribTop {
+    position:absolute; inset:0; border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg, #fdf6ec 0%, #fdf6ec 26%, #cfe9d9 27%, #bfe0cd 100%);
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,.75), inset 0 0 22px rgba(255,255,255,.3);
+  }
+  .cribTop::after { /* the blanket's tiny print: dots, moons, stars */
+    content:""; position:absolute; inset:34px 6px 6px; border-radius:10px; opacity:.55;
+    background-image:
+      radial-gradient(circle 2px at 14px 12px, #e8a2b4 98%, rgba(232,162,180,0)),
+      radial-gradient(circle 2px at 40px 30px, #d9a84e 98%, rgba(217,168,78,0)),
+      radial-gradient(circle 2px at 24px 48px, #8fb8dd 98%, rgba(143,184,221,0)),
+      radial-gradient(circle 2px at 52px 10px, #a8c8a2 98%, rgba(168,200,162,0));
+    background-size:64px 56px;
+  }
+
+  /* crib panels: flat paper standees stood up from their bottom edge
+     (rotateX(-90)) and grown by JS — the candle grammar, widened.
+     Rails span the long edges; the end panels ride an in-plane
+     90-degree wrapper so they span the short edges. */
+  .pAnchor { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .endWrap { position:absolute; left:0; top:0; transform:rotate(90deg); transform-style:preserve-3d; }
+  .standIn {
+    position:absolute; transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  .standIn svg { width:100%; height:100%; display:block; }
+  .standIn.backRail  { left:-130px; top:-66px; width:260px; height:66px; }
+  .standIn.frontRail { left:-130px; top:-56px; width:260px; height:56px; }
+  .standIn.head      { left:-79px;  top:-84px; width:158px; height:84px; }
+  .standIn.foot      { left:-79px;  top:-68px; width:158px; height:68px; }
+
+  /* ---------- the star mobile (assembles above the crib, then turns) ---------- */
+  #mobileRise {
+    position:absolute; left:190px; top:145px; width:0; height:0;
+    transform-style:preserve-3d; opacity:0; visibility:hidden;
+  }
+  #mobileTurn {
+    position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d;
+    animation:pfBabyMobileTurn 44s linear infinite;
+  }
+  @keyframes pfBabyMobileTurn { from { transform:rotateZ(0deg); } to { transform:rotateZ(360deg); } }
+  #canopy { position:absolute; left:-85px; top:-85px; width:170px; height:170px; }
+  #canopy svg { width:100%; height:100%; display:block; }
+  .hAnchor { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .hang {
+    position:absolute; left:-11px; top:0; width:22px;
+    transform-origin:50% 0%; transform:rotateX(-90deg) scale(0);
+  }
+  .hstring {
+    position:absolute; left:50%; top:0; width:2px; margin-left:-1px;
+    background:linear-gradient(180deg, rgba(217,168,78,.95), rgba(217,168,78,.5));
+  }
+  .mstar { position:absolute; left:50%; bottom:0; width:20px; height:20px; margin-left:-10px; }
+  .mstar svg {
+    width:100%; height:100%; display:block;
+    animation:pfBabyTwinkle 2.8s ease-in-out infinite; transform-box:fill-box; transform-origin:center;
+  }
+  /* one tiny star that now and then drifts down like a falling star */
+  #fallStar {
+    position:absolute; left:70px; top:-46px; width:0; height:0; transform-style:preserve-3d;
+    opacity:0; animation:pfBabyFall 9s ease-in-out infinite;
+  }
+  @keyframes pfBabyFall {
+    0%, 55% { transform:translateZ(126px); opacity:0; }
+    62% { opacity:1; }
+    78%, 100% { transform:translateZ(84px); opacity:0; }
+  }
+  .fallIn {
+    position:absolute; left:-8px; top:0; width:16px; height:16px;
+    transform-origin:50% 0%; transform:rotateX(-90deg);
+  }
+  .fallIn svg { width:100%; height:100%; display:block; }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(146,94,58,.82); border:1px solid rgba(255,220,170,.7);
+    color:#fff4e2; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(120,70,40,.35); pointer-events:none;
+    transition:opacity .8s ease; animation:pfBabyPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfBabyPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#a8742c;
+    text-shadow:0 0 9px rgba(255,200,120,.35), 0 1px 2px rgba(255,250,240,.7);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the blush envelope front itself, in the free area
+     below the crib (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the crib settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#7c4630;
+    text-shadow:0 0 10px rgba(255,220,170,.3), 0 1px 2px rgba(255,246,235,.7);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#96603c; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter, #mobileTurn, .mstar svg, .cloudG, .bstar, #fallStar { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 232" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBabySky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#cfe7f8"/>
+                        <stop offset=".48" stop-color="#eaf3fb"/>
+                        <stop offset="1" stop-color="#fdeeda"/>
+                      </linearGradient>
+                      <radialGradient id="pfBabyMoonGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#f6cd6b" stop-opacity=".4"/>
+                        <stop offset="1" stop-color="#f6cd6b" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="232" fill="url(#pfBabySky)"/>
+                    <!-- crescent moon, upper right -->
+                    <circle cx="322" cy="46" r="34" fill="url(#pfBabyMoonGlow)"/>
+                    <path d="M336 24 a25 25 0 1 0 13 40 a19.5 19.5 0 1 1 -13 -40 Z" fill="#f6cd6b" stroke="#d9a84e" stroke-width="1.2"/>
+                    <!-- stars -->
+                    <g fill="#eec25e">
+                      <g class="bstar"><path transform="translate(52,36)" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z"/></g>
+                      <g class="bstar" style="animation-delay:-1.1s"><path transform="translate(118,64)" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z"/></g>
+                      <g class="bstar" style="animation-delay:-2s"><path transform="translate(196,30)" d="M0 -4.6 L1.2 -1.2 L4.6 0 L1.2 1.2 L0 4.6 L-1.2 1.2 L-4.6 0 L-1.2 -1.2 Z"/></g>
+                      <g class="bstar" style="animation-delay:-.6s"><path transform="translate(258,84)" d="M0 -3.6 L.9 -.9 L3.6 0 L.9 .9 L0 3.6 L-.9 .9 L-3.6 0 L-.9 -.9 Z"/></g>
+                      <g class="bstar" style="animation-delay:-1.7s"><path transform="translate(88,108)" d="M0 -3.6 L.9 -.9 L3.6 0 L.9 .9 L0 3.6 L-.9 .9 L-3.6 0 L-.9 -.9 Z"/></g>
+                      <circle cx="160" cy="96" r="1.7" opacity=".7"/><circle cx="228" cy="52" r="1.4" opacity=".6"/>
+                      <circle cx="30" cy="86" r="1.4" opacity=".6"/><circle cx="300" cy="120" r="1.6" opacity=".65"/>
+                      <circle cx="140" cy="140" r="1.3" opacity=".5"/><circle cx="342" cy="160" r="1.4" opacity=".55"/>
+                    </g>
+                    <!-- soft clouds, drifting -->
+                    <g class="cloudG" fill="#ffffff" opacity=".95">
+                      <ellipse cx="66" cy="56" rx="30" ry="11"/><ellipse cx="88" cy="48" rx="22" ry="13"/><ellipse cx="46" cy="49" rx="17" ry="9"/>
+                    </g>
+                    <g class="cloudG c2" fill="#ffffff" opacity=".8">
+                      <ellipse cx="196" cy="40" rx="24" ry="9"/><ellipse cx="212" cy="34" rx="17" ry="10"/>
+                    </g>
+                    <g class="cloudG c3" fill="#ffffff" opacity=".88">
+                      <ellipse cx="288" cy="98" rx="26" ry="10"/><ellipse cx="306" cy="91" rx="18" ry="11"/><ellipse cx="268" cy="92" rx="14" ry="8"/>
+                    </g>
+                    <!-- gentle hills along the bottom -->
+                    <path d="M0 198 Q95 178 190 194 T380 190 V232 H0 Z" fill="#f9e7d2"/>
+                    <path d="M0 214 Q120 200 230 212 T380 208 V232 H0 Z" fill="#f3d9bf" opacity=".75"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="cribGlow"></div>
+
+            <!-- the nursery: rug, crib, star mobile -->
+            <div id="cribWrap">
+              <div id="rug"></div>
+
+              <!-- the mattress box with its folded blanket -->
+              <div id="cribBase">
+                <div class="cribBaseInner">
+                  <div class="wallWrap" style="left:0; top:158px;"><div class="cwall" style="width:256px;"></div></div>
+                  <div class="wallWrap" style="left:0; top:158px; transform:rotate(-90deg);"><div class="cwall" style="width:158px;"></div></div>
+                  <div class="wallWrap" style="left:256px; top:0; transform:rotate(90deg);"><div class="cwall" style="width:158px;"></div></div>
+                  <div class="cribTop"></div>
+                </div>
+              </div>
+
+              <!-- back rail: slats along the far edge -->
+              <div class="pAnchor" style="left:190px; top:68px;">
+                <div class="standIn backRail" id="panelBack">
+                  <svg viewBox="0 0 260 66" aria-hidden="true">
+                    <g fill="#fffaf1" stroke="rgba(170,125,75,.45)" stroke-width="1">
+                      <rect x="0" y="0" width="260" height="10" rx="5"/>
+                      <rect x="0" y="54" width="260" height="9" rx="4"/>
+                      <rect x="0" y="2" width="11" height="62" rx="4"/>
+                      <rect x="249" y="2" width="11" height="62" rx="4"/>
+                      <rect x="24" y="10" width="7" height="44"/><rect x="45" y="10" width="7" height="44"/>
+                      <rect x="67" y="10" width="7" height="44"/><rect x="88" y="10" width="7" height="44"/>
+                      <rect x="110" y="10" width="7" height="44"/><rect x="131" y="10" width="7" height="44"/>
+                      <rect x="153" y="10" width="7" height="44"/><rect x="174" y="10" width="7" height="44"/>
+                      <rect x="196" y="10" width="7" height="44"/><rect x="217" y="10" width="7" height="44"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- headboard: arched panel at the left end -->
+              <div class="pAnchor" style="left:64px; top:145px;">
+                <div class="endWrap">
+                  <div class="standIn head" id="panelHead">
+                    <svg viewBox="0 0 158 84" aria-hidden="true">
+                      <path d="M4 84 L4 34 Q4 6 40 3 L118 3 Q154 6 154 34 L154 84 Z" fill="#fffaf1" stroke="rgba(170,125,75,.45)" stroke-width="1.2"/>
+                      <path d="M14 84 L14 36 Q14 15 42 12 L116 12 Q144 15 144 36 L144 84" fill="none" stroke="rgba(170,125,75,.4)" stroke-width="1.2"/>
+                      <path d="M86 30 a13 13 0 1 0 7 21 a10 10 0 1 1 -7 -21 Z" fill="#f6cd6b" stroke="#d9a84e" stroke-width=".8"/>
+                      <path transform="translate(58,38)" d="M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3 Z" fill="#eec25e"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- footboard: lower arched panel at the right end -->
+              <div class="pAnchor" style="left:316px; top:145px;">
+                <div class="endWrap">
+                  <div class="standIn foot" id="panelFoot">
+                    <svg viewBox="0 0 158 68" aria-hidden="true">
+                      <path d="M4 68 L4 28 Q4 8 40 5 L118 5 Q154 8 154 28 L154 68 Z" fill="#fffaf1" stroke="rgba(170,125,75,.45)" stroke-width="1.2"/>
+                      <path d="M14 68 L14 30 Q14 14 42 11 L116 11 Q144 14 144 30 L144 68" fill="none" stroke="rgba(170,125,75,.4)" stroke-width="1.2"/>
+                      <path transform="translate(79,32)" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#eec25e" stroke="#d9a84e" stroke-width=".7"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- front rail: slats along the near edge -->
+              <div class="pAnchor" style="left:190px; top:222px;">
+                <div class="standIn frontRail" id="panelFront">
+                  <svg viewBox="0 0 260 56" aria-hidden="true">
+                    <g fill="#fffaf1" stroke="rgba(170,125,75,.45)" stroke-width="1">
+                      <rect x="0" y="0" width="260" height="9" rx="4.5"/>
+                      <rect x="0" y="46" width="260" height="9" rx="4"/>
+                      <rect x="0" y="2" width="11" height="52" rx="4"/>
+                      <rect x="249" y="2" width="11" height="52" rx="4"/>
+                      <rect x="24" y="9" width="7" height="37"/><rect x="45" y="9" width="7" height="37"/>
+                      <rect x="67" y="9" width="7" height="37"/><rect x="88" y="9" width="7" height="37"/>
+                      <rect x="110" y="9" width="7" height="37"/><rect x="131" y="9" width="7" height="37"/>
+                      <rect x="153" y="9" width="7" height="37"/><rect x="174" y="9" width="7" height="37"/>
+                      <rect x="196" y="9" width="7" height="37"/><rect x="217" y="9" width="7" height="37"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- the star mobile: canopy + hanging stars, turning slowly -->
+              <div id="mobileRise">
+                <div id="mobileTurn">
+                  <div id="canopy">
+                    <svg viewBox="0 0 170 170" aria-hidden="true">
+                      <circle cx="85" cy="85" r="60" fill="rgba(255,246,220,.25)" stroke="#d9a84e" stroke-width="3"/>
+                      <g stroke="#d9a84e" stroke-width="2.5">
+                        <line x1="85" y1="85" x2="85" y2="25"/><line x1="85" y1="85" x2="85" y2="145"/>
+                        <line x1="85" y1="85" x2="25" y2="85"/><line x1="85" y1="85" x2="145" y2="85"/>
+                      </g>
+                      <g fill="#f2c14e" stroke="#d9a84e" stroke-width=".8">
+                        <circle cx="85" cy="25" r="3.5"/><circle cx="85" cy="145" r="3.5"/>
+                        <circle cx="25" cy="85" r="3.5"/><circle cx="145" cy="85" r="3.5"/>
+                      </g>
+                      <circle cx="85" cy="85" r="10" fill="#fdf3d0" stroke="#d9a84e" stroke-width="2"/>
+                      <path transform="translate(85,85) scale(.85)" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#f2c14e"/>
+                    </svg>
+                  </div>
+                  <div class="hAnchor" style="left:38px; top:38px;">
+                    <div class="hang" style="height:46px;">
+                      <div class="hstring" style="height:31px;"></div>
+                      <div class="mstar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.2 L12.3 7.6 L19 8.1 L13.9 12.2 L15.6 18.8 L10 15.3 L4.4 18.8 L6.1 12.2 L1 8.1 L7.7 7.6 Z" fill="#f2c14e" stroke="#d9a84e" stroke-width=".8"/></svg></div>
+                    </div>
+                  </div>
+                  <div class="hAnchor" style="left:-38px; top:38px;">
+                    <div class="hang" style="height:38px;">
+                      <div class="hstring" style="height:23px;"></div>
+                      <div class="mstar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 1.8 A8.6 8.6 0 1 0 18.6 13.4 A6.8 6.8 0 1 1 13.5 1.8 Z" fill="#f6cd6b" stroke="#d9a84e" stroke-width=".8"/></svg></div>
+                    </div>
+                  </div>
+                  <div class="hAnchor" style="left:-38px; top:-38px;">
+                    <div class="hang" style="height:52px;">
+                      <div class="hstring" style="height:37px;"></div>
+                      <div class="mstar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.2 L12.3 7.6 L19 8.1 L13.9 12.2 L15.6 18.8 L10 15.3 L4.4 18.8 L6.1 12.2 L1 8.1 L7.7 7.6 Z" fill="#f2c14e" stroke="#d9a84e" stroke-width=".8"/></svg></div>
+                    </div>
+                  </div>
+                  <div class="hAnchor" style="left:38px; top:-38px;">
+                    <div class="hang" style="height:42px;">
+                      <div class="hstring" style="height:27px;"></div>
+                      <div class="mstar"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.2 L12.3 7.6 L19 8.1 L13.9 12.2 L15.6 18.8 L10 15.3 L4.4 18.8 L6.1 12.2 L1 8.1 L7.7 7.6 Z" fill="#f2c14e" stroke="#d9a84e" stroke-width=".8"/></svg></div>
+                    </div>
+                  </div>
+                </div>
+                <!-- a tiny falling star, now and then -->
+                <div id="fallStar">
+                  <div class="fallIn"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.2 L12.3 7.6 L19 8.1 L13.9 12.2 L15.6 18.8 L10 15.3 L4.4 18.8 L6.1 12.2 L1 8.1 L7.7 7.6 Z" fill="#f6cd6b" stroke="#d9a84e" stroke-width=".8"/></svg></div>
+                </div>
+              </div>
+            </div><!-- /cribWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a cradle made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>welcome, little one...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBabyFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#f2c9a2"/><stop offset="1" stop-color="#e7b489"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBabyFlapBackGrad)" stroke="#c89b58" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#fff3d6">
+                      <circle cx="176" cy="38" r="2.2" opacity=".8"/><circle cx="212" cy="28" r="1.7" opacity=".65"/>
+                      <circle cx="252" cy="34" r="2" opacity=".75"/><circle cx="288" cy="26" r="1.6" opacity=".6"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".55"/><circle cx="268" cy="54" r="1.5" opacity=".55"/>
+                    </g>
+                    <path d="M242 92 a11 11 0 1 0 6 18 a8.5 8.5 0 1 1 -6 -18 Z" fill="#eec25e" opacity=".8"/>
+                    <path transform="translate(224,104) scale(.8)" d="M0 -6.5 L1.7 -1.7 L6.5 0 L1.7 1.7 L0 6.5 L-1.7 1.7 L-6.5 0 L-1.7 -1.7 Z" fill="#eec25e" opacity=".8"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfBabyFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#f9e3cb"/><stop offset="1" stop-color="#f2c9a2"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfBabyFlapGrad)" stroke="#c89b58" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var cribWrap = document.getElementById('cribWrap');
+  var cribGlow = document.getElementById('cribGlow');
+  var mobileRise = document.getElementById('mobileRise');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the mattress box ----------
+     Its base group sits at its bottom plane; its walls grow with the
+     rise and the blanket top rides on them. */
+  var BOX = { start:0.02, end:0.30, depth:13, bottom:7 };
+  var boxEl = document.getElementById('cribBase');
+  var boxInner = boxEl.querySelector('.cribBaseInner');
+  boxInner.style.transform = 'translateZ(' + BOX.bottom + 'px)';
+  var boxWalls = boxEl.querySelectorAll('.cwall');
+  var boxTop = boxEl.querySelector('.cribTop');
+
+  /* ---------- the crib panels ----------
+     Each standee grows from its bottom edge (scale set by JS) in its
+     own staggered window — rails first, then the end panels. */
+  var PANELS = [
+    { id:'panelBack',  start:0.28, span:0.22 },
+    { id:'panelFront', start:0.46, span:0.22 },
+    { id:'panelHead',  start:0.60, span:0.22 },
+    { id:'panelFoot',  start:0.66, span:0.22 }
+  ];
+  PANELS.forEach(function(p){ p.el = document.getElementById(p.id); });
+
+  /* ---------- the mobile ----------
+     The whole mobile rises into place and unfolds near the end of the
+     rise; its hangers drop one by one; the turn itself is pure CSS. */
+  var MOBILE = { start:0.78, span:0.18 };
+  var hangs = Array.prototype.slice.call(document.querySelectorAll('.hang'));
+  var HANG0 = 0.84, HANGSPAN = 0.10, HANGSTEP = 0.03;
+
+  function applyRise(){
+    /* the nursery hides inside the envelope while settled shut: it
+       fades in as it rises (the Sea Card's tank trick) */
+    cribWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    cribWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+
+    var bp = clamp01((rise - BOX.start) / (BOX.end - BOX.start));
+    var bh = (bp * BOX.depth).toFixed(2);
+    for (var w=0; w<boxWalls.length; w++){ boxWalls[w].style.height = bh + 'px'; }
+    boxTop.style.transform = 'translateZ(' + bh + 'px)';
+    boxTop.style.opacity = bp <= 0.01 ? '0' : String(Math.min(1, bp * 3));
+
+    for (var i=0;i<PANELS.length;i++){
+      var p = PANELS[i];
+      var cp = clamp01((rise - p.start) / p.span);
+      p.el.style.transform = 'rotateX(-90deg) scale(' + cp.toFixed(3) + ')';
+    }
+
+    var mp = clamp01((rise - MOBILE.start) / MOBILE.span);
+    mobileRise.style.opacity = mp.toFixed(3);
+    mobileRise.style.visibility = mp <= 0.001 ? 'hidden' : 'visible';
+    mobileRise.style.transform = 'translateZ(' + (92 + 48 * mp).toFixed(1) + 'px) scale(' + (0.7 + 0.3 * mp).toFixed(3) + ')';
+    for (var k=0;k<hangs.length;k++){
+      var hp = clamp01((rise - (HANG0 + k * HANGSTEP)) / HANGSPAN);
+      hangs[k].style.transform = 'rotateX(-90deg) scale(' + hp.toFixed(3) + ')';
+    }
+
+    /* the soft warm light on the base grows as the nursery rises */
+    cribGlow.style.opacity = (rise * 0.5).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> crib rises piece by piece (target set at
+            850ms), mobile assembles above it.
+     Close: everything settles in clean reverse (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
