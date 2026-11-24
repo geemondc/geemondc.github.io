@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Good Luck Shamrock — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #0d3b26 0%, #062315 46%, #020d07 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#eafff0;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(52,199,123,.18) 0%, rgba(255,205,90,.07) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfShamSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfShamSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #0d7a44 0%, #065f33 55%, #043d24 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm gold luck-light the four-leaf casts onto the base */
+  #luckGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,214,110,.85) 0%, rgba(255,190,70,.32) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #f2fbf0 0%, #dff3da 58%, #c4e6bd 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(30,120,60,.20);
+  }
+  /* the face that greets you once the card stands — morning-meadow backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #bfe8ff 0%, #dff6e4 52%, #a8d89a 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(6,40,20,.30), inset 0 0 52px rgba(20,80,40,.25);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+  /* the distant rainbow breathes very faintly */
+  .rainbowArc { animation:pfShamRainbow 5.5s ease-in-out infinite alternate; }
+  @keyframes pfShamRainbow { from { opacity:.30; } to { opacity:.58; } }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #12a150 0%, #0a7a3c 52%, #055a2c 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfShamFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfShamFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfShamFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfShamFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the clover patch (rises out of the base, stem by stem) ---------- */
+  #patchWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the meadow the clovers grow from */
+  #meadow {
+    position:absolute; left:40px; top:53px; width:300px; height:190px; border-radius:50%;
+    transform:translateZ(5px);
+    background:
+      radial-gradient(circle 2px at 30px 40px, #fffbe8 98%, rgba(255,251,232,0)),
+      radial-gradient(circle 2px at 90px 120px, #ffe066 98%, rgba(255,224,102,0)),
+      radial-gradient(circle 2px at 200px 60px, #fffbe8 98%, rgba(255,251,232,0)),
+      radial-gradient(circle 2px at 255px 130px, #ffe066 98%, rgba(255,224,102,0)),
+      radial-gradient(circle 2px at 150px 150px, #fffbe8 98%, rgba(255,251,232,0)),
+      radial-gradient(circle 2px at 60px 90px, #ffd1e8 98%, rgba(255,209,232,0)),
+      radial-gradient(circle 2px at 230px 100px, #ffd1e8 98%, rgba(255,209,232,0)),
+      radial-gradient(ellipse at 50% 42%, #8ed45e 0%, #5db343 52%, #3e8e2f 82%, #2a6b21 100%);
+    background-size:120px 96px, 120px 96px, 120px 96px, 120px 96px, 120px 96px, 120px 96px, 120px 96px, 100% 100%;
+    box-shadow: inset 0 0 0 3px rgba(20,80,30,.35), inset 0 -10px 22px rgba(15,60,20,.4), 0 4px 14px rgba(0,0,0,.35);
+  }
+  /* gold halo behind the hero four-leaf (opacity driven by JS) */
+  #heroHalo {
+    position:absolute; left:118px; top:6px; width:144px; height:144px; border-radius:50%;
+    transform:translateZ(6px);
+    background:radial-gradient(circle, rgba(255,224,120,.95) 0%, rgba(255,196,80,.45) 48%, rgba(255,196,80,0) 72%);
+    filter:blur(4px); opacity:0; pointer-events:none;
+  }
+  /* one clover: anchor point on the meadow; the grow wrapper scales from
+     the anchor (JS), the standee stands up from its bottom edge and sways.
+     The box must carry the 3D context through, or the standees flatten. */
+  #cloverBox { position:absolute; inset:0; transform-style:preserve-3d; }
+  .clover { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .cloverGrow { position:absolute; left:0; top:0; transform-style:preserve-3d; }
+  .cloverStand {
+    position:absolute; transform-origin:50% 100%;
+    animation:pfShamCloverSway 3.8s ease-in-out infinite alternate;
+  }
+  @keyframes pfShamCloverSway {
+    from { transform:rotateX(-90deg) rotateZ(-1.9deg); }
+    to   { transform:rotateX(-90deg) rotateZ(1.9deg); }
+  }
+  /* the hero's four leaves unfold as it finishes blooming */
+  #world.open .heroLeaves { animation:pfShamBloom 1.15s cubic-bezier(.3,.9,.3,1.25) 2.35s both; transform-box:fill-box; transform-origin:50% 50%; }
+  @keyframes pfShamBloom {
+    from { transform:scale(.5) rotate(-7deg); }
+    to   { transform:scale(1) rotate(0deg); }
+  }
+
+  /* gold sparkles drifting up off the four-leaf once open */
+  .spark {
+    position:absolute; width:9px; height:9px; opacity:0; pointer-events:none;
+    background:radial-gradient(circle, #fff6cf 0%, #ffd968 55%, rgba(255,205,80,0) 78%);
+    transform:rotate(45deg);
+  }
+  #world.open .spark { animation:pfShamSpark 4.6s ease-in-out infinite; animation-delay:calc(2.6s + var(--d, 0s)); }
+  @keyframes pfShamSpark {
+    0% { opacity:0; transform:translate3d(0,0,var(--z,120px)) rotate(45deg) scale(.5); }
+    14% { opacity:.95; }
+    55% { transform:translate3d(var(--dx,8px), var(--dy,-46px), var(--z,120px)) rotate(160deg) scale(1); }
+    88% { opacity:.85; }
+    100% { opacity:0; transform:translate3d(0,-84px,var(--z,120px)) rotate(300deg) scale(.55); }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(4,40,22,.75); border:1px solid rgba(140,255,180,.5);
+    color:#eafff0; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfShamPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfShamPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#fff3c4;
+    text-shadow:0 0 9px rgba(255,214,130,.4), 0 1px 3px rgba(2,26,12,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the emerald envelope front itself, in the free area
+     below the meadow (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the patch settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#fff3c4;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(2,26,12,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffe9b8; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter, .cloverStand, .rainbowArc { animation:none; }
+    #world.open .heroLeaves { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfShamSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#a8dcff"/>
+                        <stop offset=".55" stop-color="#dff6e4"/>
+                        <stop offset="1" stop-color="#fdf3c8"/>
+                      </linearGradient>
+                      <radialGradient id="pfShamSunGlow" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#fff3b0" stop-opacity=".95"/>
+                        <stop offset="1" stop-color="#fff3b0" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="0" y="0" width="380" height="248" fill="url(#pfShamSky)"/>
+                    <!-- morning sun, upper left -->
+                    <circle cx="62" cy="42" r="40" fill="url(#pfShamSunGlow)"/>
+                    <circle cx="62" cy="42" r="17" fill="#fff6c4"/>
+                    <!-- soft clouds -->
+                    <g fill="#ffffff" opacity=".85">
+                      <ellipse cx="150" cy="34" rx="30" ry="9"/>
+                      <ellipse cx="168" cy="27" rx="19" ry="8"/>
+                      <ellipse cx="302" cy="52" rx="26" ry="8"/>
+                      <ellipse cx="318" cy="45" rx="15" ry="7"/>
+                    </g>
+                    <!-- the faint rainbow, arcing over the hills -->
+                    <g class="rainbowArc" fill="none" stroke-linecap="round">
+                      <path d="M52 236 A 168 168 0 0 1 328 236" stroke="#ff8f8f" stroke-width="10"/>
+                      <path d="M64 236 A 156 156 0 0 1 316 236" stroke="#ffcf6e" stroke-width="10"/>
+                      <path d="M76 236 A 144 144 0 0 1 304 236" stroke="#8fd98a" stroke-width="10"/>
+                      <path d="M88 236 A 132 132 0 0 1 292 236" stroke="#8fc7ff" stroke-width="10"/>
+                    </g>
+                    <!-- rolling hills -->
+                    <path d="M0 188 Q 95 148 190 180 T 380 172 V248 H0 Z" fill="#69b457"/>
+                    <path d="M0 214 Q 120 182 240 208 T 380 202 V248 H0 Z" fill="#4c9a3f"/>
+                    <!-- tiny meadow flowers on the hills -->
+                    <g>
+                      <circle cx="48" cy="216" r="1.8" fill="#fffbe8"/><circle cx="96" cy="200" r="1.6" fill="#ffe066"/>
+                      <circle cx="150" cy="222" r="1.8" fill="#ffd1e8"/><circle cx="238" cy="212" r="1.6" fill="#fffbe8"/>
+                      <circle cx="300" cy="224" r="1.8" fill="#ffe066"/><circle cx="342" cy="206" r="1.6" fill="#ffd1e8"/>
+                      <circle cx="70" cy="234" r="1.5" fill="#ffe066"/><circle cx="196" cy="232" r="1.5" fill="#fffbe8"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="luckGlow"></div>
+
+            <!-- the clover patch: meadow, halo, clovers (built by JS), sparkles -->
+            <div id="patchWrap">
+              <div id="meadow"></div>
+              <div id="heroHalo"></div>
+              <div id="cloverBox"></div>
+
+              <!-- gold sparkles drifting up off the four-leaf -->
+              <div class="spark" style="left:172px; top:120px; --z:128px; --dx:10px; --dy:-44px; --d:0s;"></div>
+              <div class="spark" style="left:196px; top:104px; --z:146px; --dx:-12px; --dy:-52px; --d:.8s;"></div>
+              <div class="spark" style="left:158px; top:140px; --z:118px; --dx:-9px; --dy:-38px; --d:1.6s;"></div>
+              <div class="spark" style="left:212px; top:132px; --z:138px; --dx:12px; --dy:-48px; --d:2.4s;"></div>
+              <div class="spark" style="left:184px; top:88px; --z:152px; --dx:-7px; --dy:-56px; --d:3.2s;"></div>
+              <div class="spark" style="left:204px; top:152px; --z:124px; --dx:9px; --dy:-40px; --d:4s;"></div>
+            </div><!-- /patchWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a lucky charm made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>feeling lucky...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfShamFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#0a6b34"/><stop offset="1" stop-color="#04402a"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfShamFlapBackGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#f4d98c">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <path d="M235 96 l2.8 5.6 6.2 .9 -4.5 4.4 1.1 6.1 -5.6 -2.9 -5.6 2.9 1.1 -6.1 -4.5 -4.4 6.2 -.9z" fill="#e8b65a" opacity=".65"/>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfShamFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#19b35c"/><stop offset="1" stop-color="#0a7a3c"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfShamFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var patchWrap = document.getElementById('patchWrap');
+  var luckGlow = document.getElementById('luckGlow');
+  var heroHalo = document.getElementById('heroHalo');
+  var cloverBox = document.getElementById('cloverBox');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the clovers ----------
+     Every clover is a paper standee anchored to a spot on the meadow.
+     The grow wrapper scales it from its anchor as the rise passes its
+     staggered window; the standee stands up (rotateX(-90)) and sways.
+     The small three-leaf clovers grow one by one; the big FOUR-LEAF
+     hero grows LAST, in the center. */
+  function threeLeafSVG(withBug){
+    var bug = '';
+    if (withBug){
+      bug = '<g transform="translate(43 24)">'
+        + '<circle cx="0" cy="0" r="5.6" fill="#e23b3b"/>'
+        + '<circle cx="-4.2" cy="-1.2" r="2.4" fill="#26221f"/>'
+        + '<circle cx="1.4" cy="-2" r="1.1" fill="#26221f"/>'
+        + '<circle cx="2.4" cy="2.2" r=".95" fill="#26221f"/>'
+        + '<circle cx="-1.6" cy="2.8" r=".85" fill="#26221f"/>'
+        + '<path d="M-5.4 .5 A5.6 5.6 0 0 1 5.4 .5" fill="none" stroke="#26221f" stroke-width=".9"/>'
+        + '</g>';
+    }
+    return '<svg viewBox="0 0 60 74" width="54" height="67" aria-hidden="true">'
+      + '<path d="M30 73 C29 58 30 46 30 37" fill="none" stroke="#1f7a38" stroke-width="3.5" stroke-linecap="round"/>'
+      + '<g fill="#2fae4e">'
+      + '<circle cx="30" cy="15" r="11.5"/>'
+      + '<circle cx="16.5" cy="28" r="11.5"/>'
+      + '<circle cx="43.5" cy="28" r="11.5"/>'
+      + '</g>'
+      + '<g fill="#5cc96f" opacity=".75">'
+      + '<circle cx="27" cy="12" r="6"/>'
+      + '<circle cx="14" cy="25" r="6"/>'
+      + '<circle cx="41" cy="25" r="6"/>'
+      + '</g>'
+      + '<circle cx="30" cy="24" r="4.5" fill="#1e8a3c"/>'
+      + bug
+      + '</svg>';
+  }
+  var HERO_SVG = '<svg viewBox="0 0 120 148" width="118" height="146" aria-hidden="true">'
+    + '<defs><radialGradient id="pfShamLeafGrad" cx=".38" cy=".34" r=".85">'
+    + '<stop offset="0" stop-color="#63d977"/><stop offset=".6" stop-color="#2fae4e"/><stop offset="1" stop-color="#1e8a3c"/>'
+    + '</radialGradient></defs>'
+    + '<path d="M60 146 C58 116 60 94 60 76" fill="none" stroke="#1f7a38" stroke-width="5.5" stroke-linecap="round"/>'
+    + '<g class="heroLeaves" fill="url(#pfShamLeafGrad)" stroke="#e8b65a" stroke-width="1.6">'
+    + '<circle cx="39" cy="33" r="21.5"/>'
+    + '<circle cx="81" cy="33" r="21.5"/>'
+    + '<circle cx="39" cy="71" r="21.5"/>'
+    + '<circle cx="81" cy="71" r="21.5"/>'
+    + '</g>'
+    + '<circle cx="60" cy="52" r="10" fill="#177a33"/>'
+    + '<ellipse cx="31" cy="25" rx="7" ry="4.5" fill="#ffffff" opacity=".35" transform="rotate(-24 31 25)"/>'
+    + '</svg>';
+
+  /* x, y on the meadow (patch coords), scale — a loose scatter */
+  var SMALL_SPOTS = [
+    [88,120,.80], [126,164,.95], [158,112,.68], [226,108,.72], [266,146,.90],
+    [296,178,.80], [138,198,.85], [240,192,.88], [320,124,.62]
+  ];
+  var BUG_INDEX = 1; /* the ladybug rides a front clover, where it can be spotted */
+  var smalls = [];
+  SMALL_SPOTS.forEach(function(spot, i){
+    var c = document.createElement('div');
+    c.className = 'clover';
+    c.style.left = spot[0] + 'px';
+    c.style.top = spot[1] + 'px';
+    var grow = document.createElement('div');
+    grow.className = 'cloverGrow';
+    var stand = document.createElement('div');
+    stand.className = 'cloverStand';
+    stand.style.left = '-27px';
+    stand.style.top = '-67px';
+    stand.style.width = '54px';
+    stand.style.height = '67px';
+    stand.style.animationDuration = (3.4 + (i % 4) * 0.55) + 's';
+    stand.style.animationDelay = (-i * 0.7) + 's';
+    stand.innerHTML = threeLeafSVG(i === BUG_INDEX);
+    grow.appendChild(stand);
+    c.appendChild(grow);
+    cloverBox.appendChild(c);
+    smalls.push({ grow:grow, s:spot[2], start:0.04 + i * 0.06, p:0 });
+  });
+  /* the hero: one big four-leaf clover, center of the meadow, grows last */
+  var hero = document.createElement('div');
+  hero.className = 'clover';
+  hero.style.left = '190px';
+  hero.style.top = '168px';
+  var heroGrow = document.createElement('div');
+  heroGrow.className = 'cloverGrow';
+  var heroStand = document.createElement('div');
+  heroStand.className = 'cloverStand';
+  heroStand.style.left = '-59px';
+  heroStand.style.top = '-146px';
+  heroStand.style.width = '118px';
+  heroStand.style.height = '146px';
+  heroStand.style.animationDuration = '4.6s';
+  heroStand.innerHTML = HERO_SVG;
+  heroGrow.appendChild(heroStand);
+  hero.appendChild(heroGrow);
+  cloverBox.appendChild(hero);
+  var HERO_START = 0.72, HERO_END = 0.98, heroP = 0;
+
+  function applyRise(){
+    /* the patch hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    patchWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    patchWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i=0;i<smalls.length;i++){
+      var c = smalls[i];
+      c.p = clamp01((rise - c.start) / 0.18);
+      c.grow.style.transform = 'scale(' + (c.p * c.s).toFixed(3) + ')';
+    }
+    heroP = clamp01((rise - HERO_START) / (HERO_END - HERO_START));
+    heroGrow.style.transform = 'scale(' + heroP.toFixed(3) + ')';
+    /* the four-leaf's gold: a halo behind it, and warm light spilled
+       onto the envelope base, both growing as the hero blooms */
+    heroHalo.style.opacity = (heroP * 0.9).toFixed(3);
+    luckGlow.style.opacity = (rise * 0.10 + heroP * 0.55).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> clovers rise stem by stem (target set at
+            850ms), the four-leaf hero last, blooming into its glow.
+     Close: the patch settles first -> card folds -> envelope returns
+            -> flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
