@@ -271,11 +271,10 @@
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ---- rotation state (degrees) ---- */
-    var REST_X = -17;              /* resting tilt, as shipped */
+    var REST_X = -17;              /* starting tilt only — X is free to tumble a full 360 */
     var IDLE = 360 / 52;           /* the original slow turn: one revolution per 52s */
-    var X_MIN = -50, X_MAX = 15;   /* tilt clamp: never flips into unreadability */
     var SENS_Y = 0.45;             /* deg of spin per px dragged horizontally */
-    var SENS_X = 0.35;             /* deg of tilt per px dragged vertically */
+    var SENS_X = 0.35;             /* deg of tumble per px dragged vertically */
     var TAP_SLOP = 6;              /* px of movement under which a press is a tap */
     var VEL_CAP = 900;             /* deg/s, fastest flick we honour */
 
@@ -285,14 +284,13 @@
     var lastX = 0, lastY = 0, downX = 0, downY = 0;
     var trail = [];                /* recent {t, rotY, rotX} samples for release velocity */
 
-    function clampX(v){ return Math.max(X_MIN, Math.min(X_MAX, v)); }
     function clampV(v){ return Math.max(-VEL_CAP, Math.min(VEL_CAP, v)); }
     function paused(){ return document.body.classList.contains('paused'); }
     function apply(){
       cube.style.transform = 'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
     }
 
-    /* ---- main loop: idle turn + momentum with smooth friction, tilt settles home ---- */
+    /* ---- main loop: idle Y turn + momentum with smooth friction; X holds wherever the hand leaves it ---- */
     var prevT = null;
     function frame(now){
       if(prevT === null) prevT = now;
@@ -301,15 +299,14 @@
       if(!dragging && dt > 0){
         if(mode !== 'stop' && (momY !== 0 || momX !== 0)){
           rotY += momY * dt;
-          rotX = clampX(rotX + momX * dt);
+          rotX += momX * dt;                  /* vertical momentum tumbles freely, no clamp */
           var decay = Math.exp(-dt / 0.85);   /* friction: eases out over a few seconds */
           momY *= decay; momX *= decay;
           if(Math.abs(momY) < 2) momY = 0;
           if(Math.abs(momX) < 2) momX = 0;
         }
         if(mode === 'auto' && !paused() && !reduced) rotY += IDLE * speedMul * dt;
-        /* tilt drifts gently back to its resting angle once the hand lets go */
-        if(mode === 'auto' && Math.abs(momX) < 30) rotX += (REST_X - rotX) * (1 - Math.exp(-dt / 1.4));
+        /* no tilt-home: X stays at the angle the user set, in every mode */
       }
       apply();
       requestAnimationFrame(frame);
@@ -335,7 +332,7 @@
       if(!moved && Math.hypot(e.clientX - downX, e.clientY - downY) < TAP_SLOP) return;
       moved = true;
       rotY -= dx * SENS_Y;   /* grab feel: the face follows the finger */
-      rotX = clampX(rotX - dy * SENS_X);
+      rotX -= dy * SENS_X;   /* full vertical tumble: top and bottom faces come all the way around */
       var now = performance.now();
       trail.push({ t: now, rotY: rotY, rotX: rotX });
       while(trail.length > 2 && now - trail[0].t > 120) trail.shift();
