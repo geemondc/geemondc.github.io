@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Send Today's Advent Painting — The Advent Calendar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    background: #f7ecd9;
+    color: #3d2c1c;
+    display: flex;
+    justify-content: center;
+  }
+  .page {
+    width: 100%;
+    max-width: 540px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 18px 16px;
+    background: linear-gradient(180deg, #fdf6e7 0%, #f7ecd9 60%, #f3e3c8 100%);
+  }
+  @media (min-width: 760px) {
+    .page { width: 75%; max-width: 1024px; padding: 28px 30px 22px; }
+  }
+
+  .cardname {
+    text-align: center;
+    font-size: clamp(1.55rem, 7vw, 2.3rem);
+    font-weight: bold;
+    line-height: 1.15;
+    color: #0e4a2a;
+    margin-top: 4px;
+  }
+  .dayline {
+    text-align: center;
+    margin-top: 6px;
+    font-size: .8rem;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: #b3122e;
+    font-weight: bold;
+  }
+  .free {
+    text-align: center;
+    margin-top: 10px;
+    font-size: clamp(1.02rem, 4.4vw, 1.15rem);
+    font-style: italic;
+    color: #5a4632;
+  }
+
+  .scene {
+    margin-top: 14px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(90, 60, 20, 0.25);
+  }
+  .scene img { display: block; width: 100%; height: auto; }
+
+  form { margin-top: 16px; }
+  .field { margin-top: 14px; }
+  .field label {
+    display: block;
+    font-size: clamp(1.05rem, 4.6vw, 1.2rem);
+    font-weight: bold;
+    color: #43301d;
+    margin-bottom: 6px;
+  }
+  .field input, .field textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: clamp(1.05rem, 4.6vw, 1.18rem);
+    color: #3d2c1c;
+    background: #fffcf4;
+    border: 2px solid #e8d5ae;
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .field textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
+  .field input:focus, .field textarea:focus { outline: 3px solid #b3122e; outline-offset: 1px; }
+
+  .sendbtn {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    background: linear-gradient(160deg, #b3122e, #7f1d1d);
+    color: #fff8ec; text-decoration: none; font-weight: bold;
+    font-size: clamp(1.15rem, 5vw, 1.35rem);
+    padding: 16px 26px; border-radius: 999px;
+    box-shadow: 0 5px 16px rgba(90, 60, 20, 0.28);
+  }
+  .sendbtn:active { filter: brightness(1.1); }
+
+  .others {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .ghost {
+    display: inline-block;
+    background: transparent;
+    color: #0e4a2a; text-decoration: none; font-weight: bold;
+    font-family: inherit;
+    font-size: clamp(0.98rem, 4.2vw, 1.08rem);
+    padding: 10px 20px; border-radius: 999px;
+    border: 2px solid #0e4a2a;
+    cursor: pointer;
+  }
+  .ghost:active { filter: brightness(1.1); }
+  .copied {
+    text-align: center;
+    margin-top: 10px;
+    font-style: italic;
+    color: #0e4a2a;
+    min-height: 1.4em;
+  }
+  .once {
+    text-align: center;
+    margin-top: 12px;
+    font-size: clamp(0.95rem, 4.2vw, 1.05rem);
+    color: #5a4632;
+  }
+  .notice {
+    margin-top: 18px;
+    text-align: center;
+    font-size: clamp(1.05rem, 4.6vw, 1.2rem);
+    line-height: 1.55;
+    color: #43301d;
+    background: #fffcf4;
+    border: 2px solid #e8d5ae;
+    border-radius: 14px;
+    padding: 18px 16px;
+  }
+
+  .bottom { margin-top: auto; padding-top: 18px; text-align: center; }
+  .bottom .back {
+    font-size: clamp(1rem, 4.4vw, 1.12rem);
+    font-weight: bold;
+    color: #b3122e;
+    text-decoration: none;
+  }
+  .bottom .sig {
+    margin-top: 8px;
+    font-size: 0.85rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #a8895c;
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+
+    <p class="dayline" id="dayLine">December</p>
+    <h1 class="cardname" id="cardName">Today's Painting</h1>
+    <p class="free">This card is free today. Send it to someone who'd love a little Christmas.</p>
+
+    <div class="scene">
+      <img id="sceneImg" src="" alt="">
+    </div>
+
+    <div class="notice" id="notice" hidden></div>
+
+    <form id="sendForm" autocomplete="off">
+      <div class="field">
+        <label for="fTo">Who is it going to?</label>
+        <input id="fTo" type="text" maxlength="60" placeholder="Their name">
+      </div>
+      <div class="field">
+        <label for="fFrom">Your name</label>
+        <input id="fFrom" type="text" maxlength="60" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label for="fWords">What do you want to say?</label>
+        <textarea id="fWords">Merry Christmas! Today's Advent painting made me think of you.</textarea>
+      </div>
+
+      <a class="sendbtn" id="btnMail" href="mailto:">SEND BY EMAIL</a>
+
+      <div class="others">
+        <a class="ghost" id="btnSms" href="sms:">Text it</a>
+        <a class="ghost" id="btnWa" href="https://wa.me/">WhatsApp</a>
+        <button class="ghost" id="btnCopy" type="button">Copy link</button>
+      </div>
+      <p class="copied" id="copied" aria-live="polite"></p>
+      <p class="once">Free to send on its day — one free send. Tapping a send button uses yours.</p>
+    </form>
+
+    <div class="bottom">
+      <a class="back" id="backLink" href="index.html">Back to the calendar</a>
+      <p class="sig">The Advent Calendar &middot; Future Ready</p>
+    </div>
+
+  </main>
+
+<script>
+  /* Pure season logic — same rules as the calendar page, no DOM in this block. */
+  function advPad(n){ return (n < 10 ? '0' : '') + n; }
+  function advSeason(now){
+    var m = now.getMonth(), d = now.getDate();
+    if (m === 11) return d <= 25 ? {phase:'during', today:d} : {phase:'after', today:0};
+    if (m === 0) return {phase:'after', today:0};
+    return {phase:'before', today:0};
+  }
+  function advDoorState(day, season){
+    if (season.phase === 'before') return 'locked';
+    if (season.phase === 'after') return 'open';
+    if (day < season.today) return 'open';
+    if (day === season.today) return 'today';
+    return 'locked';
+  }
+  function advPreview(q){
+    var p = q.get('preview');
+    if (!p) return null;
+    if (p === 'before') return {phase:'before', today:0};
+    if (p === 'after') return {phase:'after', today:0};
+    var n = parseInt(p, 10);
+    if (n >= 1 && n <= 25) return {phase:'during', today:n};
+    return null;
+  }
+  var ADV_TITLES = ["Friends Christmas","Christmas Eve Village","Snow Day","The Sleigh Ride",
+    "New Year's Eve Harbor","Ice Skating","The Christmas Market","Caroling on the Doorstep",
+    "The Cookie Kitchen","Sledding Hill","Gift Wrapping","Building a Snowman",
+    "Trimming the Town Tree","Snowball Fight","Cocoa Storytime","Reindeer Friends",
+    "Building the Snow Fort","Aurora Night","The Gingerbread House","Christmas Morning",
+    "The Winter Train","Santa's Workshop","First Snowfall","The Lantern Walk",
+    "Skating with the Penguins"];
+</script>
+<script>
+  (function(){
+    var q = new URLSearchParams(window.location.search);
+    var season = advPreview(q) || advSeason(new Date());
+    var day = parseInt(q.get('day') || '', 10);
+    if (!(day >= 1 && day <= 25)) day = (season.phase === 'during') ? season.today : 1;
+    var sceneId = 'advent' + advPad(day);
+    var title = ADV_TITLES[day - 1];
+    var state = advDoorState(day, season);
+
+    document.getElementById('dayLine').textContent = 'December ' + day + ' · Advent';
+    document.getElementById('cardName').textContent = title;
+    var img = document.getElementById('sceneImg');
+    img.src = '../' + sceneId + '-scene/still.jpg';
+    img.alt = title + ' — the Advent painting for December ' + day;
+    document.getElementById('backLink').href = 'index.html' + (q.get('preview') ? '?preview=' + encodeURIComponent(q.get('preview')) : '');
+
+    var form = document.getElementById('sendForm');
+    var notice = document.getElementById('notice');
+    function showNotice(msg){
+      form.style.display = 'none';
+      notice.hidden = false;
+      notice.textContent = msg;
+    }
+
+    /* Free means free — and free once: one free send per painting, on its day only. */
+    var KEY = 'adventFree2026-' + day;
+    var alreadyUsed = false;
+    try { alreadyUsed = !!window.localStorage.getItem(KEY); } catch (e) {}
+    if (state !== 'today'){
+      showNotice(state === 'open'
+        ? 'This painting\u2019s free-send day was December ' + day + '. The free send lives on its day only — one free send, on the day.'
+        : 'This painting\u2019s free send opens on December ' + day + '. Come back on the day — it\u2019s free then, one free send.');
+    } else if (alreadyUsed){
+      showNotice('You\u2019ve sent this one — your free send for December ' + day + '\u2019s painting is used. It was free on its day: one free send.');
+    }
+
+    var CARD = 'https://geemondc.github.io/living-card-sample/';
+    var fTo = document.getElementById('fTo');
+    var fFrom = document.getElementById('fFrom');
+    var fWords = document.getElementById('fWords');
+    var btnMail = document.getElementById('btnMail');
+    var btnSms = document.getElementById('btnSms');
+    var btnWa = document.getElementById('btnWa');
+    var btnCopy = document.getElementById('btnCopy');
+    var copied = document.getElementById('copied');
+    var link = '';
+
+    function build() {
+      var to = fTo.value.trim() || 'Friend';
+      var from = fFrom.value.trim() || 'Me';
+      var words = fWords.value.trim();
+      link = CARD + '?scene=' + sceneId + '&to=' + encodeURIComponent(to) + '&from=' + encodeURIComponent(from);
+      if (words) link += '&line=' + encodeURIComponent(words.slice(0, 140));
+      var body = (words ? words + '\n\n' : '') + link;
+      var enc = encodeURIComponent(body);
+      btnMail.href = 'mailto:?subject=' + encodeURIComponent('A Living Card for ' + to) + '&body=' + enc;
+      btnSms.href = 'sms:?&body=' + enc;
+      btnWa.href = 'https://wa.me/?text=' + enc;
+      copied.textContent = '';
+    }
+    [fTo, fFrom, fWords].forEach(function (el) {
+      el.addEventListener('input', build);
+      el.addEventListener('change', build);
+    });
+    build();
+
+    function useFreeSend() {
+      try { window.localStorage.setItem(KEY, new Date().toISOString()); } catch (e) {}
+    }
+    [btnMail, btnSms, btnWa].forEach(function (el) {
+      el.addEventListener('click', useFreeSend);
+    });
+    btnCopy.addEventListener('click', function () {
+      useFreeSend();
+      function done() { copied.textContent = 'Link copied — send it any way you like.'; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(done, done);
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = link;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        done();
+      }
+    });
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+  })();
+</script>
+</body>
+</html>
