@@ -14,6 +14,11 @@
            box-shadow:0 18px 60px rgba(0,0,0,.5); }
   @media (min-aspect-ratio: 16/9) { #frame { width:auto; height:100%; } }
   #drift { position:absolute; inset:0; animation:bcDrift 9s ease-in-out infinite alternate; will-change:transform; }
+  /* the flames live INSIDE #drift so they ride the painting's drift transform
+     exactly — anchored outside it, they stayed in frame space while the
+     painting scaled/translated beneath them, drifting off their wicks by up
+     to ~2.5% of frame width at the edge candles (Gary's catch, Nov 24) */
+  #flames { position:absolute; inset:0; }
   @keyframes bcDrift { from { transform:scale(1.02) translate(0.4%,0.2%); } to { transform:scale(1.10) translate(-1.1%,-0.6%); } }
   #still { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   /* the unlit wait: a soft dusk dim pooled over the cake, lifted flame by flame */
@@ -32,7 +37,7 @@
         mix-blend-mode:screen; background:radial-gradient(closest-side, rgba(255,205,110,.9), rgba(255,170,80,.30) 55%, rgba(255,160,70,0) 78%);
         animation:bcHaloPulse 1.6s ease-in-out infinite alternate; }
   @keyframes bcHaloPulse { from { transform:translate(-50%,-50%) scale(.88) } to { transform:translate(-50%,-50%) scale(1.1) } }
-  .bcflame { position:absolute; left:50%; bottom:34%; width:27%; aspect-ratio:.55; transform:translateX(-50%); transform-origin:50% 100%;
+  .bcflame { position:absolute; left:50%; bottom:0; width:27%; aspect-ratio:.55; transform:translateX(-50%); transform-origin:50% 100%;
         border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;
         background:linear-gradient(to top, #ff8a2e 0%, #ffb52e 38%, #ffdf6b 68%, #fff8d0 100%);
         box-shadow:0 0 6px 2px rgba(255,180,80,.55);
@@ -57,10 +62,10 @@
   <div id="frame">
     <div id="drift">
       <img id="still" src="still.jpg" alt="A birthday cake at dusk — white frosting with strawberries, blueberries and daisies, seven tall striped candles standing unlit, balloons and wrapped gifts around the table, the garden going blue-dark outside the windows — the held breath just before the singing starts">
+      <div id="flames"></div>
     </div>
     <div id="dim" style="opacity:.92"></div>
     <div id="cakeglow" style="opacity:0"></div>
-    <div id="flames"></div>
     <div id="confetti"></div>
     <div id="wish" style="opacity:0">Make a wish!</div>
     <div id="caption">MAKE A WISH</div>
@@ -71,9 +76,11 @@
   (function(){
     if (/(^|[#&])wall(?:nb)?([&#]|$)/.test(location.hash || '')) document.body.classList.add('wall');
     var embedded = document.body.classList.contains('wall');
-    /* wick tips measured on the painting itself (percent of frame): red, gold,
-       teal, purple, pink, coral, blue — left to right */
-    var wicks = [[35.9,17.1],[39.7,15.8],[43.8,14.8],[48.2,14.8],[53.0,15.7],[57.0,16.1],[60.6,17.4]];
+    /* wick TIPS re-measured on the painting itself (percent of frame), Nov 24:
+       red, gold, teal, purple, pink, coral, blue — left to right. Each wrap's
+       bottom-center lands on the tip and the flame's base sits at the wrap's
+       bottom (bottom:0), so flame base-center == wick tip exactly. */
+    var wicks = [[35.9,16.3],[39.7,14.9],[43.8,14.4],[48.1,14.0],[53.0,14.8],[57.1,15.6],[60.7,17.3]];
     var flamesBox = document.getElementById('flames');
     var dim = document.getElementById('dim'), glow = document.getElementById('cakeglow');
     var wish = document.getElementById('wish'), confettiBox = document.getElementById('confetti');
