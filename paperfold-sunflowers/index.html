@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>The Sunflowers — Paperfold</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: radial-gradient(ellipse 120% 90% at 50% 40%, #40260a 0%, #241503 46%, #120a02 74%, #000 100%);
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#fff3d6;
+    user-select:none; -webkit-user-select:none;
+    cursor:pointer;
+  }
+  #fit { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; transition:transform .8s ease; }
+
+  /* soft pool of light on the "table" under the card */
+  #floorGlow {
+    position:absolute; left:50%; top:56%; width:560px; height:190px;
+    transform:translate(-50%,-50%);
+    background:radial-gradient(ellipse at center, rgba(255,170,60,.26) 0%, rgba(255,140,40,.09) 45%, transparent 70%);
+    filter:blur(6px); pointer-events:none;
+  }
+  #scene { position:absolute; inset:0; perspective:1150px; perspective-origin:50% 42%; }
+  #orbiter {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    animation:pfSunSway 46s ease-in-out infinite alternate;
+  }
+  @keyframes pfSunSway { from { transform:rotateY(-11deg); } to { transform:rotateY(11deg); } }
+  #tilt {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:rotateX(54deg) rotateZ(-9deg);
+  }
+
+  /* ---------- the card base ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #dda92c 0%, #bd8519 55%, #976a10 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.35), inset 0 0 34px rgba(60,36,2,.4);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
+    background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
+  }
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* warm sunlight the flowers cast onto the base */
+  #sunGlow {
+    position:absolute; left:33px; top:21px; width:404px; height:274px;
+    transform:translateZ(9px); border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,214,110,.8) 0%, rgba(255,170,60,.32) 52%, transparent 74%);
+    filter:blur(11px); opacity:0; pointer-events:none;
+  }
+
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #fffaf0 0%, #fbeecb 58%, #f3dd9f 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(160,110,30,.2);
+  }
+  /* the face that greets you once the card stands — golden-hour countryside */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #a85a18 0%, #dd8a2a 38%, #f2ab3d 58%, #f8cd66 76%, #fbe096 100%);
+    box-shadow: inset 0 0 0 2px rgba(255,230,160,.65), inset 0 0 0 7px rgba(46,26,2,.4), inset 0 0 52px rgba(90,50,5,.35);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #e6b233 0%, #cb961f 52%, #a97a15 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(255,240,190,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1.35s cubic-bezier(.3,.75,.25,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(180deg); transition-delay:.12s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+  }
+  .envFlapBack svg { width:100%; height:100%; display:block; }
+  /* light sweeping across the flap as it turns (synced to the 1.35s swing) */
+  #world.open .envFlapFront { animation:pfSunFlapGlowFront 1.35s ease .12s both; }
+  #world.open .envFlapBack { animation:pfSunFlapGlowBack 1.35s ease .12s both; }
+  @keyframes pfSunFlapGlowFront {
+    0% { filter:brightness(1); } 40% { filter:brightness(1.27); }
+    70% { filter:brightness(1.1); } 100% { filter:brightness(1); }
+  }
+  @keyframes pfSunFlapGlowBack {
+    0% { filter:brightness(.8); } 50% { filter:brightness(.86); }
+    78% { filter:brightness(1.13); } 100% { filter:brightness(1); }
+  }
+  /* soft shadow the opened flap casts on the table behind the base */
+  #flapShadow {
+    position:absolute; left:-6px; top:-59px; width:482px; height:183px;
+    transform:translateZ(1px); filter:blur(9px); pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,.5) 0%, rgba(0,0,0,.26) 55%, transparent 75%);
+    opacity:0; transition:opacity .6s ease .8s; /* gone before the flap returns on close */
+  }
+  #world.open #flapShadow { opacity:.5; transition-delay:1.15s; }
+  .seal {
+    position:absolute; left:50%; top:98.8%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the field (rises out of the base, flower by flower) ---------- */
+  #fieldWrap { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
+  /* the meadow the sunflowers are planted in */
+  #fieldDisc {
+    position:absolute; left:12px; top:44px; width:356px; height:208px; border-radius:50%;
+    transform:translateZ(5px);
+    background:
+      radial-gradient(circle 2.2px at 30px 40px, #ffd94d 98%, rgba(255,217,77,0)),
+      radial-gradient(circle 2px at 90px 120px, #fff3b0 98%, rgba(255,243,176,0)),
+      radial-gradient(circle 2.2px at 300px 60px, #ffd94d 98%, rgba(255,217,77,0)),
+      radial-gradient(circle 1.8px at 200px 150px, #ffb84d 98%, rgba(255,184,77,0)),
+      radial-gradient(circle 2px at 330px 140px, #fff3b0 98%, rgba(255,243,176,0)),
+      radial-gradient(circle 1.8px at 140px 60px, #ffb84d 98%, rgba(255,184,77,0)),
+      radial-gradient(ellipse at 50% 42%, #aebd4e 0%, #7d8f2f 55%, #5c6e22 82%, #47571a 100%);
+    background-size:120px 96px, 150px 110px, 130px 90px, 160px 120px, 140px 100px, 110px 130px, 100% 100%;
+    box-shadow: inset 0 0 0 3px rgba(120,110,30,.4), inset 0 -12px 24px rgba(50,60,10,.4), 0 4px 14px rgba(0,0,0,.3);
+  }
+
+  /* one sunflower: a point anchor on the meadow; its standee is a flat
+     paper strip stood up from its bottom edge (rotateX(-90)) and grown
+     from the ground by JS (scale rides the rise) — the family grammar.
+     Once fully grown it hands off to the breeze sway. */
+  .flower { position:absolute; width:0; height:0; transform-style:preserve-3d; }
+  .flowerStand {
+    position:absolute; left:-42px; width:84px;
+    transform-origin:50% 100%; transform:rotateX(-90deg) scale(0);
+  }
+  .flowerStand svg { display:block; overflow:visible; }
+  .flowerStand.grown {
+    animation-name:pfSunSwayFlower; animation-timing-function:ease-in-out;
+    animation-iteration-count:infinite; animation-direction:alternate;
+  }
+  @keyframes pfSunSwayFlower {
+    from { transform:rotateX(-90deg) scale(1) rotateZ(calc(var(--sway, 1.3deg) * -1)); }
+    to   { transform:rotateX(-90deg) scale(1) rotateZ(var(--sway, 1.3deg)); }
+  }
+
+  /* the paper bee: a lazy loop between the heads once the card is open */
+  .bee { position:absolute; left:0; top:0; width:46px; height:34px; opacity:0; pointer-events:none; }
+  #world.open .bee { animation:pfSunBeeLoop 12s ease-in-out infinite; animation-delay:2.6s; }
+  @keyframes pfSunBeeLoop {
+    0%   { opacity:0; transform:translate3d(56px, 64px, 150px) rotate(-6deg); }
+    6%   { opacity:1; }
+    25%  { transform:translate3d(150px, 24px, 168px) rotate(5deg); }
+    50%  { transform:translate3d(258px, 50px, 150px) rotate(-4deg); }
+    75%  { transform:translate3d(168px, 88px, 138px) rotate(6deg); }
+    94%  { opacity:1; }
+    100% { opacity:0; transform:translate3d(56px, 64px, 150px) rotate(-6deg); }
+  }
+  .beeWing { transform-box:fill-box; transform-origin:50% 92%; animation:pfSunWing .18s ease-in-out infinite alternate; }
+  @keyframes pfSunWing { from { transform:scaleY(1); } to { transform:scaleY(.3); } }
+
+  /* warm light travelling across the field once open */
+  #sunSweep {
+    position:absolute; left:0; top:-34px; width:230px; height:300px;
+    transform:translateZ(165px); pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(255,222,130,.5) 0%, rgba(255,200,90,.16) 45%, transparent 68%);
+    filter:blur(8px);
+    animation:pfSunLight 9s ease-in-out infinite alternate;
+  }
+  @keyframes pfSunLight {
+    from { transform:translate3d(-70px, 0, 165px); }
+    to   { transform:translate3d(220px, 0, 165px); }
+  }
+
+  /* pollen motes: little gold dots drifting over the field once open */
+  .mote {
+    position:absolute; width:6px; height:6px; border-radius:50%; opacity:0; pointer-events:none;
+  }
+  #world.open .mote { animation:pfSunMotes 6.4s ease-in-out infinite; animation-delay:calc(2.2s + var(--d, 0s)); }
+  @keyframes pfSunMotes {
+    0% { opacity:0; transform:translate3d(0,0,var(--z,120px)) rotate(0deg); }
+    12% { opacity:.9; }
+    50% { transform:translate3d(var(--dx,8px), var(--dy,12px), var(--z,120px)) rotate(160deg); }
+    88% { opacity:.85; }
+    100% { opacity:0; transform:translate3d(0,0,var(--z,120px)) rotate(330deg); }
+  }
+
+  /* ---------- words & furniture ---------- */
+  #pill {
+    position:absolute; left:50%; top:368px; transform:translateX(-50%);
+    padding:7px 18px 8px; border-radius:999px; white-space:nowrap;
+    background:rgba(43,26,4,.72); border:1px solid rgba(255,205,110,.55);
+    color:#fff3d6; font-family:Verdana, sans-serif; font-size:12.5px; letter-spacing:.12em;
+    box-shadow:0 4px 18px rgba(0,0,0,.5); pointer-events:none;
+    transition:opacity .8s ease; animation:pfSunPill 2.6s ease-in-out infinite;
+  }
+  @keyframes pfSunPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* the line on the sealed cover, under the seal — gone once open */
+  #coverLine {
+    position:absolute; left:26px; right:26px; top:226px;
+    text-align:center; pointer-events:none;
+    font-size:19px; font-style:italic; letter-spacing:.1em; color:#fff3d0;
+    text-shadow:0 0 9px rgba(255,214,130,.45), 0 1px 3px rgba(46,26,2,.9);
+    opacity:1; transition:opacity .35s ease 1.9s; /* drifts back late on close */
+  }
+  #world.open #coverLine { opacity:0; transition:opacity .3s ease 0s; }
+
+  /* ---------- the writing on the envelope base ----------
+     The words live on the ochre envelope front itself, in the free area
+     below the field (same geometry as the Sea Card), inside the gilt
+     trim. No separate panel. They fade in as the field settles and are
+     gone quickly on close, before the front returns. One clean block —
+     swap these words to personalize the card. */
+  #baseWords {
+    position:absolute; left:26px; right:26px; top:192px;
+    text-align:center; pointer-events:none;
+    font-family:Georgia, 'Times New Roman', serif; color:#fff6da;
+    text-shadow:0 0 10px rgba(255,214,130,.35), 0 1px 3px rgba(46,26,2,.85);
+    opacity:0; transition:opacity .3s ease 0s;
+  }
+  #world.open #baseWords { opacity:1; transition:opacity .9s ease 1.9s; }
+  #baseWords p { margin:0; }
+  .bw-greet { font-size:27px; line-height:1.35; letter-spacing:.02em; }
+  .bw-sign { font-size:32px; line-height:1.3; font-style:italic; margin-top:10px; color:#ffedb5; }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #orbiter { animation:none; }
+    .flowerStand.grown, .beeWing, #world.open .bee, #sunSweep { animation:none; }
+    #world.open .envFlapFront, #world.open .envFlapBack { animation:none; }
+    #world { transition:none; }
+  }
+</style>
+</head>
+<body>
+<div id="fit">
+  <div id="world">
+    <div id="floorGlow"></div>
+    <div id="scene">
+      <div id="orbiter">
+        <div id="tilt">
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="pfSunHalo" cx=".5" cy=".5" r=".5">
+                        <stop offset="0" stop-color="#fff3b0" stop-opacity=".85"/>
+                        <stop offset=".45" stop-color="#ffd94d" stop-opacity=".35"/>
+                        <stop offset="1" stop-color="#ffd94d" stop-opacity="0"/>
+                      </radialGradient>
+                    </defs>
+                    <!-- the low sun and its halo -->
+                    <circle cx="288" cy="140" r="58" fill="url(#pfSunHalo)"/>
+                    <circle cx="288" cy="140" r="27" fill="#ffedb5"/>
+                    <circle cx="288" cy="140" r="27" fill="none" stroke="#ffd94d" stroke-width="2" opacity=".7"/>
+                    <!-- two birds, far away -->
+                    <g fill="none" stroke="#7a4210" stroke-width="2" stroke-linecap="round" opacity=".75">
+                      <path d="M104 52 q6 -6 12 0 q6 -6 12 0"/>
+                      <path d="M150 34 q5 -5 10 0 q5 -5 10 0"/>
+                    </g>
+                    <!-- distant hills -->
+                    <path d="M0 148 Q90 128 190 144 T380 136 V248 H0 Z" fill="#8a4d16" opacity=".5"/>
+                    <path d="M0 166 Q120 150 240 162 T380 156 V248 H0 Z" fill="#6d3c10" opacity=".65"/>
+                    <!-- the little barn, far left -->
+                    <g>
+                      <rect x="46" y="122" width="46" height="36" fill="#6e2a10"/>
+                      <polygon points="41,122 69,105 97,122" fill="#4e1d0a"/>
+                      <rect x="62" y="134" width="14" height="24" fill="#4e1d0a"/>
+                      <path d="M62 134 L76 158 M76 134 L62 158" stroke="#a85a30" stroke-width="1.6"/>
+                      <rect x="64" y="112" width="10" height="9" fill="#f8cd66" opacity=".85"/>
+                    </g>
+                    <!-- the fence line running off to the right -->
+                    <g stroke="#4a2808" stroke-linecap="round">
+                      <path d="M0 186 L380 176" stroke-width="3.4"/>
+                      <path d="M0 198 L380 189" stroke-width="3"/>
+                    </g>
+                    <g fill="#4a2808">
+                      <rect x="14" y="176" width="5" height="28"/>
+                      <rect x="76" y="174" width="5" height="28"/>
+                      <rect x="140" y="172" width="5" height="28"/>
+                      <rect x="206" y="171" width="5" height="28"/>
+                      <rect x="272" y="169" width="5" height="28"/>
+                      <rect x="336" y="168" width="5" height="28"/>
+                    </g>
+                    <!-- the near field -->
+                    <path d="M0 208 Q120 198 240 205 T380 202 V248 H0 Z" fill="#7a5214"/>
+                    <g>
+                      <circle cx="42" cy="222" r="2.4" fill="#ffd94d"/><circle cx="96" cy="232" r="2" fill="#ffb84d"/>
+                      <circle cx="158" cy="220" r="2.2" fill="#fff3b0"/><circle cx="224" cy="234" r="2.4" fill="#ffd94d"/>
+                      <circle cx="286" cy="222" r="2" fill="#ffb84d"/><circle cx="340" cy="230" r="2.2" fill="#fff3b0"/>
+                      <circle cx="66" cy="240" r="1.8" fill="#ffb84d"/><circle cx="196" cy="242" r="1.8" fill="#ffd94d"/>
+                      <circle cx="316" cy="240" r="1.8" fill="#ffd94d"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div id="sunGlow"></div>
+
+            <!-- the field: meadow, sunflowers (built by JS), bee, motes, light -->
+            <div id="fieldWrap">
+              <div id="fieldDisc"></div>
+              <div id="sunSweep"></div>
+
+              <!-- the paper bee (flies once the card is open) -->
+              <div class="bee">
+                <svg viewBox="0 0 46 34" width="46" height="34" aria-hidden="true">
+                  <g class="beeWing"><ellipse cx="17" cy="8" rx="8.5" ry="4.6" fill="#ffffff" opacity=".8"/></g>
+                  <g class="beeWing"><ellipse cx="28" cy="6" rx="7" ry="4" fill="#ffffff" opacity=".65"/></g>
+                  <ellipse cx="21" cy="20" rx="13.5" ry="9.5" fill="#f2b53a"/>
+                  <path d="M15 11.8 C12 16.5 12 23.5 15 28.2" fill="none" stroke="#402c0c" stroke-width="4.6"/>
+                  <path d="M23 10.6 C20.5 15.8 20.5 24.2 23 29.4" fill="none" stroke="#402c0c" stroke-width="4.2"/>
+                  <path d="M7.5 20 l-5 -2.4 v4.8 z" fill="#402c0c"/>
+                  <circle cx="33" cy="19" r="6.4" fill="#402c0c"/>
+                  <circle cx="35" cy="17" r="1.7" fill="#fff6da"/>
+                </svg>
+              </div>
+
+              <!-- pollen motes drifting over the field -->
+              <div class="mote" style="left:110px; top:90px; background:#ffd94d; --z:132px; --dx:10px; --dy:14px; --d:0s;"></div>
+              <div class="mote" style="left:180px; top:70px; background:#fff3b0; --z:150px; --dx:-12px; --dy:9px; --d:.8s;"></div>
+              <div class="mote" style="left:245px; top:86px; background:#ffb84d; --z:138px; --dx:8px; --dy:16px; --d:1.5s;"></div>
+              <div class="mote" style="left:145px; top:120px; background:#ffd94d; --z:120px; --dx:-9px; --dy:12px; --d:2.2s;"></div>
+              <div class="mote" style="left:215px; top:116px; background:#fff3b0; --z:146px; --dx:12px; --dy:8px; --d:3s;"></div>
+              <div class="mote" style="left:268px; top:104px; background:#ffd94d; --z:126px; --dx:-11px; --dy:13px; --d:3.9s;"></div>
+            </div><!-- /fieldWrap -->
+
+            <div id="flapShadow"></div>
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront">
+                <div id="coverLine" aria-hidden="true">a field made of paper.</div>
+                <div id="baseWords" aria-hidden="true">
+                  <p class="bw-greet">Hey Everyone,<br>thanks a bunch...</p>
+                  <p class="bw-sign">Gary</p>
+                </div>
+              </div>
+              <div class="envFlap">
+                <div class="envFlapBack">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSunFlapBackGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#d9a92e"/><stop offset="1" stop-color="#a87a15"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSunFlapBackGrad)" stroke="#f4d98c" stroke-width="2.5" stroke-linejoin="round"/>
+                    <g fill="#ffe9b0">
+                      <circle cx="176" cy="38" r="2.2" opacity=".75"/><circle cx="212" cy="28" r="1.7" opacity=".6"/>
+                      <circle cx="252" cy="34" r="2" opacity=".7"/><circle cx="288" cy="26" r="1.6" opacity=".55"/>
+                      <circle cx="198" cy="56" r="1.5" opacity=".5"/><circle cx="268" cy="54" r="1.5" opacity=".5"/>
+                    </g>
+                    <!-- a tiny sunflower, stamped in gold -->
+                    <g transform="translate(235 104)">
+                      <g fill="#e8b65a" opacity=".8">
+                        <circle cx="0" cy="-11" r="3.4"/><circle cx="7.8" cy="-7.8" r="3.4"/>
+                        <circle cx="11" cy="0" r="3.4"/><circle cx="7.8" cy="7.8" r="3.4"/>
+                        <circle cx="0" cy="11" r="3.4"/><circle cx="-7.8" cy="7.8" r="3.4"/>
+                        <circle cx="-11" cy="0" r="3.4"/><circle cx="-7.8" cy="-7.8" r="3.4"/>
+                      </g>
+                      <circle r="5.6" fill="#8a5a10"/>
+                    </g>
+                  </svg>
+                </div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSunFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#f0c04a"/><stop offset="1" stop-color="#cf9a22"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSunFlapGrad)" stroke="#f4d98c" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
+        </div>
+      </div>
+    </div>
+    <div id="pill">TAP TO OPEN</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
+  var fieldWrap = document.getElementById('fieldWrap');
+  var sunGlow = document.getElementById('sunGlow');
+  var pill = document.getElementById('pill');
+
+  function clamp01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+  /* ---------- the sunflowers ----------
+     Each flower is an SVG standee built here: a tall stem with leaves,
+     and a head whose two rings of petals unfold one by one around a
+     dark seeded center. The standee grows out of the meadow on the
+     rise (scale from its bottom edge); the head opens on the later
+     part of the flower's own window. Short ones at the edges first,
+     the tallest in the middle LAST. */
+  var PETAL_PATH = 'M0 1 C -5.5 -6 -6.5 -17 0 -27 C 6.5 -17 5.5 -6 0 1 Z';
+  var SEED_DOTS = [[-6,-4],[0,-7],[6,-3],[-3,0],[4,1],[-7,3],[1,5],[7,6],[-4,7],[0,-1]];
+  var SEED_HILITES = [[-2,-5],[5,-6],[3,4],[-6,1]];
+
+  function flowerSVG(h){
+    var cx = 42, cy = 36;
+    var s = '<svg viewBox="0 0 84 ' + h + '" width="84" height="' + h + '" aria-hidden="true">';
+    s += '<defs><radialGradient id="pfSunSeedGrad" cx=".42" cy=".4" r=".75">'
+       + '<stop offset="0" stop-color="#7a4d16"/><stop offset=".55" stop-color="#54330c"/>'
+       + '<stop offset="1" stop-color="#38220a"/></radialGradient></defs>';
+    /* stem, with a gentle lean */
+    s += '<path d="M' + cx + ' ' + h + ' C ' + (cx-5) + ' ' + Math.round(h*0.62) + ' '
+       + (cx+5) + ' ' + Math.round(h*0.34) + ' ' + cx + ' ' + (cy+15)
+       + '" fill="none" stroke="#67822a" stroke-width="4.5" stroke-linecap="round"/>';
+    /* two leaves along the stem */
+    var ly1 = Math.round(h*0.55), ly2 = Math.round(h*0.74);
+    s += '<path d="M' + cx + ' ' + ly1 + ' q -21 -4 -27 -19 q 17 -3 27 7 z" fill="#749231"/>';
+    s += '<path d="M' + cx + ' ' + ly2 + ' q 21 -4 27 -19 q -17 -3 -27 7 z" fill="#67822a"/>';
+    /* the head: petals + center drawn around the origin, group placed */
+    s += '<g transform="translate(' + cx + ' ' + cy + ')">';
+    var i, a;
+    for (i = 0; i < 14; i++){ /* back ring, opens first, a shade deeper */
+      a = (i * 360 / 14).toFixed(1);
+      s += '<g class="petalB" data-a="' + a + '" transform="rotate(' + a + ') scale(.16)">'
+         + '<path d="' + PETAL_PATH + '" fill="#e0951c" stroke="rgba(146,84,8,.4)" stroke-width=".8"/></g>';
+    }
+    for (i = 0; i < 12; i++){ /* front ring */
+      a = (i * 30 + 15).toFixed(1);
+      s += '<g class="petalF" data-a="' + a + '" transform="rotate(' + a + ') scale(.2)">'
+         + '<path d="' + PETAL_PATH + '" fill="#f6b73a" stroke="rgba(146,84,8,.45)" stroke-width=".8"/></g>';
+    }
+    s += '<g class="fCenter" transform="scale(.3)">';
+    s += '<circle r="12.5" fill="url(#pfSunSeedGrad)"/>';
+    s += '<circle r="12.5" fill="none" stroke="#2e1c05" stroke-width="1" opacity=".5"/>';
+    SEED_DOTS.forEach(function(d){ s += '<circle cx="' + d[0] + '" cy="' + d[1] + '" r="1.3" fill="#2e1c05"/>'; });
+    SEED_HILITES.forEach(function(d){ s += '<circle cx="' + d[0] + '" cy="' + d[1] + '" r=".8" fill="#a4762a"/>'; });
+    s += '</g></g></svg>';
+    return s;
+  }
+
+  var FLOWER_DEFS = [
+    { x:58,  y:130, h:106, start:0.02, end:0.30, sway:1.0, dur:5.6, delay:-1.2 }, /* far left, short */
+    { x:322, y:130, h:106, start:0.10, end:0.38, sway:1.0, dur:6.1, delay:-2.6 }, /* far right, short */
+    { x:112, y:150, h:142, start:0.24, end:0.52, sway:1.2, dur:5.0, delay:-0.6 }, /* left mid */
+    { x:268, y:150, h:142, start:0.32, end:0.60, sway:1.2, dur:5.9, delay:-3.4 }, /* right mid */
+    { x:150, y:170, h:176, start:0.46, end:0.74, sway:1.4, dur:4.6, delay:-1.9 }, /* left tall */
+    { x:230, y:170, h:176, start:0.54, end:0.82, sway:1.4, dur:5.3, delay:-2.2 }, /* right tall */
+    { x:190, y:184, h:208, start:0.66, end:0.97, sway:1.6, dur:4.9, delay:-0.9 }  /* the tallest, middle, LAST */
+  ];
+  var flowers = [];
+  FLOWER_DEFS.forEach(function(def){
+    var anchor = document.createElement('div');
+    anchor.className = 'flower';
+    anchor.style.left = def.x + 'px';
+    anchor.style.top = def.y + 'px';
+    var stand = document.createElement('div');
+    stand.className = 'flowerStand';
+    stand.style.top = (-def.h) + 'px';
+    stand.style.setProperty('--sway', def.sway + 'deg');
+    stand.style.animationDuration = def.dur + 's';
+    stand.style.animationDelay = def.delay + 's';
+    stand.innerHTML = flowerSVG(def.h);
+    anchor.appendChild(stand);
+    fieldWrap.insertBefore(anchor, document.getElementById('sunSweep'));
+    flowers.push({
+      def: def, stand: stand,
+      petalsB: stand.querySelectorAll('.petalB'),
+      petalsF: stand.querySelectorAll('.petalF'),
+      center: stand.querySelector('.fCenter'),
+      p: 0
+    });
+  });
+
+  function applyRise(){
+    /* the field hides inside the envelope while settled shut: it fades
+       in as it rises (the Sea Card's tank trick) */
+    fieldWrap.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    fieldWrap.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
+    for (var i = 0; i < flowers.length; i++){
+      var f = flowers[i], d = f.def;
+      var p = clamp01((rise - d.start) / (d.end - d.start));
+      f.p = p;
+      if (p >= 1){
+        if (!f.stand.classList.contains('grown')) f.stand.classList.add('grown');
+      } else {
+        if (f.stand.classList.contains('grown')) f.stand.classList.remove('grown');
+        f.stand.style.transform = 'rotateX(-90deg) scale(' + p.toFixed(3) + ')';
+      }
+      /* the head opens on the later part of the flower's window,
+         petal by petal, back ring first */
+      var hp = clamp01((p - 0.35) / 0.65);
+      var j, pp, off, sc;
+      for (j = 0; j < f.petalsB.length; j++){
+        pp = clamp01(hp * 1.5 - j * 0.028);
+        off = (1 - pp) * 48;
+        sc = (0.2 + 0.8 * pp) * 0.8;
+        f.petalsB[j].setAttribute('transform',
+          'rotate(' + (parseFloat(f.petalsB[j].getAttribute('data-a')) + off).toFixed(1) + ') scale(' + sc.toFixed(3) + ')');
+      }
+      for (j = 0; j < f.petalsF.length; j++){
+        pp = clamp01(hp * 1.5 - 0.12 - j * 0.028);
+        off = (1 - pp) * 55;
+        sc = 0.2 + 0.8 * pp;
+        f.petalsF[j].setAttribute('transform',
+          'rotate(' + (parseFloat(f.petalsF[j].getAttribute('data-a')) + off).toFixed(1) + ') scale(' + sc.toFixed(3) + ')');
+      }
+      var cs = 0.3 + 0.7 * clamp01((p - 0.5) / 0.5);
+      f.center.setAttribute('transform', 'scale(' + cs.toFixed(3) + ')');
+    }
+    /* sunlight pooling on the base as the field rises */
+    sunGlow.style.opacity = (rise * 0.4).toFixed(3);
+  }
+
+  /* ---------- main loop ---------- */
+  var last = performance.now();
+  function tick(now){
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    rise += (target - rise) * Math.min(1, dt * 2.6);
+    if (Math.abs(target - rise) < 0.0015) rise = target;
+    applyRise();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> sunflowers rise one by one (target set at
+            850ms), heads opening petal by petal, the tallest last.
+     Close: field settles first -> card folds -> envelope returns ->
+            flap swings shut -> seal reappears (CSS delays). */
+  var choreoTimer = null;
+  function toggle(){
+    opened = !opened;
+    world.classList.toggle('open', opened);
+    fit();
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
+  }
+  document.addEventListener('click', toggle);
+  document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
+
+  /* ---------- fit to screen ----------
+     Identical to the Sea Card: the open visual span (standing card's top
+     to the slid-down base's bottom) is ~510 world units centered ~33
+     units above the layout box, so the open fit uses the taller divisor
+     and the 33-unit settle; the closed fit is the plain centered one. */
+  function fit(){
+    var isOpen = world.classList.contains('open');
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / (isOpen ? 590 : 530));
+    var ty = isOpen ? 33 : 0;
+    world.style.transform = 'scale(' + s.toFixed(3) + ') translateY(' + ty + 'px)';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  applyRise();
+
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0';
+    applyRise(); fit();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise(); fit();
+  }
+})();
+</script>
+</body>
+</html>
