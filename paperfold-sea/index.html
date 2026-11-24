@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>The Sea Book — Paperfold</title>
+<title>The Sea Card — Paperfold</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; }
@@ -18,7 +18,7 @@
   #fit { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
   #world { position:relative; width:640px; height:480px; flex:0 0 auto; transform-origin:center center; }
 
-  /* soft pool of light on the "table" under the book */
+  /* soft pool of light on the "table" under the card */
   #floorGlow {
     position:absolute; left:50%; top:56%; width:560px; height:190px;
     transform:translate(-50%,-50%);
@@ -36,41 +36,21 @@
     transform:rotateX(54deg) rotateZ(-9deg);
   }
 
-  /* ---------- the book (lies in the tilt plane) ---------- */
-  #book { position:absolute; left:85px; top:82px; width:470px; height:316px; transform-style:preserve-3d; }
-  #bookShadow {
-    position:absolute; left:-16px; top:-10px; width:502px; height:340px;
+  /* ---------- the card base (same footprint the book had) ---------- */
+  #cardBase { position:absolute; left:85px; top:90px; width:470px; height:316px; transform-style:preserve-3d; }
+  /* the envelope's back panel — the mat everything sits on once open */
+  #basePlate {
+    position:absolute; inset:0; border-radius:10px; transform:translateZ(0px);
+    background:linear-gradient(160deg, #0c4c5a 0%, #083845 55%, #062a36 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.30), inset 0 0 34px rgba(0,0,0,.45);
+  }
+  #envShadow {
+    position:absolute; left:-14px; top:-8px; width:498px; height:338px;
     background:rgba(0,0,0,.55); border-radius:14px; filter:blur(16px);
-    transform:translateZ(-6px);
+    transform:translateZ(1px); transition:opacity .8s ease .8s;
   }
-  #cover {
-    position:absolute; inset:0; border-radius:8px 12px 12px 8px;
-    background:linear-gradient(135deg, #8a352c 0%, #6d271f 55%, #571d16 100%);
-    box-shadow: inset 0 0 0 3px rgba(255,205,120,.35), inset 0 0 0 7px rgba(60,18,12,.55), inset 0 0 42px rgba(0,0,0,.5);
-    transform:translateZ(0px);
-  }
-  #pages {
-    position:absolute; left:9px; top:7px; width:452px; height:302px;
-    transform:translateZ(7px); border-radius:4px 8px 8px 4px; overflow:hidden;
-    background:
-      linear-gradient(90deg, rgba(120,90,40,.00) 0%, rgba(120,90,40,.16) 46%, rgba(90,60,20,.38) 50%, rgba(120,90,40,.16) 54%, rgba(120,90,40,.00) 100%),
-      linear-gradient(180deg, #f6ecd4 0%, #f1e5c8 60%, #e9dbb8 100%);
-    box-shadow: inset 0 0 26px rgba(146,110,52,.28), 0 1px 0 rgba(255,255,255,.35);
-  }
-  #pages::after { /* page edge lines on the fore-edge */
-    content:""; position:absolute; right:0; top:0; bottom:0; width:5px;
-    background:repeating-linear-gradient(180deg, rgba(120,95,50,.20) 0 2px, transparent 2px 4px);
-  }
-  .pageArt { position:absolute; top:0; bottom:0; width:50%; }
-  .pageArt.left { left:0; } .pageArt.right { right:0; }
-  #ribbon {
-    position:absolute; left:225px; top:288px; width:17px; height:104px;
-    transform:translateZ(3px) rotate(3.5deg); transform-origin:top center;
-    background:linear-gradient(90deg, #a42318, #cf3527 45%, #9c1f14);
-    clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
-    box-shadow:2px 3px 5px rgba(0,0,0,.35);
-  }
-  /* glow the sea casts onto the pages */
+  #world.open #envShadow { opacity:.3; transition-delay:.3s; }
+  /* glow the sea casts onto the base */
   #seaGlow {
     position:absolute; left:33px; top:21px; width:404px; height:274px;
     transform:translateZ(9px); border-radius:50%;
@@ -78,7 +58,81 @@
     filter:blur(10px); opacity:0; pointer-events:none;
   }
 
-  /* ---------- the sea volume ---------- */
+  /* ---------- the card that stands (pop-up backdrop) ---------- */
+  #cardStand {
+    position:absolute; left:45px; top:30px; width:380px; height:0;
+    transform:translateZ(3px); transform-style:preserve-3d;
+  }
+  #cardPanel {
+    position:absolute; left:0; top:0; width:380px; height:232px;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform 1s cubic-bezier(.3,.8,.3,1) .55s; /* closing delay */
+  }
+  #world.open #cardPanel { transform:rotateX(90deg); transition-delay:.8s; }
+  .cardFace { position:absolute; inset:0; border-radius:8px 8px 3px 3px; backface-visibility:hidden; overflow:hidden; }
+  /* the face that lies up inside the envelope — a quiet inside cover */
+  .cardIn {
+    background:linear-gradient(170deg, #e9f4ee 0%, #d7e9e2 58%, #c2dcd2 100%);
+    box-shadow: inset 0 0 0 2px rgba(176,138,62,.45), inset 0 0 30px rgba(90,140,130,.25);
+  }
+  /* the face that greets you once the card stands — deep-sea backdrop */
+  .cardBack {
+    transform:rotateX(180deg);
+    background:linear-gradient(178deg, #0a5a70 0%, #073f58 46%, #052a44 78%, #041e33 100%);
+    box-shadow: inset 0 0 0 2px rgba(232,182,90,.65), inset 0 0 0 7px rgba(4,20,34,.55), inset 0 0 52px rgba(0,0,0,.5);
+  }
+  .cardBack svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ---------- the envelope front (sealed card, closed state) ---------- */
+  #envGroup {
+    position:absolute; inset:0; transform-style:preserve-3d;
+    transform:translateZ(30px);
+    transition:transform 1.05s cubic-bezier(.3,.8,.3,1) .95s; /* closing delay */
+  }
+  #world.open #envGroup { transform:translateY(118px) translateZ(6px) scale(.93); transition-delay:.5s; }
+  .envFront {
+    position:absolute; inset:0; border-radius:10px;
+    background:linear-gradient(155deg, #12707e 0%, #0b5568 52%, #073e4f 100%);
+    box-shadow:0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .envFront::before { /* gilt inner edge */
+    content:""; position:absolute; inset:4.5%;
+    border:1.5px solid rgba(232,182,90,.55); border-radius:6px; pointer-events:none;
+  }
+  .envFront::after { /* side fold lines */
+    content:""; position:absolute; inset:0; border-radius:10px;
+    background:
+      linear-gradient(24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%),
+      linear-gradient(-24deg, transparent 49.6%, rgba(0,0,0,.13) 50%, transparent 50.6%);
+    pointer-events:none;
+  }
+  .envFlap {
+    position:absolute; left:0; top:-1px; width:100%; height:54%;
+    transform-origin:50% 0%; transform:rotateX(0deg); transform-style:preserve-3d;
+    transition:transform .85s cubic-bezier(.35,.7,.3,1) 1.6s; /* closing delay */
+  }
+  #world.open .envFlap { transform:rotateX(160deg); transition-delay:.1s; }
+  .envFlapFront { position:absolute; inset:0; backface-visibility:hidden; }
+  .envFlapFront svg { width:100%; height:100%; display:block; }
+  .envFlapBack {
+    position:absolute; inset:0; backface-visibility:hidden; transform:rotateX(180deg);
+    background:linear-gradient(180deg, #0d6274, #084556);
+    clip-path:polygon(0 0, 100% 0, 50% 100%);
+  }
+  .seal {
+    position:absolute; left:50%; top:86%; width:62px; height:62px;
+    transform:translate(-50%,-50%) translateZ(3px);
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #ffeda6 0%, #eec25e 46%, #c08f2e 82%, #a87a24 100%);
+    box-shadow:0 3px 7px rgba(40,26,2,.5), inset 0 1px 2px rgba(255,255,255,.7), inset 0 -2px 4px rgba(120,72,10,.5);
+    display:flex; align-items:center; justify-content:center;
+    color:#8a5a10; font-size:29px; line-height:1;
+    transition:opacity .3s ease 2.1s, transform .3s ease 2.1s; /* returns last on close */
+  }
+  #world.open .seal { opacity:0; transform:translate(-50%,-50%) translateZ(3px) scale(.4); transition-delay:0s, 0s; }
+  .seal::after { content:""; position:absolute; inset:11%; border:1.5px solid rgba(122,78,12,.5); border-radius:50%; }
+
+  /* ---------- the sea volume (unchanged from the Sea Book build) ---------- */
   #volume { position:absolute; left:45px; top:32px; width:380px; height:252px; transform-style:preserve-3d; }
   .wallWrap { position:absolute; transform-style:preserve-3d; }
   .face {
@@ -131,10 +185,16 @@
   #layerBack  { background:linear-gradient(180deg, rgba(120,205,255,.10) 0%, rgba(16,80,170,.10) 60%, rgba(3,26,66,.14) 100%); }
   #layerFront { background:linear-gradient(180deg, rgba(160,225,255,.07) 0%, rgba(20,95,185,.05) 60%, rgba(3,26,66,.08) 100%); }
   .coral { position:absolute; left:0; right:0; top:0; transform:scaleY(-1); pointer-events:none; }
-  .weed { transform-box:fill-box; transform-origin:50% 100%; animation:pfSeaWeed 3.8s ease-in-out infinite alternate; }
-  .weed.w2 { animation-duration:4.7s; animation-delay:-1.6s; }
-  .weed.w3 { animation-duration:3.1s; animation-delay:-.8s; }
-  @keyframes pfSeaWeed { from { transform:rotate(-3.6deg); } to { transform:rotate(3.6deg); } }
+  /* seaweed: two-segment stems — the tip lags the base, so the frond bends
+     instead of swinging like a stiff worm; slower and smaller than v1 */
+  .weed { transform-box:fill-box; transform-origin:50% 100%; animation:pfSeaWeed 6.4s ease-in-out infinite alternate; }
+  .weed.w2 { animation-duration:7.6s; animation-delay:-2.2s; }
+  .weed.w3 { animation-duration:5.8s; animation-delay:-1.1s; }
+  .weedTip { transform-box:fill-box; transform-origin:50% 100%; animation:pfSeaWeedTip 6.9s ease-in-out infinite alternate; animation-delay:-.7s; }
+  .w2 .weedTip { animation-duration:8.1s; animation-delay:-2.9s; }
+  .w3 .weedTip { animation-duration:6.3s; animation-delay:-1.8s; }
+  @keyframes pfSeaWeed { from { transform:rotate(-1.9deg); } to { transform:rotate(1.9deg); } }
+  @keyframes pfSeaWeedTip { from { transform:rotate(-2.8deg); } to { transform:rotate(3deg); } }
   .fish { position:absolute; left:0; top:0; will-change:transform; pointer-events:none; }
   .fish .wig { animation:pfSeaWig .46s ease-in-out infinite alternate; transform-origin:62% 50%; }
   @keyframes pfSeaWig { from { transform:rotate(-3.4deg); } to { transform:rotate(3.4deg); } }
@@ -169,7 +229,7 @@
 
   /* ---------- words & furniture ---------- */
   #line {
-    position:absolute; left:0; right:0; top:424px; text-align:center;
+    position:absolute; left:0; right:0; top:448px; text-align:center;
     font-size:21px; font-style:italic; letter-spacing:.14em; color:#b9dcf7;
     text-shadow:0 2px 14px rgba(0,0,0,.8); pointer-events:none;
   }
@@ -182,6 +242,15 @@
     transition:opacity .8s ease; animation:pfSeaPill 2.6s ease-in-out infinite;
   }
   @keyframes pfSeaPill { 0%,100% { transform:translateX(-50%) translateY(0); } 50% { transform:translateX(-50%) translateY(-4px); } }
+
+  /* QA: freeze every transition so hash states render instantly */
+  .qa * { transition:none !important; }
+  /* QA mid-open: flap half-swung, card half-standing, envelope half-slid */
+  .qa-mid .envFlap { transform:rotateX(82deg) !important; }
+  .qa-mid #cardPanel { transform:rotateX(44deg) !important; }
+  .qa-mid #envGroup { transform:translateY(59px) translateZ(18px) scale(.965) !important; }
+  .qa-mid .seal { opacity:0 !important; }
+
   @media (prefers-reduced-motion: reduce) {
     #orbiter { animation:none; }
     #faceFront .sheen, .ray i { animation:none; }
@@ -195,49 +264,33 @@
     <div id="scene">
       <div id="orbiter">
         <div id="tilt">
-          <div id="book">
-            <div id="bookShadow"></div>
-            <div id="cover"></div>
-            <div id="pages">
-              <div class="pageArt left">
-                <!-- constellation + wave line drawing, in ink on the left page -->
-                <svg width="226" height="302" viewBox="0 0 226 302">
-                  <g fill="none" stroke="#8a6f3e" stroke-width="1.1" opacity="0.75">
-                    <polyline points="38,66 74,50 108,62 132,40 168,52 188,30" stroke-dasharray="3 3"/>
-                    <polyline points="52,120 88,104 120,116" stroke-dasharray="3 3"/>
-                  </g>
-                  <g fill="#a8842f">
-                    <circle cx="38" cy="66" r="2.6"/><circle cx="74" cy="50" r="1.8"/><circle cx="108" cy="62" r="2.2"/>
-                    <circle cx="132" cy="40" r="1.6"/><circle cx="168" cy="52" r="2.4"/><circle cx="188" cy="30" r="1.7"/>
-                    <circle cx="52" cy="120" r="1.8"/><circle cx="88" cy="104" r="2.3"/><circle cx="120" cy="116" r="1.6"/>
-                    <circle cx="160" cy="128" r="1.5" opacity=".7"/><circle cx="30" cy="160" r="1.4" opacity=".6"/>
-                    <circle cx="196" cy="96" r="1.4" opacity=".6"/><circle cx="70" cy="196" r="1.3" opacity=".5"/>
-                  </g>
-                  <g fill="none" stroke="#7d94a8" stroke-width="1.6" opacity="0.8" stroke-linecap="round">
-                    <path d="M22 238 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0"/>
-                    <path d="M22 258 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0" opacity=".65"/>
-                    <path d="M22 278 q14 -12 28 0 t28 0 t28 0 t28 0 t28 0" opacity=".45"/>
-                  </g>
-                  <path d="M170 190 q10 -14 24 -10 q-3 12 -14 16 q-8 3 -10 -6z" fill="none" stroke="#8a6f3e" stroke-width="1.2" opacity=".7"/>
-                </svg>
-              </div>
-              <div class="pageArt right">
-                <!-- faint written lines + a small shell on the right page -->
-                <svg width="226" height="302" viewBox="0 0 226 302">
-                  <g fill="#b49b62" opacity="0.5">
-                    <rect x="34" y="52" width="150" height="3" rx="1.5"/><rect x="34" y="68" width="168" height="3" rx="1.5"/>
-                    <rect x="34" y="84" width="138" height="3" rx="1.5"/><rect x="34" y="106" width="160" height="3" rx="1.5"/>
-                    <rect x="34" y="122" width="146" height="3" rx="1.5"/><rect x="34" y="138" width="166" height="3" rx="1.5"/>
-                    <rect x="34" y="160" width="128" height="3" rx="1.5"/><rect x="34" y="176" width="152" height="3" rx="1.5"/>
-                  </g>
-                  <g transform="translate(158,224)" fill="none" stroke="#8a6f3e" stroke-width="1.3" opacity=".8">
-                    <path d="M0 26 a24 24 0 1 1 48 0 z" fill="rgba(200,160,80,.12)"/>
-                    <path d="M24 2 v24 M10 8 l8 18 M38 8 l-8 18 M2 20 h44"/>
-                  </g>
-                </svg>
+          <div id="cardBase">
+            <div id="basePlate"></div>
+            <div id="envShadow"></div>
+
+            <!-- the card inside: lies flat in the envelope, stands when open -->
+            <div id="cardStand">
+              <div id="cardPanel">
+                <div class="cardFace cardIn"></div>
+                <div class="cardFace cardBack">
+                  <svg viewBox="0 0 380 248" preserveAspectRatio="none" aria-hidden="true">
+                    <g fill="none" stroke="#e8b65a" stroke-linecap="round">
+                      <path d="M118 44 q16 -13 32 0 t32 0 t32 0 t32 0" stroke-width="2.4" opacity=".85"/>
+                      <path d="M142 66 q13 -10 26 0 t26 0 t26 0" stroke-width="1.8" opacity=".55"/>
+                      <path d="M96 218 q15 -11 30 0 t30 0 t30 0 t30 0 t30 0" stroke-width="1.8" opacity=".4"/>
+                    </g>
+                    <g fill="#f4d98c">
+                      <circle cx="66" cy="96" r="1.7" opacity=".8"/><circle cx="120" cy="128" r="1.3" opacity=".6"/>
+                      <circle cx="316" cy="88" r="1.6" opacity=".75"/><circle cx="272" cy="140" r="1.2" opacity=".55"/>
+                      <circle cx="88" cy="176" r="1.2" opacity=".5"/><circle cx="330" cy="188" r="1.5" opacity=".65"/>
+                      <circle cx="196" cy="104" r="1.1" opacity=".5"/><circle cx="238" cy="196" r="1.2" opacity=".5"/>
+                    </g>
+                    <path d="M190 148 l3.6 7.2 7.9 1.1 -5.7 5.6 1.3 7.9 -7.1 -3.7 -7.1 3.7 1.3 -7.9 -5.7 -5.6 7.9 -1.1z" fill="#e8b65a" opacity=".9"/>
+                  </svg>
+                </div>
               </div>
             </div>
-            <div id="ribbon"></div>
+
             <div id="seaGlow"></div>
 
             <div id="volume">
@@ -253,8 +306,14 @@
                     <g fill="none" stroke-linecap="round">
                       <path d="M28 52 v-16 m0 -6 v-8 m0 8 l-8 -8 m8 4 l8 -9" stroke="#c75b8f" stroke-width="4" opacity=".75"/>
                       <path d="M330 52 v-13 m0 -5 v-9 m0 7 l-7 -7 m7 3 l7 -8" stroke="#c78a4a" stroke-width="4" opacity=".75"/>
-                      <path class="weed w2" d="M70 52 q-5 -18 2 -34 q5 -12 -1 -20" stroke="#3f9e63" stroke-width="4"/>
-                      <path class="weed w3" d="M292 52 q6 -16 -1 -30 q-5 -11 2 -20" stroke="#35795a" stroke-width="4"/>
+                      <g class="weed w2" stroke="#3f9e63" stroke-width="4">
+                        <path d="M70 52 q-5 -18 2 -34"/>
+                        <g class="weedTip"><path d="M72 18 q5 -12 -1 -20"/></g>
+                      </g>
+                      <g class="weed w3" stroke="#35795a" stroke-width="4">
+                        <path d="M292 52 q6 -16 -1 -30"/>
+                        <g class="weedTip"><path d="M291 22 q-5 -11 2 -20"/></g>
+                      </g>
                     </g>
                     <g fill="#e8a2c8" opacity=".8"><circle cx="20" cy="28" r="2.2"/><circle cx="36" cy="22" r="2.2"/><circle cx="330" cy="26" r="2.2"/></g>
                   </svg>
@@ -274,9 +333,18 @@
                       <path d="M120 64 v-13 m0 -6 v-10 m0 8 l-8 -9 m8 5 l9 -10" stroke="#ff5da2" stroke-width="5"/>
                       <path d="M318 64 v-17 m0 -7 v-11 m0 9 l-10 -10 m10 5 l10 -11" stroke="#b388ff" stroke-width="5"/>
                       <path d="M238 64 v-11 m0 -5 v-8 m0 6 l-7 -7 m7 3 l7 -8" stroke="#ffb35c" stroke-width="4.5"/>
-                      <path class="weed" d="M84 64 q-7 -22 2 -42 q6 -14 -2 -24" stroke="#2ee6a8" stroke-width="5" opacity=".85"/>
-                      <path class="weed w2" d="M168 64 q7 -19 -1 -38 q-6 -13 2 -22" stroke="#35c48d" stroke-width="5" opacity=".85"/>
-                      <path class="weed w3" d="M282 64 q-6 -18 2 -34 q5 -12 -1 -20" stroke="#2ee6a8" stroke-width="4.5" opacity=".8"/>
+                      <g class="weed" stroke="#2ee6a8" stroke-width="5" opacity=".85">
+                        <path d="M84 64 q-7 -22 2 -42"/>
+                        <g class="weedTip"><path d="M86 22 q6 -14 -2 -24"/></g>
+                      </g>
+                      <g class="weed w2" stroke="#35c48d" stroke-width="5" opacity=".85">
+                        <path d="M168 64 q7 -19 -1 -38"/>
+                        <g class="weedTip"><path d="M167 26 q-6 -13 2 -22"/></g>
+                      </g>
+                      <g class="weed w3" stroke="#2ee6a8" stroke-width="4.5" opacity=".8">
+                        <path d="M282 64 q-6 -18 2 -34"/>
+                        <g class="weedTip"><path d="M284 30 q5 -12 -1 -20"/></g>
+                      </g>
                     </g>
                     <g>
                       <circle cx="25" cy="34" r="2.6" fill="#ffc4a8"/><circle cx="47" cy="26" r="2.6" fill="#ffc4a8"/>
@@ -323,12 +391,32 @@
                 </svg>
               </div>
             </div><!-- /volume -->
-          </div><!-- /book -->
+
+            <!-- the sealed envelope front: covers everything while closed,
+                 slides down-front to lie before the card once open -->
+            <div id="envGroup">
+              <div class="envFront"></div>
+              <div class="envFlap">
+                <div class="envFlapBack"></div>
+                <div class="envFlapFront">
+                  <svg viewBox="0 0 470 171" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="pfSeaFlapGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#17808f"/><stop offset="1" stop-color="#0a5064"/>
+                      </linearGradient>
+                    </defs>
+                    <path d="M2 2 L468 2 L235 169 Z" fill="url(#pfSeaFlapGrad)" stroke="#e8b65a" stroke-width="2.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="seal">&#9733;</div>
+              </div>
+            </div><!-- /envGroup -->
+          </div><!-- /cardBase -->
         </div>
       </div>
     </div>
-    <div id="line">there is a sea in this book.</div>
-    <div id="pill">TAP THE BOOK</div>
+    <div id="line">there is a sea in this card.</div>
+    <div id="pill">TAP TO OPEN</div>
   </div>
 </div>
 
@@ -336,6 +424,7 @@
 (function(){
   var H_MIN = 9, H_MAX = 192;
   var rise = 0, target = 0, opened = false;
+  var world = document.getElementById('world');
   var volume = document.getElementById('volume');
   var topface = document.getElementById('topface');
   var seafloor = document.getElementById('seafloor');
@@ -350,6 +439,11 @@
     for (var i=0;i<faces.length;i++){ faces[i].style.height = H + 'px'; }
     topface.style.transform = 'translateZ(' + H + 'px)';
     topface.style.opacity = (0.72 + 0.28 * rise).toFixed(3);
+    /* the settled sea hides inside the envelope: the tank fades in as it
+       rises (also masks a compositor quirk that let the translucent,
+       overflow-clipped top face paint through the envelope front) */
+    volume.style.opacity = Math.min(1, rise / 0.12).toFixed(3);
+    volume.style.visibility = rise <= 0.001 ? 'hidden' : 'visible';
     seaGlow.style.opacity = (rise * 0.55).toFixed(3);
     var lf = document.getElementById('layerFront'), lb = document.getElementById('layerBack');
     lf.style.opacity = Math.max(0, Math.min(1, (rise - 0.18) / 0.6)).toFixed(3);
@@ -440,27 +534,47 @@
   }
   requestAnimationFrame(tick);
 
-  /* ---------- interaction ---------- */
+  /* ---------- interaction ----------
+     Open:  seal breaks -> flap swings -> envelope slides down-front ->
+            card stands -> tank rises (target set at 850ms).
+     Close: tank settles first -> card folds -> envelope returns ->
+            flap swings shut -> seal reappears (CSS delays carry the order). */
+  var choreoTimer = null;
   function toggle(){
     opened = !opened;
-    target = opened ? 1 : 0;
-    pill.style.opacity = opened ? '0' : '1';
+    world.classList.toggle('open', opened);
+    if (choreoTimer){ clearTimeout(choreoTimer); choreoTimer = null; }
+    if (opened){
+      pill.style.opacity = '0';
+      choreoTimer = setTimeout(function(){ target = 1; }, 850);
+    } else {
+      target = 0;
+      choreoTimer = setTimeout(function(){ pill.style.opacity = '1'; }, 1900);
+    }
   }
   document.addEventListener('click', toggle);
   document.addEventListener('touchend', function(e){ e.preventDefault(); toggle(); }, { passive:false });
 
   /* ---------- fit to screen ---------- */
   function fit(){
-    var s = Math.min(window.innerWidth / 660, window.innerHeight / 500);
+    var s = Math.min(window.innerWidth / 660, window.innerHeight / 530);
     document.getElementById('world').style.transform = 'scale(' + s.toFixed(3) + ')';
   }
   window.addEventListener('resize', fit);
   fit();
   applyRise();
 
-  /* QA hooks (harmless): #risen opens instantly, #mid half-rises */
-  if (location.hash === '#risen'){ opened = true; target = 1; rise = 1; pill.style.opacity = '0'; applyRise(); }
-  if (location.hash === '#mid'){ target = 0.52; rise = 0.52; applyRise(); }
+  /* QA hooks (harmless): #risen = fully open instantly, #mid = half-open */
+  if (location.hash === '#risen'){
+    opened = true; target = 1; rise = 1;
+    world.classList.add('open'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise();
+  }
+  if (location.hash === '#mid'){
+    opened = true; target = 0.52; rise = 0.52;
+    world.classList.add('open', 'qa-mid'); document.body.classList.add('qa');
+    pill.style.opacity = '0'; applyRise();
+  }
 })();
 </script>
 </body>
