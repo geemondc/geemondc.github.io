@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>World Cube — a paperfold proof</title>
+<link rel="preload" as="image" href="../starry-night-train/master.jpg">
+<link rel="preload" as="image" href="../underwater-scene/still.jpg">
+<link rel="preload" as="image" href="../temple-valley/still.jpg">
+<link rel="preload" as="image" href="../venice-gondola-scene/master.jpg">
+<link rel="preload" as="image" href="../advent02-scene/still.jpg">
+<link rel="preload" as="image" href="../big-view/still.jpg">
+<style>
+  :root{
+    --s: min(62vmin, 340px);
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    background:#000;
+    color:#fff;
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow:hidden;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    -webkit-tap-highlight-color: transparent;
+    user-select:none;
+    -webkit-user-select:none;
+    cursor:pointer;
+  }
+  /* faint studio ambience in the void */
+  .void-glow{
+    position:fixed; inset:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse 70% 46% at 50% 62%, rgba(70,90,160,.16), transparent 70%),
+      radial-gradient(ellipse 120% 90% at 50% 45%, rgba(24,26,40,.55), transparent 75%);
+  }
+  .stage{
+    position:relative;
+    width:var(--s); height:var(--s);
+    perspective: calc(var(--s) * 3.4);
+    perspective-origin: 50% 42%;
+    opacity:0;
+    transition: opacity 1.1s ease .15s;
+  }
+  body.ready .stage{ opacity:1; }
+  .float{
+    position:absolute; inset:0;
+    transform-style:preserve-3d;
+    animation: cubeBob 7.5s ease-in-out infinite;
+  }
+  .cube{
+    position:absolute; inset:0;
+    transform-style:preserve-3d;
+    animation: cubeSpin 52s linear infinite;
+  }
+  body.paused .cube{ animation-play-state:paused; }
+  .face{
+    position:absolute; inset:0;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.55), inset 0 0 calc(var(--s)*.14) rgba(0,0,0,.28);
+    overflow:hidden;
+  }
+  .face .sheen, .face .shimmer{
+    position:absolute; inset:-30%;
+    pointer-events:none;
+  }
+  /* starry face: a slow drift of light across the swirls */
+  .f-front .sheen{
+    background: radial-gradient(circle at 30% 30%, rgba(255,236,180,.34), rgba(255,236,180,0) 46%);
+    mix-blend-mode:soft-light;
+    animation: lightDrift 11s ease-in-out infinite alternate;
+  }
+  /* underwater face: a slow shimmer band through the blue */
+  .f-right .shimmer{
+    background: linear-gradient(115deg, transparent 32%, rgba(190,235,255,.20) 48%, rgba(255,255,255,.30) 52%, rgba(190,235,255,.20) 56%, transparent 72%);
+    mix-blend-mode:soft-light;
+    animation: waterShimmer 9s ease-in-out infinite;
+  }
+  .f-front { transform: rotateY(0deg)    translateZ(calc(var(--s)/2)); background-image:url('../starry-night-train/master.jpg'); }
+  .f-right { transform: rotateY(90deg)   translateZ(calc(var(--s)/2)); background-image:url('../underwater-scene/still.jpg'); }
+  .f-back  { transform: rotateY(180deg)  translateZ(calc(var(--s)/2)); background-image:url('../temple-valley/still.jpg'); }
+  .f-left  { transform: rotateY(-90deg)  translateZ(calc(var(--s)/2)); background-image:url('../venice-gondola-scene/master.jpg'); }
+  .f-top   { transform: rotateX(90deg)   translateZ(calc(var(--s)/2)); background-image:url('../advent02-scene/still.jpg'); }
+  .f-bottom{
+    transform: rotateX(-90deg) translateZ(calc(var(--s)/2));
+    background-image:url('../big-view/still.jpg');
+    background-size:350%;
+    background-position:34% 0%;
+    filter:brightness(.82) saturate(1.05);
+  }
+  /* dark paper core: any hairline seam reads as the cube's edge, never the void */
+  .core{ position:absolute; inset:0; transform-style:preserve-3d; transform:scale(.994); }
+  .core .cf{
+    position:absolute; inset:0; background:#0a0a10;
+    backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  }
+  .cf-front { transform: rotateY(0deg)   translateZ(calc(var(--s)/2)); }
+  .cf-right { transform: rotateY(90deg)  translateZ(calc(var(--s)/2)); }
+  .cf-back  { transform: rotateY(180deg) translateZ(calc(var(--s)/2)); }
+  .cf-left  { transform: rotateY(-90deg) translateZ(calc(var(--s)/2)); }
+  .cf-top   { transform: rotateX(90deg)  translateZ(calc(var(--s)/2)); }
+  .cf-bottom{ transform: rotateX(-90deg) translateZ(calc(var(--s)/2)); }
+  /* soft studio glow pooling under the cube */
+  .floor-glow{
+    position:absolute;
+    left:50%; top:calc(100% + var(--s)*.16);
+    width:calc(var(--s)*1.25); height:calc(var(--s)*.30);
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(150,170,255,.30), rgba(120,140,220,.12) 45%, transparent 72%);
+    filter:blur(6px);
+    border-radius:50%;
+    animation: glowPulse 7.5s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes cubeSpin{
+    from{ transform: rotateX(-17deg) rotateY(-24deg); }
+    to  { transform: rotateX(-17deg) rotateY(336deg); }
+  }
+  @keyframes cubeBob{
+    0%,100%{ transform: translateY(calc(var(--s)*-.018)); }
+    50%    { transform: translateY(calc(var(--s)* .022)); }
+  }
+  @keyframes glowPulse{
+    0%,100%{ transform:translateX(-50%) scaleX(1.04); opacity:.85; }
+    50%    { transform:translateX(-50%) scaleX(.94);  opacity:.6; }
+  }
+  @keyframes lightDrift{
+    from{ transform: translate(-7%, -4%); }
+    to  { transform: translate(9%, 6%); }
+  }
+  @keyframes waterShimmer{
+    0%,100%{ transform: translateX(-9%); opacity:.55; }
+    50%    { transform: translateX(9%);  opacity:1; }
+  }
+  .caption{
+    margin-top: calc(var(--s)*.30);
+    text-align:center;
+    opacity:0;
+    transition: opacity 1.2s ease .5s;
+  }
+  body.ready .caption{ opacity:1; }
+  .line{
+    font-size: clamp(17px, 2.6vmin, 22px);
+    font-style: italic;
+    letter-spacing:.14em;
+    color: rgba(255,255,255,.78);
+    text-shadow: 0 1px 14px rgba(0,0,0,.9);
+  }
+  .hint{
+    margin-top: 10px;
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing:.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.30);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .cube{ animation:none; transform: rotateX(-17deg) rotateY(-24deg); }
+    .float, .floor-glow, .f-front .sheen, .f-right .shimmer{ animation:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="void-glow"></div>
+
+  <div class="stage" id="stage" aria-label="A slowly turning cube. Each face is a different painted world: a starry night train ride, an underwater reef, balloon temples at dusk, a Venice canal, a Christmas village, and the golf-course view at sunset.">
+    <div class="float">
+      <div class="cube" id="cube">
+        <div class="core">
+          <div class="cf cf-front"></div><div class="cf cf-right"></div>
+          <div class="cf cf-back"></div><div class="cf cf-left"></div>
+          <div class="cf cf-top"></div><div class="cf cf-bottom"></div>
+        </div>
+        <div class="face f-front"><div class="sheen"></div></div>
+        <div class="face f-right"><div class="shimmer"></div></div>
+        <div class="face f-back"></div>
+        <div class="face f-left"></div>
+        <div class="face f-top"></div>
+        <div class="face f-bottom"></div>
+      </div>
+    </div>
+    <div class="floor-glow"></div>
+  </div>
+
+  <div class="caption">
+    <div class="line">six worlds, one cube.</div>
+    <div class="hint">tap to pause &middot; tap to turn</div>
+  </div>
+
+<script>
+  (function(){
+    function ready(){ document.body.classList.add('ready'); }
+    window.addEventListener('load', ready);
+    setTimeout(ready, 1600);
+    document.addEventListener('click', function(){
+      document.body.classList.toggle('paused');
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.code === 'Space'){ e.preventDefault(); document.body.classList.toggle('paused'); }
+    });
+  })();
+</script>
+</body>
+</html>
