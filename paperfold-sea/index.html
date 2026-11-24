@@ -272,16 +272,20 @@
 
   /* ---------- the written card (white card face below the tank) ---------- */
   #cardWords {
-    display:grid; grid-template-rows:0fr;
     width:min(88vw, 430px); flex:0 0 auto;
-    margin-top:0; opacity:0;
-    transition:grid-template-rows .45s ease .05s, opacity .35s ease 0s, margin-top .45s ease .05s;
+    margin-top:0; opacity:0; visibility:hidden;
+    transition:opacity .35s ease 0s, visibility 0s linear .4s, margin-top .45s ease .05s;
   }
   #world.open ~ #cardWords {
-    grid-template-rows:1fr; margin-top:16px; opacity:1;
-    transition:grid-template-rows .9s ease 2.5s, opacity .8s ease 2.55s, margin-top .9s ease 2.5s;
+    margin-top:16px; opacity:1; visibility:visible;
+    transition:opacity .8s ease 1.95s, visibility 0s linear 1.95s, margin-top .9s ease 1.9s;
   }
-  .cwInner { overflow:hidden; min-height:0; }
+  /* reveal by max-height, not grid rows: animating grid-template-rows
+     between fr values is unreliable in some phone webviews and can leave
+     the written card collapsed forever; max-height transitions run
+     everywhere. JS sets the exact open height inline (see fit()). */
+  .cwInner { overflow:hidden; min-height:0; max-height:0; transition:max-height .45s ease .05s; }
+  #world.open ~ #cardWords .cwInner { max-height:240px; transition:max-height .9s ease 1.9s; }
   #cwLeaf {
     background:linear-gradient(180deg, #ffffff 0%, #f3f8fa 100%);
     border:1px solid rgba(232,182,90,.7); border-radius:8px;
@@ -349,7 +353,7 @@
 
             <div id="volume">
               <div id="seafloor"></div>
-              <div id="floorLine">there is a sea in this card.</div>
+              <div id="floorLine">I wanted to SEA you, so here you go.</div>
               <!-- back wall: wrapper on the back edge, rotated 180 in-plane -->
               <div class="wallWrap" style="left:380px; top:0; transform:rotate(180deg);">
                 <div class="face" id="faceBack" style="width:380px;"></div>
@@ -638,6 +642,7 @@
   /* ---------- fit to screen ---------- */
   var cwLeaf = document.getElementById('cwLeaf');
   var cardWordsEl = document.getElementById('cardWords');
+  var cwInnerEl = document.querySelector('#cardWords .cwInner');
   function fit(){
     /* once open, reserve room under the stage for the written card, so
        tank + white card together fit one screen with no scrolling */
@@ -649,7 +654,14 @@
        the dead space under it so the written card sits up close beneath
        the tank instead of floating far below */
     var dead = Math.max(0, (480 - 480 * s) / 2);
-    cardWordsEl.style.marginTop = isOpen ? Math.round(16 - dead * 0.5) + 'px' : '';
+    /* when the stage scales UP past its layout box, its visual bottom
+       spills below the box — add that overshoot to the gap so the
+       written card always clears the tank's base */
+    var over = Math.max(0, (480 * s - 480) / 2);
+    cardWordsEl.style.marginTop = isOpen ? Math.round(16 - dead * 0.5 + over) + 'px' : '';
+    /* exact reveal height for the written card (the CSS cap is only a
+       fallback if this ever measures 0) */
+    cwInnerEl.style.maxHeight = isOpen ? cwLeaf.offsetHeight + 'px' : '';
   }
   window.addEventListener('resize', fit);
   fit();
