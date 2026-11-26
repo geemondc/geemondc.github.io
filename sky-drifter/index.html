@@ -1536,6 +1536,7 @@ function paintGround(RP,hy,gb,cx){
     for(let k=0;k<3;k++){ const fy=hy+gh*(0.25+k*0.26)+Math.sin(S.flyT*1.1+k*2.2)*1.5;
       ctx.beginPath(); for(let x=0;x<=W;x+=26)ctx.lineTo(x,fy+Math.sin(x*0.016+k*3+S.flyT*0.8)*1.6); ctx.stroke(); }
   } else if(b==='jungle'){
+    if(pfImgs.close.complete&&pfImgs.close.naturalWidth)return;   /* Nov 26 (Gary, Thanksgiving flight): the flat green cartoon strip under the Falls is GONE — the winding path, the soft blobs, all of it. The painting itself runs to the bottom of the frame now (drawFallsVista mirrors its own lower edge across the ground zone). This procedural valley only stands in while the paintings are still arriving. */
     { /* #466: the painted Falls floor is OUT on Gary's direct order ('bad remove and redo') — the procedural river valley below is the bottom */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
     ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
@@ -1632,6 +1633,31 @@ function paintGround(RP,hy,gb,cx){
     ctx.fillStyle=gr2; ctx.fillRect(-W*0.55,hy+gh*0.5,W*2.1,gh*0.5);
     ctx.fillStyle='rgba(190,240,255,0.35)';
     for(let i=0;i<16;i++){ ctx.fillRect(rng()*W,hy+rng()*gh,1.8,1.8); }
+  } else if(b==='kyoto'){
+    /* Nov 26 (Gary, Thanksgiving flight): Kyoto's bottom is the ONE band
+       in the batch NOT cut outright — it carries the flying-in feel of
+       the arrival ("you have the bottom part like we're flying in here
+       but I don't think you needed as much"). It had been falling
+       through to the North Pole's ice code below: blue-gray pressure
+       ridges, snow streaks and white mist blobs under a cherry-blossom
+       valley — a wavy blue-gray ripple band in a foreign skin across
+       the bottom fifth. Now it is a SLIVER: it starts 58% down the old
+       ground zone (less than half the footprint), feathers in from
+       fully transparent so there is NO hard cutoff edge, and is
+       coloured from the painting's own river — deep plum-indigo, the
+       Paris lesson (a horizon that stays must match the water it sits
+       on). The sprite stream still flies across it: the arrival cue
+       survives at the reduced size. */
+    const kBandTop=hy+gh*0.58, kGh=gb-kBandTop;
+    let gr=ctx.createLinearGradient(0,kBandTop,0,gb);
+    gr.addColorStop(0,mixCa(RP.g2,'#141c2e',0.35,0));
+    gr.addColorStop(0.45,mixCa(RP.g2,'#141c2e',0.35,0.55));
+    gr.addColorStop(1,mixCa(RP.g2,'#0d1424',0.50,0.92));
+    ctx.fillStyle=gr; ctx.fillRect(-W*0.55,kBandTop,W*2.1,kGh+2);
+    /* the river's own ripple, riding low in the sliver */
+    ctx.strokeStyle='rgba(190,200,235,0.13)'; ctx.lineWidth=1.2;
+    for(let k=0;k<2;k++){ const fy=kBandTop+kGh*(0.38+k*0.30)+Math.sin(S.flyT*1.1+k*2.2)*1.2;
+      ctx.beginPath(); for(let x=0;x<=W;x+=26)ctx.lineTo(x,fy+Math.sin(x*0.016+k*3+S.flyT*0.8)*1.5); ctx.stroke(); }
   } else { /* the North Pole: ice fields under a living sky */
     let gr=ctx.createLinearGradient(0,hy,0,gb); gr.addColorStop(0,RP.g1); gr.addColorStop(1,RP.g2);
     ctx.fillStyle=gr; ctx.fillRect(-W*0.55,hy,W*2.1,gh);
@@ -1816,6 +1842,29 @@ function drawFallsElements(RP,G){
     const dw=pw*0.034, dh=dw*img.naturalHeight/img.naturalWidth, sq=0.84+0.16*Math.sin(t*6+p2*3.0);
     ctx.save(); ctx.translate(left+pw*cxp, top+ph*cyp); ctx.scale(1,sq);
     ctx.globalAlpha=0.95*groundF; ctx.drawImage(gr,-dw/2,-dh/2,dw,dh); ctx.restore(); ctx.globalAlpha=1; }
+  /* Nov 26 (Gary, Thanksgiving flight): THE ELEMENTS COME BACK — the
+     Falls read bare next to the Underwater standard ("needs more
+     cutouts in it"), so the Nov 2 set returns at Dose-Law density:
+     lilies + the frog low on the pool, the standing heron on the right
+     bank, dragonflies over the water, the kingfisher's low dart, and
+     two herons crossing high. Every anchor stays right of the falls
+     column or low on the water — NOTHING covers the house (panel
+     x .14–.44), and the angle system, the parrots and the yellow house
+     are untouched, per his word. */
+  const put=(name,xf,yf,wf,alpha,bob)=>{ const img=pfElem[name], gr=img? pfHouseGraded(img,RP):null; if(!gr||!img.naturalWidth)return;
+    const dw=pw*wf, dh=dw*img.naturalHeight/img.naturalWidth;
+    ctx.save(); ctx.globalAlpha=alpha*groundF; ctx.drawImage(gr,left+pw*xf-dw/2, top+ph*yf-dh/2+(bob||0), dw, dh); ctx.restore(); ctx.globalAlpha=1; };
+  const shadow=(xf,yf,wf)=>{ ctx.save(); ctx.fillStyle='rgba(8,34,22,0.22)'; ctx.beginPath(); ctx.ellipse(left+pw*xf, top+ph*yf, pw*wf, pw*wf*0.22, 0, 0, TAU); ctx.fill(); ctx.restore(); };
+  shadow(0.600,0.815,0.045); put('lily-a',0.600,0.800,0.055,0.95, Math.sin(t*0.9)*ph*0.002);
+  shadow(0.715,0.845,0.038); put('lily-b',0.715,0.832,0.046,0.95, Math.sin(t*0.8+2.0)*ph*0.002);
+  put('frog',0.600,0.780,0.020,0.97, Math.sin(t*0.9)*ph*0.002);
+  shadow(0.865,0.762,0.030); put('heron-stand',0.865,0.700,0.052,0.97,0);
+  for(let i=0;i<2;i++){ const p4=i*2.9+0.7, dxf=0.66+0.10*i+0.045*Math.sin(t*0.7+p4*2.0), dyf=0.700+0.030*i+0.014*Math.sin(t*1.3+p4);
+    put(i? 'dragonfly-green':'dragonfly-blue', dxf, dyf, 0.026, 0.95, 0); }
+  { const kc=(t+9)%41; if(kc<5){ const kp=kc/5, kx=lerp(0.52,0.94,kp), ky=0.665-0.05*Math.sin(kp*Math.PI);
+      put('kingfisher',kx,ky,0.034,0.97*Math.sin(Math.min(1,kp*1.15)*Math.PI),0); } }
+  for(let i=0;i<2;i++){ const hc=(t+i*34)%79; if(hc<15){ const hp2=hc/15, hx=lerp(-0.06,1.06,hp2), hy2=0.185+0.045*i+0.012*Math.sin(hp2*Math.PI*2+i);
+      put('heron-fly',hx,hy2,0.075-0.018*i,0.95*Math.sin(Math.min(1,hp2*1.1)*Math.PI),0); } }
 }
 function drawFallsVista(RP,hy,cx){
   const t=S.flyT;
@@ -1985,6 +2034,29 @@ function drawFallsVista(RP,hy,cx){
     for(let i=0;i<4;i++){ const bx=left+lerp(-0.05,1.05,bp)*pw-i*pw*0.03, by=top+ph*(0.20+0.05*i)+Math.sin(t*2+i)*3;
       const f=Math.sin(t*9+i*1.3)*3.6;
       ctx.beginPath(); ctx.moveTo(bx-5,by-f); ctx.quadraticCurveTo(bx,by+1.6,bx+0.5,by); ctx.quadraticCurveTo(bx+1,by+1.6,bx+5,by-f); ctx.stroke(); } }
+  /* Nov 26 (Gary): THE PAINTING RUNS TO THE BOTTOM OF THE FRAME — the
+     flat green cartoon strip that paved the ground zone is gone
+     (paintGround stands down for the Falls), and the dominant painting's
+     own lower edge mirrors down across the ground zone so the scene
+     fills the whole frame, the Underwater way. The mirror seam sits at
+     the panel's bottom edge, in the plunge pool's own water, where a
+     reflection belongs. */
+  const domK=(wClose>=wFar&&wClose>=wApp&&wClose>=wSide&&wClose>=wAbove)?'close':(wSide>=wFar&&wSide>=wApp&&wSide>=wAbove)?'side':(wAbove>=wFar&&wAbove>=wApp)?'above':(wFar>=wApp)?'far':'approach';
+  const domImg=pfImgs[domK];
+  if(domImg&&domImg.complete&&domImg.naturalWidth&&top+ph<H+38){ const stripY=top+ph-2, stripH=H+40-stripY, iw2=domImg.naturalWidth, ih2=domImg.naturalHeight;
+    const sf2=clamp(stripH/ph,0.03,0.30);
+    ctx.save();
+    ctx.filter='brightness(1.13) saturate(1.09)';
+    ctx.translate(0,stripY*2+stripH); ctx.scale(1,-1);
+    ctx.drawImage(domImg,0,ih2*(1-sf2),iw2,ih2*sf2,left,stripY,pw,stripH);
+    ctx.restore();
+    ctx.save();
+    const shg2=ctx.createLinearGradient(0,stripY,0,H+40); shg2.addColorStop(0,'rgba(10,40,26,0)'); shg2.addColorStop(1,'rgba(10,40,26,0.18)');
+    ctx.fillStyle=shg2; ctx.fillRect(left,stripY,pw,stripH);
+    if(RP.nightF>0.03){ const ng2=ctx.createLinearGradient(0,stripY,0,H+40);   /* Nov 26 probe fix: the night grade feathers in like the deepening gradient — as a FLAT fill it laid a purple band with a hard top edge across the mirror at dusk phases */
+      ng2.addColorStop(0,'rgba(5,9,30,0)'); ng2.addColorStop(0.55,'rgba(5,9,30,'+(0.13*RP.nightF)+')'); ng2.addColorStop(1,'rgba(5,9,30,'+(0.30*RP.nightF)+')');
+      ctx.fillStyle=ng2; ctx.fillRect(left,stripY,pw,stripH); }
+    ctx.restore(); }
   ctx.restore();
 }
 
@@ -3469,6 +3541,16 @@ tvImgs.dusk.src='assets/seats/tv-dusk.webp'; tvImgs.night.src='assets/seats/tv-n
 let TV_G=null;
 function tvReady(){ for(const k in tvImgs){ const im=tvImgs[k]; if(im.complete&&im.naturalWidth>0)return true; } return false; }
 function fullPageNow(){   /* REBUILD gate: a full-page painting owns the view ONLY while its seat stop holds the frame (seatFocus high) — during drift stops the ground band and the sprite stream fly again, even in seat worlds. */
+  /* Nov 26 (Gary, Thanksgiving flight): the five seat places are PAINTINGS
+     first — when a seat painting is in hand it owns the WHOLE frame at
+     every moment of its stop, drift included: no ground band and no
+     sprite stream ever paint across its bottom again. The Intracoastal's
+     dark-blue band, Storybook Falls' pale doodad strip and the Overlook's
+     empty band with its flying palms all died of that drift-phase band.
+     "Just keep the picture — make it more like the underwater scene." */
+  if(typeof SEAT_BIOMES!=='undefined'&&SEAT_BIOMES[S.biome]&&seatBiomeReady(S.biome))return true;
+  if(S.biome==='north'&&typeof npSeatReady==='function'&&npSeatReady())return true;   /* Nov 26 (Gary): the Pole had the same strip disease — a pale lavender band with tiny white mountain/pine doodads under the painting. Its seat paintings own the whole frame at all times too. */
+  if(S.biome==='venice'&&typeof veReady==='function'&&veReady())return true;   /* Nov 26 (Gary): "the horizon shouldn't be moving in this photo" — during drift the ground band's top edge rode the wandering horizon line and slid against the painting's own horizon. Venice's plates own the whole frame at ALL times now (the Canyon standard): the only horizon left is the painting's, drawn by drawSeatCover's fixed geometry — rock-locked. The clouds and the 40 s light loop keep their motion; they live in the life layer, not the band. */
   if(!(window.__seatFocus>0.5))return false;
   if(S.biome==='temple'&&tvReady())return true;
   if(S.biome==='kyoto'&&kyReady())return true;   /* Nov 17: Kyoto's plates own the frame on its seat stops too */
@@ -3872,7 +3954,7 @@ function seatBiomeAccent(b,g,RP){
        crops the painting's top while drifting; positions keep clear
        of the guitar hotel at the left and the sunset at the right. */
     ctx.save(); ctx.globalCompositeOperation='source-over';   /* solid color: 'screen' washed the shells out against the bright sunset */
-    for(const fw of [[0.30,'255,190,80',0],[0.52,'255,130,190',11],[0.68,'130,220,255',22]]){   /* Nov 14: the show breathes a little faster — the 46 s clock left long dead sky between shells */
+    for(const fw of [[0.30,'255,190,80',0],[0.52,'255,130,190',11],[0.68,'130,220,255',22],[0.84,'190,150,255',27]]){   /* Nov 14: the show breathes a little faster — the 46 s clock left long dead sky between shells */   /* Nov 26 (Gary): a fourth shell (violet) joins the sunset show — "maybe some fireworks since it's sunset at the Hard Rock" */
       const cyc=(t+fw[2])%34, RISE=1.7, BURST=4.4;
       const bx=g.left+fw[0]*g.pw, apexY=g.top+g.ph*(0.13+0.05*((fw[2]/11)%2)), baseY=g.top+g.ph*0.44;   /* Nov 14 (Gary): the bursts ride IN the painting's own sky — the old screen-anchored apexes floated them out of the scene ('you moved the fireworks out of the way — just bring the horizon in'; the horizon/cover is untouched, the elements stay in the scene) */
       if(cyc<RISE){ const p=cyc/RISE, ry=lerp(baseY,apexY,p*p), flick=0.55+0.45*Math.sin(t*34+fw[2]);
@@ -3957,7 +4039,14 @@ function seatBiomeAccent(b,g,RP){
   ctx.restore(); ctx.globalAlpha=1;
 }
 function drawOverlookCover(img,hy){
-  /* Nov 8 (#588, Gary — THE OVERLOOK, RAISED): the moving ground band
+  /* Nov 26 (Gary, Thanksgiving flight): FULL FRAME, ALWAYS — the Nov 8
+     raised composition below is retired. His photo showed the pale empty
+     band under the painting with a stray sprite crossing it ("we don't
+     need the bottom part with the palm trees flying"): the painting now
+     carries the whole frame like every other seat, and the motion the
+     band gave comes from the scene's own life — the streaming clouds,
+     the birds, the plane, the fireworks.
+     Nov 8 (#588, Gary — THE OVERLOOK, RAISED): the moving ground band
      stays — Gary likes the feeling of motion it gives — but it may
      never slice the lake again. While the tour drifts, the painting
      is composed so its BOTTOM lands exactly on the band's top edge:
@@ -3967,7 +4056,7 @@ function drawOverlookCover(img,hy){
      subject is never cut by the furniture. */
   if(!img.complete||!img.naturalWidth)return null;
   const iw=img.naturalWidth, ih=img.naturalHeight, sf=window.__seatFocus||0;
-  const B=lerp(clamp(hy,H*0.55,H*0.92), H, sstep(0.5,0.95,sf));
+  const B=H;   /* Nov 26: was lerp(band-top, H, seatFocus) — now the full frame at every moment of the stop */
   const sc=Math.max(W/iw, B/ih);
   const dw=iw*sc, dh=ih*sc, left=(W-dw)/2, top=B-dh;
   ctx.globalAlpha=1; ctx.drawImage(img,left,top,dw,dh); ctx.globalAlpha=1;
@@ -3995,10 +4084,32 @@ function drawCloudStream(g,t,nightF,seed,alphaMul){ /* Nov 14 (Gary): the Paris
 function drawSeatBiomeLife(RP,hy,cx){
   const g=SEATB_G; if(!g)return; const t=S.flyT;
   drawCloudStream(g,t,RP.nightF, 5100+S.biome.length*7, 1);   /* Nov 14: the flying-seat clouds ride every seat-biome */
+  if(S.biome==='overlook'){ /* Nov 26 (Gary, Thanksgiving flight): MORE LIFE
+     ON TOP — "you just need more cutouts on top. We need more birds, more
+     planes, maybe some fireworks." The sky over his apartment view gets
+     the Underwater treatment: bird crossings at two depths on staggered
+     clocks and a high plane with its contrail, all inside the painting's
+     own sky; the fireworks and fireflies already live in the accent. */
+    const bcycO=t%53; if(bcycO<11){ const bp=bcycO/11;
+      ctx.save(); ctx.strokeStyle='rgba(26,20,30,0.62)'; ctx.lineWidth=1.8; ctx.lineCap='round';
+      for(let i=0;i<4;i++){ const bx=g.left+lerp(-0.06,1.06,bp)*g.pw-i*g.pw*0.028, by=g.top+g.ph*(0.16+0.030*i)+Math.sin(t*2.0+i*1.3)*2.6, f=Math.sin(t*8.6+i*1.5)*3.4;
+        ctx.beginPath(); ctx.moveTo(bx-5.0,by-f); ctx.quadraticCurveTo(bx,by+1.6,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.6,bx+5.0,by-f); ctx.stroke(); }
+      ctx.restore(); }
+    const bcycO2=(t+29)%67; if(bcycO2<13){ const bp=bcycO2/13;
+      ctx.save(); ctx.strokeStyle='rgba(26,20,30,0.45)'; ctx.lineWidth=1.4; ctx.lineCap='round';
+      for(let i=0;i<3;i++){ const bx=g.left+lerp(1.06,-0.06,bp)*g.pw+i*g.pw*0.022, by=g.top+g.ph*(0.27+0.026*i)+Math.sin(t*1.8+i*1.1)*2.2, f=Math.sin(t*8.2+i*1.8)*2.8;
+        ctx.beginPath(); ctx.moveTo(bx-4.0,by-f); ctx.quadraticCurveTo(bx,by+1.3,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.3,bx+4.0,by-f); ctx.stroke(); }
+      ctx.restore(); }
+    const pcycO=(t+17)%89; if(pcycO<16){ const pp=pcycO/16, px=g.left+lerp(-0.08,1.08,pp)*g.pw, py=g.top+g.ph*0.085+Math.sin(pp*Math.PI)*g.ph*0.012;
+      ctx.save(); ctx.strokeStyle='rgba(255,235,220,0.35)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(px-g.pw*0.055,py+3); ctx.lineTo(px-8,py+1); ctx.stroke();
+      ctx.fillStyle='rgba(40,30,44,0.85)';
+      ctx.beginPath(); ctx.ellipse(px,py,g.pw*0.0085,g.pw*0.0024,0,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(px-2,py); ctx.lineTo(px-g.pw*0.0075,py-g.pw*0.005); ctx.lineTo(px-g.pw*0.0042,py); ctx.closePath(); ctx.fill(); ctx.restore(); } }
   /* THE INTRACOASTAL's yacht — cut from this very painting — cruising up
      the canal toward the raised drawbridge on a slow clock (Dose
      Law: a 34 s crossing inside 120 s of quiet). Solid, small. */
-  if(S.biome==='canal'&&canalYacht.complete&&canalYacht.naturalWidth){ for(const yOff of [0,40,80]){ const cyc=(t+yOff)%120;   /* Nov 13 (Gary): three yachts staggered on the same run — after one passes the bridge, the next is already coming */
+  if(S.biome==='canal'&&canalYacht.complete&&canalYacht.naturalWidth){ for(const yOff of [0,30,60,90]){ const cyc=(t+yOff)%120;   /* Nov 13 (Gary): three yachts staggered on the same run — after one passes the bridge, the next is already coming */   /* Nov 26 (Gary): FOUR now — the waterway should feel busy like the reef feels busy */
     if(cyc<34){ const p=cyc/34, env=sstep(0,0.06,p)*(1-sstep(0.94,1,p));
       const wdt=g.pw*0.052, hgt=wdt*canalYacht.naturalHeight/canalYacht.naturalWidth;
       const x=g.left+lerp(0.285,0.435,p)*g.pw, y=g.top+lerp(0.875,0.695,p)*g.ph;
@@ -4007,6 +4118,15 @@ function drawSeatBiomeLife(RP,hy,cx){
       ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(0,0,wdt*0.55,0,TAU); ctx.fill(); ctx.restore();
       ctx.save(); ctx.globalAlpha=0.12*env; ctx.drawImage(softBlobW,x-wdt*0.85,y+hgt*0.72,wdt*1.1,hgt*0.20); ctx.restore();   /* a thin wake trailing down-canal behind the stern */
       ctx.save(); ctx.globalAlpha=0.96*env; ctx.drawImage(canalYacht,x-wdt/2,y-hgt/2,wdt,hgt); ctx.restore(); } } }
+  if(S.biome==='canal'&&canalYacht.complete&&canalYacht.naturalWidth){ const cycR=(t+55)%110;   /* Nov 26 (Gary): the RETURN lane — the same yacht coming back down the canal on the nearer water, a touch smaller, mirrored for the downbound run, so the waterway works both ways and the water is never empty for long */
+    if(cycR<30){ const p=cycR/30, env=sstep(0,0.06,p)*(1-sstep(0.94,1,p));
+      const wdt=g.pw*0.042, hgt=wdt*canalYacht.naturalHeight/canalYacht.naturalWidth;
+      const x=g.left+lerp(0.470,0.330,p)*g.pw, y=g.top+lerp(0.655,0.795,p)*g.ph;
+      ctx.save(); ctx.translate(x,y+hgt*0.92); ctx.scale(1,0.22);
+      const sg=ctx.createRadialGradient(0,0,0,0,0,wdt*0.55); sg.addColorStop(0,'rgba(8,30,36,'+(0.28*env)+')'); sg.addColorStop(1,'rgba(8,30,36,0)');
+      ctx.fillStyle=sg; ctx.beginPath(); ctx.arc(0,0,wdt*0.55,0,TAU); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.12*env; ctx.drawImage(softBlobW,x-wdt*0.85,y+hgt*0.72,wdt*1.1,hgt*0.20); ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.96*env; ctx.translate(x,y); ctx.scale(-1,1); ctx.drawImage(canalYacht,-wdt/2,-hgt/2,wdt,hgt); ctx.restore(); } }
   if(S.biome==='canal'){ /* REBUILD (Gary: "need more on this page, all i see are birds"): a second small boat working a side canal, and gulls over the water */
     const cyc2=t%95; if(cyc2<30){ const p=cyc2/30, env2=Math.sin(Math.min(1,p*1.1)*Math.PI);
       const bx=g.left+lerp(0.86,0.68,p)*g.pw, by=g.top+0.80*g.ph, bw3=g.pw*0.030;
@@ -4022,9 +4142,9 @@ function drawSeatBiomeLife(RP,hy,cx){
        only passing through: three at anchor (bobbing, lit windows, a
        breath of reflection under each) and one slow cruiser worrying a
        short loop on the far bank */
-    for(let bi2=0;bi2<4;bi2++){ const spots=[[0.505,0.665,0.040],[0.665,0.795,0.046],[0.795,0.690,0.036]];
-      let bx2,by2; const bw6=g.pw*(bi2<3? spots[bi2][2] : 0.034);
-      if(bi2<3){ bx2=g.left+spots[bi2][0]*g.pw+Math.sin(t*0.05+bi2*2.2)*g.pw*0.002; by2=g.top+spots[bi2][1]*g.ph+Math.sin(t*0.9+bi2*1.9)*g.ph*0.0035; }
+    for(let bi2=0;bi2<5;bi2++){ const spots=[[0.505,0.665,0.040],[0.665,0.795,0.046],[0.795,0.690,0.036],[0.585,0.845,0.030],[0.430,0.760,0.027]];   /* Nov 26 (Gary): two more boats riding at anchor — a working waterway, busy like the reef */
+      let bx2,by2; const bw6=g.pw*(bi2<4? spots[bi2][2] : 0.034);
+      if(bi2<4){ bx2=g.left+spots[bi2][0]*g.pw+Math.sin(t*0.05+bi2*2.2)*g.pw*0.002; by2=g.top+spots[bi2][1]*g.ph+Math.sin(t*0.9+bi2*1.9)*g.ph*0.0035; }
       else { const cp2=0.5+0.5*Math.sin(t*0.021+1.2); bx2=g.left+lerp(0.545,0.615,cp2)*g.pw; by2=g.top+0.735*g.ph+Math.sin(t*1.05)*g.ph*0.003; }
       ctx.save(); ctx.translate(bx2,by2);
       ctx.fillStyle='rgba(6,26,32,0.30)'; ctx.beginPath(); ctx.ellipse(0,bw6*0.30,bw6*0.62,bw6*0.10,0,0,TAU); ctx.fill();
@@ -4071,7 +4191,22 @@ function drawSeatBiomeLife(RP,hy,cx){
       ctx.save(); ctx.strokeStyle='rgba(24,30,26,0.6)'; ctx.lineWidth=1.7; ctx.lineCap='round';
       for(let i=0;i<2;i++){ const bx=g.left+lerp(-0.05,1.05,bp)*g.pw-i*g.pw*0.035, by=g.top+g.ph*(0.14+0.04*i)+Math.sin(t*2+i)*2.5, f=Math.sin(t*9+i*1.4)*3.2;
         ctx.beginPath(); ctx.moveTo(bx-4.6,by-f); ctx.quadraticCurveTo(bx,by+1.5,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.5,bx+4.6,by-f); ctx.stroke(); }
-      ctx.restore(); } }
+      ctx.restore(); }
+    /* Nov 26 (Gary): a second crossing, lower and slower — three birds
+       sweeping across the falls face itself — and dragonflies working
+       the lake surface where the mist lands. More cutouts IN the scene,
+       the Underwater way. */
+    const bcyc2=(t+19)%47; if(bcyc2<9){ const bp=bcyc2/9;
+      ctx.save(); ctx.strokeStyle='rgba(24,30,26,0.55)'; ctx.lineWidth=1.6; ctx.lineCap='round';
+      for(let i=0;i<3;i++){ const bx=g.left+lerp(1.05,-0.05,bp)*g.pw+i*g.pw*0.030, by=g.top+g.ph*(0.34+0.045*i)+Math.sin(t*1.9+i*1.2)*2.8, f=Math.sin(t*8.8+i*1.6)*3.0;
+        ctx.beginPath(); ctx.moveTo(bx-4.4,by-f); ctx.quadraticCurveTo(bx,by+1.5,bx+0.4,by); ctx.quadraticCurveTo(bx+1,by+1.5,bx+4.4,by-f); ctx.stroke(); }
+      ctx.restore(); }
+    for(let i=0;i<3;i++){ const p3=i*2.13, dxp=g.left+(0.40+0.16*i+0.05*Math.sin(t*0.9+p3*2.0))*g.pw, dyp=g.top+(0.845+0.018*i+0.008*Math.sin(t*1.7+p3))*g.ph;
+      ctx.save(); ctx.translate(dxp,dyp); ctx.fillStyle=['rgba(90,180,255,0.85)','rgba(140,230,170,0.85)','rgba(255,200,110,0.85)'][i];
+      ctx.beginPath(); ctx.ellipse(0,0,g.pw*0.0035,g.pw*0.0013,0,0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(-g.pw*0.0028,-g.pw*0.0018,g.pw*0.0028,g.pw*0.0009,-0.6,0,TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(g.pw*0.0028,-g.pw*0.0018,g.pw*0.0028,g.pw*0.0009,0.6,0,TAU); ctx.fill(); ctx.restore(); } }
   if(S.biome==='boardwalk'){ /* REBUILD (Gary: "needs more cutout elements"): gulls over the pier, one small boat on the water */
     /* Nov 8 (#588): a slow cloud shadow drifts across the boards — light moving over the scene, nothing added to it */
     { const shx=g.left+(((t*0.011)%1.5)-0.25)*g.pw, shw=g.pw*0.34, shy=g.top+g.ph*0.45;
@@ -4603,11 +4738,11 @@ function drawNorthVista(RP,hy,cx){
   const wMid2=np4OK? wMid*midTri(1) : 0;
   const wMid1=wMid-wMid2;
   NORTH_G=drawVistaStack([
-    {img:northImgs.far, w:wFar*skyTri(0), anch:0.62, scale:1.00, asp:ASP_169},
-    {img:northImgs.farAlt, w:wFar*skyTri(1), anch:0.62, scale:1.00, asp:ASP_169},
-    {img:northImgs.far2, w:wFar*skyTri(2), anch:0.62, scale:1.00, asp:ASP_169},
-    {img:northImgs.mid, w:wMid1, anch:0.70, scale:1.05, asp:ASP_169},
-    {img:northImgs.mid2, w:wMid2, anch:0.66, scale:0.68, asp:ASP_169}   /* Nov 14 (Gary, photo in hand): the walrus-colony layer filled his screen — head 40% of frame height, orca fins right. THIS layer (not the seat) was the framing he shot: out ~50% (1.05 -> 0.68) so the colony sits IN its ice, water and aurora */
+    {img:northImgs.far, w:wFar*skyTri(0), anch:0.62, scale:0.94, asp:ASP_169},
+    {img:northImgs.farAlt, w:wFar*skyTri(1), anch:0.62, scale:0.94, asp:ASP_169},
+    {img:northImgs.far2, w:wFar*skyTri(2), anch:0.62, scale:0.94, asp:ASP_169},
+    {img:northImgs.mid, w:wMid1, anch:0.70, scale:0.97, asp:ASP_169},
+    {img:northImgs.mid2, w:wMid2, anch:0.66, scale:0.55, asp:ASP_169}   /* Nov 14 (Gary, photo in hand): the walrus-colony layer filled his screen — head 40% of fr */   /* Nov 26 (Gary, Thanksgiving flight): STILL too close — the walruses fill half the frame and crowd out the aurora. The band pulls back again (0.68 -> 0.55), the far skies and NP2 ease out with it (1.00 -> 0.94, 1.05 -> 0.97): "if you zoom out you can see the sky more." Weights, the 3-sky rotation and the mid trade are untouched — framing only. (The Nov 14 pass had already taken this layer 1.05 -> 0.68 for the same reason; it wasn't enough.) */
     /* #558: the near fitH layer is gone (see wNear0) — the stack is the
        far skies + the two mid paintings, at their own brightness. */
   ],RP,hy);
@@ -5878,6 +6013,7 @@ function render(){
     const baseA=(isAur? (0.30+aurVis*0.36) : (0.30+aurVis*0.40))*poleF*aurSwell*(1-sstep(0.04,0.18,inSpace));   /* #466: faded to zero before the climb painting even reaches a fifth strength */
     const RB=isAur?6:5;
     ctx.save(); ctx.globalCompositeOperation='lighter';
+    if(S.biome==='north'){ ctx.beginPath(); ctx.rect(-W*0.6,-H*0.45,W*2.2,hy+H*0.45); ctx.clip(); }   /* Nov 26 (Gary, Thanksgiving flight): at the Pole the curtains are SKY, and the sky ends at the horizon line. The lowest ribbon used to dangle past hy into the ground zone and hang under the stack painting as a pale wavy band of its own — his photo's "same flat bottom strip disease" (the ice-ground half of that strip died with fullPageNow; this was the other half, exposed once the ground was gone). The show itself is untouched — five curtains, the swell, the rays, the halo — it simply ends where the sky ends. The Aurora Horizon's curtains are not clipped: there the curtains ARE the world, horizon to horizon. */
     /* the halo: the whole upper sky takes the light before the curtains do */
     const haloTop=inSpace>0.4? hy-H*0.15 : hy-H*(isAur?1.02:0.88);
     const hg=ctx.createLinearGradient(0,haloTop,0,hy+H*0.06);
@@ -6031,6 +6167,7 @@ function render(){
     if(fullPageNow())break;   /* #560: no clip-art houses/palms under a full-page painting (Gary's CR ruling, applied to every full-page world) */
     if(inSpace>0.6)break;
     if(sp.z>1.05)continue;
+    if(S.biome==='jungle'&&!sp.lm&&pfImgs.close.complete&&pfImgs.close.naturalWidth)continue;   /* Nov 26 (Gary): the lollipop tree and grass tufts that paved the Falls' bottom strip are gone with the strip — while the Falls paintings are in hand the ground sprite stream stands down entirely here (probe-caught: a height cutoff always left one doodad row standing at the shore line, wherever the horizon sat); the paintings' own life — herons, lilies, kingfisher, butterflies — carries the scene, the Underwater way. Landmarks are exempt. */
     /* #466: no painted floors anywhere, so no scatter suppression — the simple elements layer over every simple bottom again */ if(false)continue;   /* Nov 1: the painted floor carries the terrain — no cartoon scatter on it */   /* a passed landmark, parked beyond the horizon */
     const p=1-sp.z, sy=hy+(gb-hy)*Math.pow(p,2.05);
     const sx=cx+sp.x*W*(0.10+p*1.02);
@@ -6374,6 +6511,23 @@ function planStops(){
      Aurora stop joins every lap, mid-lap, so the favorite comes around
      twice while every other area still plays its once */
   plan.splice(Math.floor(plan.length/2),0,{b:'aurora',kind:'drift'});
+  /* Nov 26 (Gary, Thanksgiving flight): THE DESERT GETS ITS VIEWS —
+     "you should have multiple scenes with the desert too — I only see
+     one... we're sitting at the oasis — you should have a few scenes
+     here." The desert is LOVED as-is (oasis, fennecs, clouds, birds);
+     nothing is repainted. The lap now plays the desert THREE times:
+     its planned stop plus two more spaced stops, kinds alternating so
+     the visits mix a drift over the dune stack with the seat rotation —
+     and the rotation serves a DIFFERENT seat painting each seat visit
+     (the oasis, Aurora Oasis, the dusk seat), the multi-view pattern
+     Gary praised at the Falls this morning. */
+  { const di=plan.findIndex(s2=>s2.b==='desert');
+    if(di>=0){ const firstKind=plan[di].kind;
+      const ex1={b:'desert',kind: firstKind==='seat'? 'drift':'seat'};
+      const ex2={b:'desert',kind: firstKind==='seat'? 'seat':'drift'};
+      const pos2=Math.min(plan.length,di+9), pos1=Math.min(plan.length,di+5);
+      plan.splice(pos2,0,ex2); plan.splice(pos1,0,ex1);
+      lastStopKind.desert=ex2.kind; } }
   tourPlan=plan;
 }
 function nextBiome(){
@@ -6416,10 +6570,12 @@ function beginStop(b,kind){
    LESS stationary. A QA override (__setTourDur) still wins outright. */
 function tourDwellFor(b,kind){
   if(window.__tourDurSet)return window.__tourDur;
-  if(S.transitStop&&b==='beach')return 9;   /* Nov 12: the sea transit is a skim across the surface, not a visit */
+  if(S.transitStop&&b==='beach')return 24;   /* Nov 26 (Gary, Thanksgiving flight): the 9 s skim is retired — "saw a little bit of the beach and now we're already at the ocean." The transit now gives him a real look at the beach before the dive; no flight leg was shortened to pay for it */
   /* Nov 8 (#588, Gary): every dwell cut ~30% — "we're spending too long
      in some of these spots" (85->59.5 · 48->33.6 · 40->28 · 36->25.2) */
   if(b==='underwater')return 59.5;
+  if(b==='beach')return 54;   /* Nov 26 (Gary): the beach stop itself holds long — second only to the Underwater chill anchor */
+  if(b==='city')return 25;   /* Nov 26 (Gary): New York sat too long — "I think we're here too long." Only the dwell shortens; the street-run arrival and the three ferries are untouched */
   if(kind==='seat')return 48;
   return b==='aurora'? 48 : b==='paris'? 40 : 36;   /* Nov 13 (Gary): the Nov 8 ~30% cut is REVERSED — "you're flipping it sometimes too quick" (the Deep, Space); every stop holds its full REBUILD dwell again: seat 48 · paris 40 · drift 36. Nov 14: Aurora joins the seat dwell at 48 — Gary's favorite sits generous */
 }
