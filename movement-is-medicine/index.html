@@ -673,6 +673,7 @@
       "<button class=\"lenbtn\" data-ms=\"60000\" type=\"button\">1 minute</button>" +
       "<button class=\"lenbtn\" data-ms=\"180000\" type=\"button\">3 minutes</button>" +
       "<button class=\"lenbtn\" data-ms=\"300000\" type=\"button\">5 minutes</button>" +
+      "<button class=\"lenbtn\" data-ms=\"0\" type=\"button\">As long as I wish</button>" +
       "</div>" +
       "<p class=\"hint\" style=\"margin-top:10px\">Walk in place, or walk around — your pace.</p></div>"
     );
@@ -695,7 +696,16 @@
   }
   function stopWalk() {
     var el = Date.now() - walkStart;
-    if (el >= 20000) {
+    if (walkMs === 0 && el >= 20000) {
+      endWalk(null);
+      setPanel(
+        "<div><p class=\"step\">You walked with me.</p>" +
+        "<p style=\"margin-top:6px\">About " + stepsFor(el) + " steps · " + milesText(el) + " miles · " + clockText(el) + " — and every one counts.</p>" +
+        "<p style=\"margin-top:10px\">You moved your body. Now help somebody:</p>" +
+        "<a class=\"sendbtn\" href=\"send.html\" target=\"_blank\" rel=\"noopener\">Send a kind note — free</a></div>"
+      );
+      if (panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } else if (el >= 20000) {
       endWalk(null);
       setPanel(
         "<div><p>" + esc(STOP_LINE) + "</p>" +
@@ -707,7 +717,7 @@
   }
 
   function startWalk(ms) {
-    walkMs = ms || 60000;
+    walkMs = (typeof ms === "number") ? ms : 60000; /* 0 = the endless walk */
     choosing = false;
     panel.onclick = null;
     btnMove.querySelector(".word").textContent = "WALKING\u2026";
@@ -725,6 +735,7 @@
     document.getElementById("paceDown").addEventListener("click", function () { setPace(paceMph - 0.1); });
     document.getElementById("paceUp").addEventListener("click", function () { setPace(paceMph + 0.1); });
     setPace(paceMph);
+    if (!walkMs) { var bar = panel.querySelector(".walkbar"); if (bar) bar.style.display = "none"; }
     scene.classList.add("walking");
     startChain();
     startThoughts();
@@ -734,11 +745,11 @@
     var dEl = document.getElementById("wDist");
     walkTimer = setInterval(function () {
       var el = Date.now() - walkStart;
-      var pct = el / walkMs * 100;
+      var pct = walkMs > 0 ? el / walkMs * 100 : 0;
       if (fill) fill.style.width = Math.min(pct, 100) + "%";
       if (tEl) tEl.textContent = clockText(el);
       if (dEl) dEl.textContent = milesText(el) + " mi";
-      if (pct >= 100) finishWalk();
+      if (walkMs > 0 && pct >= 100) finishWalk();
     }, 200);
   }
 
