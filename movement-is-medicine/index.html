@@ -111,6 +111,10 @@
     transition: opacity 1.2s ease;
     pointer-events: none;
   }
+  /* Move-along cues ride the same overlay as the thoughts, in a
+     steadier voice: upright and bold, so a doing-line reads
+     different from a thinking-line. */
+  .scene .thought.cue { font-style: normal; font-weight: bold; letter-spacing: 0.01em; }
   /* Living Photos treatment: slow, gentle light breathing over the still.
      Opacity/filter only — no zoom, no transforms, no video. */
   .scene .light {
@@ -196,6 +200,16 @@
     box-shadow: 0 3px 10px rgba(90, 60, 20, 0.18);
   }
   .stopbtn:active { filter: brightness(0.97); }
+  /* walk-length choices (the full walk package, Gary Nov 26) */
+  .lenrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+  .lenbtn {
+    cursor: pointer; font-family: inherit; font-size: 1.05rem; font-weight: bold;
+    color: #fff8ec; background: linear-gradient(160deg, #d97b2f, #b35c1e);
+    border: none; border-radius: 999px; min-height: 48px; padding: 12px 20px;
+    box-shadow: 0 4px 12px rgba(90, 60, 20, 0.25);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lenbtn:active { filter: brightness(1.08); }
   /* help-door extras */
   .sendbtn {
     display: inline-block; margin-top: 14px;
@@ -358,9 +372,8 @@
 
 <script>
   /* ---------- MOVE door 1: Walk With Me, the garden walk ---------- */
-  var DONE_LINE = "Thanks for spending a minute here.";
   var STOP_LINE = "That\u2019s enough for today \u2014 and it all counts.";
-  var WALK_MS = 60000;
+  var walkMs = 60000; /* set by the length the visitor picks: 1, 3 or 5 minutes */
 
   /* ---------- HELP: the card is the doing ---------- */
   var OTHERS = [
@@ -377,6 +390,8 @@
   var btnHelp = document.getElementById("btnHelp");
   var scene = document.querySelector(".scene");
   var walkTimer = null, walkStart = 0, otherIdx = -1;
+  var choosing = false; /* the length choices are up, the walk not started yet */
+  var IDLE_HTML = panel.innerHTML;
 
   /* ----- the walk chain: through the gate once, then the
      countryside goes on and on (Gary, Nov 24) -----
@@ -557,22 +572,43 @@
   var THOUGHTS = THOUGHT_VERSIONS[versionIndex];
   var THOUGHT_MS = 15000, THOUGHT_FADE_MS = 1200;
   var thoughtEl = document.getElementById("thought");
-  var thoughtIdx = 0, thoughtTimer = null, thoughtFadeTO = null, thoughtOn = false;
-  function showThought(i) {
-    thoughtEl.textContent = THOUGHTS[i];
+  /* ----- move-along cues: the doing lines (Gary, Nov 26) -----
+     The full walk package: thoughts and cues alternate every
+     ~15s — a thinking line, then a doing line — so the visitor's
+     body joins the walk instead of only watching it. The cues
+     are gentle, and work seated or standing. */
+  var CUES = [
+    "March in place with me — soft and easy.",
+    "Roll your shoulders. Let them drop.",
+    "Breathe in… and out, slow.",
+    "Swing your arms a little as you go.",
+    "Lift your heels, one then the other.",
+    "Shake out your hands. Let the tension go.",
+    "Stand tall. Chin up. You’re doing it.",
+    "Sway side to side, gentle and easy."
+  ];
+  var thoughtTimer = null, thoughtFadeTO = null, thoughtOn = false;
+  var slotIdx = 0, thoughtNext = 0, cueNext = 0;
+  function lineForSlot(i) {
+    if (i % 2 === 0) { var t = THOUGHTS[thoughtNext % THOUGHTS.length]; thoughtNext++; return { text: t, cue: false }; }
+    var c = CUES[cueNext % CUES.length]; cueNext++; return { text: c, cue: true };
+  }
+  function showLine(line) {
+    thoughtEl.textContent = line.text;
+    thoughtEl.classList.toggle("cue", line.cue);
     thoughtEl.style.opacity = "1";
   }
   function startThoughts() {
     stopThoughts();
     thoughtOn = true;
-    thoughtIdx = 0;
-    showThought(0);
+    slotIdx = 0; thoughtNext = 0; cueNext = 0;
+    showLine(lineForSlot(0));
     thoughtTimer = setInterval(function () {
       thoughtEl.style.opacity = "0";
       thoughtFadeTO = setTimeout(function () {
         if (!thoughtOn) return;
-        thoughtIdx = (thoughtIdx + 1) % THOUGHTS.length;
-        showThought(thoughtIdx);
+        slotIdx++;
+        showLine(lineForSlot(slotIdx));
       }, THOUGHT_FADE_MS);
     }, THOUGHT_MS);
   }
@@ -600,7 +636,55 @@
     if (line) setPanel("<p>" + esc(line) + "</p>");
   }
 
-  function startWalk() {
+  /* ----- the full walk package: lengths, steps, the finish -----
+     Pick 1, 3 or 5 minutes; the walk counts steps at a calm
+     ~90 a minute; finishing hands the visitor the page's second
+     line — you moved your body, now help somebody. */
+  function stepsFor(ms) { return Math.round((ms / 60000) * 90 / 5) * 5; }
+  function showLengths() {
+    choosing = true;
+    setPanel(
+      "<div><p class=\"step\">How long shall we walk?</p>" +
+      "<div class=\"lenrow\">" +
+      "<button class=\"lenbtn\" data-ms=\"60000\" type=\"button\">1 minute</button>" +
+      "<button class=\"lenbtn\" data-ms=\"180000\" type=\"button\">3 minutes</button>" +
+      "<button class=\"lenbtn\" data-ms=\"300000\" type=\"button\">5 minutes</button>" +
+      "</div>" +
+      "<p class=\"hint\" style=\"margin-top:10px\">Walk in place, or walk around — your pace.</p></div>"
+    );
+    var btns = panel.querySelectorAll(".lenbtn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function () { startWalk(parseInt(this.getAttribute("data-ms"), 10)); });
+    }
+    if (panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function finishWalk() {
+    var steps = stepsFor(walkMs);
+    endWalk(null);
+    setPanel(
+      "<div><p class=\"step\">You walked with me.</p>" +
+      "<p style=\"margin-top:6px\">About " + steps + " steps — and every one counts.</p>" +
+      "<p style=\"margin-top:10px\">You moved your body. Now help somebody:</p>" +
+      "<a class=\"sendbtn\" href=\"send.html\" target=\"_blank\" rel=\"noopener\">Send a kind note — free</a></div>"
+    );
+    if (panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function stopWalk() {
+    var el = Date.now() - walkStart;
+    if (el >= 20000) {
+      endWalk(null);
+      setPanel(
+        "<div><p>" + esc(STOP_LINE) + "</p>" +
+        "<p style=\"margin-top:6px\">About " + stepsFor(el) + " steps — a good start.</p></div>"
+      );
+    } else {
+      endWalk(STOP_LINE);
+    }
+  }
+
+  function startWalk(ms) {
+    walkMs = ms || 60000;
+    choosing = false;
     panel.onclick = null;
     btnMove.querySelector(".word").textContent = "WALKING\u2026";
     setPanel(
@@ -608,16 +692,16 @@
       "<div class=\"walkbar\"><div class=\"walkfill\" id=\"walkFill\"></div></div>" +
       "<button class=\"stopbtn\" id=\"btnStop\" type=\"button\">Stop video</button></div>"
     );
-    document.getElementById("btnStop").addEventListener("click", function () { endWalk(STOP_LINE); });
+    document.getElementById("btnStop").addEventListener("click", function () { stopWalk(); });
     scene.classList.add("walking");
     startChain();
     startThoughts();
     walkStart = Date.now();
     var fill = document.getElementById("walkFill");
     walkTimer = setInterval(function () {
-      var pct = (Date.now() - walkStart) / WALK_MS * 100;
+      var pct = (Date.now() - walkStart) / walkMs * 100;
       if (fill) fill.style.width = Math.min(pct, 100) + "%";
-      if (pct >= 100) endWalk(DONE_LINE);
+      if (pct >= 100) finishWalk();
     }, 200);
   }
 
@@ -697,8 +781,9 @@
   }
 
   btnMove.addEventListener("click", function () {
-    if (walkTimer) { endWalk(STOP_LINE); return; }
-    startWalk();
+    if (walkTimer) { stopWalk(); return; }
+    if (choosing) { choosing = false; setPanel(IDLE_HTML); return; }
+    showLengths();
   });
 
   /* The Exercises door is a plain link now — no panel, no second
@@ -716,6 +801,7 @@
 
   btnHelp.addEventListener("click", function () {
     if (walkTimer) endWalk(null);
+    choosing = false;
     panel.onclick = null;
     otherIdx = (otherIdx + 1) % OTHERS.length;
     setPanel(
