@@ -200,6 +200,11 @@
     box-shadow: 0 3px 10px rgba(90, 60, 20, 0.18);
   }
   .stopbtn:active { filter: brightness(0.97); }
+  /* the walk instruments: timer, odometer, pace (Gary, Nov 26) */
+  .walkstats { display: flex; justify-content: center; gap: 22px; margin-top: 12px; }
+  .wstat { display: flex; flex-direction: column; align-items: center; min-width: 64px; }
+  .wlab { font-size: 0.62rem; font-weight: bold; letter-spacing: 0.14em; text-transform: uppercase; color: #a08b6d; }
+  .wval { font-size: 1.05rem; font-weight: bold; color: #43301d; font-variant-numeric: tabular-nums; margin-top: 1px; }
   /* walk-length choices (the full walk package, Gary Nov 26) */
   .lenrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
   .lenbtn {
@@ -332,7 +337,7 @@
     <div class="scene" aria-hidden="true">
       <img src="garden-path.jpg" alt="">
       <video class="walkvid" id="walkVideoA" src="walk.mp4" poster="garden-path.jpg" muted playsinline preload="auto"></video>
-      <video class="walkvid" id="walkVideoB" src="walk-long2.mp4" muted playsinline preload="auto"></video>
+      <video class="walkvid" id="walkVideoB" src="walk-long3.mp4" muted playsinline preload="auto"></video>
       <div class="light"></div>
       <div class="warmth"></div>
       <div class="thought" id="thought" aria-hidden="true"></div>
@@ -398,21 +403,23 @@
      Two stacked players, the ride pages' crossfade pattern.
      Phase "gate": walk.mp4 plays once — out of the cottage garden,
      down the path, to the gate. It crossfades (1.4s) into the long
-     walk as it passes through. Phase "nature": walk-long2.mp4 — a
-     ~49-second countryside film built from five chained
+     walk as it passes through. Phase "nature": walk-long3.mp4 — a
+     ~111-second countryside film built from eleven chained
      generations (hillside, village lane, vineyards, willow stream,
-     flower meadow), at a natural walking pace and joined with
-     dissolves. The gate appears ONLY in the opening film, never in
-     the loop. It cycles through a soft 4s dissolve, so the walk
-     runs and runs and never snaps back to a start. */
+     flower meadow, the lake, the orchard, the windmill lane), at a
+     natural walking pace and joined with dissolves — three legs
+     around the same countryside before it comes round again. The
+     gate appears ONLY in the opening film, never in the loop. It
+     cycles through a soft 4s dissolve, so the walk runs and runs
+     and never snaps back to a start. */
   var GATE_SRC = "walk.mp4";
-  var NATURE_SRC = "walk-long2.mp4";
+  var NATURE_SRC = "walk-long3.mp4";
   var NATURE_START = 0;
   /* The endless phase is the whole long film, from its first frame;
      the loop point is the resource's own beginning — no mid-file
      seek is ever needed (a streamed player can refuse a mid-file
      seek and restart at 0). */
-  var NATURE_LOOP_SRC = "walk-long2.mp4";
+  var NATURE_LOOP_SRC = "walk-long3.mp4";
   var vidA = document.getElementById("walkVideoA");
   var vidB = document.getElementById("walkVideoB");
   var front = vidA, back = vidB, phase = "gate", fading = false, chainOn = false, chainWatch = null;
@@ -642,6 +649,9 @@
      ~90 a minute; finishing hands the visitor the page's second
      line — you moved your body, now help somebody. */
   function stepsFor(ms) { return Math.round((ms / 60000) * 90 / 5) * 5; }
+  var WALK_MPH = 2.2; /* the odometer's stroll, matched to ~90 steps a minute */
+  function milesText(ms) { return ((ms / 3600000) * WALK_MPH).toFixed(2); }
+  function clockText(ms) { var s = Math.floor(ms / 1000); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
   function showLengths() {
     choosing = true;
     setPanel(
@@ -664,7 +674,7 @@
     endWalk(null);
     setPanel(
       "<div><p class=\"step\">You walked with me.</p>" +
-      "<p style=\"margin-top:6px\">About " + steps + " steps — and every one counts.</p>" +
+      "<p style=\"margin-top:6px\">About " + steps + " steps · " + milesText(walkMs) + " miles — and every one counts.</p>" +
       "<p style=\"margin-top:10px\">You moved your body. Now help somebody:</p>" +
       "<a class=\"sendbtn\" href=\"send.html\" target=\"_blank\" rel=\"noopener\">Send a kind note — free</a></div>"
     );
@@ -676,7 +686,7 @@
       endWalk(null);
       setPanel(
         "<div><p>" + esc(STOP_LINE) + "</p>" +
-        "<p style=\"margin-top:6px\">About " + stepsFor(el) + " steps — a good start.</p></div>"
+        "<p style=\"margin-top:6px\">About " + stepsFor(el) + " steps · " + milesText(el) + " miles — a good start.</p></div>"
       );
     } else {
       endWalk(STOP_LINE);
@@ -691,6 +701,11 @@
     setPanel(
       "<div><p class=\"step\">Walk with me.</p>" +
       "<div class=\"walkbar\"><div class=\"walkfill\" id=\"walkFill\"></div></div>" +
+      "<div class=\"walkstats\">" +
+      "<span class=\"wstat\"><span class=\"wlab\">Time</span><span class=\"wval\" id=\"wTime\">0:00</span></span>" +
+      "<span class=\"wstat\"><span class=\"wlab\">Distance</span><span class=\"wval\" id=\"wDist\">0.00 mi</span></span>" +
+      "<span class=\"wstat\"><span class=\"wlab\">Pace</span><span class=\"wval\">2.2 mph</span></span>" +
+      "</div>" +
       "<button class=\"stopbtn\" id=\"btnStop\" type=\"button\">Stop video</button></div>"
     );
     document.getElementById("btnStop").addEventListener("click", function () { stopWalk(); });
@@ -699,9 +714,14 @@
     startThoughts();
     walkStart = Date.now();
     var fill = document.getElementById("walkFill");
+    var tEl = document.getElementById("wTime");
+    var dEl = document.getElementById("wDist");
     walkTimer = setInterval(function () {
-      var pct = (Date.now() - walkStart) / walkMs * 100;
+      var el = Date.now() - walkStart;
+      var pct = el / walkMs * 100;
       if (fill) fill.style.width = Math.min(pct, 100) + "%";
+      if (tEl) tEl.textContent = clockText(el);
+      if (dEl) dEl.textContent = milesText(el) + " mi";
       if (pct >= 100) finishWalk();
     }, 200);
   }
