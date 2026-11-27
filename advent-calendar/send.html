@@ -94,6 +94,32 @@
   }
   .sendbtn:active { filter: brightness(1.1); }
 
+  .gatebox {
+    margin-top: 18px;
+    background: #fffcf4;
+    border: 2px solid #e8d5ae;
+    border-radius: 14px;
+    padding: 16px 16px 6px;
+  }
+  .gatehead {
+    font-size: clamp(1.12rem, 4.8vw, 1.28rem);
+    font-weight: bold;
+    color: #0e4a2a;
+  }
+  .gateline {
+    margin-top: 6px;
+    font-size: clamp(1rem, 4.4vw, 1.1rem);
+    line-height: 1.5;
+    color: #5a4632;
+  }
+  .gatebox .field { margin-top: 10px; }
+  .gateerr {
+    margin-top: 8px;
+    min-height: 1.4em;
+    font-style: italic;
+    color: #b3122e;
+  }
+
   .others {
     margin-top: 14px;
     display: flex;
@@ -178,6 +204,16 @@
       <div class="field">
         <label for="fWords">What do you want to say?</label>
         <textarea id="fWords">Merry Christmas! Today's Advent painting made me think of you.</textarea>
+      </div>
+
+      <div class="gatebox" id="gateBox">
+        <p class="gatehead">Today's card is free.</p>
+        <p class="gateline">Leave your email and it’s yours to send. We’ll send you your card link — and check in after to ask how it went.</p>
+        <div class="field">
+          <label for="fEmail">Your email</label>
+          <input id="fEmail" type="email" maxlength="120" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <p class="gateerr" id="gateErr" aria-live="polite"></p>
       </div>
 
       <a class="sendbtn" id="btnMail" href="mailto:">SEND BY EMAIL</a>
@@ -325,6 +361,66 @@
     });
 
     form.addEventListener('submit', function (e) { e.preventDefault(); });
+  })();
+</script>
+<script>
+  /* Email capture — the trade for the free send (Gary, Nov 27, 2026).
+     One email, asked once, remembered on this device under the shared
+     'advEmail' key (the Movement free card honors the same key — an email
+     given on either door is never re-asked on the other). The POST is
+     fire-and-forget: a failed capture never blocks the send. */
+  (function(){
+    var EMAIL_KEY = 'advEmail';
+    /* Email capture (Gary, Nov 27): every capture is emailed to
+       gary@drspanier.com via this Web3Forms key (form "Living Photos
+       free card captures"). Same key on the Movement send page. */
+    var CAPTURE_KEY = '94407333-78be-42ee-b8f1-a04e53252895';
+    var box = document.getElementById('gateBox');
+    var form = document.getElementById('sendForm');
+    if (!box || !form) return;
+    var input = document.getElementById('fEmail');
+    var err = document.getElementById('gateErr');
+    var remembered = '';
+    try { remembered = window.localStorage.getItem(EMAIL_KEY) || ''; } catch (e) {}
+    if (remembered) { box.style.display = 'none'; return; }
+
+    var q = new URLSearchParams(window.location.search);
+    var season = advPreview(q) || advSeason(new Date());
+    var previewMode = !!advPreview(q);
+    var day = parseInt(q.get('day') || '', 10);
+    if (!(day >= 1 && day <= 25)) day = (season.phase === 'during') ? season.today : 1;
+    var sceneId = 'advent' + advPad(day);
+
+    function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+    function capture(em){
+      try {
+        fetch('https://api.web3forms.com/submit', {method: 'POST', headers: {'Content-Type': 'application/json'}, keepalive: true,
+          body: JSON.stringify({access_key: CAPTURE_KEY,
+            subject: 'Advent free send' + (previewMode ? ' TEST' : ''),
+            source: 'Advent free send', email: em, day: day, scene: sceneId,
+            when: new Date().toISOString(), page: location.href.split('?')[0]})
+        }).catch(function(){});
+      } catch (e) {}
+    }
+    var SENDERS = {btnMail: 1, btnSms: 1, btnWa: 1, btnCopy: 1};
+    form.addEventListener('click', function(e){
+      var t = e.target;
+      while (t && t !== form && !SENDERS[t.id]) t = t.parentNode;
+      if (!t || t === form) return;
+      var em = (input.value || '').trim();
+      if (!validEmail(em)) {
+        e.preventDefault();
+        e.stopPropagation();
+        err.textContent = 'That email doesn\u2019t look complete \u2014 add it and your card is ready to send.';
+        try { input.focus(); } catch (e2) {}
+        return;
+      }
+      err.textContent = '';
+      try { window.localStorage.setItem(EMAIL_KEY, em); } catch (e3) {}
+      capture(em);
+      box.style.display = 'none';
+    }, true);
+    input.addEventListener('input', function(){ err.textContent = ''; });
   })();
 </script>
 </body>
