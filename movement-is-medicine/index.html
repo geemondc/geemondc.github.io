@@ -208,6 +208,11 @@
   .paceCtl { display: flex; align-items: center; gap: 6px; }
   .paceBtn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #e8d5ae; background: rgba(255, 252, 244, 0.95); color: #5a4632; font-family: inherit; font-size: 1rem; font-weight: bold; line-height: 1; cursor: pointer; padding: 0; box-shadow: 0 2px 6px rgba(90, 60, 20, 0.15); }
   .paceBtn:active { filter: brightness(0.97); }
+  .placestrip { display: flex; gap: 8px; margin-top: 10px; }
+  .placebtn { flex: 1; padding: 0; overflow: hidden; border-radius: 14px; border: 2px solid #e8d5ae; background: #fffdf6; cursor: pointer; font-family: inherit; box-shadow: 0 2px 6px rgba(90, 60, 20, 0.12); }
+  .placebtn img { display: block; width: 100%; height: 62px; object-fit: cover; }
+  .placebtn span { display: block; padding: 6px 2px; font-weight: bold; color: #5a4632; font-size: 0.92rem; }
+  .placebtn:active { filter: brightness(0.97); }
   /* walk-length choices (the full walk package, Gary Nov 26) */
   .lenrow { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
   .lenbtn {
@@ -423,6 +428,23 @@
      seek is ever needed (a streamed player can refuse a mid-file
      seek and restart at 0). */
   var NATURE_LOOP_SRC = "walk-long3.mp4";
+  /* Three walks (Gary, Nov 26): the countryside keeps its gate film;
+     the beach and the mountainside are their own front doors — each
+     film opens at the start of its path and loops whole. */
+  var WALKS = {
+    country: { gate: "walk.mp4", film: "walk-long3.mp4" },
+    beach: { gate: "beach-walk.mp4", film: "beach-walk.mp4" },
+    mountain: { gate: "mountain-walk.mp4", film: "mountain-walk.mp4" }
+  };
+  var walkKey = "country";
+  function setWalk(key) {
+    if (!WALKS[key]) key = "country";
+    walkKey = key;
+    GATE_SRC = WALKS[key].gate;
+    NATURE_SRC = WALKS[key].film;
+    NATURE_LOOP_SRC = WALKS[key].film;
+    NATURE_START = 0;
+  }
   var vidA = document.getElementById("walkVideoA");
   var vidB = document.getElementById("walkVideoB");
   var front = vidA, back = vidB, phase = "gate", fading = false, chainOn = false, chainWatch = null;
@@ -665,6 +687,22 @@
     var rate = paceMph / FILM_MPH;
     try { vidA.playbackRate = rate; vidB.playbackRate = rate; } catch (e) {}
   }
+  function showPlaces() {
+    choosing = true;
+    setPanel(
+      "<div><p class=\"step\">Where shall we walk?</p>" +
+      "<div class=\"placestrip\">" +
+      "<button class=\"placebtn\" data-walk=\"country\" type=\"button\"><img src=\"thumb-country.jpg\" alt=\"\"><span>Countryside</span></button>" +
+      "<button class=\"placebtn\" data-walk=\"beach\" type=\"button\"><img src=\"thumb-beach.jpg\" alt=\"\"><span>Beach</span></button>" +
+      "<button class=\"placebtn\" data-walk=\"mountain\" type=\"button\"><img src=\"thumb-mountain.jpg\" alt=\"\"><span>Mountainside</span></button>" +
+      "</div></div>"
+    );
+    var btns = panel.querySelectorAll(".placebtn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function () { setWalk(this.getAttribute("data-walk")); showLengths(); });
+    }
+    if (panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
   function showLengths() {
     choosing = true;
     setPanel(
@@ -831,7 +869,7 @@
   btnMove.addEventListener("click", function () {
     if (walkTimer) { stopWalk(); return; }
     if (choosing) { choosing = false; setPanel(IDLE_HTML); return; }
-    showLengths();
+    showPlaces();
   });
 
   /* The Exercises door is a plain link now — no panel, no second
