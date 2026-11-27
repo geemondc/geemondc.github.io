@@ -88,6 +88,10 @@
     pointer-events: none;
   }
   .scene.walking video { opacity: 1; }
+  /* The flight film rides the same box as the walk film, framed
+     center (the walk's 62% crop is the garden's, not the sky's). */
+  .scene video.flyvid { opacity: 0; object-position: center; }
+  .scene.flying video.flyvid { opacity: 1; }
   /* The walk is a chain on stacked players (the ride-page pattern):
      JS drives each player's opacity inline with rAF crossfades,
      which override the .walking rule above, so the CSS fade
@@ -278,6 +282,8 @@
   .door-move { background: linear-gradient(160deg, #d97b2f, #b35c1e); }
   .door-ex { background: linear-gradient(160deg, #cf9a35, #9c6b14); }
   .door-help { background: linear-gradient(160deg, #7ba23f, #55701f); grid-column: 1 / -1; }
+  /* Fly With Me: a quiet night-sky door, no louder than Walk. */
+  .door-fly { background: linear-gradient(160deg, #454e7d, #262c4e); grid-column: 1 / -1; }
   .door .word.small { font-size: clamp(1.22rem, 5.6vw, 1.55rem); }
 
   /* ---------- bottom lines ---------- */
@@ -348,6 +354,7 @@
       <video class="walkvid" id="walkVideoB" src="walk-long3.mp4" muted playsinline preload="auto"></video>
       <div class="light"></div>
       <div class="warmth"></div>
+      <video class="flyvid" id="flyVideo" src="https://geemondc.github.io/starry-flight-scene/starry-flight-long.mp4" loop muted playsinline preload="none"></video>
       <div class="thought" id="thought" aria-hidden="true"></div>
       <button class="fsEnter" id="fsEnter" type="button" aria-label="See the walk full screen">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
@@ -369,6 +376,10 @@
         <span class="sub" id="exSub">today&rsquo;s movement</span>
         <span class="note">Opens in a new tab</span>
       </a>
+      <button class="door door-fly" id="btnFly" type="button">
+        <span class="word small">&#10022; Fly With Me</span>
+        <span class="sub">an endless starry flight</span>
+      </button>
       <button class="door door-help" id="btnHelp" type="button">
         <span class="word">HELP</span>
         <span class="sub">send a kind note &mdash; free</span>
@@ -433,8 +444,8 @@
      film opens at the start of its path and loops whole. */
   var WALKS = {
     country: { gate: "walk.mp4", film: "walk-long3.mp4" },
-    beach: { gate: "beach-walk.mp4", film: "beach-walk.mp4" },
-    mountain: { gate: "mountain-walk.mp4", film: "mountain-walk.mp4" }
+    beach: { gate: "beach-walk-long.mp4", film: "beach-walk-long.mp4" },
+    mountain: { gate: "mountain-walk-long.mp4", film: "mountain-walk-long.mp4" }
   };
   var walkKey = "country";
   function setWalk(key) {
@@ -791,6 +802,49 @@
     }, 200);
   }
 
+  /* ----- Fly With Me: the long Starry Flight (Gary, Nov 27) -----
+     The MOVE door under Walk: a first-person flight through the
+     five starry paintings — sky, countryside, river, rooftops,
+     and back up to the sky — as one looping film. It ends on the
+     same sky it opens on, so the loop never shows. No
+     instruments and no finish panel: flying is not walking.
+     The panel's button, or the door again, brings you back. */
+  var FLY_SRC = "https://geemondc.github.io/starry-flight-scene/starry-flight-long.mp4";
+  var btnFly = document.getElementById("btnFly");
+  var flyVideo = document.getElementById("flyVideo");
+  var flying = false;
+  function startFly() {
+    if (walkTimer || chainOn) endWalk(null);
+    stopThoughts();
+    thoughtEl.style.opacity = "0";
+    choosing = false;
+    panel.onclick = null;
+    flying = true;
+    btnFly.querySelector(".word").textContent = "FLYING\u2026";
+    scene.classList.add("flying");
+    try { flyVideo.currentTime = 0; } catch (e) {}
+    tryPlay(flyVideo);
+    setPanel(
+      "<div><p class=\"step\">Fly with me.</p>" +
+      "<p style=\"margin-top:6px\">Through a painted starry night \u2014 stay up as long as you wish.</p>" +
+      "<button class=\"stopbtn\" id=\"btnStopFly\" type=\"button\">Back to the garden</button></div>"
+    );
+    document.getElementById("btnStopFly").addEventListener("click", function () { stopFly(); });
+    if (scene.scrollIntoView) scene.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function stopFly() {
+    if (!flying) return;
+    flying = false;
+    scene.classList.remove("flying");
+    flyVideo.pause();
+    btnFly.querySelector(".word").textContent = "\u2726 Fly With Me";
+    setPanel(IDLE_HTML);
+  }
+  btnFly.addEventListener("click", function () {
+    if (flying) { stopFly(); return; }
+    startFly();
+  });
+
   /* ----- Exercises at Home: Today's Movement -----
      One exercise a day from the Pura Vida Movimiento library
      (futurereadystretch.lovable.app). The door itself is a direct
@@ -867,6 +921,7 @@
   }
 
   btnMove.addEventListener("click", function () {
+    if (flying) stopFly();
     if (walkTimer) { stopWalk(); return; }
     if (choosing) { choosing = false; setPanel(IDLE_HTML); return; }
     showPlaces();
@@ -887,6 +942,7 @@
 
   btnHelp.addEventListener("click", function () {
     if (walkTimer) endWalk(null);
+    if (flying) stopFly();
     choosing = false;
     panel.onclick = null;
     otherIdx = (otherIdx + 1) % OTHERS.length;
